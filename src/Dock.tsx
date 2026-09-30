@@ -1,8 +1,9 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { X } from "lucide-react";
+import { RotateCw, X } from "lucide-react";
 import { agentColor, type AgentDef } from "./agents";
 import { paneMeter, type SessionContext } from "./context";
 import { FEED_CLOCK_MS, relativeTime, type FeedItem } from "./feed";
+import { limitMeters, type ClaudeLimits } from "./limits";
 import type { Project } from "./workspace";
 import { IconButton } from "./IconButton";
 
@@ -12,18 +13,21 @@ type Props = {
   contexts: Record<string, SessionContext>;
   feed: FeedItem[]; // wszystkie projekty, najnowsze pierwsze
   onPickFeed: (item: FeedItem) => void;
+  limits: ClaudeLimits | null; // z linii statusu paneli claude
+  onRefreshLimits: () => void;
   onClose: () => void;
 };
 
 /** Pulpit po prawej (wzór D `.dock`): limity Claude (etap 10), kontekst, na żywo (etap 9). */
-export function Dock({ project, agents, contexts, feed, onPickFeed, onClose }: Props) {
+export function Dock({ project, agents, contexts, feed, onPickFeed, limits, onRefreshLimits, onClose }: Props) {
   // „40 s temu” musi się starzeć także bez nowych zdarzeń.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), FEED_CLOCK_MS);
     return () => clearInterval(timer);
-  }, [feed]);
+  }, [feed, limits]);
+  const meters = limitMeters(limits, now);
 
   const rows = (project?.panes ?? []).flatMap((pane) => {
     const agent = agents.find((a) => a.id === pane.agentId);
@@ -40,8 +44,28 @@ export function Dock({ project, agents, contexts, feed, onPickFeed, onClose }: P
         <IconButton icon={X} label="Zamknij pulpit" shortcut="Ctrl+Alt+D" onClick={onClose} />
       </div>
       <section className="dock-sec">
-        <h3>Limity Claude</h3>
-        <span className="meter-note">wkrótce</span>
+        <h3>
+          Limity Claude
+          <span className="dock-h3-end">
+            {limits && <span>{`linia statusu · ${relativeTime(limits.at * 1000, now)}`}</span>}
+            <IconButton icon={RotateCw} label="Odśwież limity" className="dock-refresh" onClick={onRefreshLimits} />
+          </span>
+        </h3>
+        {meters.length === 0 && (
+          <span className="meter-note">Brak danych: pojawią się po odpowiedzi claude w panelu (subskrypcja)</span>
+        )}
+        {meters.map((m) => (
+          <div key={m.label} className="meter">
+            <div className="meter-top">
+              <span>{m.label}</span>
+              <b>{m.pct}%</b>
+            </div>
+            <div className="bar">
+              <span style={{ width: `${Math.min(100, m.pct)}%` }} />
+            </div>
+            <span className="meter-note">{m.note}</span>
+          </div>
+        ))}
       </section>
       <section className="dock-sec">
         <h3>

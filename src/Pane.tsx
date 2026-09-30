@@ -3,6 +3,7 @@ import { backend } from "./backend";
 import { agentColor, buildArgs, type AgentDef } from "./agents";
 import { exitText, paneStatus, type PaneState } from "./activity";
 import type { ContextMeter } from "./context";
+import { withClaudeSettings } from "./limits";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
@@ -27,6 +28,10 @@ type Props = {
   armed?: boolean;
   actions: PaneActions;
 };
+
+// Jedno pytanie na całą aplikację: odpowiedź się nie zmienia, a paneli jest do 16 na projekt.
+let settingsArg: Promise<string | null> | null = null;
+const claudeSettingsArg = () => (settingsArg ??= backend.claudeSettingsArg().catch(() => null));
 
 /** Czas animacji `paneOut` w styles.css — tyle App czeka z `close` w reduktorze. */
 export const PANE_OUT_MS = 190;
@@ -55,8 +60,11 @@ export function Pane({ pane, path, agent, accent, focused, maximized, state, met
       agent.session?.check === "claude" && pane.sessionId
         ? backend.claudeSessionExists(pane.sessionId).catch(() => false)
         : Promise.resolve(false);
-    void known.then((exists) => {
-      if (live) setArgsFor({ run: pane.run, sessionId: pane.sessionId, args: buildArgs(agent, pane.sessionId, exists) });
+    void Promise.all([known, claudeSettingsArg()]).then(([exists, settings]) => {
+      if (!live) return;
+      // claude: linia statusu z limitami subskrypcji dla pulpitu (Rust `limits.rs`).
+      const args = withClaudeSettings(agent, buildArgs(agent, pane.sessionId, exists), settings);
+      setArgsFor({ run: pane.run, sessionId: pane.sessionId, args });
     });
     return () => {
       live = false;

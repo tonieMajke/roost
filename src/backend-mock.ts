@@ -90,6 +90,16 @@ export const mockBackend: Backend = {
       ? { tokens: tokens * 5, model: "claude-sonnet-5-5", window: null, tools }
       : { tokens, model: "Flash-Next-NVFP4", window: 262_144, tools };
   },
+  // Podgląd: bez linii statusu (procesy są udawane), limity zmyślone względem teraz.
+  claudeSettingsArg: async () => null,
+  async claudeLimits() {
+    const now = Math.floor(Date.now() / 1000);
+    return {
+      fiveHour: { pct: 42, resetsAt: now + 100 * 60 },
+      sevenDay: { pct: 83, resetsAt: now + 4 * 86_400 },
+      at: now - 120,
+    };
+  },
   dirExists: async () => true,
 
   // The browser has no folder picker, so the preview asks for a path in a prompt box.

@@ -298,7 +298,14 @@ kbd {
   color: var(--faint); letter-spacing: 0.02em; text-transform: none; font-weight: 400;
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.meter { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.meter-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; }
+.meter-top b { font-family: var(--mono); font-weight: 600; font-size: 12px; }
 .meter-note { font-size: 11px; color: var(--faint); }
+/* „Limity Claude”: czas odczytu + odśwież w nagłówku sekcji (mała ikona, żeby nie podbić wysokości) */
+.dock-sec h3 .dock-h3-end { display: inline-flex; align-items: center; gap: 4px; overflow: visible; }
+.dock-refresh { width: 18px; height: 18px; margin: -4px -4px -4px 0; }
+.dock-refresh svg { width: 12px; height: 12px; }
 .bar { height: 6px; background: var(--line); border-radius: var(--badge-r); overflow: hidden; }
 .bar span {
   display: block; height: 100%; background: var(--accent); transform-origin: left;

@@ -1,0 +1,50 @@
+/** „Limity Claude” in the dock: windows from Claude Code's status line (Rust `limits.rs`). Pure. */
+import type { AgentDef } from "./agents";
+
+/** `pct` 0–100 (above 100 once exceeded), `resetsAt` in Unix seconds. */
+export type LimitWindow = { pct: number; resetsAt: number };
+export type ClaudeLimits = { fiveHour: LimitWindow | null; sevenDay: LimitWindow | null; at: number };
+
+/** The file is written by claude panes on their own; reading it is cheap. */
+export const LIMITS_POLL_MS = 30_000;
+
+/** `--settings <json>` for claude panes, unless the agent's own args already set settings. */
+export function withClaudeSettings(agent: AgentDef, args: string[], settings: string | null): string[] {
+  if (settings === null || agent.command.split("/").pop() !== "claude") return args;
+  if (args.some((a) => a === "--settings" || a.startsWith("--settings="))) return args;
+  return [...args, "--settings", settings];
+}
+
+const DAYS = ["niedz.", "pon.", "wt.", "śr.", "czw.", "pt.", "sob."];
+
+const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+/** „reset o 22:40” today, „reset jutro 09:00”, else „reset w pon. 09:00” (local time). */
+export function resetText(resetsAt: number, now: number): string {
+  const at = new Date(resetsAt * 1000);
+  const today = new Date(now);
+  const dayDiff = Math.round(
+    (new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime() -
+      new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) /
+      86_400_000,
+  );
+  if (dayDiff <= 0) return `reset o ${hhmm(at)}`;
+  if (dayDiff === 1) return `reset jutro ${hhmm(at)}`;
+  return `reset w ${DAYS[at.getDay()]} ${hhmm(at)}`;
+}
+
+export type LimitMeter = { label: string; pct: number; note: string };
+
+/** Meters in wzor-D order; a window whose reset already passed says nothing any more. */
+export function limitMeters(limits: ClaudeLimits | null, now: number): LimitMeter[] {
+  if (limits === null) return [];
+  const rows: [string, LimitWindow | null][] = [
+    ["Sesja (5 h)", limits.fiveHour],
+    ["Tydzień", limits.sevenDay],
+  ];
+  return rows.flatMap(([label, w]) =>
+    w === null || w.resetsAt * 1000 <= now
+      ? []
+      : [{ label, pct: Math.max(0, Math.round(w.pct)), note: resetText(w.resetsAt, now) }],
+  );
+}

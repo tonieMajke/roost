@@ -15,6 +15,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 10 – 2026-09-30 (Claude)
+
+- Źródło: wariant 1. Claude Code 2.1.286 daje linii statusu `rate_limits.five_hour` / `seven_day` (`used_percentage`, `resets_at`; tylko subskrypcja, po pierwszej odpowiedzi API). Wariant 2 (token z `.credentials.json`, `/api/oauth/usage`) niepotrzebny, więc nie ma go w kodzie ani ustawienia „Pokaż limity Claude”. Brak „Tydzień · Opus” ze wzoru – linia statusu go nie podaje.
+- Rust `limits.rs`: panele claude dostają `--settings {"statusLine":{"type":"command","command":"'<exe>' --aw-statusline '<config>/claude-limits.json'"}}` (`claude_settings_arg`). `main.rs` w trybie pomocnika czyta stdin, zapisuje tylko okna + czas (tmp z PID + rename), nic nie wypisuje, zawsze kod 0 (~30 ms na wywołanie). Nic nie dodajemy, gdy `~/.claude/settings.json` ma własne `statusLine` (tylko odczyt). `claude_limits` czyta plik. 5 testów.
+- TS `src/limits.ts` + testy: `withClaudeSettings` (tylko program `claude`, nie gdy argumenty mają już `--settings`), `resetText` („reset o 22:40”, „reset jutro 02:05”, „reset w pon. 09:00”), `limitMeters` (okno po resecie znika). Pane pyta o argument raz na aplikację.
+- Dock: `.meter` ze wzoru, nagłówek „linia statusu · N min temu” + przycisk odśwież (`RotateCw`). App czyta plik tylko przy otwartym pulpicie: od razu, co 30 s (zamiast 5 min z planu – to lokalny plik, nie sieć) i na przycisk.
+- Sprawdzenia: typecheck czysty, vitest 178/178, cargo test 25/25, cargo build 0 ostrzeżeń. Pomocnik sprawdzony na zbudowanej binarce (JSON z `rate_limits`, śmieci na wejściu). Podgląd: dwa mierniki, czas odczytu, przycisk.
+- Niesprawdzone: prawdziwy claude w oknie Tauri (testy nie uruchamiają claude). Działa tylko w panelach uruchomionych po tej zmianie (stare trzeba zrestartować). `--settings` ma pierwszeństwo przed `statusLine` w `.claude/settings.json` projektu.
+
 ## M2 Etap 9 – 2026-09-30 (Claude, za zgodą użytkownika zamiast lokalnego modelu)
 
 - pi: format wywołań ustalony z typów `pi-ai` 0.99.1 (bez czytania cudzych sesji): `message.content[]` `{"type":"toolCall","id","name","arguments":{path|command}}`; claude: `{"type":"tool_use","id","name","input":{file_path|command}}`.

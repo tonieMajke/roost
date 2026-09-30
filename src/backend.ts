@@ -2,6 +2,7 @@ import { mockBackend } from "./backend-mock";
 import { tauriBackend } from "./backend-tauri";
 import type { AgentDef } from "./agents";
 import type { ContextKind, SessionContext } from "./context";
+import type { ClaudeLimits } from "./limits";
 
 export type ExitInfo = { code: number; signal: string | null };
 
@@ -21,6 +22,10 @@ export interface Backend {
   claudeSessionExists(id: string): Promise<boolean>;
   /** Rozmiar kontekstu z pliku sesji agenta (tylko odczyt); `null` = brak pliku albo danych. */
   sessionContext(kind: ContextKind, sessionId: string): Promise<SessionContext | null>;
+  /** JSON dla `claude --settings` (linia statusu zapisuje limity); `null` = użytkownik ma własną linię statusu. */
+  claudeSettingsArg(): Promise<string | null>;
+  /** Ostatnie limity subskrypcji z linii statusu claude; `null` = jeszcze żadnych. */
+  claudeLimits(): Promise<ClaudeLimits | null>;
   dirExists(path: string): Promise<boolean>;
   /** Folder wybrany przez użytkownika; `null` = anulowanie. */
   pickDir(): Promise<string | null>;

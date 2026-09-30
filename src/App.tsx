@@ -23,6 +23,7 @@ import { AppearanceDialog } from "./AppearanceDialog";
 import { Dock } from "./Dock";
 import { CONTEXT_POLL_MS, contextTargets, type SessionContext } from "./context";
 import { FINISHED_TEXT, STARTED_TEXT, exitedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
+import { LIMITS_POLL_MS, type ClaudeLimits } from "./limits";
 import { TOAST_MS, toastText } from "./toast";
 import { PANE_OUT_MS } from "./Pane";
 import { planPreset } from "./presets";
@@ -55,6 +56,8 @@ export function App() {
   // „Na żywo” (pulpit): ulotne, najnowsze pierwsze.
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const feedSeq = useRef(0);
+  // Limity subskrypcji claude (plik pisany przez linię statusu paneli claude).
+  const [limits, setLimits] = useState<ClaudeLimits | null>(null);
   // Ostatnie pokazane wywołanie narzędzia według sessionId; brak klucza = jeszcze nie czytano.
   const seenTools = useRef(new Map<string, string | null>());
   // Numer odczytu według sessionId: odpowiedź starsza od już obsłużonej nie dubluje zdarzeń.
@@ -391,6 +394,23 @@ export function App() {
     return () => clearInterval(timer);
   }, [allContextKey]);
 
+  // Limity czytane tylko przy otwartym pulpicie: od razu, co LIMITS_POLL_MS i na przycisk.
+  const readLimits = () => {
+    void backend
+      .claudeLimits()
+      .then((l) => {
+        if (l !== null) setLimits((prev) => (prev?.at === l.at ? prev : l));
+      })
+      .catch(() => undefined); // brak pliku = zostaje ostatni odczyt
+  };
+  const dockOpen = loaded && ws.ui.dock;
+  useEffect(() => {
+    if (!dockOpen) return;
+    readLimits();
+    const timer = setInterval(readLimits, LIMITS_POLL_MS);
+    return () => clearInterval(timer);
+  }, [dockOpen]);
+
   // `ping` kropeczki projektu (wzór D): praca skończyła się w siatce, której teraz nie widać.
   const [pingId, setPingId] = useState<string | null>(null);
   const pingTimer = useRef<number | null>(null);
@@ -674,6 +694,8 @@ export function App() {
           agents={agents}
           contexts={contexts}
           feed={feed}
+          limits={limits}
+          onRefreshLimits={readLimits}
           onPickFeed={(item) =>
             dispatch(
               paneInfo.has(item.paneId)

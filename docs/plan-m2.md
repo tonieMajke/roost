@@ -55,7 +55,7 @@ w przeglądarce rysuje inaczej niż WebKitGTK). Zasady z `AGENTS.md` bez zmian.
 - [x] Etap 7 (L) – dławienie zapisu do terminala
 - [x] Etap 8 (L) – pulpit i kontekst agentów
 - [x] Etap 9 (L) – „Na żywo”
-- [ ] Etap 10 (C) – limity Claude (`/usage`)
+- [x] Etap 10 (C) – limity Claude (`/usage`)
 - [ ] Etap 11 (C + użytkownik) – szlif na zrzutach z okna
 
 ---

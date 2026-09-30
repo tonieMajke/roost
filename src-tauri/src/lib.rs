@@ -1,11 +1,14 @@
 mod config;
 mod context;
+mod limits;
 mod notify;
 mod pty;
 
 use std::sync::OnceLock;
 
 use tauri::Manager;
+
+pub use limits::statusline_helper;
 
 /// WebKitGTK variables this process set itself (not inherited from the user).
 static OWN_ENV: OnceLock<Vec<&'static str>> = OnceLock::new();
@@ -52,6 +55,8 @@ pub fn run() {
             config::workspace_save,
             config::workspace_backup,
             context::session_context,
+            limits::claude_settings_arg,
+            limits::claude_limits,
             notify::notify,
         ])
         .build(tauri::generate_context!())
