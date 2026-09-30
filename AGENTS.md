@@ -17,7 +17,12 @@ agentów CLI (`claude`, `pi`, powłoka) w siatce terminali. Opis projektu: `PLAN
    w łańcuchu `&&` (połyka błąd).
 5. Zaznacz etap `[x]` w „Postępie”, dopisz na górę `HANDOFF.md` 3–8 linii: co zrobione,
    wynik sprawdzeń, co zostało niesprawdzone. Potem jeden commit z komunikatem podanym
-   w etapie.
+   w etapie. Poprawki po audycie UI wchodzą do tego samego commitu (`git commit --amend`
+   przed zakończeniem sesji jest dozwolony tylko dla commitu z tej sesji).
+6. W HANDOFF pisz tylko to, co jest w kodzie. Przed commitem przejdź listę kroków etapu
+   i przy każdym sprawdź w `git diff --cached`, że zmiana naprawdę tam jest.
+7. Ostrzeżenia kompilatora i testów poprawiaj od razu, nawet w teście z wcześniejszego etapu.
+   Nie wpisuj ich do HANDOFF jako „do zrobienia”.
 
 ## Sprawdzenia
 

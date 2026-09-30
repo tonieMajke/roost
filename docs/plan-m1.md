@@ -284,6 +284,10 @@ aktywnego projektu po lewej, przyciski po prawej).
 Pliki:
 - `src/App.tsx`: `useReducer(reduce, emptyWorkspace)`; stan ulotny osobno:
   `Record<paneId, { exited?: ExitInfo }>` (etap 9 dopisze tu aktywność).
+  **Agenci wyłącznie z `backend.loadAgents()`** (etap 3 tego nie podłączył – obecna stała
+  `AGENTS` w `App.tsx` ma zniknąć). Błędy z `loadAgents` jako pasek `.config-errors` nad
+  obszarem siatki. Nazwa agenta w panelu i na szynie z tej listy (`agentId` → `name`).
+  Sprawdź w HANDOFF: `grep -n "AGENTS = \[" src/App.tsx` nic nie zwraca.
 - `src/Rail.tsx`: nagłówek „Projekty” + przycisk „+”. Wiersz projektu: nazwa, liczba
   paneli; aktywny podświetlony; klik → `selectProject`. Pod **każdym** projektem (nie tylko
   aktywnym) wcięta lista jego paneli: kropka stanu + nazwa agenta; klik → `focus` (przełącza

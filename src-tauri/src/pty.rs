@@ -215,11 +215,15 @@ mod tests {
 
     /// Spawn through the core API and hand back receivers for output and the exit info.
     fn run(ptys: &Ptys, script: &str) -> (u32, Receiver<Vec<u8>>, Receiver<ExitInfo>) {
+        run_spec(ptys, spec_sh(script))
+    }
+
+    fn run_spec(ptys: &Ptys, spec: SpawnSpec) -> (u32, Receiver<Vec<u8>>, Receiver<ExitInfo>) {
         let (data_tx, data_rx) = mpsc::channel::<Vec<u8>>();
         let (exit_tx, exit_rx) = mpsc::channel();
         let id = ptys
             .spawn(
-                spec_sh(script),
+                spec,
                 Box::new(move |chunk| data_tx.send(chunk.to_vec()).is_ok()),
                 Box::new(move |info| {
                     let _ = exit_tx.send(info);
@@ -284,7 +288,8 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let want = dir.canonicalize().unwrap();
 
-        let (id, data, exits) = run(&Ptys::default(), &format!("cd {} && pwd", want.display()));
+        let spec = SpawnSpec { cwd: Some(want.to_string_lossy().into_owned()), ..spec_sh("pwd -P") };
+        let (_, data, exits) = run_spec(&Ptys::default(), spec);
         let (out, info) = read_until_exit(&data, &exits);
         std::fs::remove_dir(&dir).ok();
         assert_eq!(info.code, 0);
