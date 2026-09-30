@@ -15,7 +15,7 @@ Jeden etap = jedna sesja = jeden commit.
 - [x] Etap 8 – skróty klawiszowe i schowek
 - [x] Etap 9 – aktywność i powiadomienia
 - [x] Etap 10 – presety
-- [ ] Etap 11 – porządki, README, lista do sprawdzenia przez użytkownika
+- [x] Etap 11 – porządki, README, lista do sprawdzenia przez użytkownika
 
 ## Kontekst
 

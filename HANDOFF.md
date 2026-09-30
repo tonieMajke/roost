@@ -2,6 +2,34 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Do sprawdzenia przez użytkownika (w oknie Tauri, po etapie 11)
+
+- [ ] TUI claude i pi: kolory, ramki, polskie znaki (ąęśćżźół), Shift+Tab, Esc, Ctrl+C
+- [ ] zmiana rozmiaru okna i maksymalizacja przerysowuje terminale poprawnie
+- [ ] Ctrl+Shift+C/V, Ctrl+V z obrazkiem w claude
+- [ ] 16 paneli z `$SHELL`, w każdym `yes | head -c 20M` — okno reaguje, czas zapisany
+- [ ] zamknięcie aplikacji: `pgrep -a claude; pgrep -a pi` nie pokazują procesów z paneli
+- [ ] restart aplikacji wznawia rozmowy (claude i pi)
+- [ ] przełączanie projektów nie przerywa pracy agentów w schowanych siatkach
+- [ ] powiadomienie po zakończeniu pracy agenta w panelu bez fokusu
+- [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
+- [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
+
+## M1 Etap 11 – 2026-10-01
+Porządki: scrollback xtermu 5000 → 3000 (limit pamięci przy 16 panelach) + komentarz przy warunku
+`el.clientWidth === 0` w `ResizeObserver`. `fit()` dla ukrytych paneli zmierzony w podglądzie (temp strona
+seed, usunięta): panel w schowanej siatce startuje z 5 wierszami (fit słusznie nic nie robi na elemencie
+0 px), a po przełączeniu projektu ma 32 wiersze i te same 761 px co panel widoczny — czyli observer
+strzela po zdjęciu `display: none`; po maksymalizacji wymiary bez zmian (siatka 1×1 = ten sam obszar).
+Do tego w `Terminal.tsx` leżała w drzewie niezacommitowana zmiana z poprzedniej sesji (odfiltrowanie raportów
+fokusu DECSET 1004 w `onData`, żeby TUI odświeżane w panelu bez fokusu nie wyglądały jak praca agenta) —
+wpisana tu razem z etapem 11, przeżyła typecheck i testy, w oknie niesprawdzona.
+Nowy `README.md` (uruchomienie, `agents.json` z przykładem codexa, skróty, presety), lista wyżej do
+sprawdzenia w oknie, `PLAN.md`: M1 oznaczone jako zrobione. Sprawdzania: typecheck czysto, vitest 93/93,
+cargo test 11/11, cargo build 0 ostrzeżeń, `tauri` w `Cargo.lock` 2.12.0, `ui_audit` :5183 bez nowych flag
+(0 wysokich / 6 średnich = te same co w etapach 8–10). Niesprawdzone: cała lista powyżej (okno Tauri);
+BrowserOS w tej sesji niedostępny, więc klikanie po podglądzie zastąpione temp stronami seed ze skryptem.
+
 ## M1 Etap 10 – 2026-10-01
 Presety: `src/presets.ts` = `BUILT_IN_PRESETS` (Claude + pi / 2× Claude + 2× pi / 4× Claude) i czysty
 `planPreset(preset, knownIds, slots)` → `{agents, skipped, dropped}` (nieznani agenci nie jedzą miejsc) + 9 testów.

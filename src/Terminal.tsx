@@ -68,7 +68,7 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus, onOutpu
       fontSize: 13,
       cursorBlink: true,
       allowProposedApi: true,
-      scrollback: 5000,
+      scrollback: 3000, // limit pamięci przy 16 panelach (plan M1, ryzyko „xterm wolny”)
       theme: { background: "#1a1918", foreground: "#e8e6e3" },
     });
     term.current = x;
@@ -81,6 +81,8 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus, onOutpu
 
     let pty: PtyHandle | undefined;
     let disposed = false;
+    // Ukryty panel (display:none, maximalizacja, schowana siatka) ma wymiar 0 — fit() na nim
+    // nic nie robi, a ResizeObserver i tak strzeli, gdy panel wróci (stąd ten warunek).
     const observer = new ResizeObserver(() => {
       if (el.clientWidth === 0) return; // hidden pane
       fit.fit();
@@ -98,7 +100,12 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus, onOutpu
         pty?.resize(cols, rows);
         redrawRef.current?.();
       });
-      x.onData((d) => pty?.write(d));
+      // Focus reports (DECSET 1004) stay here: with many panes all but one are "unfocused",
+      // and agent TUIs keep redrawing then, which the activity dot reads as work.
+      x.onData((d) => {
+        if (d === "\x1b[I" || d === "\x1b[O") return;
+        pty?.write(d);
+      });
       observer.observe(el);
       x.textarea?.addEventListener("focus", () => focusRef.current?.());
       try {
