@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { ENTER_STAGGER_MS, ENTER_WINDOW_MS, enterClass, enterDelayMs, flipTransform, maxOrigin, motionAllowed } from "./motion";
+import { ENTER_STAGGER_MS, ENTER_WINDOW_MS, enterClass, enterDelayMs, flipTransform, maxOrigin, motionAllowed, mountOrder } from "./motion";
+
+describe("mountOrder", () => {
+  it("zamiana nie zmienia kolejności w DOM", () => {
+    const prev = ["a", "b", "c"];
+    expect(mountOrder(prev, ["c", "b", "a"])).toBe(prev);
+  });
+
+  it("nowe na końcu, zamknięte wypadają", () => {
+    expect(mountOrder(["a", "b", "c"], ["c", "x", "a"])).toEqual(["a", "c", "x"]);
+    expect(mountOrder([], ["a", "b"])).toEqual(["a", "b"]);
+  });
+});
 
 describe("flipTransform", () => {
   it("przesunięcie i skala z nowego pudełka do starego", () => {

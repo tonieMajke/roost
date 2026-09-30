@@ -83,6 +83,9 @@ export type Action =
   | { type: "newConversation"; id: string; sessionId: string } // run + 1
   | { type: "focus"; id: string } // finds the pane in any project and activates that project
   | { type: "move"; dir: Dir } // focus the grid neighbor
+  // M4: two panes trade places; no-op while a pane is maximized. Focus stays with its pane.
+  | { type: "swap"; a: string; b: string }
+  | { type: "swapDir"; dir: Dir } // the focused pane trades places with its grid neighbor
   | { type: "toggleMaximize"; id?: string } // no id = the focused pane
   // Presets (stage 10). Names are compared after trimming; built-ins live in src/presets.ts.
   | { type: "savePreset"; name: string } // from the active project's panes, in their order; same name overwrites
@@ -110,6 +113,15 @@ function patchActive(ws: Workspace, fn: (p: Project) => Project): Workspace {
 function mapPane(p: Project, paneId: string, fn: (pane: Pane) => Pane): Project {
   if (!p.panes.some((x) => x.id === paneId)) return p;
   return { ...p, panes: p.panes.map((x) => (x.id === paneId ? fn(x) : x)) };
+}
+
+function swapPanes(p: Project, a: string, b: string): Project {
+  const i = p.panes.findIndex((x) => x.id === a);
+  const j = p.panes.findIndex((x) => x.id === b);
+  if (i < 0 || j < 0 || i === j || p.maximized !== null) return p;
+  const panes = [...p.panes];
+  [panes[i], panes[j]] = [panes[j], panes[i]];
+  return { ...p, panes };
 }
 
 export function reduce(ws: Workspace, action: Action): Workspace {
@@ -171,6 +183,14 @@ export function reduce(ws: Workspace, action: Action): Workspace {
       const target = proj.panes[neighbor(idx, action.dir, proj.panes.length)];
       return target.id === proj.focused ? ws : patchActive(ws, (p) => ({ ...p, focused: target.id }));
     }
+    case "swap":
+      return patchActive(ws, (p) => swapPanes(p, action.a, action.b));
+    case "swapDir":
+      return patchActive(ws, (p) => {
+        const idx = p.panes.findIndex((x) => x.id === p.focused);
+        if (idx < 0) return p;
+        return swapPanes(p, p.panes[idx].id, p.panes[neighbor(idx, action.dir, p.panes.length)].id);
+      });
     case "toggleMaximize": {
       const proj = activeProject(ws);
       if (!proj) return ws;

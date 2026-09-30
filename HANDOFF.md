@@ -15,6 +15,14 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M4 Etap 1 – 2026-09-30 (Claude, gałąź `worktree-m4`)
+
+- `workspace.ts`: akcje `swap {a, b}` i `swapDir {dir}` (panel z fokusem ↔ sąsiad z `neighbor`); przy maksymalizacji, tym samym albo nieznanym id – ten sam `ws`. Fokus idzie z panelem.
+- `keys.ts`: Ctrl+Alt+Shift+strzałka = `swap`; App → `swapDir`.
+- `Grid.tsx`: komórki w DOM w kolejności utworzenia (`mountOrder` w `motion.ts`), miejsce w siatce przez `order`; `maxOrigin` i opóźnienie wjazdu liczone od miejsca. FLIP bez zmian (`layoutKey` ma kolejność, `offsetLeft` uwzględnia `order`).
+- Sprawdzenia: typecheck czysty, vitest 183/183. Rust bez zmian.
+- Niesprawdzone: okno Tauri. Ctrl+Alt+Shift+strzałki mogą być zajęte przez pulpit (przenoszenie okna między obszarami roboczymi w części środowisk).
+
 ## M2 Etap 10 – 2026-09-30 (Claude)
 
 - Źródło: wariant 1. Claude Code 2.1.286 daje linii statusu `rate_limits.five_hour` / `seven_day` (`used_percentage`, `resets_at`; tylko subskrypcja, po pierwszej odpowiedzi API). Wariant 2 (token z `.credentials.json`, `/api/oauth/usage`) niepotrzebny, więc nie ma go w kodzie ani ustawienia „Pokaż limity Claude”. Brak „Tydzień · Opus” ze wzoru – linia statusu go nie podaje.

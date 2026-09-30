@@ -16,6 +16,7 @@ import {
   flipTransform,
   maxOrigin,
   motionAllowed,
+  mountOrder,
   type Box,
 } from "./motion";
 
@@ -136,6 +137,15 @@ export function Grid({
     return () => observer.disconnect();
   }, [projectIds]);
 
+  // Węzły komórek w kolejności utworzenia: zamiana paneli zmienia tylko `order` (patrz mountOrder).
+  const mounted = useRef(new Map<string, readonly string[]>());
+  const domOrder = (project: Project) => {
+    const order = mountOrder(mounted.current.get(project.id) ?? [], project.panes.map((p) => p.id));
+    mounted.current.set(project.id, order);
+    const byId = new Map(project.panes.map((p) => [p.id, p]));
+    return order.map((id) => byId.get(id)!);
+  };
+
   const now = Date.now();
   return (
     <>
@@ -175,7 +185,8 @@ export function Grid({
                 </div>
               </div>
             ) : (
-              project.panes.map((pane, i) => {
+              domOrder(project).map((pane) => {
+                const i = project.panes.indexOf(pane); // miejsce w siatce (CSS `order`)
                 const isMax = project.maximized === pane.id;
                 const delay = enterDelayMs(i, entering ? now - entering.at : null);
                 return (
@@ -186,6 +197,7 @@ export function Grid({
                     style={
                       {
                         display: project.maximized && !isMax ? "none" : "flex",
+                        order: i,
                         // Wzrost zmaksymalizowanego panelu zaczyna się z jego miejsca w siatce.
                         transformOrigin: isMax ? maxOrigin(i, n) : undefined,
                         "--enter-delay": delay > 0 ? `${delay}ms` : undefined,

@@ -126,6 +126,13 @@ Warianty, od najtańszego:
 Przed rozpisaniem etapów: sprawdzić, jak mocno UI Pi Code zakłada, że ma całe okno
 (globalny stan, style, skróty), i czy sidecar obsługuje kilka sesji naraz.
 
+**M4 – przeciąganie paneli i przekazanie kontekstu** (dopisane 2026-09-30, niezależne od M3)
+– etapy: `docs/plan-m4.md`
+- Nagłówek panelu chwycony myszą zwija się w kulkę, upuszczona na inny panel zamienia je
+  miejscami (FLIP). Skrót Ctrl+Alt+Shift+strzałki robi to samo z klawiatury.
+- Shift przy upuszczeniu: wyciąg z rozmowy źródła (prompty, odpowiedzi, pliki, polecenia)
+  wklejany do celu bez Entera.
+
 ## Później (poza wersją podstawową)
 
 - Status agentów przez tryby maszynowe (`pi --mode rpc`, `claude -p --output-format stream-json`,

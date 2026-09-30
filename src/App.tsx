@@ -539,6 +539,9 @@ export function App() {
       case "move":
         dispatch({ type: "move", dir: cmd.dir });
         break;
+      case "swap":
+        dispatch({ type: "swapDir", dir: cmd.dir });
+        break;
       case "toggleMaximize":
         dispatch({ type: "toggleMaximize" }); // bez id = panel z fokusem
         break;
