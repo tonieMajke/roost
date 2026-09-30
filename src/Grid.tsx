@@ -46,8 +46,8 @@ export function Grid({ projects, activeId, agents, accent, state, armedPane, pan
               <div className="empty">
                 <p>Brak paneli</p>
                 <div className="empty-actions">
-                  <button type="button" className="btn-ico" onClick={projectActions.openPaneDialog}>
-                    <Plus size={14} strokeWidth={1.75} aria-hidden /> Panel
+                  <button type="button" className="btn primary" onClick={projectActions.openPaneDialog}>
+                    <Plus strokeWidth={1.75} aria-hidden /> Panel
                   </button>
                   {BUILT_IN_PRESETS.map((preset) => (
                     <button key={preset.name} type="button" onClick={() => projectActions.applyPreset(preset)}>

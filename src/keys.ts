@@ -10,7 +10,8 @@ export type Command =
   | { type: "copy" }
   | { type: "paste" }
   | { type: "selectProject"; index: number } // 0-based; outside the list -> nothing
-  | { type: "newProject" };
+  | { type: "newProject" }
+  | { type: "toggleRail" };
 
 /** The part of a keydown event the mapping needs. */
 export type KeyLike = Pick<KeyboardEvent, "key" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey">;
@@ -50,6 +51,8 @@ export function commandFor(e: KeyLike): Command | null {
       return { type: "restartPane" };
     case "p":
       return { type: "newProject" };
+    case "b":
+      return { type: "toggleRail" };
     default:
       // Ctrl+Alt+0 has no 10th project to select.
       return /^[1-9]$/.test(key) ? { type: "selectProject", index: Number(key) - 1 } : null;

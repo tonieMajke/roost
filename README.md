@@ -88,6 +88,7 @@ W projekcie bez paneli presety wbudowane stoją obok „+ Panel”.
 | Ctrl+Alt+N | nowy panel (wybór agenta: 1–9, ↑↓, Enter, Esc) |
 | Ctrl+Alt+P | nowy projekt (pyta o katalog) |
 | Ctrl+Alt+1…9 | przejdź do projektu numer N |
+| Ctrl+Alt+B | zwiń / rozwiń szynę projektów (56 px samych klawiszy i kropek) |
 | Ctrl+Alt+R | uruchom ponownie aktywny panel |
 | Ctrl+Alt+W | zamknij aktywny panel (przy żywym procesu: drugi raz = „Na pewno?”) |
 | Ctrl+Shift+C / Ctrl+Shift+V | kopiuj zaznaczenie / wklej do aktywnego panelu |
@@ -95,6 +96,10 @@ W projekcie bez paneli presety wbudowane stoją obok „+ Panel”.
 Zwyczajne Ctrl+C i Ctrl+V nie są przechwytywane — trafiają do procesu (SIGINT,
 wklejenie obrazka w claude). Kropka w nagłówku panelu: szara = proces skończony,
 pulsująca = agent pracuje, akcentowa = coś wypisał, gdy na niego nie patrzysz.
+
+Kropka przy projekcie na szynie dotyczy paneli, których siatki teraz nie widać:
+szara pulsująca = agent pracuje, akcentowa = nowe wyjście; ten sam kolor pulsuje
+jednorazowo (`ping`), gdy praca skończyła się w ukrytym projekcie.
 
 ## Jak to działa
 

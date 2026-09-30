@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { backend, type ExitInfo } from "./backend";
 import { agentColor, buildArgs, type AgentDef } from "./agents";
-import { dotClass, dotTitle } from "./activity";
+import { dotClass, dotTitle, exitText } from "./activity";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
@@ -24,8 +24,6 @@ type Props = {
   armed?: boolean;
   actions: PaneActions;
 };
-
-const exitLabel = (info: ExitInfo) => (info.signal ? `sygnał ${info.signal}` : `kod ${info.code}`);
 
 /** Frame around one terminal: header with agent, state and controls. */
 export function Pane({ pane, path, agent, accent, focused, maximized, exited, working, unread, armed, actions }: Props) {
@@ -90,7 +88,7 @@ export function Pane({ pane, path, agent, accent, focused, maximized, exited, wo
         <span className="pane-name">{agent?.name ?? pane.agentId}</span>
         <span
           className={`dot ${dotClass(state)}`}
-          title={dotTitle(state, exited ? exitLabel(exited) : "")}
+          title={dotTitle(state, exited ? exitText(exited) : "")}
         />
         <span className="pane-tools">
           {agent?.session && (

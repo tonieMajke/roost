@@ -15,6 +15,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 3 – 2026-09-30 (lokalny model)
+
+- `Rail.tsx` przepisany na wzór D: `.rail-head` (marka „AGENTS" + `PanelLeft`), `.rail-label`, `.proj` / `.proj-row` (`<kbd>` z numerem, nazwa, ścieżka `~/…`, `.proj-dot`), `.proj-panes` tylko pod aktywnym projektem (animacja `fold`), `.rail-foot` (`FolderPlus` + `SlidersHorizontal` „Wygląd", nieaktywny do etapu 5).
+- Stan wiersza panelu: `rowState()` w `src/activity.ts` (`st-working|st-unread|st-exited|st-idle` + tekst po prawej), kropka projektu: `projectState()` (`has-work` pulsujące, `has-unread` akcent) + jednorazowy `ping` (App: tick 1 Hz, projekt ≠ aktywny, `PING_MS` = 1000 ms).
+- Zwijanie szyny: Ctrl+Alt+B (`keys.ts`: `toggleRail`) → `ui.rail` (`open|closed`, zapis w `workspace.json`, klasa `rail-closed`); CSS `.rail-closed .rail { width: 56px }` wygrywa z media 720 px, w 56 px zostają `<kbd>` i kropki.
+- Nagłówek obszaru: `.area-head` 70 px, `.area-name` Bricolage 32 px (`--title-size`, 16 px w `title-compact`), `.area-path`, `.area-count`, przyciski `.btn` / `.btn.primary` (zamiast `.btn-ico`; `.btn-ico`, stare `.rail-*` i `.dot--hidden` usunięte). `.area-name` ma `flex: none` — ścieżka zwija się pierwsza (priorytet wzoru); przy 11–12 px użyty `--muted` zamiast `--faint` dla kontrastu.
+- `prefers-reduced-motion` wyłącza `breathe` (kropki), `ping` i `fold` (razem z `.glow` z etapu 1); `motion-lite` obejmuje `.proj-panes` (lista z etapu 1).
+- Sprawdzenia: typecheck czysty, vitest 111/111, cargo test 11/11, cargo build 0 ostrzeżeń, `ui_audit` @1000/390: 0 wysokich, 16 średnich (wszystkie to wartości dosłowne ze wzoru: tekst 10,5/11/11,5 px, odstępy 9/10/7/6/5/3 px), 2 niskie (4 fonty i 4 barwy = z planu). Podgląd @1000 i @460 px na seedowanym `workspace` (temp pliki usunięte): szyna otwarta i zwinięta.
+- Niesprawdzone: okno Tauri; Ctrl+Alt+B i `ping` na żywo (sprawdzone logiką i testami `commandFor`, nie klikaniem).
+
 ## M2 Etap 2 – 2026-09-30 (Claude)
 
 - `lucide-react@^1.48.0` (zgodne z `^1.47.0` z planu); `src/IconButton.tsx`: 26×26, ikona 15 px, `strokeWidth 1.75`, `aria-label`/`title` ze skrótem, klasa `.icon` ze wzoru.

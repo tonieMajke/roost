@@ -16,6 +16,7 @@
   --faint: #6f7883;
   --term-text: #c6ced8;
   --accent: #ff8a4c;
+  --accent-hover: var(--accent); /* token ze wzoru D (`.btn.primary:hover`) */
   --on-accent: #170b04;
   --on-ag: #0a0a0a; /* text on an agent-color background (.fh-fill) */
   --on-ag-hover: rgba(0, 0, 0, 0.12);
@@ -70,69 +71,116 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .icon:hover:not(:disabled) { background: var(--hover); color: var(--text); }
 .icon.is-on { color: var(--accent); background: var(--active); }
 .icon.is-confirm { width: auto; padding: 0 6px; font-size: 12px; color: var(--accent); }
-/* text button with a leading icon („Panel”, „Presety”) */
-.btn-ico { display: inline-flex; align-items: center; gap: 6px; }
+/* przycisk tekstowy z ikoną („Panel”, „Presety”, „Pulpit”), wzór D `.btn` */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; flex: none;
+  border-radius: var(--r-ctl); border: 1px solid var(--line-strong); background: transparent;
+  font-size: 12.5px; font-weight: 600;
+  transition: background 0.15s, border-color 0.15s, transform 0.18s var(--ease);
+}
+.btn:hover:not(:disabled) { background: var(--hover); border-color: var(--line-strong); }
+.btn:active { transform: scale(0.96); }
+.btn svg { width: 14px; height: 14px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn:disabled { color: var(--muted); }
 .app { display: flex; height: 100%; overflow: hidden; background: var(--bg); }
 
-/* left rail: projects and their panes */
-.rail { width: 220px; flex: none; display: flex; flex-direction: column; background: var(--rail); border-right: 1px solid var(--line); overflow-y: auto; }
-.rail-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px; color: var(--muted); font-size: 12px; text-transform: uppercase;
+/* klawisz skrótu w wierszu projektu, wzór D `kbd` */
+kbd {
+  font-family: var(--mono); font-size: 10.5px; min-width: 18px; height: 18px; display: inline-grid;
+  place-items: center; border-radius: 5px; border: 1px solid var(--line-strong); color: var(--muted);
+  padding: 0 4px; box-sizing: border-box; flex: none;
 }
-.rail-list { list-style: none; margin: 0; padding: 0 4px 8px; }
-.rail-project + .rail-project { margin-top: 2px; }
-.rail-row {
-  display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 4px;
-  border-radius: var(--r-ctl); cursor: pointer;
+
+/* lewa szyna (wzór D): marka, projekty z panelami, stopka */
+.rail {
+  width: var(--rail-w); flex: none; display: flex; flex-direction: column; gap: 2px;
+  background: var(--rail); border-right: 1px solid var(--line); padding: 10px 8px; box-sizing: border-box;
+  overflow-y: auto;
 }
-.rail-row:hover { background: var(--hover); }
-.rail-project.is-active > .rail-row { background: var(--active); }
-.rail-project.is-active > .rail-row .rail-name { color: var(--text); }
-.rail-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rail-key {
-  color: var(--muted); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums;
-  min-width: 12px; text-align: center;
+.rail-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 10px 8px; }
+.brand {
+  display: flex; align-items: center; gap: 9px; font-family: var(--mono); text-transform: uppercase;
+  font-weight: 700; font-size: var(--brand-size); letter-spacing: var(--brand-ls);
 }
-.rail-project.is-active > .rail-row .rail-key { color: var(--text); }
-/* Kontrast --muted na tle aktywnego wiersza jest na granicy – licznik idzie za nazwą. */
-.rail-project.is-active > .rail-row .rail-count { color: var(--text); }
-.rail-count { color: var(--muted); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
-.rail-row .rail-close { display: none; width: 22px; height: 22px; }
-.rail-row:hover .rail-close, .rail-row .rail-close.is-confirm { display: inline-grid; }
-.rail-row .rail-close.is-confirm { width: auto; }
-.rail-edit {
-  flex: 1; min-width: 0; height: 20px; background: var(--bg); color: var(--text);
-  border: 1px solid var(--accent); border-radius: var(--r-ctl); padding: 0 4px; font: inherit;
+.brand-mark { width: 14px; height: 14px; border-radius: var(--mark-r); background: var(--accent); box-shadow: 0 0 14px var(--accent); }
+.rail-label { font-size: 10.5px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; padding: 8px 8px 6px; font-weight: 600; }
+.rail-list { display: flex; flex-direction: column; gap: 2px; }
+.proj-row {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 8px; box-sizing: border-box;
+  border-radius: var(--r-ctl); text-align: left; cursor: pointer; transition: background 0.15s;
 }
-.rail-panes { list-style: none; margin: 0; padding: 0 0 0 12px; }
-.rail-pane {
-  display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 4px;
-  border-radius: var(--r-ctl); color: var(--muted); cursor: pointer;
+.proj-row:hover { background: var(--hover); }
+.proj.is-active .proj-row { background: var(--active); box-shadow: inset 3px 0 0 var(--accent); }
+.proj.is-active kbd { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.proj-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.proj-name { font-size: 14.5px; font-weight: var(--proj-weight); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj-path { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj-dot { width: 7px; height: 7px; border-radius: 50%; background: transparent; flex: none; }
+.proj.has-work .proj-dot { background: var(--muted); animation: breathe 1.6s ease-in-out infinite; }
+.proj.has-unread .proj-dot { background: var(--accent); }
+.proj.ping .proj-dot { background: var(--accent); animation: ping 0.9s ease-out 1; }
+.proj-row .proj-close { display: none; }
+.proj-row:hover .proj-close, .proj-row .proj-close.is-confirm { display: inline-grid; }
+.proj-row .proj-close.is-confirm { width: auto; }
+.proj-edit {
+  flex: 1; min-width: 0; height: 22px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--accent); border-radius: var(--r-ctl); padding: 0 6px; font: inherit;
 }
-.rail-pane:hover { background: var(--hover); color: var(--text); }
-.rail-pane.is-focused { color: var(--text); }
-/* Kropka wiersza panelu w kolorze agenta (--ag stemplowany przez Rail). */
-.rail-pane .dot { background: var(--ag, var(--muted)); }
-.rail-pane .dot--off { background: var(--faint); }
-.rail-pane .dot--working { background: var(--ag, var(--accent)); animation: dot-pulse 1s ease-in-out infinite; }
-.rail-pane .dot--unread { background: var(--accent); }
-.rail-pane .dot--hidden { background: transparent; }
+/* panele tylko pod aktywnym projektem (etap 3) */
+.proj-panes { display: flex; flex-direction: column; gap: 1px; padding: 3px 0 8px 22px; animation: fold 0.3s var(--ease) both; }
+.pane-row {
+  display: flex; align-items: center; gap: 9px; padding: 5px 8px; border-radius: var(--r-ctl);
+  font-size: 12.5px; color: var(--muted); text-align: left; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.pane-row:hover { background: var(--hover); color: var(--text); }
+.pane-row.is-focused { color: var(--text); }
+.ag-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ag, var(--muted)); flex: none; }
+.pane-row.st-working .ag-dot { animation: breathe 1.4s ease-in-out infinite; }
+.pane-row.st-unread .ag-dot { background: var(--accent); }
+.pane-row.st-exited .ag-dot { background: var(--faint); }
+.pane-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pane-row-state { margin-left: auto; flex: none; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.pane-row.st-unread .pane-row-state, .pane-row.st-done .pane-row-state { color: var(--accent); }
+.rail-foot { margin-top: auto; display: flex; gap: 4px; padding: 8px 2px 0; border-top: 1px solid var(--line); }
+@keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 var(--accent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+@keyframes fold { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .proj.has-work .proj-dot, .pane-row.st-working .ag-dot, .proj.ping .proj-dot,
+  .proj-panes, .pane.st-working .glow { animation: none; }
+}
+
+/* zwiń szyny (Ctrl+Alt+B): 56 px samych <kbd> i kropek */
+.rail-closed .rail { width: 56px; padding: 10px 6px; }
+.rail-closed .brand, .rail-closed .rail-label, .rail-closed .proj-text,
+.rail-closed .proj-panes, .rail-closed .proj-close { display: none; }
+.rail-closed .rail-head, .rail-closed .rail-foot { justify-content: center; padding-left: 0; padding-right: 0; }
+.rail-closed .proj-row { justify-content: center; gap: 6px; padding: 7px 0; }
 
 /* grid area */
 .area { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .area-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-  min-height: 36px; flex: none; padding: 0 8px 0 12px; border-bottom: 1px solid var(--line);
+  height: var(--head-h); flex: none; display: flex; align-items: center; gap: 10px;
+  padding: 0 14px 0 18px; box-sizing: border-box; border-bottom: 1px solid var(--line);
 }
-.area-id { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
-.area-name { font-family: var(--display); font-size: 14px; font-weight: 600; }
+.area-title { flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: baseline; gap: 12px; }
+.area-name {
+  /* nazwa ma pierwszeństwo przed ścieżką (wzór D): nie zwija się pierwsza */
+  flex: none; font-family: var(--display); font-size: var(--title-size); font-weight: var(--title-weight);
+  letter-spacing: var(--title-ls); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .area-path {
-  color: var(--muted); font: 12px var(--mono);
+  /* --muted zamiast --faint ze wzoru: 12 px na #0b0c0f potrzebuje ≥4,5:1 */
+  color: var(--muted); font: 12px var(--mono); min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.area-tools { display: flex; align-items: center; gap: 8px; flex: none; }
-.area-count { color: var(--muted); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.area-count {
+  color: var(--muted); font-family: var(--mono); font-size: 11.5px; margin-right: 4px; flex: none;
+  font-variant-numeric: tabular-nums;
+}
 .grids { flex: 1; min-height: 0; position: relative; }
 /* each project grid fills the area; the inactive ones are hidden, never unmounted */
 .project-grid { position: absolute; inset: 4px; display: grid; gap: 4px; }
@@ -161,10 +209,9 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .dot { width: 6px; height: 6px; flex: none; border-radius: 50%; }
 .dot--on { background: var(--ok); }
 .dot--off { background: var(--muted); }
-/* Aktywność (etap 9): pracuje = pulsuje, nieprzeczytane = akcent, brak stanu = puste miejsce. */
+/* Aktywność panelu w nagłówku: pracuje = pulsuje, nieprzeczytane = akcent. */
 .dot--working { background: var(--accent); animation: dot-pulse 1s ease-in-out infinite; }
 .dot--unread { background: var(--accent); }
-.dot--hidden { background: transparent; }
 @keyframes dot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 @media (prefers-reduced-motion: reduce) { .dot--working { animation: none; } }
 
@@ -240,6 +287,8 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
   .rail { width: 160px; }
   .area-path { display: none; }
   .area-head { padding: 0 4px 0 8px; }
+  .area-count { display: none; }
+  .btn { padding: 0 8px; }
   .pane-tools .icon:not(.is-confirm) { width: 22px; }
 }
 

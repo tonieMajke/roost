@@ -27,6 +27,13 @@ describe("parseUi", () => {
   it("unknown extra keys are ignored without errors", () => {
     expect(parseUi({ fontSize: 12 })).toEqual({ ui: DEFAULT_UI, errors: [] });
   });
+
+  it("rail: closed wczytuje się, zła wartość = open + błąd", () => {
+    expect(parseUi({ rail: "closed" }).ui.rail).toBe("closed");
+    const { ui, errors } = parseUi({ rail: "narrow" });
+    expect(ui.rail).toBe(DEFAULT_UI.rail);
+    expect(errors).toEqual(["ui.rail: `narrow` is not one of open, closed, using `open`"]);
+  });
 });
 
 describe("uiClasses", () => {
@@ -37,6 +44,11 @@ describe("uiClasses", () => {
   it("grid=off drops bg-grid, other classes follow their values", () => {
     const ui: Ui = { ...DEFAULT_UI, grid: "off", accent: "acid", title: "compact", edge: "soft" };
     expect(uiClasses(ui)).toBe("acc-acid fh-fill work-glow edge-soft title-compact motion-full");
+  });
+
+  it("rail=closed dodaje rail-closed, open nic nie dodaje", () => {
+    expect(uiClasses({ ...DEFAULT_UI, rail: "closed" }).split(" ")).toContain("rail-closed");
+    expect(uiClasses(DEFAULT_UI)).not.toContain("rail");
   });
 });
 

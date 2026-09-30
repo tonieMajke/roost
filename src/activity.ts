@@ -6,6 +6,9 @@ import type { ExitInfo } from "./backend";
 /** Jak często App odpytuje `tick` (1 s — wystarczająco dokładnie dla kropek). */
 export const TICK_MS = 1000;
 
+/** Animacja `ping` ze wzoru trwa 0,9 s — dłużej kropeczki projektu nie podświetlamy. */
+export const PING_MS = 1000;
+
 /** Cisza po ostatnich 2 s = panel już nie pracuje. */
 export const QUIET_MS = 2000;
 /** Seria krótsza niż 3 s to strzępy wyjścia, nie „skończona praca”. */
@@ -64,4 +67,32 @@ export function dotTitle(s: PaneState, exitLabel: string): string {
   if (s.working) return "pracuje";
   if (s.unread) return "nowe wyjście – panel bez fokusu";
   return s.exited ? exitLabel : "działa";
+}
+
+/** Opis zakończonego procesu: „kod 0” / „sygnał 15” (używany w panelu i na szynie). */
+export function exitText(info: ExitInfo): string {
+  return info.signal ? `sygnał ${info.signal}` : `kod ${info.code}`;
+}
+
+export type RowState = { cls: string; text: string };
+
+/**
+ * Wiersz panelu na szynie (wzór D): klasa `st-*` + tekst stanu po prawej.
+ * `working` i `unread` wygrywają nad „działa/zakończony”, tak jak w `dotClass`.
+ */
+export function rowState(s: PaneState): RowState {
+  if (s.working) return { cls: "st-working", text: "pracuje" };
+  if (s.unread) return { cls: "st-unread", text: "nowe wyjście" };
+  if (s.exited) return { cls: "st-exited", text: exitText(s.exited) };
+  return { cls: "st-idle", text: "czeka" };
+}
+
+/**
+ * Klasa kropki przy projekcie (wzór D): nieprzeczytane wygrywa z pracą,
+ * praca = kropla „oddycha”, brak stanu = pusto.
+ */
+export function projectState(panes: PaneState[]): string {
+  if (panes.some((p) => p.unread)) return "has-unread";
+  if (panes.some((p) => p.working)) return "has-work";
+  return "";
 }

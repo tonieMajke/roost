@@ -19,12 +19,13 @@ describe("commandFor (skróty etapu 8)", () => {
     expect(commandFor(ca("ArrowDown"))).toEqual({ type: "move", dir: "down" });
   });
 
-  it("Ctrl+Alt+Enter, N, W, R, P", () => {
+  it("Ctrl+Alt+Enter, N, W, R, P, B", () => {
     expect(commandFor(ca("Enter"))).toEqual({ type: "toggleMaximize" });
     expect(commandFor(ca("n"))).toEqual({ type: "newPane" });
     expect(commandFor(ca("w"))).toEqual({ type: "closePane" });
     expect(commandFor(ca("r"))).toEqual({ type: "restartPane" });
     expect(commandFor(ca("p"))).toEqual({ type: "newProject" });
+    expect(commandFor(ca("b"))).toEqual({ type: "toggleRail" });
   });
 
   it("Ctrl+Alt+1…9 wybiera projekt (0-based)", () => {

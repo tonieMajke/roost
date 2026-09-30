@@ -10,6 +10,7 @@ export type Ui = {
   grid: "on" | "off"; // background grid
   motion: "full" | "lite";
   dock: boolean; // desktop panel visible
+  rail: "open" | "closed"; // left rail: full width or 56 px of keys and dots
 };
 
 export const DEFAULT_UI: Ui = {
@@ -21,6 +22,7 @@ export const DEFAULT_UI: Ui = {
   grid: "on",
   motion: "full",
   dock: true,
+  rail: "open",
 };
 
 /** Choice lists, in the table order of the plan (the „Wygląd” window renders them). */
@@ -32,6 +34,7 @@ export const UI_CHOICES = {
   title: ["big", "compact"],
   grid: ["on", "off"],
   motion: ["full", "lite"],
+  rail: ["open", "closed"],
 } as const satisfies Record<Exclude<keyof Ui, "dock">, readonly string[]>;
 
 /** Hex of each accent, kept in sync with the `.acc-*` classes in styles.css (xterm needs the value). */
@@ -78,6 +81,7 @@ export function uiClasses(ui: Ui): string {
     `title-${ui.title}`,
     ui.grid === "on" ? "bg-grid" : "",
     `motion-${ui.motion}`,
+    ui.rail === "closed" ? "rail-closed" : "",
   ]
     .filter(Boolean)
     .join(" ");

@@ -2,23 +2,41 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import { agentColor, type AgentDef } from "./agents";
 import { IconButton } from "./IconButton";
-import { FolderPlus, X } from "lucide-react";
-import { dotClass, type PaneState } from "./activity";
+import { FolderPlus, PanelLeft, SlidersHorizontal, X } from "lucide-react";
+import { dotTitle, exitText, projectState, rowState, type PaneState } from "./activity";
 import type { Workspace } from "./workspace";
 
 type Props = {
   ws: Workspace;
   agents: AgentDef[];
   state: Record<string, PaneState>;
+  /** Projekt, którego panel skończył pracę, gdy patrzono gdzie indziej — jednorazowy `ping`. */
+  pingId: string | null;
   onSelect(projectId: string): void;
   onFocusPane(paneId: string): void;
   onAddProject(): void;
   onRename(projectId: string, name: string): void;
   onRemove(projectId: string): void;
+  onToggleRail(): void;
 };
 
-/** Left rail: projects with their panes, so you see where work is running. */
-export function Rail({ ws, agents, state, onSelect, onFocusPane, onAddProject, onRename, onRemove }: Props) {
+/** Treść title dla kropki projektu — sama kropka nie mówi, który panel. */
+const projDotTitle = (cls: string) =>
+  cls === "has-unread" ? "nowe wyjście w panelu" : cls === "has-work" ? "pracuje w panelu" : "";
+
+/** Left rail (wzór D): marka, projekty z ich panelami, stopka z akcjami. */
+export function Rail({
+  ws,
+  agents,
+  state,
+  pingId,
+  onSelect,
+  onFocusPane,
+  onAddProject,
+  onRename,
+  onRemove,
+  onToggleRail,
+}: Props) {
   const keyOf = (id: string) => `p:${id}`;
   const armRef = useRef<Arm>(null);
   const [armedId, setArmedId] = useState<string | null>(null);
@@ -43,86 +61,116 @@ export function Rail({ ws, agents, state, onSelect, onFocusPane, onAddProject, o
   return (
     <aside className="rail">
       <header className="rail-head">
-        <span>Projekty</span>
-        <IconButton icon={FolderPlus} label="Dodaj projekt" shortcut="Ctrl+Alt+P" onClick={onAddProject} />
+        <span className="brand">
+          <span className="brand-mark" />
+          Agents
+        </span>
+        <IconButton icon={PanelLeft} label="Zwiń szynę" shortcut="Ctrl+Alt+B" onClick={onToggleRail} />
       </header>
-      <ul className="rail-list">
-        {ws.projects.map((project, i) => (
-          <li key={project.id} className={`rail-project${project.id === ws.active ? " is-active" : ""}`}>
-            <div
-              className="rail-row"
-              onClick={() => onSelect(project.id)}
-              onDoubleClick={() => setEditing({ id: project.id, value: project.name })}
-            >
-              {editing?.id === project.id ? (
-                <input
-                  className="rail-edit"
-                  autoFocus
-                  value={editing.value}
-                  spellCheck={false}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => setEditing({ id: project.id, value: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const value = editing.value.trim();
-                      if (value !== "") onRename(project.id, value);
-                      setEditing(null);
-                    } else if (e.key === "Escape") {
-                      setEditing(null);
-                    }
-                  }}
-                  onBlur={() => setEditing(null)}
-                />
-              ) : (
-                <>
-                  {/* Ctrl+Alt+1…9 przełącza projekt – numer widać przy nazwie (powyżej 9 nie ma skrótu) */}
-                  {i < 9 && (
-                    <span className="rail-key" title={`Ctrl+Alt+${i + 1}`}>
-                      {i + 1}
-                    </span>
-                  )}
-                  {/* Kropka przy projekcie: praca w panelach, których siatka jest schowana. */}
-                  <span
-                    className={`dot ${project.panes.some((p) => state[p.id]?.unread) ? "dot--unread" : "dot--hidden"}`}
-                    title={project.panes.some((p) => state[p.id]?.unread) ? "nowe wyjście w panelu" : ""}
-                  />
-                  <span className="rail-name">{project.name}</span>
-                  <span className="rail-count">{project.panes.length}</span>
-                  <IconButton
-                    icon={X}
-                    label={`Usuń projekt ${project.name}`}
-                    className={`rail-close${armedId === project.id ? " is-confirm" : ""}`}
-                    title={isArmed(armRef.current, keyOf(project.id), Date.now()) ? "Kliknij ponownie, aby usunąć" : "Usuń projekt"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(project.id);
+      <div className="rail-label">Projekty</div>
+      <div className="rail-list">
+        {ws.projects.map((project, i) => {
+          const st = (paneId: string) => state[paneId] ?? {};
+          const dot = projectState(project.panes.map((p) => st(p.id)));
+          // Ctrl+Alt+1…9 przełącza projekt – numer widać w <kbd> (powyżej 9 nie ma skrótu).
+          const projCls = [
+            project.id === ws.active ? "is-active" : "",
+            dot,
+            pingId === project.id ? "ping" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return (
+            <div key={project.id} className={`proj${projCls ? " " + projCls : ""}`}>
+              <div
+                className="proj-row"
+                onClick={() => onSelect(project.id)}
+                onDoubleClick={() => setEditing({ id: project.id, value: project.name })}
+              >
+                {editing?.id === project.id ? (
+                  <input
+                    className="proj-edit"
+                    autoFocus
+                    value={editing.value}
+                    spellCheck={false}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setEditing({ id: project.id, value: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const value = editing.value.trim();
+                        if (value !== "") onRename(project.id, value);
+                        setEditing(null);
+                      } else if (e.key === "Escape") {
+                        setEditing(null);
+                      }
                     }}
-                    // two quick clicks on ✕ are also a dblclick; it must not open renaming
-                    onDoubleClick={(e) => e.stopPropagation()}
-                  >
-                    {armedId === project.id ? "Na pewno?" : undefined}
-                  </IconButton>
-                </>
+                    onBlur={() => setEditing(null)}
+                  />
+                ) : (
+                  <>
+                    <kbd title={i < 9 ? `Ctrl+Alt+${i + 1}` : undefined}>{i + 1}</kbd>
+                    <span className="proj-text">
+                      <span className="proj-name">{project.name}</span>
+                      <span className="proj-path" title={project.path}>
+                        {project.path}
+                      </span>
+                    </span>
+                    <span className="proj-dot" title={projDotTitle(dot)} />
+                    <IconButton
+                      icon={X}
+                      label={`Usuń projekt ${project.name}`}
+                      className={`proj-close${armedId === project.id ? " is-confirm" : ""}`}
+                      title={
+                        isArmed(armRef.current, keyOf(project.id), Date.now())
+                          ? "Kliknij ponownie, aby usunąć"
+                          : "Usuń projekt"
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        remove(project.id);
+                      }}
+                      // two quick clicks on ✕ are also a dblclick; it must not open renaming
+                      onDoubleClick={(e) => e.stopPropagation()}
+                    >
+                      {armedId === project.id ? "Na pewno?" : undefined}
+                    </IconButton>
+                  </>
+                )}
+              </div>
+              {/* Panele tylko pod aktywnym projektem (animacja `fold`), stan panelu tekstem po prawej. */}
+              {project.id === ws.active && project.panes.length > 0 && (
+                <div className="proj-panes">
+                  {project.panes.map((pane) => {
+                    const s = st(pane.id);
+                    const r = rowState(s);
+                    return (
+                      <div
+                        key={pane.id}
+                        className={`pane-row ${r.cls}${pane.id === project.focused ? " is-focused" : ""}`}
+                        // kropka wiersza w kolorze agenta (--ag stemplowany przez Rail)
+                        style={{ "--ag": agentColor(agents.find((a) => a.id === pane.agentId)) } as CSSProperties}
+                        onClick={() => onFocusPane(pane.id)}
+                      >
+                        <span
+                          className="ag-dot"
+                          title={dotTitle(s, s.exited ? exitText(s.exited) : "")}
+                        />
+                        <span className="pane-row-name">{name(pane.agentId)}</span>
+                        <span className="pane-row-state">{r.text}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
-            <ul className="rail-panes">
-              {project.panes.map((pane) => (
-                <li
-                  key={pane.id}
-                  className={`rail-pane${pane.id === project.focused ? " is-focused" : ""}`}
-                  // kropka wiersza w kolorze agenta (wzór D)
-                  style={{ "--ag": agentColor(agents.find((a) => a.id === pane.agentId)) } as CSSProperties}
-                  title={project.path}
-                  onClick={() => onFocusPane(pane.id)}
-                >
-                  <span className={`dot ${dotClass(state[pane.id] ?? {})}`} />
-                  <span>{name(pane.agentId)}</span>
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
+          );
+        })}
+      </div>
+      <footer className="rail-foot">
+        <IconButton icon={FolderPlus} label="Dodaj projekt" shortcut="Ctrl+Alt+P" onClick={onAddProject} />
+        {/* Okno „Wygląd” robi etap 5 – do tego czasu przycisk jest nieaktywny. */}
+        <IconButton icon={SlidersHorizontal} label="Wygląd" title="Wygląd (okno w etapie 5)" disabled onClick={() => {}} />
+      </footer>
     </aside>
   );
 }

@@ -21,6 +21,7 @@ import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { planPreset } from "./presets";
 import {
+  PING_MS,
   TICK_MS,
   initialActivity,
   onOutput as activityOutput,
@@ -247,14 +248,15 @@ export function App() {
     },
   };
 
-  // Kto jest kim w powiadomieniu: paneId → nazwa agenta i projektu.
+  // Kto jest kim w powiadomieniu i na szynie: paneId → agent, projekt (nazwa i id).
   const paneInfo = useMemo(() => {
-    const map = new Map<string, { agent: string; project: string }>();
+    const map = new Map<string, { agent: string; project: string; projectId: string }>();
     for (const p of ws.projects) {
       for (const pane of p.panes) {
         map.set(pane.id, {
           agent: agents.find((a) => a.id === pane.agentId)?.name ?? pane.agentId,
           project: p.name,
+          projectId: p.id,
         });
       }
     }
@@ -262,6 +264,24 @@ export function App() {
   }, [ws.projects, agents]);
   const paneInfoRef = useRef(paneInfo);
   paneInfoRef.current = paneInfo;
+  const activeRef = useRef(ws.active);
+  activeRef.current = ws.active;
+
+  // `ping` kropeczki projektu (wzór D): praca skończyła się w siatce, której teraz nie widać.
+  const [pingId, setPingId] = useState<string | null>(null);
+  const pingTimer = useRef<number | null>(null);
+  const pingRef = useRef<(projectId: string) => void>(() => {});
+  pingRef.current = (projectId) => {
+    setPingId(projectId);
+    if (pingTimer.current !== null) clearTimeout(pingTimer.current);
+    pingTimer.current = window.setTimeout(() => setPingId(null), PING_MS);
+  };
+  useEffect(
+    () => () => {
+      if (pingTimer.current !== null) clearTimeout(pingTimer.current);
+    },
+    [],
+  );
 
   // 1 Hz: kropka „pracuje”, a gdy panel skończył pracę i nikt na niego nie patrzy — powiadomienie.
   useEffect(() => {
@@ -291,6 +311,8 @@ export function App() {
         if (u.id === focusedRef.current && windowFocused) continue; // exactly what is on screen
         const info = paneInfoRef.current.get(u.id);
         if (!info) continue;
+        // Schowany projekt: kropka na szynie dostaje jednorazowy `ping`.
+        if (info.projectId !== activeRef.current) pingRef.current(info.projectId);
         void backend
           .notify(`Agents: ${info.agent}`, `skończył pracę w ${info.project}`)
           .catch((e: unknown) => setErrors((prev) => [...prev, `powiadomienie: ${String(e)}`]));
@@ -357,6 +379,9 @@ export function App() {
       case "newProject":
         projectActions.addProject();
         break;
+      case "toggleRail":
+        dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } });
+        break;
       case "selectProject": {
         const project = ws.projects[cmd.index]; // poza listą = nic
         if (project) dispatch({ type: "selectProject", id: project.id });
@@ -409,11 +434,15 @@ export function App() {
         ws={ws}
         agents={agents}
         state={ephemeral}
+        pingId={pingId}
         onSelect={(id) => dispatch({ type: "selectProject", id })}
         onFocusPane={(id) => dispatch({ type: "focus", id })}
         onAddProject={projectActions.addProject}
         onRename={projectActions.rename}
         onRemove={projectActions.remove}
+        onToggleRail={() =>
+          dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } })
+        }
       />
       <main className="area">
         {errors.length > 0 && <div className="config-errors">{errors.join(" · ")}</div>}
@@ -430,36 +459,34 @@ export function App() {
         ) : ws.projects.length === 0 ? (
           <div className="empty">
             <p>Dodaj folder projektu</p>
-            <button type="button" className="btn-ico" onClick={projectActions.addProject}>
-              <FolderPlus size={14} strokeWidth={1.75} aria-hidden /> Projekt
+            <button type="button" className="btn primary" onClick={projectActions.addProject}>
+              <FolderPlus strokeWidth={1.75} aria-hidden /> Projekt
             </button>
           </div>
         ) : (
           <>
             <header className="area-head">
-              <div className="area-id">
+              <div className="area-title">
                 <span className="area-name">{active?.name}</span>
                 <span className="area-path" title={active?.path}>
                   {active?.path}
                 </span>
               </div>
-              <div className="area-tools">
-                <span className="area-count">
-                  {paneCount}/{MAX_PANES}
-                </span>
-                <button type="button" className="btn-ico" onClick={() => setPresetMenu(true)} disabled={active === null}>
-                  <LayoutGrid size={14} strokeWidth={1.75} aria-hidden /> Presety
-                </button>
-                <button
-                  type="button"
-                  className="btn-ico"
-                  title="Nowy panel (Ctrl+Alt+N)"
-                  onClick={projectActions.openPaneDialog}
-                  disabled={active === null || paneCount >= MAX_PANES}
-                >
-                  <Plus size={14} strokeWidth={1.75} aria-hidden /> Panel
-                </button>
-              </div>
+              <span className="area-count">
+                {paneCount}/{MAX_PANES}
+              </span>
+              <button type="button" className="btn" onClick={() => setPresetMenu(true)} disabled={active === null}>
+                <LayoutGrid strokeWidth={1.75} aria-hidden /> Presety
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                title="Nowy panel (Ctrl+Alt+N)"
+                onClick={projectActions.openPaneDialog}
+                disabled={active === null || paneCount >= MAX_PANES}
+              >
+                <Plus strokeWidth={1.75} aria-hidden /> Panel
+              </button>
             </header>
             <div className="grids">
               <Grid

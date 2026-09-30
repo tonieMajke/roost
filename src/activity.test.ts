@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { MIN_BURST_MS, QUIET_MS, RESIZE_QUIET_MS, dotClass, dotTitle, initialActivity, onOutput, onResize, tick } from "./activity";
+import {
+  MIN_BURST_MS,
+  QUIET_MS,
+  RESIZE_QUIET_MS,
+  dotClass,
+  dotTitle,
+  exitText,
+  initialActivity,
+  onOutput,
+  onResize,
+  projectState,
+  rowState,
+  tick,
+} from "./activity";
 
 const T0 = 1_000_000;
 
@@ -96,5 +109,25 @@ describe("activity", () => {
     expect(dotTitle({ exited: { code: 1, signal: null } }, "kod 1")).toBe("kod 1");
     expect(dotTitle({ unread: true }, "")).toBe("nowe wyjście – panel bez fokusu");
     expect(dotTitle({ working: true }, "kod 1")).toBe("pracuje");
+  });
+
+  it("wiersz panelu na szynie: klasa st-* i tekst stanu", () => {
+    expect(rowState({})).toEqual({ cls: "st-idle", text: "czeka" });
+    expect(rowState({ exited: { code: 0, signal: null } })).toEqual({ cls: "st-exited", text: "kod 0" });
+    expect(rowState({ exited: { code: 0, signal: "15" } })).toEqual({ cls: "st-exited", text: "sygnał 15" });
+    expect(rowState({ unread: true })).toEqual({ cls: "st-unread", text: "nowe wyjście" });
+    expect(rowState({ working: true, unread: true })).toEqual({ cls: "st-working", text: "pracuje" });
+  });
+
+  it("kropka projektu: nieprzeczytane wygrywa z pracą", () => {
+    expect(projectState([])).toBe("");
+    expect(projectState([{}, {}])).toBe("");
+    expect(projectState([{}, { working: true }])).toBe("has-work");
+    expect(projectState([{ working: true }, { unread: true }])).toBe("has-unread");
+  });
+
+  it("exitText: kod albo sygnał", () => {
+    expect(exitText({ code: 1, signal: null })).toBe("kod 1");
+    expect(exitText({ code: 0, signal: "TERM" })).toBe("sygnał TERM");
   });
 });
