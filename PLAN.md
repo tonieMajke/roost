@@ -98,6 +98,33 @@ utworzeniu, zapisany w układzie. Po restarcie aplikacji panel startuje z tym sa
   (nowe dane na PTY), powiadomienie systemowe, gdy panel bez fokusu przestaje wypisywać
   (heurystyka „agent skończył/czeka”).
 
+**M2 – wygląd** (po M1, z Claude, nie z lokalnym modelem: ocena na zrzutach ekranu).
+
+**M3 – zakładka Chat z Pi Code** (dopisane 2026-09-30)
+
+Obok trybu „Code” (siatka terminali) druga zakładka „Chat”: rozmowa z pi w interfejsie
+Pi Code (`~/Documents/Pi/pi-gui`), a nie w TUI. Jak BridgeMind „Thread/Chat”.
+
+Co wiemy o Pi Code: ten sam stos (Tauri 2 + React 19), ~12,6 tys. linii TS w UI,
+czat działa przez sidecar w Node (`sidecar/`, SDK `@earendil-works/pi-coding-agent`),
+który rozmawia z UI liniami JSON po stdio (`shared/protocol.ts`). Rust w Pi Code tylko
+uruchamia sidecar i przekazuje linie (`pi_send`, zdarzenia), plus schowek z obrazkiem.
+
+Warianty, od najtańszego:
+1. **„Otwórz w Pi Code”** – przycisk na projekcie uruchamia osobne okno Pi Code w folderze
+   projektu (`PI_GUI_CWD`). Kilkadziesiąt linii, ale to osobne okno, nie zakładka.
+2. **Zakładka Chat z kodem Pi Code** (zalecane) – Agents workspace importuje komponenty
+   czatu i `shared/` z repozytorium Pi Code (alias ścieżki / pakiet w workspace pnpm),
+   a Rust uruchamia ten sam sidecar i przekazuje linie jak w Pi Code. Jedno źródło kodu:
+   poprawki w Pi Code od razu są w zakładce. Do zrobienia: wyrównać wersje Tauri (Pi Code
+   2.11, tu 2.12), odizolować style Pi Code, żeby nie psuły siatki, przenieść komendy Rusta
+   (`pi_send`, schowek), jeden sidecar na projekt albo jeden wspólny.
+3. **Kopia UI Pi Code do tego repo** – najprostsze na start, ale dwie wersje zaczną się
+   rozjeżdżać. Odradzane.
+
+Przed rozpisaniem etapów: sprawdzić, jak mocno UI Pi Code zakłada, że ma całe okno
+(globalny stan, style, skróty), i czy sidecar obsługuje kilka sesji naraz.
+
 ## Później (poza wersją podstawową)
 
 - Status agentów przez tryby maszynowe (`pi --mode rpc`, `claude -p --output-format stream-json`,
