@@ -280,6 +280,18 @@ export function App() {
     );
   }, [focusedId]);
 
+  // Output while the window was in the background marks even the focused pane as unread;
+  // coming back to the window means the user sees it now, and focusedId does not change then.
+  useEffect(() => {
+    const seen = () => {
+      const id = focusedRef.current;
+      if (id === null) return;
+      setEphemeral((prev) => (prev[id]?.unread ? { ...prev, [id]: { ...prev[id], unread: false } } : prev));
+    };
+    window.addEventListener("focus", seen);
+    return () => window.removeEventListener("focus", seen);
+  }, []);
+
   // "Na pewno?" po Ctrl+Alt+W wraca do ✕ po CONFIRM_MS (tak jak przy kliknięciu).
   useEffect(() => {
     if (armedPane === null) return;

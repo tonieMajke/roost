@@ -2,6 +2,12 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Przegląd etapów 8–9 (Claude) – 2026-09-30
+- Panel z fokusem, który coś wypisał, gdy okno było w tle, zostawał z akcentową kropką po
+  powrocie do okna (fokus panelu się nie zmienia, więc nic jej nie kasowało). Teraz kasuje ją
+  zdarzenie `focus` okna.
+- Poprawka w opisie etapu 9: `notify.rs` usuwa zmienne `own_env()` ze środowiska `notify-send`.
+
 ## M1 Etap 9 – 2026-09-30
 Aktywność: `src/activity.ts` (czyste `onOutput`/`onResize`/`tick`, progi 2000/3000/500 ms, `dotClass`/`dotTitle`)
 + 11 testów. `Terminal` zgłasza każdy chunk od procesu (`onOutput`) i zmianę rozmiaru xtermu (`onRedraw`);
