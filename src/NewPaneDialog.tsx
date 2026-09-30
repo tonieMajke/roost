@@ -15,6 +15,13 @@ type Props = {
 export function NewPaneDialog({ projectName, agents, startIndex, onPick, onClose }: Props) {
   const [index, setIndex] = useState(Math.min(Math.max(startIndex, 0), Math.max(agents.length - 1, 0)));
   const box = useRef<HTMLDivElement>(null);
+  // Where the keyboard was (usually the focused terminal); cancelling gives it back there.
+  // Not on pick: the new pane takes focus itself, and restoring the old one would steal it back.
+  const before = useRef(document.activeElement as HTMLElement | null);
+  const cancel = () => {
+    onClose();
+    before.current?.focus();
+  };
 
   // The window owns the keyboard while it is open.
   useEffect(() => {
@@ -26,13 +33,13 @@ export function NewPaneDialog({ projectName, agents, startIndex, onPick, onClose
     if (!action) return;
     e.preventDefault();
     e.stopPropagation();
-    if (action.type === "close") onClose();
+    if (action.type === "close") cancel();
     else if (action.type === "move") setIndex(action.index);
     else onPick(action.index);
   };
 
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
+    <div className="dialog-backdrop" onMouseDown={cancel}>
       <div
         className="dialog"
         role="dialog"
