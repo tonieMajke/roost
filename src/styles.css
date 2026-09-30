@@ -72,6 +72,16 @@ html, body { background: transparent; } /* okno jest przezroczyste: rogi zaokrą
 }
 .titlebar-btns { display: flex; gap: 2px; }
 .titlebar-close:hover:not(:disabled) { background: #e5484d; color: #fff; border-color: transparent; }
+/* uchwyty zmiany rozmiaru (ResizeEdges): niewidoczne, nad treścią przy samej krawędzi */
+.resize-edge { position: fixed; z-index: 1000; }
+.re-north { top: 0; left: 10px; right: 10px; height: 4px; cursor: n-resize; }
+.re-south { bottom: 0; left: 18px; right: 18px; height: 7px; cursor: s-resize; }
+.re-west { left: 0; top: 10px; bottom: 18px; width: 7px; cursor: w-resize; }
+.re-east { right: 0; top: 10px; bottom: 18px; width: 7px; cursor: e-resize; }
+.re-northwest { top: 0; left: 0; width: 10px; height: 10px; cursor: nw-resize; }
+.re-northeast { top: 0; right: 0; width: 10px; height: 10px; cursor: ne-resize; }
+.re-southwest { bottom: 0; left: 0; width: 18px; height: 18px; cursor: sw-resize; }
+.re-southeast { bottom: 0; right: 0; width: 18px; height: 18px; cursor: se-resize; }
 /* paski przewijania poza xtermem (lista „Na żywo”, okna): cienkie, w kolorach motywu */
 * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 ::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }

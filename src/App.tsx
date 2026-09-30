@@ -21,7 +21,7 @@ import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { Dock } from "./Dock";
-import { TitleBar } from "./TitleBar";
+import { ResizeEdges, TitleBar } from "./TitleBar";
 import { CONTEXT_POLL_MS, contextKind, contextTargets, sessionTitles, type SessionContext } from "./context";
 import { FALLBACK_MAX_CHARS, SUMMARY_SYSTEM, digestText, handoffText, summaryText } from "./handoff";
 import { FINISHED_TEXT, STARTED_TEXT, exitedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
@@ -685,6 +685,7 @@ export function App() {
   return (
     <div className={`shell${winMax ? " is-max" : ""}`}>
     {inTauri && <TitleBar onMaximized={setWinMax} />}
+    {inTauri && !winMax && <ResizeEdges />}
     <div className={`app ${uiClasses(ws.ui)}`}>
       <Rail
         ws={ws}

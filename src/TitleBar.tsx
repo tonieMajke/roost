@@ -46,3 +46,28 @@ export function TitleBar({ onMaximized }: { onMaximized: (max: boolean) => void 
     </div>
   );
 }
+
+type Edge = "North" | "South" | "East" | "West" | "NorthEast" | "NorthWest" | "SouthEast" | "SouthWest";
+const EDGES: Edge[] = ["North", "South", "East", "West", "NorthWest", "NorthEast", "SouthWest", "SouthEast"];
+
+/** Uchwyty zmiany rozmiaru przy krawędziach okna bez ramki: Tauri łapie tylko 5 px, a róg
+ *  to 5×5 px – za mało. Tu krawędzie 7 px, rogi dolne 18 px (górne mniejsze: przyciski paska). */
+export function ResizeEdges() {
+  const win = getCurrentWindow();
+  return (
+    <>
+      {EDGES.map((edge) => (
+        <div
+          key={edge}
+          className={`resize-edge re-${edge.toLowerCase()}`}
+          aria-hidden
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            void win.startResizeDragging(edge);
+          }}
+        />
+      ))}
+    </>
+  );
+}
