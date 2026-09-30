@@ -15,6 +15,14 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## Uchwyty zmiany rozmiaru + instalacja – 2026-10-01 (Claude, master)
+
+- Użytkownik w oknie (AppImage `c69831e`): pasek i rogi OK, krawędzie „średnio łapią”, zwłaszcza rogi. Tauri ma na sztywno 5 px (`BORDERLESS_RESIZE_INSET`).
+- `ResizeEdges` w `TitleBar.tsx`: 8 niewidocznych `.resize-edge` (`position: fixed`, z-index 1000), `startResizeDragging(kierunek)`; krawędzie 7 px (góra 4 px), rogi dolne 18 px, górne 10 px (przyciski paska). Brak po maksymalizacji. Uprawnienie `core:window:allow-start-resize-dragging`.
+- Potwierdzone w nowej AppImage: w panelu brak zmiennych `mount_Agents`, `python3` działa.
+- Instalacja: `pnpm tauri build` w czystym środowisku → `~/.local/bin/Agents-<commit>.AppImage`, `Exec`/`TryExec` w `~/.local/share/applications/agents-56a554c-wip.desktop` przestawione (stare pliki zostają do cofnięcia).
+- Niesprawdzone: uchwyty w oknie (wersja `3fb81ad`).
+
 ## Środowisko AppImage nie przecieka do paneli – 2026-10-01 (Claude, master)
 
 - Błąd w zainstalowanej AppImage: panele dziedziczyły środowisko AppRun (`LD_LIBRARY_PATH`, `PATH`, `PYTHONHOME`/`PYTHONPATH`, `PERLLIB`, `GTK_*`, `GTK_THEME=Adwaita:dark`…, wszystko na `/tmp/.mount_Agents…`) – `python3` w panelu nie startował („No module named 'encodings'”), stąd obejście `env -u PYTHONHOME -u PYTHONPATH pnpm desktop`.
