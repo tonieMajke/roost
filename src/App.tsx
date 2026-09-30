@@ -15,6 +15,8 @@ import {
 import { Rail } from "./Rail";
 import { Grid } from "./Grid";
 import { NewPaneDialog } from "./NewPaneDialog";
+import { PresetMenu } from "./PresetMenu";
+import { planPreset } from "./presets";
 import {
   TICK_MS,
   initialActivity,
@@ -39,6 +41,7 @@ export function App() {
   const activity = useRef(new Map<string, Activity>());
   const [notice, setNotice] = useState<string | null>(null);
   const [dialog, setDialog] = useState(false);
+  const [presetMenu, setPresetMenu] = useState(false);
   const [lastAgentId, setLastAgentId] = useState<string | null>(null);
   // false do końca startu: zapis `ws` na dysk musi ruszyć dopiero po wczytaniu pliku.
   const [loaded, setLoaded] = useState(false);
@@ -217,6 +220,25 @@ export function App() {
       const pane: Pane = { id: crypto.randomUUID(), agentId: agent.id, run: 1 };
       if (agent.session) pane.sessionId = crypto.randomUUID();
       dispatch({ type: "add", pane });
+    },
+    applyPreset: (preset) => {
+      setPresetMenu(false);
+      if (active === null) return;
+      const plan = planPreset(preset, agents.map((a) => a.id), MAX_PANES - paneCount);
+      const msgs: string[] = [];
+      for (const agentId of plan.agents) {
+        const agent = agents.find((a) => a.id === agentId);
+        if (!agent) continue; // planPreset zostawia tylko znanych
+        const pane: Pane = { id: crypto.randomUUID(), agentId, run: 1 };
+        if (agent.session) pane.sessionId = crypto.randomUUID();
+        dispatch({ type: "add", pane });
+        setLastAgentId(agentId);
+      }
+      if (plan.skipped.length > 0) msgs.push(`Brak agentów w konfiguracji: ${plan.skipped.join(", ")}`);
+      if (plan.dropped > 0) {
+        msgs.push(`Pominięto ${plan.dropped} z powodu limitu ${MAX_PANES} paneli na projekt`);
+      }
+      if (msgs.length > 0) setNotice(msgs.join(" · "));
     },
   };
 
@@ -422,6 +444,9 @@ export function App() {
                 <span className="area-count">
                   {paneCount}/{MAX_PANES}
                 </span>
+                <button type="button" onClick={() => setPresetMenu(true)} disabled={active === null}>
+                  Presety
+                </button>
                 <button
                   type="button"
                   onClick={projectActions.openPaneDialog}
@@ -445,6 +470,17 @@ export function App() {
           </>
         )}
         {!inTauri && <div className="preview-badge">podgląd – bez prawdziwych procesów</div>}
+        {presetMenu && active && (
+          <PresetMenu
+            custom={ws.presets}
+            agents={agents}
+            canSave={paneCount > 0}
+            onApply={projectActions.applyPreset}
+            onDelete={(name) => dispatch({ type: "deletePreset", name })}
+            onSave={(name) => dispatch({ type: "savePreset", name })}
+            onClose={() => setPresetMenu(false)}
+          />
+        )}
         {dialog && active && (
           <NewPaneDialog
             projectName={active.name}

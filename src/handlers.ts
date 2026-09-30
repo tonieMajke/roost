@@ -1,5 +1,6 @@
 import type { ExitInfo } from "./backend";
 import type { TerminalHandle } from "./Terminal";
+import type { Preset } from "./workspace";
 
 /** Callbacks the grid/panes call. App builds them around the workspace reducer. */
 export type PaneActions = {
@@ -24,4 +25,6 @@ export type ProjectActions = {
   addProject(): void; // etap 6: pyta o katalog przez backend.pickDir()
   openPaneDialog(): void; // otwiera okno wyboru agenta (etap 6)
   addPane(agentId: string): void; // dodaje panel z tym agentem do aktywnego projektu
+  /** Preset (etap 10): dodaje panele na koniec aktywnego projektu, maks. do MAX_PANES. */
+  applyPreset(preset: Preset): void;
 };

@@ -1,4 +1,5 @@
 import { gridShape, type Project } from "./workspace";
+import { BUILT_IN_PRESETS } from "./presets";
 import type { AgentDef } from "./agents";
 import type { PaneState } from "./activity";
 import type { PaneActions, ProjectActions } from "./handlers";
@@ -41,9 +42,16 @@ export function Grid({ projects, activeId, agents, state, armedPane, paneActions
             {project.panes.length === 0 ? (
               <div className="empty">
                 <p>Brak paneli</p>
-                <button type="button" onClick={projectActions.openPaneDialog}>
-                  + Panel
-                </button>
+                <div className="empty-actions">
+                  <button type="button" onClick={projectActions.openPaneDialog}>
+                    + Panel
+                  </button>
+                  {BUILT_IN_PRESETS.map((preset) => (
+                    <button key={preset.name} type="button" onClick={() => projectActions.applyPreset(preset)}>
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               project.panes.map((pane) => (

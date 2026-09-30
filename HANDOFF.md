@@ -2,6 +2,24 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## M1 Etap 10 – 2026-10-01
+Presety: `src/presets.ts` = `BUILT_IN_PRESETS` (Claude + pi / 2× Claude + 2× pi / 4× Claude) i czysty
+`planPreset(preset, knownIds, slots)` → `{agents, skipped, dropped}` (nieznani agenci nie jedzą miejsc) + 9 testów.
+`reduce`: `savePreset {name}` (panele aktywnego projektu w ich kolejności, nazwa po `trim()`, ta sama nazwa
+nadpisuje, pusty projekt / pusta nazwa = brak zmiany) i `deletePreset {name}` + 5 testów (własne w `workspace.presets`,
+już parsowane w etapie 4). `src/PresetMenu.tsx` (nakładka jak „Nowy panel”, Esc zamyka): wbudowane, kreska,
+własne z ✕, na końcu pole nazwy + „Zapisz obecny układ…” (wyłączony bez paneli); wbudowany o nazwie własnej
+jest ukrywany (nie dublujemy wierszy). App: `applyPreset` dodaje panele na koniec aktywnego projektu (`add` w pętli,
+sessionId jak przy „+ Panel”), komunikat o pominiętych agentach i o limicie; Grid: w pustym projekcie presety
+wbudowane jako przyciski obok „+ Panel”. Sprawdzania: typecheck czysto, vitest 93/93, cargo test 11/11, cargo build
+0 ostrzeżeń, `tauri` w `Cargo.lock` 2.12.0. `ui_audit` :5183 (1000 px + 390 px): 0 wysokich / 6 średnich — te same
+co w etapach 8–9 (kompaktowe 4/8 px w chrome, siatka komórek xtermu); po naprawie zniknęły dwie nowe flagi
+(wysokości 36/20 px w wierszu z ✕, przesunięty `.pm-hint`). Niesprawdzone: okno Tauri (presety tylko TS/UI);
+BrowserOS znów niedostępny (`MCP server "browseros" not available`) → menu, pusty projekt i zapis presetu obejrzane
+zrzutami `look` na temp stronach seed (usunięte): wiersz presetu dodaje panele, przy 15 panelach komunikat
+„Pominięto 1 z powodu limitu 16 paneli na projekt”, przy braku agenta „Brak agentów w konfiguracji: codex”,
+zapis + usunięcie widoczne w `localStorage` (`duo=claude,pi`).
+
 ## Przegląd etapów 8–9 (Claude) – 2026-09-30
 - Panel z fokusem, który coś wypisał, gdy okno było w tle, zostawał z akcentową kropką po
   powrocie do okna (fokus panelu się nie zmienia, więc nic jej nie kasowało). Teraz kasuje ją

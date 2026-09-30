@@ -81,6 +81,9 @@ export type Action =
   | { type: "focus"; id: string } // finds the pane in any project and activates that project
   | { type: "move"; dir: Dir } // focus the grid neighbor
   | { type: "toggleMaximize"; id?: string } // no id = the focused pane
+  // Presets (stage 10). Names are compared after trimming; built-ins live in src/presets.ts.
+  | { type: "savePreset"; name: string } // from the active project's panes, in their order; same name overwrites
+  | { type: "deletePreset"; name: string }
   | { type: "load"; workspace: Workspace };
 
 function mapProject(ws: Workspace, id: string, fn: (p: Project) => Project): Workspace {
@@ -170,6 +173,22 @@ export function reduce(ws: Workspace, action: Action): Workspace {
       const id = action.id ?? proj.focused;
       if (id === null || !proj.panes.some((x) => x.id === id)) return ws;
       return patchActive(ws, (p) => ({ ...p, maximized: p.maximized === id ? null : id }));
+    }
+    case "savePreset": {
+      const name = action.name.trim();
+      const proj = activeProject(ws);
+      if (name === "" || !proj || proj.panes.length === 0) return ws;
+      const preset: Preset = { name, agents: proj.panes.map((p) => p.agentId) };
+      const idx = ws.presets.findIndex((x) => x.name === name);
+      if (idx < 0) return { ...ws, presets: [...ws.presets, preset] };
+      const presets = [...ws.presets];
+      presets[idx] = preset;
+      return { ...ws, presets };
+    }
+    case "deletePreset": {
+      const name = action.name.trim();
+      const presets = ws.presets.filter((x) => x.name !== name);
+      return presets.length === ws.presets.length ? ws : { ...ws, presets };
     }
     case "load":
       return action.workspace;

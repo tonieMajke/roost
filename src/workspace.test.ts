@@ -232,6 +232,42 @@ describe("reduce", () => {
   });
 });
 
+describe("reduce presets", () => {
+  it("savePreset copies the active project's panes in their order", () => {
+    const w = ws({ ...project("p1", "/a", ["x1", "x2"]), panes: [pane("x1", "claude"), pane("x2", "pi")] });
+    const r = reduce(w, { type: "savePreset", name: "duo" });
+    expect(r.presets).toEqual([{ name: "duo", agents: ["claude", "pi"] }]);
+    expect(w.presets).toEqual([]);
+  });
+
+  it("savePreset overwrites the same name and appends a new one", () => {
+    const w = { ...ws(project("p1", "/a", ["x1"])), presets: [{ name: "a", agents: ["pi"] }, { name: "b", agents: ["claude"] }] };
+    const over = reduce(w, { type: "savePreset", name: " a " });
+    expect(over.presets).toEqual([{ name: "a", agents: ["claude"] }, { name: "b", agents: ["claude"] }]);
+    const added = reduce(w, { type: "savePreset", name: "c" });
+    expect(added.presets.map((p) => p.name)).toEqual(["a", "b", "c"]);
+  });
+
+  it("savePreset ignores an empty name, a project with no panes and no active project", () => {
+    const w = ws(project("p1", "/a"));
+    expect(reduce(w, { type: "savePreset", name: "  " })).toBe(w);
+    expect(reduce(w, { type: "savePreset", name: "x" })).toBe(w);
+    expect(reduce(emptyWorkspace, { type: "savePreset", name: "x" })).toBe(emptyWorkspace);
+  });
+
+  it("deletePreset removes by name; unknown name changes nothing", () => {
+    const w = { ...ws(project("p1", "/a")), presets: [{ name: "a", agents: ["pi"] }] };
+    expect(reduce(w, { type: "deletePreset", name: "a" }).presets).toEqual([]);
+    expect(reduce(w, { type: "deletePreset", name: "nope" })).toBe(w);
+  });
+
+  it("does not mutate a frozen workspace", () => {
+    const w = deepFreeze({ ...ws(project("p1", "/a", ["x1"])), presets: [{ name: "a", agents: ["pi"] }] });
+    expect(reduce(w, { type: "savePreset", name: "b" }).presets.length).toBe(2);
+    expect(reduce(w, { type: "deletePreset", name: "a" }).presets.length).toBe(0);
+  });
+});
+
 describe("parseWorkspace", () => {
   const agents = ["claude", "pi"];
 
@@ -301,6 +337,15 @@ describe("parseWorkspace", () => {
     expect(workspace.active).toBe("p1");
     expect(workspace.projects[0].focused).toBeNull();
     expect(workspace.projects[0].maximized).toBeNull();
+  });
+
+  it("drops malformed preset entries and keeps the good ones", () => {
+    const { workspace, errors } = parseWorkspace(
+      { presets: [{ name: "ok", agents: ["claude"] }, { name: "" }, { name: "x", agents: "pi" }] },
+      agents,
+    );
+    expect(workspace.presets).toEqual([{ name: "ok", agents: ["claude"] }]);
+    expect(errors.length).toBe(2);
   });
 
   it("round-trips a valid workspace", () => {

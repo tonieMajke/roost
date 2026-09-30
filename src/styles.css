@@ -113,6 +113,7 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 }
 .empty p { margin: 0; }
 .empty button { color: var(--accent); }
+.empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 
 .config-errors {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -150,6 +151,31 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .np-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .np-command { color: var(--muted); font: 12px "JetBrains Mono Variable", monospace; }
 .np-hint { margin: 8px 4px 0; color: var(--muted); font-size: 12px; }
+
+/* menu „Presety” (etap 10) */
+.pm-list { list-style: none; display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; }
+.pm-item { display: flex; align-items: center; gap: 4px; }
+.pm-row {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; padding: 0 8px; text-align: left;
+  background: var(--bg);
+}
+.pm-name { flex: none; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-agents {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--muted); font: 12px "JetBrains Mono Variable", monospace;
+}
+.pm-sep { margin: 8px 4px; border: 0; border-top: 1px solid var(--line); }
+.pm-del { flex: none; width: 36px; height: 36px; padding: 0; color: var(--muted); }
+.pm-del:hover { color: var(--accent); }
+.pm-save { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.pm-save button { flex: none; height: 28px; }
+.pm-input {
+  flex: 1; min-width: 0; height: 28px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 0 8px; font: inherit;
+}
+.pm-input:focus { border-color: var(--accent); outline: none; }
+.pm-input::placeholder { color: var(--muted); }
+.pm-hint { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
 
 /* narrow window: the grid must shrink instead of pushing a horizontal scrollbar */
 @media (max-width: 720px) {
