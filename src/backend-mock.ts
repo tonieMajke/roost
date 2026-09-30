@@ -7,6 +7,7 @@ let nextId = 1;
 // Preview copy of the clipboard: Chromium blocks readText() without focus, so copy/paste
 // inside the preview must still round-trip.
 let previewClipboard = "";
+const mockReads = new Map<string, number>();
 
 const enc = (text: string) => new TextEncoder().encode(text);
 
@@ -70,6 +71,16 @@ export const mockBackend: Backend = {
   // Preview mode: defaults only; sessions never exist here, every path is "it exists".
   loadAgents: async () => ({ agents: DEFAULT_AGENTS, errors: [] }),
   claudeSessionExists: async () => false,
+  // Podgląd: kontekst rośnie z każdym odczytem, żeby było widać miernik i próg 80 %.
+  async sessionContext(kind, sessionId) {
+    const reads = (mockReads.get(sessionId) ?? 0) + 1;
+    mockReads.set(sessionId, reads);
+    const seed = [...sessionId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+    const tokens = 20_000 + ((seed * 997) % 140_000) + reads * 1500;
+    return kind === "claude"
+      ? { tokens: tokens * 5, model: "claude-sonnet-5-5", window: null }
+      : { tokens, model: "Flash-Next-NVFP4", window: 262_144 };
+  },
   dirExists: async () => true,
 
   // The browser has no folder picker, so the preview asks for a path in a prompt box.

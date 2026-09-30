@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { BUILT_IN_PRESETS } from "./presets";
 import type { AgentDef } from "./agents";
 import type { PaneState } from "./activity";
+import { paneMeter, type SessionContext } from "./context";
 import type { PaneActions, ProjectActions } from "./handlers";
 import { Pane } from "./Pane";
 import {
@@ -27,6 +28,8 @@ type Props = {
   /** Ustawienie „Ruch” (`ui.motion`): `lite` wyłącza FLIP, wzrost i wjazd. */
   motion: "full" | "lite";
   state: Record<string, PaneState>; // stan ulotny (exit + aktywność), patrz src/activity.ts
+  /** Ostatni odczyt kontekstu według `sessionId` (miernik `.ctx`). */
+  contexts: Record<string, SessionContext>;
   /** Panel, dla którego skrót z klawiatury uzbroił „Na pewno?” (etap 8). */
   armedPane: string | null;
   /** Panele w trakcie animacji zamknięcia (`is-closing`). */
@@ -56,7 +59,19 @@ function measure(grid: HTMLElement): Map<string, Box> {
  * One grid per project, all of them mounted: switching projects hides a grid with
  * `display: none`, it never unmounts (unmounting would kill the processes).
  */
-export function Grid({ projects, activeId, agents, accent, motion, state, armedPane, closing, paneActions, projectActions }: Props) {
+export function Grid({
+  projects,
+  activeId,
+  agents,
+  accent,
+  motion,
+  state,
+  contexts,
+  armedPane,
+  closing,
+  paneActions,
+  projectActions,
+}: Props) {
   // Wjazd siatki po przełączeniu projektu (wzór D: slideNext/slidePrev + panele kolejno).
   const [shown, setShown] = useState(activeId);
   const [enter, setEnter] = useState<{ id: string; cls: string | null; at: number } | null>(null);
@@ -185,6 +200,7 @@ export function Grid({ projects, activeId, agents, accent, motion, state, armedP
                       focused={isActive && pane.id === project.focused}
                       maximized={isMax}
                       state={state[pane.id] ?? NO_STATE}
+                      meter={paneMeter(pane, agentById(agents, pane.agentId), contexts)}
                       closing={closing.has(pane.id)}
                       armed={pane.id === armedPane}
                       actions={paneActions}

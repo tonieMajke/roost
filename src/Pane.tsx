@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { backend } from "./backend";
 import { agentColor, buildArgs, type AgentDef } from "./agents";
 import { exitText, paneStatus, type PaneState } from "./activity";
+import type { ContextMeter } from "./context";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
@@ -18,6 +19,8 @@ type Props = {
   focused: boolean;
   maximized: boolean;
   state: PaneState; // stan ulotny: proces + aktywność
+  /** Miernik kontekstu w nagłówku; `null` = agent bez miernika. */
+  meter: ContextMeter | null;
   /** Trwa animacja `paneOut`; reduktor zamknie panel po PANE_OUT_MS. */
   closing: boolean;
   /** true gdy skrót z klawiatury uzbroił „Na pewno?” na zamknięciu tego panelu. */
@@ -29,7 +32,7 @@ type Props = {
 export const PANE_OUT_MS = 190;
 
 /** Frame around one terminal: header with agent, state and controls. */
-export function Pane({ pane, path, agent, accent, focused, maximized, state, closing, armed, actions }: Props) {
+export function Pane({ pane, path, agent, accent, focused, maximized, state, meter, closing, armed, actions }: Props) {
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armedClick, setArmedClick] = useState(false);
@@ -96,7 +99,17 @@ export function Pane({ pane, path, agent, accent, focused, maximized, state, clo
         </span>
         <span className="pane-name">{name}</span>
         <span className="pane-state">{status.text}</span>
-        {/* .ctx – miernik kontekstu, etap 8 */}
+        {meter && (
+          <span
+            className={`ctx${meter.warn ? " is-warn" : ""}`}
+            title={meter.known ? `Kontekst: ${meter.used} z ${meter.limit}` : `Kontekst: brak odczytu (okno ${meter.limit})`}
+          >
+            <span className="ctx-bar">
+              <span style={{ width: `${meter.pct}%` }} />
+            </span>
+            {meter.known ? `${meter.pct}%` : "–"}
+          </span>
+        )}
         <span className="tools">
           {agent?.session && (
             <IconButton icon={MessageSquarePlus} label="Nowa rozmowa" onClick={() => actions.newConversation(pane.id)} />

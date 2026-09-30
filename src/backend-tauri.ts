@@ -3,6 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
 import type { Backend, ExitInfo } from "./backend";
+import type { SessionContext } from "./context";
 
 /** Start a process in a pseudo-terminal; output arrives as raw bytes. */
 export const tauriBackend: Backend = {
@@ -33,6 +34,7 @@ export const tauriBackend: Backend = {
   },
 
   claudeSessionExists: (id) => invoke<boolean>("claude_session_exists", { id }),
+  sessionContext: (kind, sessionId) => invoke<SessionContext | null>("session_context", { kind, sessionId }),
   dirExists: (path) => invoke<boolean>("dir_exists", { path }),
 
   // `directory: true` answers with one path (or null when cancelled); multi-select is off.

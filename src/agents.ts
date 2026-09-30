@@ -10,6 +10,7 @@ export type AgentDef = {
     check?: "claude"; // how to tell if a conversation exists; absent = always "new"
   };
   color?: string; // "#rrggbb", accent of this agent in the UI; absent = agentColor() default
+  context?: number; // context window in tokens; absent = contextLimit() default
 };
 
 export const DEFAULT_AGENTS: AgentDef[] = [
@@ -83,6 +84,10 @@ export function parseAgents(raw: unknown): { agents: AgentDef[]; errors: string[
     if (e.color !== undefined) {
       if (typeof e.color === "string" && COLOR_RE.test(e.color)) agent.color = e.color;
       else errors.push(`${where}: \`color\` must be "#rrggbb", field ignored`);
+    }
+    if (e.context !== undefined) {
+      if (typeof e.context === "number" && Number.isInteger(e.context) && e.context > 0) agent.context = e.context;
+      else errors.push(`${where}: \`context\` must be a positive whole number of tokens, field ignored`);
     }
     if (e.session !== undefined) {
       const s = e.session as Record<string, unknown>;

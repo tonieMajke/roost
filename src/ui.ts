@@ -59,7 +59,7 @@ type Row<K extends keyof Ui> = {
   choices: { value: Ui[K]; label: string; /** kółko koloru zamiast napisu (tylko akcent) */ swatch?: string }[];
 };
 
-/** Wiersz okna „Wygląd”: `dock` jest pominięty — pulpit robi etap 8. */
+/** Wiersz okna „Wygląd”: bez `dock` — pulpit przełącza przycisk „Pulpit” i Ctrl+Alt+D. */
 export type UiRow = { [K in Exclude<keyof Ui, "dock">]: Row<K> }[Exclude<keyof Ui, "dock">];
 
 /** Wiersze okna „Wygląd” w kolejności tabeli z planu (wzor D: tablica `SET`). */

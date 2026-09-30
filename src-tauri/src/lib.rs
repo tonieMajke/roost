@@ -1,4 +1,5 @@
 mod config;
+mod context;
 mod notify;
 mod pty;
 
@@ -50,6 +51,7 @@ pub fn run() {
             config::workspace_load,
             config::workspace_save,
             config::workspace_backup,
+            context::session_context,
             notify::notify,
         ])
         .build(tauri::generate_context!())

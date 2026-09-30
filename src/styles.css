@@ -19,6 +19,7 @@
   --on-accent: #170b04;
   --on-ag: #0a0a0a; /* text on an agent-color background (.fh-fill) */
   --on-ag-hover: rgba(0, 0, 0, 0.12);
+  --on-ag-track: rgba(0, 0, 0, 0.2); /* context bar track on an agent-color header */
   --ok: #3dffa2;
   --warn-bg: #2a1a12;
   --warn-text: #f0a58a;
@@ -249,6 +250,12 @@ kbd {
   text-decoration: underline; text-underline-offset: 2px;
 }
 .pane-exit .link:hover { color: var(--text); }
+/* miernik kontekstu w nagłówku panelu (wzór D `.ctx`, etap 8) */
+.ctx { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-left: 6px; flex: none; }
+.ctx-bar { width: 46px; height: 3px; background: var(--line-strong); border-radius: 2px; overflow: hidden; }
+.ctx-bar span { display: block; height: 100%; background: var(--ag); transition: width 0.6s var(--ease); }
+.ctx.is-warn { color: var(--accent); }
+.ctx.is-warn .ctx-bar span { background: var(--accent); }
 @keyframes paneIn { from { opacity: 0; transform: scale(0.93); } to { opacity: 1; transform: none; } }
 @keyframes paneOut { to { opacity: 0; transform: scale(0.92); } }
 @media (prefers-reduced-motion: reduce) { .pane, .pane.is-closing { animation: none; } }
@@ -271,6 +278,45 @@ kbd {
   padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
   background: var(--badge-bg); color: var(--accent); font-size: 12px;
 }
+
+/* pulpit po prawej (src/Dock.tsx, wzór D `.dock`), Ctrl+Alt+D */
+.dock {
+  width: 300px; flex: none; display: flex; flex-direction: column; border-left: 1px solid var(--line);
+  background: var(--rail); animation: dockIn 0.38s var(--ease) both; overflow: hidden;
+}
+.dock-head {
+  height: var(--head-h); flex: none; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 10px 0 16px; border-bottom: 1px solid var(--line);
+}
+.dock-title { font-family: var(--display); font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.dock-sec { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+.dock-sec h3 {
+  margin: 0 0 12px; display: flex; justify-content: space-between; align-items: baseline; font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-weight: 600;
+}
+.dock-sec h3 span {
+  color: var(--faint); letter-spacing: 0.02em; text-transform: none; font-weight: 400;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.meter-note { font-size: 11px; color: var(--faint); }
+.bar { height: 6px; background: var(--line); border-radius: var(--badge-r); overflow: hidden; }
+.bar span {
+  display: block; height: 100%; background: var(--accent); transform-origin: left;
+  animation: barIn 0.9s var(--ease) both; transition: width 0.6s var(--ease);
+}
+.ctx-row { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.ctx-row .ag-badge { width: 18px; height: 18px; font-size: 10px; }
+.ctx-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.ctx-line { display: flex; justify-content: space-between; font-size: 12px; }
+.ctx-line b { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--muted); }
+.ctx-row .bar { height: 4px; }
+.ctx-row .bar span { background: var(--ag); }
+.ctx-row.is-warn .bar span { background: var(--accent); }
+.ctx-row.is-warn .ctx-line b { color: var(--accent); }
+.dock-live { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+@keyframes dockIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes barIn { from { transform: scaleX(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .dock, .bar span { animation: none; } }
 
 /* okna (src/Dialog.tsx): tło + karta ze wzoru D */
 .overlay { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; }
@@ -411,7 +457,9 @@ kbd {
 .fh-fill .pane.is-focused .icon { color: var(--on-ag); }
 .fh-fill .pane.is-focused .icon:hover:not(:disabled) { background: var(--on-ag-hover); }
 .fh-fill .pane.is-focused .ag-badge { background: var(--on-ag); color: var(--ag, var(--accent)); }
-.fh-fill .pane.is-focused .pane-state { color: var(--on-ag); opacity: 0.72; }
+.fh-fill .pane.is-focused .pane-state, .fh-fill .pane.is-focused .ctx { color: var(--on-ag); opacity: 0.72; }
+.fh-fill .pane.is-focused .ctx-bar { background: var(--on-ag-track); }
+.fh-fill .pane.is-focused .ctx-bar span { background: var(--on-ag); }
 .fh-line .pane.is-focused {
   border-color: color-mix(in srgb, var(--ag, var(--accent)) 60%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ag, var(--accent)) 25%, transparent), var(--focus-shadow);
@@ -440,6 +488,6 @@ kbd {
 /* motion */
 .motion-lite .pane, .motion-lite .grid, .motion-lite .pane-cell, .motion-lite .dialog,
 .motion-lite .tile, .motion-lite .toast, .motion-lite .proj-panes, .motion-lite .dock,
-.motion-lite .settings { animation: none !important; }
+.motion-lite .settings, .motion-lite .bar span { animation: none !important; }
 .motion-lite .pane.st-working .glow { animation: none; opacity: 0.6; }
 .motion-lite .pane.st-done .glow { animation: none; }

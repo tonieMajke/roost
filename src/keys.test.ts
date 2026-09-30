@@ -26,6 +26,7 @@ describe("commandFor (skróty etapu 8)", () => {
     expect(commandFor(ca("r"))).toEqual({ type: "restartPane" });
     expect(commandFor(ca("p"))).toEqual({ type: "newProject" });
     expect(commandFor(ca("b"))).toEqual({ type: "toggleRail" });
+    expect(commandFor(ca("d"))).toEqual({ type: "toggleDock" });
   });
 
   it("Ctrl+Alt+1…9 wybiera projekt (0-based)", () => {

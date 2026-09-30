@@ -107,6 +107,18 @@ describe("parseAgents", () => {
     expect(agents[1].color).toBeUndefined();
     expect(errors.join("\n")).toContain("`color`");
   });
+
+  it("keeps a positive whole `context`, drops a bad one with an error", () => {
+    const { agents, errors } = parseAgents({
+      agents: [
+        { id: "a", name: "A", command: "a", context: 1_000_000 },
+        { id: "b", name: "B", command: "b", context: "200k" },
+        { id: "c", name: "C", command: "c", context: 0 },
+      ],
+    });
+    expect(agents.map((a) => a.context)).toEqual([1_000_000, undefined, undefined]);
+    expect(errors.filter((e) => e.includes("`context`"))).toHaveLength(2);
+  });
 });
 
 describe("agentColor", () => {

@@ -15,6 +15,17 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 8 – 2026-09-30 (Claude, za zgodą użytkownika zamiast lokalnego modelu)
+
+- pi: plik sesji to `~/.pi/agent/sessions/<katalog>/<czas>_<sessionId>.jsonl` (ustalone z nazw plików i typów `pi-coding-agent` 0.99.1, bez czytania cudzych sesji); wpis `{"type":"message","message":{"role":"assistant","model","usage":{input,cacheRead,cacheWrite,…}}}`.
+- Rust `src-tauri/src/context.rs`: `session_context(kind, session_id) -> Option<{tokens, model}>` (async), tylko ostatnie 256 KB, ucięta pierwsza linia odrzucana; pomija `isSidechain` i tury z samymi zerami; id tylko `[0-9a-f-]`; znaleziona ścieżka w pamięci (pi = skan katalogów). 5 testów na plikach w katalogu tymczasowym.
+- Okno kontekstu (poprawka po zrzucie użytkownika: claude na Sonnet 5.5 pokazywał /200k, pi z lokalnym modelem /128k zamiast 262k): `contextLimit` = `context` z agents.json > model ostatniej tury > 200k / 128k. pi: Rust bierze `contextWindow` modelu (`provider` + `id`) z `~/.pi/agent/models.json`, potem `models-store.json` (tylko odczyt, parsowane ponownie po zmianie pliku). claude: `claudeWindow(model)` – Opus/Sonnet od 4.6 oraz Fable/Mythos = 1M, Haiku i starsze = 200k.
+- TS `src/context.ts` + testy: `contextKind` (po programie `claude`/`pi`, wymaga `session`), `contextLimit`, `claudeWindow`, `contextTargets`, `formatTokens`, `contextMeter` (≥ 80% = `is-warn`), `paneMeter`. `agents.ts`: pole `context` (dodatnia liczba całkowita, inaczej błąd).
+- App: odczyt co 5 s tylko paneli aktywnego projektu (od razu po przełączeniu projektu i zmianie rozmów) + zaraz po `finished` dla tych paneli; `null` nie kasuje ostatniego odczytu. Stan ulotny według `sessionId`.
+- UI: `.ctx` w nagłówku panelu (`–` przed pierwszym odczytem), `src/Dock.tsx` (`.dock` 300 px): „Limity Claude” i „Na żywo” = „wkrótce”, „Kontekst” = `.ctx-row` paneli aktywnego projektu (model w `title`). Przycisk „Pulpit” (`Gauge`, `is-on`) + Ctrl+Alt+D → `ui.dock`. CSS dosłownie ze wzoru (`--on-ag-track` zamiast `rgba` na `fh-fill`), `dockIn`/`barIn` wyłączone przy `motion-lite` i `prefers-reduced-motion`.
+- Sprawdzenia: typecheck czysty, vitest 152/152, cargo test 17/17, cargo build 0 ostrzeżeń. Podgląd (headless Firefox, mock rośnie o 1,5k na odczyt): mierniki w nagłówkach i pulpicie, odświeżenie po 5 s, Ctrl+Alt+D i przycisk zapisują `ui.dock`, projekt bez claude/pi pokazuje „Brak paneli z claude albo pi”.
+- Niesprawdzone: odczyt prawdziwych plików claude/pi w oknie Tauri (testy nie czytają `~/.claude` ani `~/.pi`) – zgodność liczby z `/context` w claude do sprawdzenia przez użytkownika; pulpit przy wąskim oknie (< 900 px) zabiera dużo miejsca siatce.
+
 ## M2 Etap 7 – 2026-09-30 (Claude, za zgodą użytkownika zamiast lokalnego modelu)
 
 - `src/write-queue.ts` + 11 testów (fałszywy zegar): `WriteQueue` na panel – paczki do `BATCH_BYTES` 64 KB (duże kawałki cięte, małe sklejane), następna paczka w callbacku `x.write(data, cb)`; panel z `clientWidth === 0` pisze najwyżej co `HIDDEN_INTERVAL_MS` 250 ms, nic nie gubi; `dispose` przy odmontowaniu.

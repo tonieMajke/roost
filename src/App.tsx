@@ -3,7 +3,7 @@ import { backend, inTauri } from "./backend";
 import type { AgentDef } from "./agents";
 import { ACCENT_HEX, uiClasses } from "./ui";
 import { IconButton } from "./IconButton";
-import { FolderPlus, LayoutGrid, Plus, X } from "lucide-react";
+import { FolderPlus, Gauge, LayoutGrid, Plus, X } from "lucide-react";
 import { tildify } from "./paths";
 import {
   MAX_PANES,
@@ -20,6 +20,8 @@ import { Grid } from "./Grid";
 import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
+import { Dock } from "./Dock";
+import { CONTEXT_POLL_MS, contextTargets, type SessionContext } from "./context";
 import { TOAST_MS, toastText } from "./toast";
 import { PANE_OUT_MS } from "./Pane";
 import { planPreset } from "./presets";
@@ -47,6 +49,8 @@ export function App() {
   const [ephemeral, setEphemeral] = useState<Record<string, PaneState>>({});
   // Czasu wyjścia nie trzymamy w stanie: tysiące chunków na sekundę nie może restartować Reacta.
   const activity = useRef(new Map<string, Activity>());
+  // Ostatni odczyt kontekstu według sessionId; ulotny, nowa rozmowa = nowy klucz.
+  const [contexts, setContexts] = useState<Record<string, SessionContext>>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [dialog, setDialog] = useState(false);
   const [presetMenu, setPresetMenu] = useState(false);
@@ -296,6 +300,36 @@ export function App() {
   const activeRef = useRef(ws.active);
   activeRef.current = ws.active;
 
+  // Kontekst z plików sesji agentów (Rust czyta tylko koniec pliku). `null` nie kasuje
+  // poprzedniego odczytu: plik mógł chwilowo mieć na końcu same wyniki narzędzi.
+  const readContexts = useRef<(paneIds: string[] | null) => void>(() => {});
+  readContexts.current = (paneIds) => {
+    const panes = paneIds === null ? (active?.panes ?? []) : ws.projects.flatMap((p) => p.panes).filter((p) => paneIds.includes(p.id));
+    for (const t of contextTargets(panes, agents)) {
+      void backend
+        .sessionContext(t.kind, t.sessionId)
+        .then((c) => {
+          if (c === null) return;
+          setContexts((prev) => {
+            const old = prev[t.sessionId];
+            return old?.tokens === c.tokens && old.model === c.model ? prev : { ...prev, [t.sessionId]: c };
+          });
+        })
+        .catch(() => undefined); // brak odczytu = miernik bez zmian
+    }
+  };
+  // Co CONTEXT_POLL_MS tylko aktywny projekt (schowanych mierników nie widać); od razu po
+  // przełączeniu projektu i po zmianie rozmów w nim.
+  const contextKey = contextTargets(active?.panes ?? [], agents)
+    .map((t) => t.sessionId)
+    .join(",");
+  useEffect(() => {
+    if (contextKey === "") return;
+    readContexts.current(null);
+    const timer = setInterval(() => readContexts.current(null), CONTEXT_POLL_MS);
+    return () => clearInterval(timer);
+  }, [contextKey]);
+
   // `ping` kropeczki projektu (wzór D): praca skończyła się w siatce, której teraz nie widać.
   const [pingId, setPingId] = useState<string | null>(null);
   const pingTimer = useRef<number | null>(null);
@@ -348,6 +382,7 @@ export function App() {
           });
         setDone(true);
         later(DONE_MS, () => setDone(false));
+        readContexts.current(finished); // agent właśnie dopisał turę do pliku sesji
       }
       for (const u of updates) {
         if (!u.finished) continue;
@@ -431,6 +466,9 @@ export function App() {
         break;
       case "toggleRail":
         dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } });
+        break;
+      case "toggleDock":
+        dispatch({ type: "setUi", patch: { dock: !ws.ui.dock } });
         break;
       case "selectProject": {
         const project = ws.projects[cmd.index]; // poza listą = nic
@@ -525,6 +563,15 @@ export function App() {
               <span className="area-count">
                 {paneCount}/{MAX_PANES}
               </span>
+              <button
+                type="button"
+                className={`btn${ws.ui.dock ? " is-on" : ""}`}
+                title="Pulpit (Ctrl+Alt+D)"
+                aria-pressed={ws.ui.dock}
+                onClick={() => dispatch({ type: "setUi", patch: { dock: !ws.ui.dock } })}
+              >
+                <Gauge strokeWidth={1.75} aria-hidden /> Pulpit
+              </button>
               <button type="button" className="btn" onClick={() => setPresetMenu(true)} disabled={active === null}>
                 <LayoutGrid strokeWidth={1.75} aria-hidden /> Presety
               </button>
@@ -546,6 +593,7 @@ export function App() {
                 accent={accentHex}
                 motion={ws.ui.motion}
                 state={ephemeral}
+                contexts={contexts}
                 armedPane={armedPane}
                 closing={closing}
                 paneActions={paneActions}
@@ -556,6 +604,14 @@ export function App() {
         )}
         {!inTauri && <div className="preview-badge">podgląd – bez prawdziwych procesów</div>}
       </main>
+      {loaded && ws.ui.dock && ws.projects.length > 0 && (
+        <Dock
+          project={active}
+          agents={agents}
+          contexts={contexts}
+          onClose={() => dispatch({ type: "setUi", patch: { dock: false } })}
+        />
+      )}
       {notice && (
         <div className="toast" role="status">
           <span>{notice}</span>

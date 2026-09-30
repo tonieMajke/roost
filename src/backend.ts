@@ -1,6 +1,7 @@
 import { mockBackend } from "./backend-mock";
 import { tauriBackend } from "./backend-tauri";
 import type { AgentDef } from "./agents";
+import type { ContextKind, SessionContext } from "./context";
 
 export type ExitInfo = { code: number; signal: string | null };
 
@@ -18,6 +19,8 @@ export interface Backend {
   spawnPty(spec: SpawnSpec, onData: (bytes: Uint8Array) => void, onExit: (info: ExitInfo) => void): Promise<PtyHandle>;
   loadAgents(): Promise<{ agents: AgentDef[]; errors: string[] }>;
   claudeSessionExists(id: string): Promise<boolean>;
+  /** Rozmiar kontekstu z pliku sesji agenta (tylko odczyt); `null` = brak pliku albo danych. */
+  sessionContext(kind: ContextKind, sessionId: string): Promise<SessionContext | null>;
   dirExists(path: string): Promise<boolean>;
   /** Folder wybrany przez użytkownika; `null` = anulowanie. */
   pickDir(): Promise<string | null>;
