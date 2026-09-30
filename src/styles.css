@@ -9,13 +9,13 @@
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); font: 13px system-ui, sans-serif; overflow: hidden; }
 .app { display: flex; flex-direction: column; height: 100%; }
-.bar { display: flex; gap: 8px; padding: 6px 8px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.bar { display: flex; gap: 8px; padding: 8px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .bar select, .bar input, .bar button {
   background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font: inherit;
 }
 .bar input { flex: 1; font-family: "JetBrains Mono Variable", monospace; }
 .bar button:hover { border-color: var(--accent); }
-.terminal { flex: 1; min-height: 0; padding: 4px 0 0 6px; }
+.terminal { flex: 1; min-height: 0; padding: 4px 0 0 8px; }
 .preview-badge {
   position: fixed; right: 10px; bottom: 8px; z-index: 10; pointer-events: none;
   padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
