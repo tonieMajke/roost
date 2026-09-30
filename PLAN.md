@@ -85,7 +85,7 @@ utworzeniu, zapisany w układzie. Po restarcie aplikacji panel startuje z tym sa
   polskie znaki, skróty (Ctrl+C, Shift+Tab, Esc), szybkość przewijania, zamknięcie aplikacji
   nie zostawia procesów.
 
-**M1 – wersja podstawowa (zrobione 2026-10-01, czeka na sprawdzenie użytkownika — lista w `HANDOFF.md`)**
+**M1 – wersja podstawowa (zrobione 2026-09-30, czeka na sprawdzenie użytkownika — lista w `HANDOFF.md`)**
 – szczegółowe etapy dla lokalnego agenta: `docs/plan-m1.md`
 - Szyna projektów (foldery) po lewej, pod każdym jego panele ze stanem; przełączanie
   projektu nie zatrzymuje agentów.

@@ -15,7 +15,7 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
-## M1 Etap 11 – 2026-10-01
+## M1 Etap 11 – 2026-09-30
 Porządki: scrollback xtermu 5000 → 3000 (limit pamięci przy 16 panelach) + komentarz przy warunku
 `el.clientWidth === 0` w `ResizeObserver`. `fit()` dla ukrytych paneli zmierzony w podglądzie (temp strona
 seed, usunięta): panel w schowanej siatce startuje z 5 wierszami (fit słusznie nic nie robi na elemencie
@@ -30,7 +30,7 @@ cargo test 11/11, cargo build 0 ostrzeżeń, `tauri` w `Cargo.lock` 2.12.0, `ui_
 (0 wysokich / 6 średnich = te same co w etapach 8–10). Niesprawdzone: cała lista powyżej (okno Tauri);
 BrowserOS w tej sesji niedostępny, więc klikanie po podglądzie zastąpione temp stronami seed ze skryptem.
 
-## M1 Etap 10 – 2026-10-01
+## M1 Etap 10 – 2026-09-30
 Presety: `src/presets.ts` = `BUILT_IN_PRESETS` (Claude + pi / 2× Claude + 2× pi / 4× Claude) i czysty
 `planPreset(preset, knownIds, slots)` → `{agents, skipped, dropped}` (nieznani agenci nie jedzą miejsc) + 9 testów.
 `reduce`: `savePreset {name}` (panele aktywnego projektu w ich kolejności, nazwa po `trim()`, ta sama nazwa

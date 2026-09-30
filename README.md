@@ -53,11 +53,13 @@ Domyślnie: `claude`, `pi`, `shell` (Terminal). Plik ma postać `{ "agents": [..
     { "id": "claude", "name": "Claude", "command": "claude",
       "session": { "new": ["--session-id", "{session}"], "resume": ["--resume", "{session}"], "check": "claude" } },
     { "id": "codex", "name": "Codex", "command": "codex",
-      "args": ["--sandbox", "workspace-write"],
-      "session": { "new": ["resume", "--last"], "resume": ["resume", "--last"] } }
+      "args": ["--sandbox", "workspace-write"] }
   ]
 }
 ```
+
+codex nie przyjmuje UUID przy tworzeniu rozmowy, więc nie ma tu `session`: panel codexa
+po restarcie aplikacji startuje od nowa (`codex resume` można wpisać w nim ręcznie).
 
 - `command` — program do uruchomienia; `$SHELL` jest rozwijany przez aplikację.
 - `args` — stałe argumenty, zawsze przed argumentami sesji.
