@@ -17,7 +17,6 @@
   --term-text: #c6ced8;
   --accent: #ff8a4c;
   --on-accent: #170b04;
-  --accent-hover: var(--accent);
   --on-ag: #0a0a0a; /* text on an agent-color background (.fh-fill) */
   --on-ag-hover: rgba(0, 0, 0, 0.12);
   --ok: #3dffa2;
@@ -34,7 +33,6 @@
   --mark-r: 0;
   --gap: 10px;
   --pane-bw: 1px;
-  --focus-line: var(--ag, var(--accent)); /* --ag is stamped per pane/row in the UI */
   --focus-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ui: "Geist Variable", system-ui, sans-serif;
@@ -145,6 +143,9 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
   background: var(--pane); border: var(--pane-bw) solid var(--line); border-radius: var(--r-pane); overflow: hidden;
   transition: border-color 0.25s, box-shadow 0.3s;
 }
+/* Defined here, not on :root: a var() inside a token resolves where the token is declared,
+   and --ag (per pane) / --accent (.acc-* on .app) do not exist on :root. */
+.pane { --focus-line: var(--ag, var(--accent)); }
 .pane.is-focused { border-color: var(--focus-line); box-shadow: var(--focus-shadow); }
 .pane-head {
   display: flex; align-items: center; gap: 8px; height: var(--pane-head-h); flex: none;
