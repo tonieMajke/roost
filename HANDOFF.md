@@ -2,7 +2,14 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
-## M1 Etap 7 – 2026-10-01
+## Przegląd etapu 7 (Claude) – 2026-09-30
+- Usunięty drugi, stary efekt `loadAgents` w `App.tsx`: biegł równolegle ze startem i jego
+  `setErrors(r.errors)` kasował błędy parsowania `workspace.json`.
+- Błąd odczytu pliku (np. nie-UTF-8) robi teraz kopię `.bak` przed pierwszym zapisem; wcześniej
+  pusty stan nadpisywał plik bez kopii.
+- Data kopii liczona lokalnie, nie w UTC (po 22:00 wychodził jutrzejszy dzień).
+
+## M1 Etap 7 – 2026-09-30
 Zapis/wznowienie: Rust `config.rs` – `workspace_load` (brak pliku → `None`), `workspace_save` przez
 `write_atomic`, `workspace_backup(date)` → kopie `workspace.<RRRR-MM-DD>.bak` obok, bez nadpisywania
 istniejącej (datę liczy TS, Rust validating `[0-9-]` – bez nowej zależności). TS: `loadWorkspace`/

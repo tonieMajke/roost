@@ -34,7 +34,10 @@ export function App() {
   // Start: agents first (parseWorkspace needs their ids), then the saved layout.
   useEffect(() => {
     let live = true;
-    const backup = () => backend.backupWorkspace(new Date().toISOString().slice(0, 10)).catch(() => undefined);
+    // Local date: toISOString() is UTC, so after 22:00 in Poland it would already name tomorrow.
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const backup = () => backend.backupWorkspace(today).catch(() => undefined);
     void (async () => {
       try {
         const r = await backend.loadAgents();
@@ -59,6 +62,8 @@ export function App() {
         }
         dispatch({ type: "load", workspace: parsed.workspace });
       } catch (e) {
+        // Unreadable file (e.g. not UTF-8): the empty state is about to overwrite it, so keep a copy.
+        await backup();
         if (live) setErrors((prev) => [...prev, `workspace: ${String(e)}`]);
       } finally {
         if (live) setLoaded(true);
@@ -77,21 +82,6 @@ export function App() {
       setErrors((prev) => [...prev, `zapis: ${String(e)}`]),
     );
   }, [ws, loaded]);
-
-  useEffect(() => {
-    let live = true;
-    void backend
-      .loadAgents()
-      .then((r) => {
-        if (!live) return;
-        setAgents(r.agents);
-        setErrors(r.errors);
-      })
-      .catch((e: unknown) => setErrors([`agents: ${String(e)}`]));
-    return () => {
-      live = false;
-    };
-  }, []);
 
   useEffect(() => {
     void backend
