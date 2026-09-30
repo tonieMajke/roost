@@ -2,12 +2,12 @@
 
 Desktopowa aplikacja (Tauri 2 + React + TypeScript, pnpm, tylko Linux), która uruchamia wiele
 agentów CLI (`claude`, `pi`, powłoka) w siatce terminali. Opis projektu: `PLAN.md`.
-**Plan do wykonania, etap po etapie: `docs/plan-m1.md`.**
+**Plan do wykonania, etap po etapie: `docs/plan-m2.md`** (M1: `docs/plan-m1.md`, zrobione). Etapy oznaczone „Claude” w tabeli „Kto robi” pomijasz – zatrzymaj się i napisz, że następny etap jest dla Claude.
 
 ## Jak pracujesz
 
-1. Na start sesji przeczytaj `docs/plan-m1.md` (sekcje „Kontekst” i „Decyzje”) oraz
-   `HANDOFF.md`. Znajdź pierwszy etap bez `[x]` w „Postępie” w `docs/plan-m1.md`.
+1. Na start sesji przeczytaj `docs/plan-m2.md` (sekcje „Kontekst” i „Decyzje”) oraz
+   `HANDOFF.md`. Znajdź pierwszy etap bez `[x]` w „Postępie” w `docs/plan-m2.md`.
 2. **Jeden etap na sesję.** Nie zaczynaj następnego etapu. Nie rób rzeczy spoza etapu, także
    „przy okazji”. Jeśli coś w etapie jest niejasne albo niemożliwe, zatrzymaj się i napisz,
    co blokuje.
