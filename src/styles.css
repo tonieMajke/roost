@@ -158,7 +158,9 @@ kbd {
 .proj-name { font-size: 14.5px; font-weight: var(--proj-weight); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proj-path { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .proj-dot { width: 7px; height: 7px; border-radius: 50%; background: transparent; flex: none; }
-.proj.has-work .proj-dot { background: var(--muted); animation: breathe 1.6s ease-in-out infinite; }
+/* Pętle bez końca idą krokami: WebKit bez kompozycji (set_webview_env) maluje każdą klatkę na CPU,
+   a przy steps() tylko zmiany (pomiar: kropki 19% → 13,5% CPU procesu WebKit). */
+.proj.has-work .proj-dot { background: var(--muted); animation: breathe 1.6s steps(4, jump-none) infinite; }
 .proj.has-unread .proj-dot { background: var(--accent); }
 .proj.ping .proj-dot { background: var(--accent); animation: ping 0.9s ease-out 1; }
 .proj-row .proj-close { display: none; }
@@ -178,7 +180,7 @@ kbd {
 .pane-row:hover { background: var(--hover); color: var(--text); }
 .pane-row.is-focused { color: var(--text); }
 .ag-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ag, var(--muted)); flex: none; }
-.pane-row.st-working .ag-dot { animation: breathe 1.4s ease-in-out infinite; }
+.pane-row.st-working .ag-dot { animation: breathe 1.4s steps(4, jump-none) infinite; }
 .pane-row.st-unread .ag-dot { background: var(--accent); }
 .pane-row.st-exited .ag-dot { background: var(--faint); }
 .pane-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -574,12 +576,16 @@ button.feed-item {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ag, var(--accent)) 25%, transparent), var(--focus-shadow);
 }
 
-/* working indicator on the .glow layer */
+/* working indicator on the .glow layer. Poświata przykrywa cały panel, więc każda klatka to
+   przemalowanie panelu z terminalem pod spodem (na CPU): ~9 kroków/s zamiast 60 kl./s,
+   pomiar 2 pracujące panele 73% → 28% CPU procesu WebKit. */
 .pane.st-working .glow {
   box-shadow: inset 0 0 0 1px var(--ag), inset 0 0 36px -10px var(--ag);
-  animation: breatheGlow 2.6s ease-in-out infinite;
+  animation: breatheGlow 2.6s steps(12, jump-none) infinite;
 }
+/* Skan jeździ płynnie, ale tylko po pasku 2 px: koszt to powierzchnia przemalowania (46% → 16%). */
 .work-scan .pane.st-working .glow {
+  inset: 0 0 auto 0; height: 2px;
   box-shadow: none; opacity: 1;
   background: linear-gradient(90deg, transparent, var(--ag), transparent) no-repeat;
   background-size: 35% 2px;
@@ -658,7 +664,7 @@ button.feed-item {
 .pane-cell[data-drag="soak"]::after { animation: wave 0.7s var(--ease) both; }
 /* Haiku streszcza kontekst dla tego panelu (kilka sekund): pulsująca ramka i plakietka. */
 .pane-cell[data-busy="summary"]::after {
-  opacity: 1; box-shadow: inset 0 0 0 2px var(--accent); animation: summaryPulse 1.2s ease-in-out infinite;
+  opacity: 1; box-shadow: inset 0 0 0 2px var(--accent); animation: summaryPulse 1.2s steps(6, jump-none) infinite;
 }
 .pane-cell[data-busy="summary"]::before {
   content: "streszczam…"; position: absolute; z-index: 6; left: 50%; top: calc(var(--pane-head-h) + 12px);

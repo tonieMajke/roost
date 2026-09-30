@@ -15,6 +15,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## Płynność: animacje bez kompozycji WebKita – 2026-10-01 (Claude, master)
+
+- Objaw: lagi. Pomiar w oknie (AppImage `8f86ac8`): `WebKitWebProcess` 67–92% jednego rdzenia, gdy agent tylko „pracuje” (spinner). Cały koszt w głównym wątku: przy `WEBKIT_DISABLE_COMPOSITING_MODE=1` + `LIBGL_ALWAYS_SOFTWARE=1` każda klatka animacji to malowanie na CPU.
+- Stanowisko: WebKitGTK 4.1 z PyGObject w `Gtk.OffscreenWindow` (niewidoczne), te same zmienne co `set_webview_env`, podgląd `pnpm dev`, workspace wstrzyknięty do localStorage. Nowy tryb mocka: `localStorage["aw-bench"]="1"` – claude/pi wypisują spinner 10×/s i linię co 2 s (panel stale `st-working`).
+- Wnioski: koszt = powierzchnia przemalowania × liczba klatek. Poświata (`.glow`, cały panel z terminalem pod spodem, 60 kl./s) to ~2/3 obciążenia; kropki na szynie ~6 pkt (samo planowanie klatek).
+- Zmiana (tylko `styles.css`): pętle `infinite` idą `steps(…, jump-none)` – poświata 12 kroków na pół oddechu (~9 zmian/s), kropki 4, puls streszczenia 6; skan jeździ płynnie, ale `.glow` przy `work-scan` ma 2 px wysokości zamiast całego panelu.
+- Wynik (3 pracujące panele, CPU procesu WebKit): poświata 69,9% → 30,7%, skan 46,5% → 23,9%. Bez żadnych animacji ~12% (to już xterm DOM + React).
+- Sprawdzenia: typecheck, vitest 216/216, cargo test 39/39, cargo build – OK.
+- Niesprawdzone: jak „schodkowe” oddychanie poświaty wygląda w oknie na oko; zysk w prawdziwym oknie (przezroczyste okno, KWin) – zmierzyć po instalacji tym samym `/proc/<pid>/stat`.
+
 ## Tytuły rozmów z terminala – 2026-10-01 (Claude, master)
 
 - Użytkownik gubił się w panelach: nagłówek i szyna pokazywały tylko „Claude”, tytuł był wyłącznie w pulpicie. W zwykłej konsoli claude ustawia tytuł terminala (OSC 0/2, „✳ temat”), a xterm go tu łapał, tylko nikt tego nie odczytywał.

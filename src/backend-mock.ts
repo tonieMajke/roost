@@ -12,6 +12,26 @@ const MOCK_TITLES = ["Naprawa czarnego paska pod xtermem", "Tytuły sesji w pulp
 
 const enc = (text: string) => new TextEncoder().encode(text);
 
+/** Pomiar płynności w podglądzie: `localStorage["aw-bench"] = "1"` i przeładowanie. */
+function benchMode(): boolean {
+  try {
+    return localStorage.getItem("aw-bench") === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Agent „pracuje” bez końca: spinner jak claude 10×/s, co 2 s nowa linia (panel jest st-working). */
+function benchSpinner(onData: (b: Uint8Array) => void): ReturnType<typeof setInterval> {
+  const frames = "·✢✳✶✻✽";
+  let n = 0;
+  return setInterval(() => {
+    n++;
+    if (n % 20 === 0) onData(enc(`\r\x1b[2K● Linia wyjścia numer ${n / 20}: czytam plik src/App.tsx i coś w nim zmieniam\r\n`));
+    onData(enc(`\r\x1b[2K\x1b[38;5;208m${frames[n % frames.length]}\x1b[0m Myślę… (${Math.floor(n / 10)}s)`));
+  }, 100);
+}
+
 /**
  * Fake terminal for the browser preview: no invoke, no processes. Enough behaviour to
  * look at the UI: a banner, echoed keystrokes, `exit`/`fail` for the exit code paths.
@@ -23,7 +43,7 @@ export const mockBackend: Backend = {
     let closed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
-    const stop = (info: ExitInfo) => {
+    let stop = (info: ExitInfo) => {
       if (closed) return;
       closed = true;
       if (timer !== undefined) clearTimeout(timer);
@@ -42,6 +62,14 @@ export const mockBackend: Backend = {
     // Agenci włączają bracketed paste jak prawdziwe claude/pi; udawana powłoka nie (wklejenie kontekstu odmówi).
     const bracketed = spec.command === "claude" || spec.command === "pi" ? "\x1b[?2004h" : "";
     onData(enc(`${bracketed}\x1b[33m[podgląd]\x1b[0m ${spec.command}${args} w ${spec.cwd ?? "~"}\r\n${PROMPT}`));
+    if (bracketed && benchMode()) {
+      const spin = benchSpinner(onData);
+      const prevStop = stop;
+      stop = (info) => {
+        clearInterval(spin);
+        prevStop(info);
+      };
+    }
 
     return {
       id,
