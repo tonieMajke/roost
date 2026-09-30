@@ -1,7 +1,7 @@
 # Agents workspace – plan
 
 Osobiste, lokalne środowisko do uruchamiania wielu agentów CLI obok siebie, w stylu
-BridgeSpace (bridgemind.ai), ale bez konta, chmury i subskrypcji.
+trybu Code z BridgeMind One (bridgemind.ai), ale bez konta, chmury i subskrypcji.
 
 ## Decyzje (2026-09-30)
 
@@ -11,13 +11,30 @@ BridgeSpace (bridgemind.ai), ale bez konta, chmury i subskrypcji.
 - **Tylko Linux** (CachyOS, Wayland, NVIDIA).
 - Repozytorium git w tym folderze.
 
-## Co robi BridgeSpace (dla porównania)
+## Co robi BridgeMind One (strona i dokumentacja obejrzane 2026-09-30)
 
-Do 16 agentów (Claude, Codex, Gemini, Cursor) w siatce terminali, gotowe układy workspace'u,
-Kanban, wbudowana przeglądarka i IDE, „Bridge Agent” rozdzielający pracę, współdzielona
-pamięć przez MCP, dyktowanie. 50 $/mies., recenzje narzekają na błędy.
-Źródła: Product Hunt „bridgespace 3”, everydev.ai/developers/bridgemind (strona producenta
-odrzuca automatyczne pobieranie).
+Dawny BridgeSpace nazywa się teraz **BridgeMind One – „The Agent Super App”**. Pro 50 $/mies.
+(40 $ rocznie), jeden plan, własne subskrypcje/API do modeli. Dokumentacja: macOS 26 – tak,
+Windows – w budowie, **Linux – „not supported”** (choć na stronie jest AppImage).
+
+Trzy tryby przełączane w pasku tytułu:
+- **Code** (to budujemy): praca według **folderu projektu**. Po lewej szyna projektów,
+  pod każdym jego panele (agent + kropka stanu). W środku panele: terminal, „wątek”
+  (agent jako rozmowa – adaptery tylko dla Claude Code i Codex), pliki, przeglądarka,
+  symulator iOS. Panele dzielone, w kartach, przeciągane, „snap” do układów, „Tidy”.
+  Nagłówek panelu: ikona agenta, folder, `…`, maksymalizuj, `+`, ✕. Po prawej dokowany
+  pasek z przeglądarką (localhost) i „Dashboard” wszystkich agentów.
+  Presety sesji: Solo, Pair, Workbench, Swarm (z rolami, podgląd przed startem).
+  Wykrywa agentów z PATH powłoki logowania. Pasek poleceń wysyła prompt do aktywnej sesji.
+  Przeciągnięcie pliku na terminal wstawia ścieżkę w cudzysłowie.
+- **Agent**: nazwani „współpracownicy” z briefem, pamięcią, skillami, na harmonogramie (routines).
+- **Thread/Chat**: rozmowa bez projektu.
+- Poza tym: przełączanie kont Claude/Codex przy limicie, dyktowanie (BridgeVoice,
+  Parakeet/Whisper lokalnie), kredyty na funkcje w chmurze.
+
+Co z tego bierzemy do M1: szynę projektów z panelami i stanem, siatkę terminali, presety.
+Później: pasek poleceń, przeciąganie pliku, przeglądarka, wątki, harmonogram.
+Pomijamy: konta, kredyty, logowanie, symulator.
 
 ## Architektura wersji podstawowej
 
@@ -69,11 +86,13 @@ utworzeniu, zapisany w układzie. Po restarcie aplikacji panel startuje z tym sa
   nie zostawia procesów.
 
 **M1 – wersja podstawowa** – szczegółowe etapy dla lokalnego agenta: `docs/plan-m1.md`
-- Siatka 1–16 paneli (automatyczny układ kolumn/wierszy + ręczna zmiana proporcji).
-- „Nowy panel” → wybór agenta i katalogu (dialog, ostatnie projekty).
-- Nagłówek panelu: agent, katalog, stan (działa / zakończony z kodem), restart, zamknij,
+- Szyna projektów (foldery) po lewej, pod każdym jego panele ze stanem; przełączanie
+  projektu nie zatrzymuje agentów.
+- Siatka 1–16 paneli na projekt (automatyczny układ kolumn/wierszy).
+- „Nowy panel” → wybór agenta (katalog = folder projektu).
+- Nagłówek panelu: agent, stan (działa / zakończony z kodem), restart, zamknij,
   maksymalizuj (panel na cały ekran i z powrotem).
-- Presety: np. „2× claude + 2× pi” w wybranym katalogu, zapis własnych.
+- Presety: np. „2× claude + 2× pi” w aktywnym projekcie, zapis własnych.
 - Zapis układu i UUID sesji; po restarcie aplikacji panele wracają z tymi samymi rozmowami.
 - Fokus klawiaturą (Ctrl+Alt+strzałki), wskaźnik „coś się zmieniło” na panelu bez fokusu
   (nowe dane na PTY), powiadomienie systemowe, gdy panel bez fokusu przestaje wypisywać
