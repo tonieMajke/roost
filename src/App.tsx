@@ -6,6 +6,7 @@ import {
   MAX_PANES,
   activeProject,
   emptyWorkspace,
+  parseWorkspace,
   projectName,
   reduce,
   type Pane,
@@ -25,8 +26,57 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [dialog, setDialog] = useState(false);
   const [lastAgentId, setLastAgentId] = useState<string | null>(null);
+  // false do końca startu: zapis `ws` na dysk musi ruszyć dopiero po wczytaniu pliku.
+  const [loaded, setLoaded] = useState(false);
   // Home is fetched once: paths are stored as `~/...` (Rust expands them at spawn).
   const home = useRef<string>("");
+
+  // Start: agents first (parseWorkspace needs their ids), then the saved layout.
+  useEffect(() => {
+    let live = true;
+    const backup = () => backend.backupWorkspace(new Date().toISOString().slice(0, 10)).catch(() => undefined);
+    void (async () => {
+      try {
+        const r = await backend.loadAgents();
+        if (!live) return;
+        setAgents(r.agents);
+        setErrors(r.errors);
+        const raw = await backend.loadWorkspace();
+        if (!live || raw === null) return; // pierwszy start: zostaje emptyWorkspace
+        let parsed: ReturnType<typeof parseWorkspace>;
+        try {
+          parsed = parseWorkspace(JSON.parse(raw) as unknown, r.agents.map((a) => a.id));
+        } catch (e) {
+          // Plik, który nie jest nawet JSON-em: zachowaj go, zanim nadpiszemy pusty stan.
+          await backup();
+          if (live) setErrors((prev) => [...prev, `workspace: ${String(e)}`]);
+          return;
+        }
+        if (parsed.errors.length > 0) {
+          await backup(); // zachowaj plik przed pierwszym zapisem, który go nadpisze
+          if (live) setErrors((prev) => [...prev, ...parsed.errors]);
+          if (!live) return;
+        }
+        dispatch({ type: "load", workspace: parsed.workspace });
+      } catch (e) {
+        if (live) setErrors((prev) => [...prev, `workspace: ${String(e)}`]);
+      } finally {
+        if (live) setLoaded(true);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // Zapis przy każdej zmianie, bez debounce (zmiany rzadkie). Przed wczytaniem nie wolno
+  // pisać — pusty stan startowy nadpisałby plik.
+  useEffect(() => {
+    if (!loaded) return;
+    void backend.saveWorkspace(JSON.stringify(ws, null, 2)).catch((e: unknown) =>
+      setErrors((prev) => [...prev, `zapis: ${String(e)}`]),
+    );
+  }, [ws, loaded]);
 
   useEffect(() => {
     let live = true;
@@ -78,6 +128,8 @@ export function App() {
       dispatch({ type: "restart", id: paneId });
     },
     toggleMaximize: (paneId) => dispatch({ type: "toggleMaximize", id: paneId }),
+    newConversation: (paneId) =>
+      dispatch({ type: "newConversation", id: paneId, sessionId: crypto.randomUUID() }),
     close: (paneId) => {
       forget([paneId]);
       dispatch({ type: "close", id: paneId });
@@ -164,7 +216,11 @@ export function App() {
             </button>
           </div>
         )}
-        {ws.projects.length === 0 ? (
+        {!loaded ? (
+          <div className="empty">
+            <p>Wczytywanie…</p>
+          </div>
+        ) : ws.projects.length === 0 ? (
           <div className="empty">
             <p>Dodaj folder projektu</p>
             <button type="button" onClick={projectActions.addProject}>

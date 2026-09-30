@@ -40,4 +40,8 @@ export const tauriBackend: Backend = {
     return typeof picked === "string" ? picked : null;
   },
   homeDir: () => invoke<string>("home_dir"),
+
+  loadWorkspace: () => invoke<string | null>("workspace_load"),
+  saveWorkspace: (json) => invoke<void>("workspace_save", { json }),
+  backupWorkspace: (date) => invoke<void>("workspace_backup", { date }),
 };

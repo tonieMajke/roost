@@ -23,6 +23,11 @@ export interface Backend {
   pickDir(): Promise<string | null>;
   /** Katalog domowy, żeby zapisywać ścieżki jako `~/...` (patrz `src/paths.ts`). */
   homeDir(): Promise<string>;
+  /** Treść `workspace.json`; `null` = pierwszy start aplikacji. */
+  loadWorkspace(): Promise<string | null>;
+  saveWorkspace(json: string): Promise<void>;
+  /** Kopia `workspace.json` → `workspace.<date>.bak` (`RRRR-MM-DD`); istniejącej kopii nie nadpisuje. */
+  backupWorkspace(date: string): Promise<void>;
 }
 
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;

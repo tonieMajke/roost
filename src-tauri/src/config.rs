@@ -7,6 +7,7 @@ use std::path::Path;
 use tauri::Manager;
 
 const AGENTS_FILE: &str = "agents.json";
+const WORKSPACE_FILE: &str = "workspace.json";
 
 /// Same list as `DEFAULT_AGENTS` in `src/agents.ts`; kept in sync by hand, tested against drift by review.
 pub fn default_agents_json() -> String {
@@ -85,6 +86,49 @@ pub fn home_dir() -> Result<String, String> {
     std::env::var("HOME").map_err(|_| "HOME is not set".to_string())
 }
 
+/// Raw text of `workspace.json`; `None` when the app starts for the first time.
+#[tauri::command]
+pub fn workspace_load(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    match fs::read_to_string(dir.join(WORKSPACE_FILE)) {
+        Ok(text) => Ok(Some(text)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(format!("{}: {e}", dir.join(WORKSPACE_FILE).display())),
+    }
+}
+
+#[tauri::command]
+pub fn workspace_save(app: tauri::AppHandle, json: String) -> Result<(), String> {
+    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    write_atomic(&dir.join(WORKSPACE_FILE), &json)
+}
+
+/// Copy `workspace.json` to `workspace.<date>.bak` next to it; never overwrites an
+/// existing backup, and a missing source is nothing to back up. `date` is `YYYY-MM-DD`
+/// from TS (no date crate); anything else is rejected so it cannot become a path.
+#[tauri::command]
+pub fn workspace_backup(app: tauri::AppHandle, date: String) -> Result<(), String> {
+    if date.len() != 10 || !date.bytes().all(|b| b.is_ascii_digit() || b == b'-') {
+        return Err(format!("bad backup date {date:?}"));
+    }
+    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    backup_in(&dir, &date)
+}
+
+fn backup_in(dir: &Path, date: &str) -> Result<(), String> {
+    let src = dir.join(WORKSPACE_FILE);
+    let dst = dir.join(format!("workspace.{date}.bak"));
+    if dst.exists() {
+        return Ok(());
+    }
+    match fs::copy(&src, &dst) {
+        Ok(_) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(format!("{} -> {}: {e}", src.display(), dst.display())),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -129,6 +173,22 @@ mod tests {
         assert_eq!(fs::read_to_string(&file).unwrap(), "second");
         let leftovers: Vec<_> = fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name()).collect();
         assert_eq!(leftovers, vec![std::ffi::OsString::from(AGENTS_FILE)]);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn backup_copies_once_and_tolerates_missing_source() {
+        let dir = temp_dir("backup");
+        // No workspace.json yet: nothing to back up, no error, no empty .bak.
+        backup_in(&dir, "2026-09-30").unwrap();
+        assert!(!dir.join("workspace.2026-09-30.bak").exists());
+        fs::write(dir.join(WORKSPACE_FILE), "one").unwrap();
+        backup_in(&dir, "2026-09-30").unwrap();
+        assert_eq!(fs::read_to_string(dir.join("workspace.2026-09-30.bak")).unwrap(), "one");
+        // An existing backup is never overwritten.
+        fs::write(dir.join(WORKSPACE_FILE), "two").unwrap();
+        backup_in(&dir, "2026-09-30").unwrap();
+        assert_eq!(fs::read_to_string(dir.join("workspace.2026-09-30.bak")).unwrap(), "one");
         fs::remove_dir_all(&dir).unwrap();
     }
 

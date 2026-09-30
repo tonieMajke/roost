@@ -23,25 +23,31 @@ export function Pane({ pane, path, agent, focused, maximized, exited, actions }:
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armed, setArmed] = useState(false);
-  const [args, setArgs] = useState<string[] | null>(null);
+  // Args stamped with the pane state they were computed for: the new Conversation
+  // changes sessionId + run in one dispatch, and Terminal must never mount with
+  // args from the previous conversation (its spawn effect runs once, at mount).
+  const [argsFor, setArgsFor] = useState<{ run: number; sessionId?: string; args: string[] } | null>(null);
 
   // Resume vs. new conversation needs a backend answer; until then the panel stays empty
   // (mounting Terminal earlier would start the process with the wrong arguments).
   useEffect(() => {
     let live = true;
-    setArgs(null);
+    setArgsFor(null);
     if (!agent) return;
     const known: Promise<boolean> =
       agent.session?.check === "claude" && pane.sessionId
         ? backend.claudeSessionExists(pane.sessionId).catch(() => false)
         : Promise.resolve(false);
     void known.then((exists) => {
-      if (live) setArgs(buildArgs(agent, pane.sessionId, exists));
+      if (live) setArgsFor({ run: pane.run, sessionId: pane.sessionId, args: buildArgs(agent, pane.sessionId, exists) });
     });
     return () => {
       live = false;
     };
   }, [agent, pane.sessionId, pane.run]);
+
+  const args =
+    argsFor && argsFor.run === pane.run && argsFor.sessionId === pane.sessionId ? argsFor.args : null;
 
   // "Na pewno?" lasts CONFIRM_MS, then the button goes back to ✕.
   useEffect(() => {
@@ -66,6 +72,11 @@ export function Pane({ pane, path, agent, focused, maximized, exited, actions }:
         <span className="pane-name">{agent?.name ?? pane.agentId}</span>
         <span className={`dot ${exited ? "dot--off" : "dot--on"}`} title={exited ? exitLabel(exited) : "działa"} />
         <span className="pane-tools">
+          {agent?.session && (
+            <button type="button" title="Nowa rozmowa" onClick={() => actions.newConversation(pane.id)}>
+              +
+            </button>
+          )}
           <button type="button" title="Uruchom ponownie" onClick={() => actions.restart(pane.id)}>
             ⟳
           </button>

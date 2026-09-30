@@ -45,6 +45,9 @@ pub fn run() {
             config::claude_session_exists,
             config::dir_exists,
             config::home_dir,
+            config::workspace_load,
+            config::workspace_save,
+            config::workspace_backup,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

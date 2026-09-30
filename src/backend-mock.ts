@@ -2,6 +2,7 @@ import { DEFAULT_AGENTS } from "./agents";
 import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
 
 const PROMPT = "$ ";
+const WORKSPACE_KEY = "aw-workspace";
 let nextId = 1;
 
 const enc = (text: string) => new TextEncoder().encode(text);
@@ -75,4 +76,31 @@ export const mockBackend: Backend = {
     return path ? path : null;
   },
   homeDir: async () => "/home/podglad",
+
+  // Preview: the workspace lives in localStorage (private mode can throw -> treat as empty).
+  async loadWorkspace() {
+    try {
+      return globalThis.localStorage?.getItem(WORKSPACE_KEY) ?? null;
+    } catch {
+      return null;
+    }
+  },
+  async saveWorkspace(json) {
+    try {
+      globalThis.localStorage?.setItem(WORKSPACE_KEY, json);
+    } catch {
+      // private mode: the preview simply does not persist
+    }
+  },
+  async backupWorkspace(date) {
+    try {
+      const key = `${WORKSPACE_KEY}.${date}`;
+      const current = globalThis.localStorage?.getItem(WORKSPACE_KEY);
+      if (current !== null && current !== undefined && globalThis.localStorage?.getItem(key) === null) {
+        globalThis.localStorage.setItem(key, current);
+      }
+    } catch {
+      // j.w.
+    }
+  },
 };

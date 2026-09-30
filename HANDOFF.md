@@ -2,6 +2,28 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## M1 Etap 7 – 2026-10-01
+Zapis/wznowienie: Rust `config.rs` – `workspace_load` (brak pliku → `None`), `workspace_save` przez
+`write_atomic`, `workspace_backup(date)` → kopie `workspace.<RRRR-MM-DD>.bak` obok, bez nadpisywania
+istniejącej (datę liczy TS, Rust validating `[0-9-]` – bez nowej zależności). TS: `loadWorkspace`/
+`saveWorkspace`/`backupWorkspace` w `Backend`; mock w `localStorage` (try/catch). `App.tsx`: start
+`loadAgents` → `loadWorkspace` → `parseWorkspace` → `load` (przed wczytaniem napis „Wczytywanie…”,
+błędy parsowania/JSON → `backupWorkspace` przed pierwszym zapisem), zapis `useEffect` na `[ws, loaded]`
+(`JSON.stringify(ws, null, 2)`, bez debounce). Panel z `session` ma „+” (Nowa rozmowa) w nagłówku →
+`newConversation` (nowe sessionId + run+1). Naprawiony błąd: `Terminal` montował się przy „Nowa rozmowa”
+ze **starymi** args (efekt liczy args po macie; spawn czyta args raz przy montażu) – `Pane` stempluje
+args `{run, sessionId}` i renderuje `Terminal` tylko gdy stempl pasuje do panelu (znaleziono w podglądzie:
+banner pokazywał stare id, localStorage już nowe).
+Sprawdzenia: typecheck czysto, vitest 57/57 (round-trip `Workspace→JSON→parseWorkspace` z etapu 4),
+cargo test 10/10 (nowy: backup kopiuje raz, brak źródła = brak kopii), cargo build 0 ostrzeżeń.
+Podgląd :5183 (BrowserOS): start bez pliku → pusty stan; zapis → reload → projekt + panele claude/pi
+wracają, claude dostaje zapisane sessionId, „+” → proces z nowym id w bannerze (przed naprawą: ze starym),
+reload → oba panele na miejscu. `ui_audit` :5183: 0 wysokich / 0 średnich / 0 niskich.
+Niesprawdzone: okno Tauri (`workspace.json`, `write_atomic`, backup z prawdziwą datą – po raz pierwszy
+wołane); ręczny test użytkownika: dwa projekty, panele claude + pi z wiadomością, zamknij/otwórz →
+rozmowy na miejscu. Uwaga: podgląd dzieli `localStorage` z poprzednimi stanami – start ze śmieciami
+parsuje `parseWorkspace`, czysty stan = skasować klucz `aw-workspace`.
+
 ## M1 Etap 6 – 2026-09-30
 „+ Projekt” (szyna i pusta siatka) pyta o katalog: `backend.pickDir()` = tauri-plugin-dialog
 `open({ directory: true })`, w podglądzie `prompt()`; anulowanie = nic, wynik → `dirExists` →
