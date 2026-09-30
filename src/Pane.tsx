@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { backend, type ExitInfo } from "./backend";
 import { buildArgs, type AgentDef } from "./agents";
-import { confirmClick, isArmed, type Arm } from "./confirm";
+import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
 import { Terminal } from "./Terminal";
@@ -42,6 +42,13 @@ export function Pane({ pane, path, agent, focused, maximized, exited, actions }:
       live = false;
     };
   }, [agent, pane.sessionId, pane.run]);
+
+  // "Na pewno?" lasts CONFIRM_MS, then the button goes back to ✕.
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), CONFIRM_MS);
+    return () => clearTimeout(t);
+  }, [armed]);
 
   const close = () => {
     const r = confirmClick(armRef.current, key, Date.now());

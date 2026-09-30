@@ -2,6 +2,12 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Przegląd etapu 5 (Claude) – 2026-09-30
+Poprawione: stary proces po ⟳/✕ wołał `onExit` i gasił kropkę nowego uruchomienia (teraz ignorowane po
+odmontowaniu); każdy terminal robił `focus()` po starcie i przez `onFocus` przestawiał fokus modelu
+(po etapie 7 przełączałby projekt) – teraz tylko panel z fokusem; „Na pewno?” wraca do ✕ po 3 s
+(panel i szyna); dwuklik w ✕ projektu nie otwiera zmiany nazwy. Sprawdzone w podglądzie.
+
 ## M1 Etap 5 – 2026-09-30
 UI na modelu z etapu 4: `App.tsx` = `useReducer(reduce, emptyWorkspace)` + stan ulotny `Record<paneId,{exited}>`
 (agenci wyłącznie z `backend.loadAgents()`, stała `AGENTS` usunięta, błędy w pasku `.config-errors`);

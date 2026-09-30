@@ -30,6 +30,8 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus }: Props
   exitRef.current = onExit;
   const focusRef = useRef(onFocus);
   focusRef.current = onFocus;
+  const focusedRef = useRef(focused);
+  focusedRef.current = focused;
 
   useEffect(() => {
     const el = host.current!;
@@ -70,8 +72,12 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus }: Props
       try {
         const handle = await backend.spawnPty(
           { ...spec0, cols: x.cols, rows: x.rows },
-          (bytes) => x.write(bytes),
+          (bytes) => {
+            if (!disposed) x.write(bytes);
+          },
           (info) => {
+            // A killed old run (restart/close) must not mark the pane's next run as exited.
+            if (disposed) return;
             x.write(`\r\n\x1b[2m[proces zakończony: ${info.signal ?? `kod ${info.code}`}]\x1b[0m\r\n`);
             exitRef.current?.(info);
           },
@@ -81,7 +87,9 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus }: Props
       } catch (e) {
         x.write(`\x1b[31mNie udało się uruchomić: ${String(e)}\x1b[0m\r\n`);
       }
-      x.focus();
+      // Only the focused pane takes the keyboard; otherwise the last pane to start would
+      // steal focus (and via onFocus move the workspace focus, even switch projects).
+      if (focusedRef.current && !disposed) x.focus();
     })();
 
     return () => {

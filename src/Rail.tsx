@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { confirmClick, isArmed, type Arm } from "./confirm";
+import { useEffect, useRef, useState } from "react";
+import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { AgentDef } from "./agents";
 import type { ExitInfo } from "./backend";
 import type { Workspace } from "./workspace";
@@ -21,6 +21,13 @@ export function Rail({ ws, agents, exited, onSelect, onFocusPane, onAddProject, 
   const armRef = useRef<Arm>(null);
   const [armedId, setArmedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
+
+  // "Na pewno?" lasts CONFIRM_MS, then the button goes back to ✕.
+  useEffect(() => {
+    if (armedId === null) return;
+    const t = setTimeout(() => setArmedId(null), CONFIRM_MS);
+    return () => clearTimeout(t);
+  }, [armedId]);
 
   const remove = (id: string) => {
     const r = confirmClick(armRef.current, keyOf(id), Date.now());
@@ -79,6 +86,8 @@ export function Rail({ ws, agents, exited, onSelect, onFocusPane, onAddProject, 
                       e.stopPropagation();
                       remove(project.id);
                     }}
+                    // two quick clicks on ✕ are also a dblclick; it must not open renaming
+                    onDoubleClick={(e) => e.stopPropagation()}
                   >
                     {armedId === project.id ? "Na pewno?" : "✕"}
                   </button>
