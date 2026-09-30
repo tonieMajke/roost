@@ -314,9 +314,24 @@ kbd {
 .ctx-row.is-warn .bar span { background: var(--accent); }
 .ctx-row.is-warn .ctx-line b { color: var(--accent); }
 .dock-live { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* wzór: `overflow: hidden`; 30 zdarzeń się nie mieści, więc lista się przewija */
+.feed { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow-y: auto; }
+.feed-item { display: flex; gap: 9px; font-size: 12px; line-height: 1.4; animation: feedIn 0.45s var(--ease) both; }
+/* klik = fokus panelu: przycisk bez wyglądu przycisku */
+button.feed-item {
+  flex: none; width: 100%; padding: 0; border: 0; border-radius: 0; background: none;
+  color: inherit; text-align: left;
+}
+.feed-item .ag-badge { width: 18px; height: 18px; font-size: 10px; margin-top: 1px; }
+.feed-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.feed-text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feed-text small { font-size: 11px; color: var(--faint); }
+.feed-item:hover .feed-text > span { color: var(--ag); }
+.feed-item:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 @keyframes dockIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
 @keyframes barIn { from { transform: scaleX(0); } to { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .dock, .bar span { animation: none; } }
+@keyframes feedIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .dock, .bar span, .feed-item { animation: none; } }
 
 /* okna (src/Dialog.tsx): tło + karta ze wzoru D */
 .overlay { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; }
@@ -488,6 +503,6 @@ kbd {
 /* motion */
 .motion-lite .pane, .motion-lite .grid, .motion-lite .pane-cell, .motion-lite .dialog,
 .motion-lite .tile, .motion-lite .toast, .motion-lite .proj-panes, .motion-lite .dock,
-.motion-lite .settings, .motion-lite .bar span { animation: none !important; }
+.motion-lite .settings, .motion-lite .bar span, .motion-lite .feed-item { animation: none !important; }
 .motion-lite .pane.st-working .glow { animation: none; opacity: 0.6; }
 .motion-lite .pane.st-done .glow { animation: none; }

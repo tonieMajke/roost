@@ -77,9 +77,18 @@ export const mockBackend: Backend = {
     mockReads.set(sessionId, reads);
     const seed = [...sessionId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
     const tokens = 20_000 + ((seed * 997) % 140_000) + reads * 1500;
+    // „Na żywo”: co drugi odczyt nowe wywołanie narzędzia (ścieżka jak z prawdziwego pliku).
+    const calls = Math.floor(reads / 2);
+    const tools = Array.from({ length: Math.min(calls, 3) }, (_, i) => {
+      const n = calls - Math.min(calls, 3) + i + 1;
+      const id = `${sessionId}:${n}`;
+      if (n % 3 === 0) return { id, name: kind === "claude" ? "Bash" : "bash", file: null, command: "pnpm test" };
+      const file = `/home/podglad/projekt/src/plik-${n}.ts`;
+      return { id, name: kind === "claude" ? "Read" : "edit", file, command: null };
+    });
     return kind === "claude"
-      ? { tokens: tokens * 5, model: "claude-sonnet-5-5", window: null }
-      : { tokens, model: "Flash-Next-NVFP4", window: 262_144 };
+      ? { tokens: tokens * 5, model: "claude-sonnet-5-5", window: null, tools }
+      : { tokens, model: "Flash-Next-NVFP4", window: 262_144, tools };
   },
   dirExists: async () => true,
 

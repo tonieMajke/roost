@@ -1,12 +1,14 @@
 /** Context meter of agent panes (pane header `.ctx`, dock `.ctx-row`). Pure: no React, no DOM. */
 import type { AgentDef } from "./agents";
+import type { ToolUse } from "./feed";
 import type { Pane } from "./workspace";
 
 /** Which session file reader (Rust `session_context`) understands this agent. */
 export type ContextKind = "claude" | "pi";
 
-/** Numbers read from the newest turn of a session file; `window` = from the agent's model config (pi). */
-export type SessionContext = { tokens: number; model: string | null; window: number | null };
+/** Numbers read from the newest turn of a session file; `window` = from the agent's model config (pi);
+ *  `tools` = newest tool calls, oldest first (feed „Na żywo”). */
+export type SessionContext = { tokens: number; model: string | null; window: number | null; tools: ToolUse[] };
 
 /** How often open conversations are re-read (plus once right after `finished`). */
 export const CONTEXT_POLL_MS = 5000;

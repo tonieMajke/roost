@@ -28,7 +28,23 @@ pub struct SessionContext {
     window: Option<u64>,
     #[serde(skip)]
     provider: Option<String>,
+    /// Newest tool calls in the tail, oldest first (feed „Na żywo”); the id tells new from seen.
+    tools: Vec<ToolUse>,
 }
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct ToolUse {
+    id: String,
+    name: String,
+    /// `file_path` (claude) / `path` (pi) of the call.
+    file: Option<String>,
+    /// Shell command, one line, cut to `COMMAND_CHARS`.
+    command: Option<String>,
+}
+
+/// Enough tool calls for the 5 s between reads; older ones are already in the feed.
+const MAX_TOOLS: usize = 10;
+const COMMAND_CHARS: usize = 60;
 
 /// Session ids are UUIDs; anything else could escape the search (`../x`).
 fn valid_id(id: &str) -> bool {
@@ -103,9 +119,44 @@ fn last_usage(text: &str, kind: Kind) -> Option<SessionContext> {
             continue;
         }
         let text = |key| message.get(key).and_then(Value::as_str).map(str::to_owned);
-        return Some(SessionContext { tokens, model: text("model"), window: None, provider: text("provider") });
+        return Some(SessionContext { tokens, model: text("model"), window: None, provider: text("provider"), tools: Vec::new() });
     }
     None
+}
+
+/// claude: `message.content[]` `{"type":"tool_use","id","name","input":{file_path|command}}`;
+/// pi: `{"type":"toolCall","id","name","arguments":{path|command}}`. Newest `MAX_TOOLS`, oldest first.
+fn last_tools(text: &str, kind: Kind) -> Vec<ToolUse> {
+    let (marker, block_type, args_key, file_key) = match kind {
+        Kind::Claude => ("\"tool_use\"", "tool_use", "input", "file_path"),
+        Kind::Pi => ("\"toolCall\"", "toolCall", "arguments", "path"),
+    };
+    let mut out = Vec::new();
+    'lines: for line in text.lines().rev() {
+        if !line.contains(marker) {
+            continue;
+        }
+        let Ok(entry) = serde_json::from_str::<Value>(line) else { continue };
+        if entry.get("isSidechain").and_then(Value::as_bool) == Some(true) {
+            continue;
+        }
+        let Some(blocks) = entry.pointer("/message/content").and_then(Value::as_array) else { continue };
+        for block in blocks.iter().rev() {
+            if block.get("type").and_then(Value::as_str) != Some(block_type) {
+                continue;
+            }
+            let str_of = |v: &Value, key: &str| v.get(key).and_then(Value::as_str).map(str::to_owned);
+            let (Some(id), Some(name)) = (str_of(block, "id"), str_of(block, "name")) else { continue };
+            let args = block.get(args_key).cloned().unwrap_or(Value::Null);
+            let command = str_of(&args, "command").map(|c| c.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(COMMAND_CHARS).collect());
+            out.push(ToolUse { id, name, file: str_of(&args, file_key), command });
+            if out.len() == MAX_TOOLS {
+                break 'lines;
+            }
+        }
+    }
+    out.reverse();
+    out
 }
 
 fn context_in(root: &Path, kind: Kind, id: &str) -> Option<SessionContext> {
@@ -124,7 +175,10 @@ fn context_in(root: &Path, kind: Kind, id: &str) -> Option<SessionContext> {
             p
         }
     };
-    last_usage(&read_tail(&path)?, kind)
+    let tail = read_tail(&path)?;
+    let mut ctx = last_usage(&tail, kind)?;
+    ctx.tools = last_tools(&tail, kind);
+    Some(ctx)
 }
 
 /// `contextWindow` of every model pi knows: own `models.json` (`providers.<p>.models[]`) and
@@ -291,6 +345,57 @@ mod tests {
         fs::write(dir.join("models.json"), own.replace("262144", "131072")).unwrap();
         assert_eq!(pi_window(&dir, Some("local"), "Flash"), Some(131_072));
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn claude_tools_newest_last_without_sidechain() {
+        let long = format!("pnpm test \\\n  --run {}", "x".repeat(100));
+        let text = [
+            r#"{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/p/src/a.ts"}}]}}"#.to_owned(),
+            r#"{"type":"assistant","isSidechain":true,"message":{"content":[{"type":"tool_use","id":"side","name":"Grep","input":{}}]}}"#.to_owned(),
+            r#"{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"tool_use"}]}}"#.to_owned(),
+            serde_json::json!({"type":"assistant","message":{"content":[
+                {"type":"text","text":"ok"},
+                {"type":"tool_use","id":"t2","name":"Bash","input":{"command": long}},
+                {"type":"tool_use","id":"t3","name":"Glob","input":{"pattern":"*.ts"}}]}})
+            .to_string(),
+        ]
+        .join("\n");
+        let got = last_tools(&text, Kind::Claude);
+        let ids: Vec<_> = got.iter().map(|t| t.id.as_str()).collect();
+        assert_eq!(ids, ["t1", "t2", "t3"]);
+        assert_eq!(got[0].file.as_deref(), Some("/p/src/a.ts"));
+        let cmd = got[1].command.as_deref().unwrap();
+        assert!(cmd.starts_with("pnpm test \\ --run xxx"), "one line: {cmd}");
+        assert_eq!(cmd.chars().count(), COMMAND_CHARS);
+        assert_eq!((got[2].file.as_deref(), got[2].command.as_deref()), (None, None));
+    }
+
+    #[test]
+    fn pi_tools_come_from_tool_call_blocks() {
+        let call = |id: usize| {
+            serde_json::json!({"type":"message","message":{"role":"assistant","content":[
+                {"type":"thinking","thinking":"toolCall"},
+                {"type":"toolCall","id": format!("c{id}"),"name":"edit","arguments":{"path":"src/x.ts","oldText":"a"}}]}})
+            .to_string()
+        };
+        let mut lines: Vec<String> = (0..12).map(call).collect();
+        lines.push(r#"{"type":"message","message":{"role":"toolResult","toolCallId":"c11","content":[]}}"#.to_owned());
+        let got = last_tools(&lines.join("\n"), Kind::Pi);
+        assert_eq!(got.len(), MAX_TOOLS);
+        assert_eq!((got[0].id.as_str(), got[9].id.as_str()), ("c2", "c11"));
+        assert_eq!((got[9].name.as_str(), got[9].file.as_deref()), ("edit", Some("src/x.ts")));
+    }
+
+    #[test]
+    fn session_read_carries_the_tools() {
+        let root = temp_dir("tools");
+        fs::create_dir_all(root.join("-home-x")).unwrap();
+        let tool = r#"{"type":"assistant","message":{"usage":{"input_tokens":4},"content":[{"type":"tool_use","id":"t9","name":"Write","input":{"file_path":"/a"}}]}}"#;
+        fs::write(root.join("-home-x").join(format!("{ID}.jsonl")), [claude_line(1, 1, 1).as_str(), tool].join("\n")).unwrap();
+        let got = context_in(&root, Kind::Claude, ID).unwrap();
+        assert_eq!((got.tokens, got.tools.len(), got.tools[0].name.as_str()), (4, 1, "Write"));
+        fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

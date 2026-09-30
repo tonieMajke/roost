@@ -24,6 +24,8 @@ type Props = {
   accent?: string;
   focused?: boolean;
   onExit?: (info: ExitInfo) => void;
+  /** Proces wystartował (pulpit „Na żywo”). */
+  onStart?: () => void;
   onFocus?: () => void;
   /** Bajty od procesu (aktywność panelu). */
   onOutput?: () => void;
@@ -44,7 +46,7 @@ export type TerminalHandle = {
  * One agent process rendered by xterm.js. The process lives exactly as long as the
  * component: the effect has no dependencies, so it restarts only under a new React key.
  */
-export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onExit, onFocus, onOutput, onRedraw, apiRef }: Props) {
+export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onExit, onStart, onFocus, onOutput, onRedraw, apiRef }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm | undefined>(undefined);
   // Read once at mount; later prop changes must never restart the process.
@@ -52,6 +54,8 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
   spec.current = { command, args, cwd };
   const exitRef = useRef(onExit);
   exitRef.current = onExit;
+  const startRef = useRef(onStart);
+  startRef.current = onStart;
   const focusRef = useRef(onFocus);
   focusRef.current = onFocus;
   const focusedRef = useRef(focused);
@@ -140,7 +144,10 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
           },
         );
         if (disposed) handle.kill();
-        else pty = handle;
+        else {
+          pty = handle;
+          startRef.current?.();
+        }
       } catch (e) {
         x.write(`\x1b[31mNie udało się uruchomić: ${String(e)}\x1b[0m\r\n`);
       }

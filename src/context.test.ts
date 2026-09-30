@@ -28,11 +28,11 @@ describe("contextKind / contextLimit", () => {
   });
 
   it("takes the window of the last turn's model, `context` still wins", () => {
-    const local = { tokens: 1, model: "Flash-Next-NVFP4", window: 262_144 };
+    const local = { tokens: 1, model: "Flash-Next-NVFP4", window: 262_144, tools: [] };
     expect(contextLimit(pi, local)).toBe(262_144);
     expect(contextLimit(pi, { ...local, window: null })).toBe(128_000);
-    expect(contextLimit(claude, { tokens: 1, model: "claude-sonnet-5-5", window: null })).toBe(1_000_000);
-    expect(contextLimit(claude, { tokens: 1, model: "claude-haiku-4-5", window: null })).toBe(200_000);
+    expect(contextLimit(claude, { tokens: 1, model: "claude-sonnet-5-5", window: null, tools: [] })).toBe(1_000_000);
+    expect(contextLimit(claude, { tokens: 1, model: "claude-haiku-4-5", window: null, tools: [] })).toBe(200_000);
     expect(contextLimit({ ...pi, context: 32_000 }, local)).toBe(32_000);
   });
 });
@@ -86,7 +86,7 @@ describe("formatTokens / contextMeter", () => {
 });
 
 describe("paneMeter", () => {
-  const contexts = { s1: { tokens: 170_000, model: "m", window: null } };
+  const contexts = { s1: { tokens: 170_000, model: "m", window: null, tools: [] } };
   it("reads the pane's own session with the agent's limit", () => {
     const pane = { id: "1", agentId: "claude", run: 1, sessionId: "s1" };
     expect(paneMeter(pane, claude, contexts)).toMatchObject({ known: true, pct: 85, warn: true });

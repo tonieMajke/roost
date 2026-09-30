@@ -15,6 +15,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 9 – 2026-09-30 (Claude, za zgodą użytkownika zamiast lokalnego modelu)
+
+- pi: format wywołań ustalony z typów `pi-ai` 0.99.1 (bez czytania cudzych sesji): `message.content[]` `{"type":"toolCall","id","name","arguments":{path|command}}`; claude: `{"type":"tool_use","id","name","input":{file_path|command}}`.
+- Rust `context.rs`: ten sam odczyt ogona co w etapie 8 zwraca też `tools` – do 10 najnowszych wywołań (bez `isSidechain`), komenda w jednej linii, ucięta do 60 znaków. 3 nowe testy na fixture.
+- `src/feed.ts` + testy: `relativeTime` („teraz”, „40 s temu”, „3 min temu”, „2 godz. temu”, „2 d temu”), `newTools` (pierwszy odczyt rozmowy = linia bazowa, stare wywołania to nie zdarzenia), `toolText` (ścieżka względem projektu), `pushFeed` (najnowsze pierwsze, 30), `exitedText`.
+- App: zdarzenia „uruchomiony” (nowy `onStart` w Terminal → `actions.started`), „skończył pracę” (po odczycie pliku, żeby ostatnie narzędzia były przed nim), „proces zakończony (kod N / sygnał X)”, narzędzia z odczytów. Odczyt bazowy wszystkich rozmów przy zmianie ich zbioru, potem co 5 s aktywny projekt + pracujące panele schowanych projektów. Numer odczytu na sesję – spóźniona odpowiedź nie dubluje zdarzeń. Stan ulotny.
+- Dock: `.feed` / `.feed-item` (przycisk; klik = fokus panelu i jego projekt, zamknięty panel = sam projekt), `feedIn` wyłączone przy `motion-lite` i `prefers-reduced-motion`. Odstępstwo od wzoru: `.feed` przewija się (`overflow-y: auto`), bo 30 zdarzeń się nie mieści.
+- Sprawdzenia: typecheck czysty, vitest 173/173, cargo test 20/20, cargo build 0 ostrzeżeń. Podgląd (headless Firefox, mock: co drugi odczyt nowe narzędzie): starty 5 paneli z 2 projektów, narzędzia co 5 s, `fail` w powłoce → „proces zakończony (kod 1)”, „10 s temu” po 11 s, klik zdarzenia z „beta” przełącza projekt i fokus.
+- Niesprawdzone: prawdziwe pliki claude/pi w oknie Tauri, zdarzenie „skończył pracę” w podglądzie (mock nie symuluje pracy agenta). Przy starcie aplikacji każdy panel daje „uruchomiony” – przy wielu panelach to zapełnia listę.
+
 ## M2 Etap 8 – 2026-09-30 (Claude, za zgodą użytkownika zamiast lokalnego modelu)
 
 - pi: plik sesji to `~/.pi/agent/sessions/<katalog>/<czas>_<sessionId>.jsonl` (ustalone z nazw plików i typów `pi-coding-agent` 0.99.1, bez czytania cudzych sesji); wpis `{"type":"message","message":{"role":"assistant","model","usage":{input,cacheRead,cacheWrite,…}}}`.

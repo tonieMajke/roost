@@ -144,6 +144,7 @@ export function Pane({ pane, path, agent, accent, focused, maximized, state, met
             focused={focused}
             apiRef={register.current}
             onExit={(info) => actions.exit(pane.id, info)}
+            onStart={() => actions.started(pane.id)}
             onFocus={() => actions.focus(pane.id)}
             onOutput={() => actions.output(pane.id)}
             onRedraw={() => actions.redraw(pane.id)}

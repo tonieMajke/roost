@@ -22,6 +22,7 @@ import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { Dock } from "./Dock";
 import { CONTEXT_POLL_MS, contextTargets, type SessionContext } from "./context";
+import { FINISHED_TEXT, STARTED_TEXT, exitedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
 import { TOAST_MS, toastText } from "./toast";
 import { PANE_OUT_MS } from "./Pane";
 import { planPreset } from "./presets";
@@ -51,6 +52,13 @@ export function App() {
   const activity = useRef(new Map<string, Activity>());
   // Ostatni odczyt kontekstu według sessionId; ulotny, nowa rozmowa = nowy klucz.
   const [contexts, setContexts] = useState<Record<string, SessionContext>>({});
+  // „Na żywo” (pulpit): ulotne, najnowsze pierwsze.
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const feedSeq = useRef(0);
+  // Ostatnie pokazane wywołanie narzędzia według sessionId; brak klucza = jeszcze nie czytano.
+  const seenTools = useRef(new Map<string, string | null>());
+  // Numer odczytu według sessionId: odpowiedź starsza od już obsłużonej nie dubluje zdarzeń.
+  const readSeq = useRef(new Map<string, { sent: number; done: number }>());
   const [notice, setNotice] = useState<string | null>(null);
   const [dialog, setDialog] = useState(false);
   const [presetMenu, setPresetMenu] = useState(false);
@@ -194,7 +202,11 @@ export function App() {
         });
       });
     },
-    exit: (paneId, info) => setEphemeral((prev) => ({ ...prev, [paneId]: { ...prev[paneId], exited: info } })),
+    exit: (paneId, info) => {
+      setEphemeral((prev) => ({ ...prev, [paneId]: { ...prev[paneId], exited: info } }));
+      addFeed(paneId, [exitedText(info)]);
+    },
+    started: (paneId) => addFeed(paneId, [STARTED_TEXT]),
     registerTerminal: (paneId, handle) => {
       if (handle) terms.current.set(paneId, handle);
       else terms.current.delete(paneId);
@@ -281,15 +293,17 @@ export function App() {
     },
   };
 
-  // Kto jest kim w powiadomieniu i na szynie: paneId → agent, projekt (nazwa i id).
+  // Kto jest kim w powiadomieniu, na szynie i w „Na żywo”: paneId → agent, projekt.
   const paneInfo = useMemo(() => {
-    const map = new Map<string, { agent: string; project: string; projectId: string }>();
+    const map = new Map<string, { agent: string; agentId: string; project: string; projectId: string; path: string }>();
     for (const p of ws.projects) {
       for (const pane of p.panes) {
         map.set(pane.id, {
           agent: agents.find((a) => a.id === pane.agentId)?.name ?? pane.agentId,
+          agentId: pane.agentId,
           project: p.name,
           projectId: p.id,
+          path: p.path,
         });
       }
     }
@@ -297,18 +311,57 @@ export function App() {
   }, [ws.projects, agents]);
   const paneInfoRef = useRef(paneInfo);
   paneInfoRef.current = paneInfo;
+
+  // Tylko refy i settery: woła to też interwał sprzed wielu renderów.
+  const addFeed = (paneId: string, texts: string[]) => {
+    const info = paneInfoRef.current.get(paneId);
+    if (!info || texts.length === 0) return;
+    const at = Date.now();
+    const items = texts.map((text) => ({
+      id: ++feedSeq.current,
+      paneId,
+      projectId: info.projectId,
+      agentId: info.agentId,
+      project: info.project,
+      text,
+      at,
+    }));
+    setFeed((prev) => pushFeed(prev, items));
+  };
   const activeRef = useRef(ws.active);
   activeRef.current = ws.active;
 
-  // Kontekst z plików sesji agentów (Rust czyta tylko koniec pliku). `null` nie kasuje
-  // poprzedniego odczytu: plik mógł chwilowo mieć na końcu same wyniki narzędzi.
-  const readContexts = useRef<(paneIds: string[] | null) => void>(() => {});
-  readContexts.current = (paneIds) => {
-    const panes = paneIds === null ? (active?.panes ?? []) : ws.projects.flatMap((p) => p.panes).filter((p) => paneIds.includes(p.id));
-    for (const t of contextTargets(panes, agents)) {
-      void backend
+  // Kontekst i wywołania narzędzi z plików sesji agentów (Rust czyta tylko koniec pliku).
+  // `null` nie kasuje poprzedniego odczytu: plik mógł chwilowo mieć na końcu same wyniki narzędzi.
+  // Zakres: "active" = aktywny projekt, "poll" = aktywny + pracujące w schowanych, "all" = wszystkie.
+  const readContexts = useRef<(which: "active" | "poll" | "all" | string[]) => Promise<unknown>>(async () => {});
+  readContexts.current = (which) => {
+    const all = ws.projects.flatMap((p) => p.panes);
+    const panes =
+      which === "all"
+        ? all
+        : which === "active"
+          ? (active?.panes ?? [])
+          : which === "poll"
+            ? all.filter((p) => active?.panes.includes(p) || ephemeral[p.id]?.working)
+            : all.filter((p) => which.includes(p.id));
+    const reads = contextTargets(panes, agents).map((t) => {
+      const seq = readSeq.current.get(t.sessionId) ?? { sent: 0, done: 0 };
+      const mine = ++seq.sent;
+      readSeq.current.set(t.sessionId, seq);
+      return backend
         .sessionContext(t.kind, t.sessionId)
         .then((c) => {
+          if (mine > seq.done) {
+            seq.done = mine;
+            const seen = seenTools.current.get(t.sessionId);
+            const fresh = c === null ? [] : newTools(seen, c.tools);
+            const last = c?.tools.at(-1)?.id;
+            if (last !== undefined) seenTools.current.set(t.sessionId, last);
+            else if (seen === undefined) seenTools.current.set(t.sessionId, null);
+            const path = paneInfoRef.current.get(t.paneId)?.path ?? "";
+            addFeed(t.paneId, fresh.map((tool) => toolText(tool, path, home.current)));
+          }
           if (c === null) return;
           setContexts((prev) => {
             const old = prev[t.sessionId];
@@ -316,19 +369,27 @@ export function App() {
           });
         })
         .catch(() => undefined); // brak odczytu = miernik bez zmian
-    }
+    });
+    return Promise.all(reads);
   };
-  // Co CONTEXT_POLL_MS tylko aktywny projekt (schowanych mierników nie widać); od razu po
-  // przełączeniu projektu i po zmianie rozmów w nim.
+  // Mierniki aktywnego projektu od razu po przełączeniu projektu i po zmianie rozmów w nim.
   const contextKey = contextTargets(active?.panes ?? [], agents)
     .map((t) => t.sessionId)
     .join(",");
   useEffect(() => {
-    if (contextKey === "") return;
-    readContexts.current(null);
-    const timer = setInterval(() => readContexts.current(null), CONTEXT_POLL_MS);
-    return () => clearInterval(timer);
+    if (contextKey !== "") void readContexts.current("active");
   }, [contextKey]);
+  // Nowa rozmowa gdziekolwiek: odczyt bazowy (stare wywołania to nie zdarzenia), potem co
+  // CONTEXT_POLL_MS aktywny projekt + panele pracujące w schowanych (narzędzia do „Na żywo”).
+  const allContextKey = contextTargets(ws.projects.flatMap((p) => p.panes), agents)
+    .map((t) => t.sessionId)
+    .join(",");
+  useEffect(() => {
+    if (allContextKey === "") return;
+    void readContexts.current("all");
+    const timer = setInterval(() => void readContexts.current("poll"), CONTEXT_POLL_MS);
+    return () => clearInterval(timer);
+  }, [allContextKey]);
 
   // `ping` kropeczki projektu (wzór D): praca skończyła się w siatce, której teraz nie widać.
   const [pingId, setPingId] = useState<string | null>(null);
@@ -382,7 +443,10 @@ export function App() {
           });
         setDone(true);
         later(DONE_MS, () => setDone(false));
-        readContexts.current(finished); // agent właśnie dopisał turę do pliku sesji
+        // Agent właśnie dopisał turę do pliku sesji: jego ostatnie narzędzia wjeżdżają przed końcem pracy.
+        void readContexts.current(finished).then(() => {
+          for (const id of finished) addFeed(id, [FINISHED_TEXT]);
+        });
       }
       for (const u of updates) {
         if (!u.finished) continue;
@@ -609,6 +673,14 @@ export function App() {
           project={active}
           agents={agents}
           contexts={contexts}
+          feed={feed}
+          onPickFeed={(item) =>
+            dispatch(
+              paneInfo.has(item.paneId)
+                ? { type: "focus", id: item.paneId } // przełącza też projekt
+                : { type: "selectProject", id: item.projectId }, // panel już zamknięty
+            )
+          }
           onClose={() => dispatch({ type: "setUi", patch: { dock: false } })}
         />
       )}

@@ -1,7 +1,8 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { X } from "lucide-react";
 import { agentColor, type AgentDef } from "./agents";
 import { paneMeter, type SessionContext } from "./context";
+import { FEED_CLOCK_MS, relativeTime, type FeedItem } from "./feed";
 import type { Project } from "./workspace";
 import { IconButton } from "./IconButton";
 
@@ -9,11 +10,21 @@ type Props = {
   project: Project | null; // aktywny: sekcja „Kontekst” pokazuje jego panele
   agents: AgentDef[];
   contexts: Record<string, SessionContext>;
+  feed: FeedItem[]; // wszystkie projekty, najnowsze pierwsze
+  onPickFeed: (item: FeedItem) => void;
   onClose: () => void;
 };
 
 /** Pulpit po prawej (wzór D `.dock`): limity Claude (etap 10), kontekst, na żywo (etap 9). */
-export function Dock({ project, agents, contexts, onClose }: Props) {
+export function Dock({ project, agents, contexts, feed, onPickFeed, onClose }: Props) {
+  // „40 s temu” musi się starzeć także bez nowych zdarzeń.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), FEED_CLOCK_MS);
+    return () => clearInterval(timer);
+  }, [feed]);
+
   const rows = (project?.panes ?? []).flatMap((pane) => {
     const agent = agents.find((a) => a.id === pane.agentId);
     const meter = paneMeter(pane, agent, contexts);
@@ -68,7 +79,33 @@ export function Dock({ project, agents, contexts, onClose }: Props) {
         <h3>
           Na żywo <span>wszystkie projekty</span>
         </h3>
-        <span className="meter-note">wkrótce</span>
+        {feed.length === 0 && <span className="meter-note">Jeszcze nic się nie wydarzyło</span>}
+        <div className="feed">
+          {feed.map((item) => {
+            const agent = agents.find((a) => a.id === item.agentId);
+            const name = agent?.name ?? item.agentId;
+            return (
+              <button
+                type="button"
+                key={item.id}
+                className="feed-item"
+                style={{ "--ag": agentColor(agent) } as CSSProperties}
+                title={`${name}: ${item.text}`}
+                onClick={() => onPickFeed(item)}
+              >
+                <span className="ag-badge" aria-hidden>
+                  {name.charAt(0).toUpperCase()}
+                </span>
+                <span className="feed-text">
+                  <span>{item.text}</span>
+                  <small>
+                    {item.project} · {relativeTime(item.at, now)}
+                  </small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </section>
     </aside>
   );
