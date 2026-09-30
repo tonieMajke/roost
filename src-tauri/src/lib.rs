@@ -1,4 +1,5 @@
 mod config;
+mod notify;
 mod pty;
 
 use std::sync::OnceLock;
@@ -49,6 +50,7 @@ pub fn run() {
             config::workspace_load,
             config::workspace_save,
             config::workspace_backup,
+            notify::notify,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

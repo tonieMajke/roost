@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { AgentDef } from "./agents";
-import type { ExitInfo } from "./backend";
+import { dotClass, type PaneState } from "./activity";
 import type { Workspace } from "./workspace";
 
 type Props = {
   ws: Workspace;
   agents: AgentDef[];
-  exited: Record<string, ExitInfo>;
+  state: Record<string, PaneState>;
   onSelect(projectId: string): void;
   onFocusPane(paneId: string): void;
   onAddProject(): void;
@@ -16,7 +16,7 @@ type Props = {
 };
 
 /** Left rail: projects with their panes, so you see where work is running. */
-export function Rail({ ws, agents, exited, onSelect, onFocusPane, onAddProject, onRename, onRemove }: Props) {
+export function Rail({ ws, agents, state, onSelect, onFocusPane, onAddProject, onRename, onRemove }: Props) {
   const keyOf = (id: string) => `p:${id}`;
   const armRef = useRef<Arm>(null);
   const [armedId, setArmedId] = useState<string | null>(null);
@@ -81,6 +81,11 @@ export function Rail({ ws, agents, exited, onSelect, onFocusPane, onAddProject, 
                       {i + 1}
                     </span>
                   )}
+                  {/* Kropka przy projekcie: praca w panelach, których siatka jest schowana. */}
+                  <span
+                    className={`dot ${project.panes.some((p) => state[p.id]?.unread) ? "dot--unread" : "dot--hidden"}`}
+                    title={project.panes.some((p) => state[p.id]?.unread) ? "nowe wyjście w panelu" : ""}
+                  />
                   <span className="rail-name">{project.name}</span>
                   <span className="rail-count">{project.panes.length}</span>
                   <button
@@ -108,7 +113,7 @@ export function Rail({ ws, agents, exited, onSelect, onFocusPane, onAddProject, 
                   title={project.path}
                   onClick={() => onFocusPane(pane.id)}
                 >
-                  <span className={`dot ${exited[pane.id] ? "dot--off" : "dot--on"}`} />
+                  <span className={`dot ${dotClass(state[pane.id] ?? {})}`} />
                   <span>{name(pane.agentId)}</span>
                 </li>
               ))}

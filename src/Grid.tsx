@@ -1,6 +1,6 @@
 import { gridShape, type Project } from "./workspace";
 import type { AgentDef } from "./agents";
-import type { ExitInfo } from "./backend";
+import type { PaneState } from "./activity";
 import type { PaneActions, ProjectActions } from "./handlers";
 import { Pane } from "./Pane";
 
@@ -8,7 +8,7 @@ type Props = {
   projects: Project[];
   activeId: string | null;
   agents: AgentDef[];
-  exited: Record<string, ExitInfo>; // stage 9 adds the rest of the ephemeral state
+  state: Record<string, PaneState>; // stan ulotny (exit + aktywność), patrz src/activity.ts
   /** Panel, dla którego skrót z klawiatury uzbroił „Na pewno?” (etap 8). */
   armedPane: string | null;
   paneActions: PaneActions;
@@ -21,7 +21,7 @@ const agentById = (agents: AgentDef[], id: string) => agents.find((a) => a.id ==
  * One grid per project, all of them mounted: switching projects hides a grid with
  * `display: none`, it never unmounts (unmounting would kill the processes).
  */
-export function Grid({ projects, activeId, agents, exited, armedPane, paneActions, projectActions }: Props) {
+export function Grid({ projects, activeId, agents, state, armedPane, paneActions, projectActions }: Props) {
   return (
     <>
       {projects.map((project) => {
@@ -58,7 +58,9 @@ export function Grid({ projects, activeId, agents, exited, armedPane, paneAction
                     agent={agentById(agents, pane.agentId)}
                     focused={active && pane.id === project.focused}
                     maximized={project.maximized === pane.id}
-                    exited={exited[pane.id]}
+                    exited={state[pane.id]?.exited}
+                    working={state[pane.id]?.working}
+                    unread={state[pane.id]?.unread}
                     armed={pane.id === armedPane}
                     actions={paneActions}
                   />

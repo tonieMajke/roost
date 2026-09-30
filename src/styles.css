@@ -100,6 +100,12 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .dot { width: 6px; height: 6px; flex: none; border-radius: 50%; }
 .dot--on { background: var(--ok); }
 .dot--off { background: var(--muted); }
+/* Aktywność (etap 9): pracuje = pulsuje, nieprzeczytane = akcent, brak stanu = puste miejsce. */
+.dot--working { background: var(--accent); animation: dot-pulse 1s ease-in-out infinite; }
+.dot--unread { background: var(--accent); }
+.dot--hidden { background: transparent; }
+@keyframes dot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .dot--working { animation: none; } }
 
 .empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;

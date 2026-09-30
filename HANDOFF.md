@@ -2,6 +2,26 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## M1 Etap 9 – 2026-09-30
+Aktywność: `src/activity.ts` (czyste `onOutput`/`onResize`/`tick`, progi 2000/3000/500 ms, `dotClass`/`dotTitle`)
++ 11 testów. `Terminal` zgłasza każdy chunk od procesu (`onOutput`) i zmianę rozmiaru xtermu (`onRedraw`);
+`App` trzyma czasy w `useRef(Map)` (chunki nie restartują Reacta), `setInterval` 1 s → `tick`, a stan ulotny
+panelu to teraz `PaneState {exited, working, unread}` (zastąpił mapę `exited` w `Rail`/`Grid`/`Pane`).
+`unread` = wyjście panelu bez fokusu lub bez fokusu okna (`document.hasFocus()`), kasowane przy fokusie
+(też przy przejściu strzałką na inny projekt). Kropki: `.dot--working` (puls, `prefers-reduced-motion` wyłącza),
+`.dot--unread` (akcent), `.dot--hidden` (rezerwuie miejsce w wierszu projektu; akcent, gdy któryś panel ma `unread`).
+Powiadomienie: `src-tauri/src/notify.rs` = `notify-send -a Agents <tytuł> <treść>` (spawn, `wait` w wątku, bez `own_env`,
+błąd na stderr), mock = `console.info`; `notify` w `Backend` — bez nowej zależności i bez wpisu w capability (komenda aplikacji).
+Sprawdzenia: typecheck czysto, vitest 78/78, cargo test 11/11, cargo build 0 ostrzeżeń, `tauri` w `Cargo.lock` 2.12.0.
+`ui_audit` :5183 (1000 px + 390 px): 0 wysokich / 6 średnich (te same co w etapie 8: kompaktowe 4/8 px w chrome
+i siatka komórek xtermu). `x.onResize` w `Terminal.tsx` łączy `pty.resize` ze zgłoszeniem `onRedraw` (resize nie zmienia zachowania PTY).
+Niesprawdzone: BrowserOS znów niedostępny (`MCP server "browseros" not available`) → kropki obejrzane zrzutem `look`:
+`unread` na panelu pi i na wierszach Projekt A/B, `działa` na czytanym panelu; `working` (2 s po wyjściu) i `finished`
+(seria ≥ 3 s) nie do uchwycenia zrzutem — logika w testach, ścieżka renderowania ta sama co dla `unread`.
+W oknie Tauri `notify-send` i `document.hasFocus()` wołane po raz pierwszy.
+Ręcznie (użytkownik): długie zadanie w drugim panelu → pulsująca kropka; po ≥ 3 s ciszy powiadomienie
+„Agents: Claude — skończył pracę w <projekt>”; klik w panel kasuje akcentową kropkę; fokus okna = brak powiadomień.
+
 ## M1 Etap 8 – 2026-09-30
 Skróty: `src/keys.ts` (`commandFor`, table Ctrl+Alt+←/→/↑/↓, Enter, N, W, R, P, 1–9 oraz
 Ctrl+Shift+C/V; reszta → `null`, więc Ctrl+C i Ctrl+V zostają dla terminala). App: jeden

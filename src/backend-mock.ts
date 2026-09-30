@@ -125,4 +125,9 @@ export const mockBackend: Backend = {
     }
     return previewClipboard === "" ? null : previewClipboard;
   },
+
+  // Podgląd nie ma powiadomień pulpitu — zostaje log w konsoli dewelopera.
+  async notify(title, body) {
+    console.info(`[powiadomienie] ${title}: ${body}`);
+  },
 };

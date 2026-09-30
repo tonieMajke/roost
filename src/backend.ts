@@ -32,6 +32,8 @@ export interface Backend {
   copyText(text: string): Promise<void>;
   /** Tekst ze schowka (Ctrl+Shift+V); `null` = pusty schowek. */
   pasteText(): Promise<string | null>;
+  /** Powiadomienie na pulpicie, gdy panel bez fokusu skończył pracę. */
+  notify(title: string, body: string): Promise<void>;
 }
 
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;

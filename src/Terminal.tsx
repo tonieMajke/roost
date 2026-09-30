@@ -15,6 +15,10 @@ type Props = {
   focused?: boolean;
   onExit?: (info: ExitInfo) => void;
   onFocus?: () => void;
+  /** Bajty od procesu (aktywność panelu). */
+  onOutput?: () => void;
+  /** xterm zmienił rozmiar (panel widoczny, maksymalizacja, resize okna). */
+  onRedraw?: () => void;
   /** Uchwyt dla rodzica (App): kopiowanie zaznaczenia i wklejenie tekstu. */
   apiRef?: Ref<TerminalHandle>;
 };
@@ -30,7 +34,7 @@ export type TerminalHandle = {
  * One agent process rendered by xterm.js. The process lives exactly as long as the
  * component: the effect has no dependencies, so it restarts only under a new React key.
  */
-export function Terminal({ command, args, cwd, focused, onExit, onFocus, apiRef }: Props) {
+export function Terminal({ command, args, cwd, focused, onExit, onFocus, onOutput, onRedraw, apiRef }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm | undefined>(undefined);
   // Read once at mount; later prop changes must never restart the process.
@@ -42,6 +46,10 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus, apiRef 
   focusRef.current = onFocus;
   const focusedRef = useRef(focused);
   focusedRef.current = focused;
+  const outputRef = useRef(onOutput);
+  outputRef.current = onOutput;
+  const redrawRef = useRef(onRedraw);
+  redrawRef.current = onRedraw;
 
   useImperativeHandle(
     apiRef,
@@ -86,7 +94,10 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus, apiRef 
       fit.fit();
       // the webfont can land after the first measure, which changes the cell size
       document.fonts.ready.then(() => { if (!disposed) fit.fit(); }).catch(() => undefined);
-      x.onResize(({ cols, rows }) => pty?.resize(cols, rows));
+      x.onResize(({ cols, rows }) => {
+        pty?.resize(cols, rows);
+        redrawRef.current?.();
+      });
       x.onData((d) => pty?.write(d));
       observer.observe(el);
       x.textarea?.addEventListener("focus", () => focusRef.current?.());
@@ -94,7 +105,9 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus, apiRef 
         const handle = await backend.spawnPty(
           { ...spec0, cols: x.cols, rows: x.rows },
           (bytes) => {
-            if (!disposed) x.write(bytes);
+            if (disposed) return;
+            x.write(bytes);
+            outputRef.current?.();
           },
           (info) => {
             // A killed old run (restart/close) must not mark the pane's next run as exited.

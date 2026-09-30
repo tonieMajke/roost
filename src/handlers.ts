@@ -11,6 +11,10 @@ export type PaneActions = {
   exit(paneId: string, info: ExitInfo): void;
   /** Uchwyt terminala panelu (kopiuj/wklej); `null` gdy terminal znika. */
   registerTerminal(paneId: string, handle: TerminalHandle | null): void;
+  /** Bajty od procesu — aktywność panelu (patrz `src/activity.ts`). */
+  output(paneId: string): void;
+  /** Terminal przerysowany (resize): chwila ciszy, bo to nie praca agenta. */
+  redraw(paneId: string): void;
 };
 
 export type ProjectActions = {

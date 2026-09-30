@@ -52,4 +52,6 @@ export const tauriBackend: Backend = {
     const text = await readText();
     return text === "" ? null : text;
   },
+
+  notify: (title, body) => invoke<void>("notify", { title, body }),
 };

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { backend, inTauri, type ExitInfo } from "./backend";
+import { backend, inTauri } from "./backend";
 import type { AgentDef } from "./agents";
 import { tildify } from "./paths";
 import {
@@ -15,6 +15,15 @@ import {
 import { Rail } from "./Rail";
 import { Grid } from "./Grid";
 import { NewPaneDialog } from "./NewPaneDialog";
+import {
+  TICK_MS,
+  initialActivity,
+  onOutput as activityOutput,
+  onResize as activityResize,
+  tick as activityTick,
+  type Activity,
+  type PaneState,
+} from "./activity";
 import { commandFor, type Command } from "./keys";
 import { CONFIRM_MS, confirmClick, type Arm } from "./confirm";
 import type { TerminalHandle } from "./Terminal";
@@ -24,8 +33,10 @@ export function App() {
   const [ws, dispatch] = useReducer(reduce, emptyWorkspace);
   const [agents, setAgents] = useState<AgentDef[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
-  // Ephemeral only: never written to disk (stage 9 adds activity/unread here).
-  const [ephemeral, setEphemeral] = useState<Record<string, { exited?: ExitInfo }>>({});
+  // Ephemeral only: never written to disk (exit + aktywność z src/activity.ts).
+  const [ephemeral, setEphemeral] = useState<Record<string, PaneState>>({});
+  // Czasu wyjścia nie trzymamy w stanie: tysiące chunków na sekundę nie może restartować Reacta.
+  const activity = useRef(new Map<string, Activity>());
   const [notice, setNotice] = useState<string | null>(null);
   const [dialog, setDialog] = useState(false);
   const [lastAgentId, setLastAgentId] = useState<string | null>(null);
@@ -106,13 +117,20 @@ export function App() {
   );
   const active = activeProject(ws);
   const paneCount = active?.panes.length ?? 0;
+  const focusedId = active?.focused ?? null;
+  // Handlerzy spoza renderu (interwał, callbacki terminala) pytają o fokus przez ref.
+  const focusedRef = useRef<string | null>(focusedId);
+  focusedRef.current = focusedId;
   const lastIndex = useMemo(() => {
     const last = agents.findIndex((a) => a.id === lastAgentId);
     return last >= 0 ? last : Math.max(0, agents.findIndex((a) => a.id === defaultAgent?.id));
   }, [agents, lastAgentId, defaultAgent]);
 
   const forget = (ids: string[]) => {
-    for (const id of ids) terms.current.delete(id);
+    for (const id of ids) {
+      terms.current.delete(id);
+      activity.current.delete(id);
+    }
     setEphemeral((prev) => {
       if (!ids.some((id) => id in prev)) return prev;
       const next = { ...prev };
@@ -138,6 +156,16 @@ export function App() {
     registerTerminal: (paneId, handle) => {
       if (handle) terms.current.set(paneId, handle);
       else terms.current.delete(paneId);
+    },
+    output: (paneId) => {
+      activity.current.set(paneId, activityOutput(activity.current.get(paneId) ?? initialActivity, Date.now()));
+      if (paneId === focusedRef.current && document.hasFocus()) return; // użytkownik właśnie to czyta
+      setEphemeral((prev) =>
+        prev[paneId]?.unread ? prev : { ...prev, [paneId]: { ...prev[paneId], unread: true } },
+      );
+    },
+    redraw: (paneId) => {
+      activity.current.set(paneId, activityResize(activity.current.get(paneId) ?? initialActivity, Date.now()));
     },
   };
 
@@ -192,11 +220,65 @@ export function App() {
     },
   };
 
-  const exited = useMemo(() => {
-    const map: Record<string, ExitInfo> = {};
-    for (const [id, state] of Object.entries(ephemeral)) if (state.exited) map[id] = state.exited;
+  // Kto jest kim w powiadomieniu: paneId → nazwa agenta i projektu.
+  const paneInfo = useMemo(() => {
+    const map = new Map<string, { agent: string; project: string }>();
+    for (const p of ws.projects) {
+      for (const pane of p.panes) {
+        map.set(pane.id, {
+          agent: agents.find((a) => a.id === pane.agentId)?.name ?? pane.agentId,
+          project: p.name,
+        });
+      }
+    }
     return map;
-  }, [ephemeral]);
+  }, [ws.projects, agents]);
+  const paneInfoRef = useRef(paneInfo);
+  paneInfoRef.current = paneInfo;
+
+  // 1 Hz: kropka „pracuje”, a gdy panel skończył pracę i nikt na niego nie patrzy — powiadomienie.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const windowFocused = document.hasFocus();
+      const updates: { id: string; working: boolean; finished: boolean }[] = [];
+      for (const [id, a] of activity.current) {
+        const r = activityTick(a, now);
+        if (r.activity !== a) activity.current.set(id, r.activity);
+        updates.push({ id, working: r.working, finished: r.finished });
+      }
+      if (updates.length === 0) return;
+      setEphemeral((prev) => {
+        let next: Record<string, PaneState> | null = null;
+        for (const u of updates) {
+          const cur = prev[u.id];
+          if (cur === undefined && !u.working) continue; // nic do pokazania: nie mnożymy wpisów
+          if ((cur?.working ?? false) === u.working) continue;
+          next = next ?? { ...prev };
+          next[u.id] = { ...cur, working: u.working };
+        }
+        return next ?? prev;
+      });
+      for (const u of updates) {
+        if (!u.finished) continue;
+        if (u.id === focusedRef.current && windowFocused) continue; // exactly what is on screen
+        const info = paneInfoRef.current.get(u.id);
+        if (!info) continue;
+        void backend
+          .notify(`Agents: ${info.agent}`, `skończył pracę w ${info.project}`)
+          .catch((e: unknown) => setErrors((prev) => [...prev, `powiadomienie: ${String(e)}`]));
+      }
+    }, TICK_MS);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fokus panelu kasuje „nieprzeczytane” (też przy przejściu na inny projekt strzałką).
+  useEffect(() => {
+    if (focusedId === null) return;
+    setEphemeral((prev) =>
+      prev[focusedId]?.unread ? { ...prev, [focusedId]: { ...prev[focusedId], unread: false } } : prev,
+    );
+  }, [focusedId]);
 
   // "Na pewno?" po Ctrl+Alt+W wraca do ✕ po CONFIRM_MS (tak jak przy kliknięciu).
   useEffect(() => {
@@ -207,7 +289,7 @@ export function App() {
 
   const closeByShortcut = (paneId: string) => {
     // Panel bez żywego procesu zamyka się od razu; z procesem trzeba potwierdzić.
-    if (paneId in exited) {
+    if (ephemeral[paneId]?.exited) {
       armRef.current = null;
       paneActions.close(paneId);
       return;
@@ -223,7 +305,6 @@ export function App() {
   };
 
   const runCommand = (cmd: Command) => {
-    const focusedId = active?.focused ?? null;
     switch (cmd.type) {
       case "move":
         dispatch({ type: "move", dir: cmd.dir });
@@ -288,7 +369,7 @@ export function App() {
       <Rail
         ws={ws}
         agents={agents}
-        exited={exited}
+        state={ephemeral}
         onSelect={(id) => dispatch({ type: "selectProject", id })}
         onFocusPane={(id) => dispatch({ type: "focus", id })}
         onAddProject={projectActions.addProject}
@@ -343,7 +424,7 @@ export function App() {
                 projects={ws.projects}
                 activeId={ws.active}
                 agents={agents}
-                exited={exited}
+                state={ephemeral}
                 armedPane={armedPane}
                 paneActions={paneActions}
                 projectActions={projectActions}

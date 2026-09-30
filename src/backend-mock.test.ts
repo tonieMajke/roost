@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mockBackend } from "./backend-mock";
 import type { ExitInfo, PtyHandle } from "./backend";
 
@@ -92,6 +92,16 @@ describe("mock backend (tryb podglądu)", () => {
       expect(await mockBackend.pasteText()).toBeNull();
     } finally {
       if (nav) Object.defineProperty(nav, "clipboard", { value: real, configurable: true });
+    }
+  });
+
+  it("notify loguje się w konsoli podglądu", async () => {
+    const log = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    try {
+      await mockBackend.notify("Agents: Claude", "skończył pracę w projekt");
+      expect(log).toHaveBeenCalledWith("[powiadomienie] Agents: Claude: skończył pracę w projekt");
+    } finally {
+      log.mockRestore();
     }
   });
 });

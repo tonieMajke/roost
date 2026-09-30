@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { backend, type ExitInfo } from "./backend";
 import { buildArgs, type AgentDef } from "./agents";
+import { dotClass, dotTitle } from "./activity";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
@@ -13,6 +14,8 @@ type Props = {
   focused: boolean;
   maximized: boolean;
   exited?: ExitInfo;
+  working?: boolean;
+  unread?: boolean;
   /** true gdy skrót z klawiatury uzbroił „Na pewno?” na zamknięciu tego panelu. */
   armed?: boolean;
   actions: PaneActions;
@@ -21,7 +24,7 @@ type Props = {
 const exitLabel = (info: ExitInfo) => (info.signal ? `sygnał ${info.signal}` : `kod ${info.code}`);
 
 /** Frame around one terminal: header with agent, state and controls. */
-export function Pane({ pane, path, agent, focused, maximized, exited, armed, actions }: Props) {
+export function Pane({ pane, path, agent, focused, maximized, exited, working, unread, armed, actions }: Props) {
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armedClick, setArmedClick] = useState(false);
@@ -70,6 +73,7 @@ export function Pane({ pane, path, agent, focused, maximized, exited, armed, act
   };
 
   const showArmed = armed === true || armedClick;
+  const state = { exited, working, unread };
 
   return (
     <section
@@ -78,7 +82,10 @@ export function Pane({ pane, path, agent, focused, maximized, exited, armed, act
     >
       <header className="pane-head">
         <span className="pane-name">{agent?.name ?? pane.agentId}</span>
-        <span className={`dot ${exited ? "dot--off" : "dot--on"}`} title={exited ? exitLabel(exited) : "działa"} />
+        <span
+          className={`dot ${dotClass(state)}`}
+          title={dotTitle(state, exited ? exitLabel(exited) : "")}
+        />
         <span className="pane-tools">
           {agent?.session && (
             <button type="button" title="Nowa rozmowa" onClick={() => actions.newConversation(pane.id)}>
@@ -117,6 +124,8 @@ export function Pane({ pane, path, agent, focused, maximized, exited, armed, act
             apiRef={register.current}
             onExit={(info) => actions.exit(pane.id, info)}
             onFocus={() => actions.focus(pane.id)}
+            onOutput={() => actions.output(pane.id)}
+            onRedraw={() => actions.redraw(pane.id)}
           />
         )}
       </div>
