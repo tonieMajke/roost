@@ -39,7 +39,7 @@ export function Grid({ projects, activeId, agents, exited, paneActions, projectA
             {project.panes.length === 0 ? (
               <div className="empty">
                 <p>Brak paneli</p>
-                <button type="button" onClick={projectActions.addPane}>
+                <button type="button" onClick={projectActions.openPaneDialog}>
                   + Panel
                 </button>
               </div>

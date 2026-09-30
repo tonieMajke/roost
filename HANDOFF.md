@@ -2,6 +2,26 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## M1 Etap 6 – 2026-09-30
+„+ Projekt” (szyna i pusta siatka) pyta o katalog: `backend.pickDir()` = tauri-plugin-dialog
+`open({ directory: true })`, w podglądzie `prompt()`; anulowanie = nic, wynik → `dirExists` →
+`addProject` z `projectName(path)`. Ścieżki zapisywane z `~`: `tildify(path, home)` w `src/paths.ts`
+(4 testy), `home` z nowej komendy Rust `home_dir()` (mock → `/home/podglad`). Błąd pickera i
+nieistniejący katalog → komunikat w `.config-errors` z ✕ (stan ulotny `notice`, nie trafia do pliku).
+Panel: `src/NewPaneDialog.tsx` – kafelki agentów z numerem, 1–9 / klik / Enter dodaje i zamyka,
+↑↓ przechodzą, Esc i klik w tło zamykają; zaznaczone na starcie: ostatnio użyty agent (`lastAgentId`,
+stan ulotny). Logika klawiszy to czysta `dialogKey` w `src/new-pane.ts` (5 testów). `ProjectActions`:
+`addProject()` (async), `openPaneDialog()`, `addPane(agentId)`; „+ Panel” wyłączony bez aktywnego
+projektu i przy 16 panelach. Zależności: `@tauri-apps/plugin-dialog` 2.8.0 + `tauri-plugin-dialog` ~2.8,
+`dialog:allow-open` w capability (w Cargo.lock `tauri` nadal 2.12.0).
+Sprawdzenia: typecheck czysto, vitest 57/57 (11 nowych), cargo test 9/9, cargo build 0 ostrzeżeń.
+Podgląd :5183 (BrowserOS): projekt z promptu (nazwa „Agents workspace” + ścieżka w nagłówku), „2” →
+panel pi z `--session-id`, strzałka + Enter → panel Terminal, preselect = pi (ostatni użyty), Esc zamyka,
+siatka 1→2 kolumn bez restartu procesów. `ui_audit` :5183: 0 wysokich / 0 średnich / 0 niskich.
+Niesprawdzone: okno Tauri (prawdziwy dialog katalogu i `home_dir` po raz pierwszy wołane); w podglądzie
+`home` to `/home/podglad`, więc prawdziwych ścieżek nie skraca do `~` — skrót pilnują testy `tildify`.
+Czarny pasek pod terminalem w podglądzie = artefakt z etapu 5, do sprawdzenia w oknie (etap 11).
+
 ## Przegląd etapu 5 (Claude) – 2026-09-30
 Poprawione: stary proces po ⟳/✕ wołał `onExit` i gasił kropkę nowego uruchomienia (teraz ignorowane po
 odmontowaniu); każdy terminal robił `focus()` po starcie i przez `onFocus` przestawiał fokus modelu

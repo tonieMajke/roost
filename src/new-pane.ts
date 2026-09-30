@@ -1,0 +1,28 @@
+/** Klawisze okna „Nowy panel”: 1–9 i Enter wybierają agenta, strzałki przechodzą po liście, Esc zamyka. */
+
+export type DialogKey =
+  | { type: "pick"; index: number } // dodaj panel z tym agentem i zamknij
+  | { type: "move"; index: number } // przenieś zaznaczenie
+  | { type: "close" }
+  | null;
+
+/** `index` is the current selection, `count` the number of agents (only keys 1–9 exist). */
+export function dialogKey(key: string, index: number, count: number): DialogKey {
+  if (key === "Escape") return { type: "close" };
+  if (count === 0) return null;
+  const current = Math.min(Math.max(index, 0), count - 1);
+  if (/^[1-9]$/.test(key)) {
+    const target = Number(key) - 1;
+    return target < count ? { type: "pick", index: target } : null;
+  }
+  switch (key) {
+    case "ArrowUp":
+      return { type: "move", index: Math.max(0, current - 1) };
+    case "ArrowDown":
+      return { type: "move", index: Math.min(count - 1, current + 1) };
+    case "Enter":
+      return { type: "pick", index: current };
+    default:
+      return null;
+  }
+}

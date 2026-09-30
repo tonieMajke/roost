@@ -13,6 +13,7 @@ export type ProjectActions = {
   select(projectId: string): void;
   rename(projectId: string, name: string): void;
   remove(projectId: string): void;
-  addProject(): void; // stage 5: adds "~", the folder picker comes in stage 6
-  addPane(): void; // stage 5: adds a pane for the default agent
+  addProject(): void; // etap 6: pyta o katalog przez backend.pickDir()
+  openPaneDialog(): void; // otwiera okno wyboru agenta (etap 6)
+  addPane(agentId: string): void; // dodaje panel z tym agentem do aktywnego projektu
 };

@@ -10,7 +10,7 @@ Jeden etap = jedna sesja = jeden commit.
 - [x] Etap 3 – konfiguracja agentów i argumenty sesji
 - [x] Etap 4 – model workspace'u (czyste funkcje)
 - [x] Etap 5 – szyna projektów i siatka paneli
-- [ ] Etap 6 – dodawanie projektu i panelu
+- [x] Etap 6 – dodawanie projektu i panelu
 - [ ] Etap 7 – zapis i wznawianie
 - [ ] Etap 8 – skróty klawiszowe i schowek
 - [ ] Etap 9 – aktywność i powiadomienia

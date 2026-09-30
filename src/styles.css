@@ -102,13 +102,41 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .empty button { color: var(--accent); }
 
 .config-errors {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 4px 8px; background: #3a2318; color: #f0a58a; border-bottom: 1px solid var(--line); font-size: 12px;
+}
+.config-errors button {
+  flex: none; padding: 0 4px; height: 20px; line-height: 18px; font-size: 12px;
+  background: transparent; border-color: transparent; color: inherit;
 }
 .preview-badge {
   position: absolute; right: 10px; bottom: 8px; z-index: 10; pointer-events: none;
   padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
   background: rgba(36, 34, 32, 0.9); color: var(--accent); font-size: 12px;
 }
+
+/* dialog „Nowy panel” */
+.dialog-backdrop {
+  position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+  background: rgba(14, 13, 12, 0.64);
+}
+.dialog {
+  width: min(384px, calc(100% - 32px)); padding: 8px; outline: none;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.dialog h2 { margin: 0 0 8px; padding: 0 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.np-list { list-style: none; display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; }
+.np-tile {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px; text-align: left;
+  background: var(--bg);
+}
+.np-tile.is-active { border-color: var(--accent); }
+.np-key { flex: none; width: 12px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.np-tile.is-active .np-key { color: var(--accent); }
+.np-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-command { color: var(--muted); font: 12px "JetBrains Mono Variable", monospace; }
+.np-hint { margin: 8px 4px 0; color: var(--muted); font-size: 12px; }
 
 /* narrow window: the grid must shrink instead of pushing a horizontal scrollbar */
 @media (max-width: 720px) {

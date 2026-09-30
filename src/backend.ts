@@ -19,6 +19,10 @@ export interface Backend {
   loadAgents(): Promise<{ agents: AgentDef[]; errors: string[] }>;
   claudeSessionExists(id: string): Promise<boolean>;
   dirExists(path: string): Promise<boolean>;
+  /** Folder wybrany przez użytkownika; `null` = anulowanie. */
+  pickDir(): Promise<string | null>;
+  /** Katalog domowy, żeby zapisywać ścieżki jako `~/...` (patrz `src/paths.ts`). */
+  homeDir(): Promise<string>;
 }
 
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;

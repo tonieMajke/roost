@@ -1,4 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
 import type { Backend, ExitInfo } from "./backend";
 
@@ -32,4 +33,11 @@ export const tauriBackend: Backend = {
 
   claudeSessionExists: (id) => invoke<boolean>("claude_session_exists", { id }),
   dirExists: (path) => invoke<boolean>("dir_exists", { path }),
+
+  // `directory: true` answers with one path (or null when cancelled); multi-select is off.
+  async pickDir() {
+    const picked = await open({ directory: true, title: "Katalog projektu" });
+    return typeof picked === "string" ? picked : null;
+  },
+  homeDir: () => invoke<string>("home_dir"),
 };

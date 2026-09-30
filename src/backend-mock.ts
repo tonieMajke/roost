@@ -67,4 +67,12 @@ export const mockBackend: Backend = {
   loadAgents: async () => ({ agents: DEFAULT_AGENTS, errors: [] }),
   claudeSessionExists: async () => false,
   dirExists: async () => true,
+
+  // The browser has no folder picker, so the preview asks for a path in a prompt box.
+  async pickDir() {
+    const ask = typeof globalThis.prompt === "function" ? globalThis.prompt("Katalog projektu", "/home/podglad/projekt") : null;
+    const path = ask?.trim();
+    return path ? path : null;
+  },
+  homeDir: async () => "/home/podglad",
 };

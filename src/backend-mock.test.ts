@@ -53,6 +53,24 @@ describe("mock backend (tryb podglądu)", () => {
     expect(b.exits).toEqual([{ code: 1, signal: null }]);
   });
 
+  it("pickDir zwraca ścieżkę z promptu, anulowanie i puste to brak wyboru", async () => {
+    const real = globalThis.prompt;
+    try {
+      globalThis.prompt = () => "/home/podglad/projekt";
+      expect(await mockBackend.pickDir()).toBe("/home/podglad/projekt");
+      globalThis.prompt = () => "  ";
+      expect(await mockBackend.pickDir()).toBeNull();
+      globalThis.prompt = () => null;
+      expect(await mockBackend.pickDir()).toBeNull();
+    } finally {
+      globalThis.prompt = real;
+    }
+  });
+
+  it("homeDir to udany katalog domowy podglądu", async () => {
+    expect(await mockBackend.homeDir()).toBe("/home/podglad");
+  });
+
   it("kill kończy z kodem 0 po krótkiej chwili, jednorazowo", async () => {
     const { pty, exits } = await start();
     pty.kill();

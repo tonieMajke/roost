@@ -79,6 +79,12 @@ pub fn dir_exists(path: String) -> bool {
     Path::new(&crate::pty::expand(&path)).is_dir()
 }
 
+/// Home directory, so TS can store paths as `~/...` (see `tildify` in `src/paths.ts`).
+#[tauri::command]
+pub fn home_dir() -> Result<String, String> {
+    std::env::var("HOME").map_err(|_| "HOME is not set".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
