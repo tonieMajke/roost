@@ -4,6 +4,7 @@ mod handoff;
 mod limits;
 mod notify;
 mod pty;
+mod summary;
 
 use std::sync::OnceLock;
 
@@ -64,6 +65,7 @@ pub fn run() {
             config::workspace_backup,
             context::session_context,
             handoff::session_handoff,
+            summary::claude_summary,
             limits::claude_settings_arg,
             limits::claude_limits,
             notify::notify,

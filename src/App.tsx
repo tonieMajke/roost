@@ -23,7 +23,7 @@ import { AppearanceDialog } from "./AppearanceDialog";
 import { Dock } from "./Dock";
 import { TitleBar } from "./TitleBar";
 import { CONTEXT_POLL_MS, contextKind, contextTargets, sessionTitles, type SessionContext } from "./context";
-import { handoffText } from "./handoff";
+import { FALLBACK_MAX_CHARS, SUMMARY_SYSTEM, digestText, handoffText, summaryText } from "./handoff";
 import { FINISHED_TEXT, STARTED_TEXT, exitedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
 import { LIMITS_POLL_MS, type ClaudeLimits } from "./limits";
 import { TOAST_MS, toastText } from "./toast";
@@ -66,6 +66,10 @@ export function App() {
   const readSeq = useRef(new Map<string, { sent: number; done: number }>());
   const [winMax, setWinMax] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Panele, do których Haiku właśnie streszcza kontekst (M4); ref = strażnik w async sendContext.
+  const [summarizing, setSummarizing] = useState<string[]>([]);
+  const summarizingRef = useRef(summarizing);
+  summarizingRef.current = summarizing;
   const [dialog, setDialog] = useState(false);
   const [presetMenu, setPresetMenu] = useState(false);
   const [appearance, setAppearance] = useState(false);
@@ -353,14 +357,48 @@ export function App() {
       setNotice(`„${dst.agent}” nie przyjmuje wklejenia blokiem – kontekstu nie wysłano`);
       return;
     }
-    const h = await backend.sessionHandoff(kind, pane.sessionId).catch(() => null);
-    if (!h) {
-      setNotice(`Nie udało się odczytać rozmowy „${src.agent}”`);
+    if (summarizingRef.current.includes(to)) return; // jedno streszczenie naraz do danego panelu
+    // Ref od razu (drugie upuszczenie przed renderem też ma go widzieć), stan dla plakietki w siatce.
+    const busy = (on: boolean) => {
+      const next = on ? [...summarizingRef.current, to] : summarizingRef.current.filter((id) => id !== to);
+      summarizingRef.current = next;
+      setSummarizing(next);
+    };
+    busy(true);
+    let text: string;
+    let failed: string | null = null;
+    try {
+      const h = await backend.sessionHandoff(kind, pane.sessionId).catch(() => null);
+      if (!h) {
+        setNotice(`Nie udało się odczytać rozmowy „${src.agent}”`);
+        return;
+      }
+      const source = { agent: src.agent, project: src.project, projectPath: src.path, home: home.current };
+      // Streszcza Haiku przez program claude z agents.json (źródłem może być też pi).
+      const claude = agents.find((a) => a.command.split("/").pop() === "claude")?.command ?? "claude";
+      setNotice(`Streszczam rozmowę „${src.agent}” (Haiku)…`);
+      try {
+        text = summaryText(await backend.claudeSummary(claude, SUMMARY_SYSTEM, digestText(h, source)), source);
+      } catch (e) {
+        failed = e instanceof Error ? e.message : String(e);
+        text = handoffText(h, source, FALLBACK_MAX_CHARS);
+      }
+    } finally {
+      busy(false);
+    }
+    // Po kilku sekundach cel mógł się zamknąć albo wyjść z trybu wklejania blokiem.
+    const target = terms.current.get(to);
+    if (!target?.bracketedPaste()) {
+      setNotice(`„${dst.agent}” nie przyjmuje już wklejenia blokiem – kontekstu nie wysłano`);
       return;
     }
-    term.paste(handoffText(h, { agent: src.agent, project: src.project, projectPath: src.path, home: home.current }));
+    target.paste(text);
     dispatch({ type: "focus", id: to });
-    setNotice(`Wklejono kontekst z „${src.agent}” – dopisz polecenie i wciśnij Enter`);
+    setNotice(
+      failed === null
+        ? `Wklejono streszczenie z „${src.agent}” – dopisz polecenie i wciśnij Enter`
+        : `Streszczenie nie wyszło (${failed}) – wklejono skrócony wyciąg z „${src.agent}”`,
+    );
     addFeed(from, [`przekazał kontekst → ${dst.agent}`]);
   };
 
@@ -727,6 +765,7 @@ export function App() {
                 contexts={contexts}
                 armedPane={armedPane}
                 closing={closing}
+                summarizing={summarizing}
                 paneActions={paneActions}
                 projectActions={projectActions}
               />

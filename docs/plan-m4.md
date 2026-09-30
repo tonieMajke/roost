@@ -24,10 +24,13 @@ Co ma działać po M4:
   a Tauri na Linuksie przechwytuje natywne przeciąganie (`dragDropEnabled`).
 - **Uchwyt = `.pane-head`** bez przycisków `.tools`. Terminal nie jest uchwytem
   (przeciąganie w nim zaznacza tekst).
-- **Przekazanie = wklejenie, bez Entera, bez LLM.** Wyciąg składany deterministycznie
+- **Przekazanie = wklejenie, bez Entera.** Wyciąg składany deterministycznie
   z pliku sesji (ten sam odczyt co etapy 8–9 M2). Wklejenie przez `TerminalHandle.paste`
-  (bracketed paste: claude pokaże „[Pasted text …]”, nic się nie wysyła). Streszczenie
-  przez `claude -p` – poza M4 (koszt limitów, kilkanaście sekund czekania).
+  (bracketed paste: claude pokaże „[Pasted text …]”, nic się nie wysyła).
+  **Zmiana po etapie 4 (użytkownik, 2026-10-01):** surowy wyciąg to „całość”, a miał być
+  skompresowany kontekst – wyciąg streszcza teraz Haiku (`claude -p`, kilka–kilkanaście s,
+  trochę limitu subskrypcji). Długość wybiera model, górna granica 1500 znaków. Gdy się
+  nie uda – surowy wyciąg ucięty do 2500 znaków.
 - Nic nie zapisujemy w katalogu projektu ani w `~/.claude` / `~/.pi` – tylko odczyt.
 
 ## Postęp
@@ -36,6 +39,7 @@ Co ma działać po M4:
 - [x] Etap 2 (C) – przeciąganie i kulka
 - [x] Etap 3 (L) – wyciąg rozmowy w Rust
 - [x] Etap 4 (C) – Shift = przekazanie kontekstu
+- [x] Etap 4b (C) – streszczenie wyciągu przez Haiku
 - [ ] Etap 5 (C + użytkownik) – sprawdzenie w oknie
 
 ---

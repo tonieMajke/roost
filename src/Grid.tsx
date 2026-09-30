@@ -38,6 +38,8 @@ type Props = {
   armedPane: string | null;
   /** Panele w trakcie animacji zamknięcia (`is-closing`). */
   closing: ReadonlySet<string>;
+  /** Panele, do których Haiku streszcza przekazywany kontekst (plakietka „streszczam…”). */
+  summarizing: readonly string[];
   paneActions: PaneActions;
   projectActions: ProjectActions;
 };
@@ -74,6 +76,7 @@ export function Grid({
   contexts,
   armedPane,
   closing,
+  summarizing,
   paneActions,
   projectActions,
 }: Props) {
@@ -210,6 +213,7 @@ export function Grid({
                   <div
                     key={pane.id}
                     data-pane={pane.id}
+                    data-busy={summarizing.includes(pane.id) ? "summary" : undefined}
                     className={`pane-cell${isMax ? " is-maxed" : ""}`}
                     style={
                       {

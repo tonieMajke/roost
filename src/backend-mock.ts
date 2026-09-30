@@ -111,6 +111,12 @@ export const mockBackend: Backend = {
       commands: ["pnpm test"],
     };
   },
+  // Podgląd: udawane 1,5 s pracy Haiku; wejście z „fail” w wyciągu = błąd (ścieżka zapasowa).
+  async claudeSummary(_command, _system, input) {
+    await new Promise((r) => setTimeout(r, 1500));
+    if (input.includes("fail")) throw new Error("kod 1: podgląd");
+    return "- naprawiono relativeTime w src/feed.ts (liczył minuty od złej chwili)\n- dodano test w src/feed.test.ts, pnpm test przechodzi\n- otwarte: test na pusty katalog";
+  },
   // Podgląd: bez linii statusu (procesy są udawane), limity zmyślone względem teraz.
   claudeSettingsArg: async () => null,
   async claudeLimits() {

@@ -15,6 +15,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M4 Etap 4b – 2026-10-01 (Claude, master)
+
+- Powód: użytkownik w oknie – „przerzuca całość, a nie skompaktowany kontekst”. Wybrał streszczenie przez Haiku.
+- Rust `summary.rs`, komenda `claude_summary(command, system, input)`: `claude -p --model haiku --no-session-persistence --tools "" --strict-mcp-config --disable-slash-commands --setting-sources "" --system-prompt …`, wyciąg na stdin, cwd = katalog tymczasowy (bez CLAUDE.md), limit 60 s (potem kill), błąd = kod + pierwsza linia stderr. `--bare` odpada – nie czyta logowania OAuth (subskrypcji). 4 testy na `sh`.
+- TS `handoff.ts`: `SUMMARY_SYSTEM` (punkty, po polsku, cel/zrobione/decyzje/pliki/otwarte, „tak krótko jak się da”, maks. `SUMMARY_MAX_CHARS` = 1500), `digestText` (wejście), `summaryText` (nagłówek „Streszczony kontekst…”, ucięcie, bez `\r`, „Moje polecenie: ”), `handoffText(…, max)` – zapasowy wyciąg 2500 znaków. 4 nowe testy.
+- App `sendContext`: panel celu `data-busy="summary"` (pulsująca ramka + plakietka „streszczam…”, bez pulsu przy `motion-lite`/reduced motion), toast „Streszczam rozmowę „X” (Haiku)…”; po odpowiedzi ponowne sprawdzenie bracketed paste celu. Błąd = skrócony wyciąg + toast z powodem. Jedno streszczenie naraz na panel. Streszcza program claude z agents.json także dla źródła pi.
+- Sprawdzenia: typecheck czysty, vitest 212/212, cargo test (summary 4/4), cargo build 0 ostrzeżeń. Ręcznie `claude -p` z tym poleceniem: wyciąg ~1,2 tys. znaków → 5 punktów, ~450 znaków, 12 s.
+- Niesprawdzone: w oknie Tauri (plakietka, czas, prawdziwa rozmowa). Mock podglądu: 1,5 s, stałe streszczenie.
+
 ## M4 Etap 4 – 2026-10-01 (Claude, gałąź `worktree-m4`)
 
 - `drag.ts`: `dragMode(shift, maRozmowę)` → `swap | handoff | blocked`, `modeTarget` (kontekst przyjmuje tylko panel, który może go wkleić) + testy.
