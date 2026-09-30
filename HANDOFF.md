@@ -2,6 +2,27 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## M1 Etap 5 – 2026-09-30
+UI na modelu z etapu 4: `App.tsx` = `useReducer(reduce, emptyWorkspace)` + stan ulotny `Record<paneId,{exited}>`
+(agenci wyłącznie z `backend.loadAgents()`, stała `AGENTS` usunięta, błędy w pasku `.config-errors`);
+`Rail.tsx` (220 px, panele pod każdym projektem, dwuklik na nazwie = edycja, ✕ z dwuklikiem), `Grid.tsx`
+(wszystkie siatki zamontowane, nieaktywne `display:none`; maksymalizacja = 1×1 + `display:none` na reszcie),
+`Pane.tsx` (nagłówek 26 px; przed montażem `Terminal` pyta `claudeSessionExists` i liczy `buildArgs`),
+`Terminal.tsx` (efekt z `[]` – proces żyje tylko z kluczem `${pane.id}:${pane.run}`, `focused` → `term.focus()`,
+`onFocus` z `textarea`), `confirm.ts` + 5 testów (dwuklik „Na pewno?”, 3 s, czysta funkcja). Klucze Reacta
+i id (`crypto.randomUUID`) tworzy wywołujący (`handlers.ts` = typy callbacków).
+Sprawdzenia: typecheck czysto, vitest 46/46 (5 nowych), cargo test 9/9, cargo build 0 ostrzeżeń.
+Podgląd :5183 (klikane w BrowserOS): 1/3/5 paneli → cols 1/2/3; maksymalizacja i przywrócenie zachowują
+napisany tekst (proces nie zrestartowany); fokus z szyny; zamknięcie środkowego panelu po dwukliku;
+dwuklik na nazwie → pole edycji → Enter zapisuje; ✕ przy projekcie zamyka projekt i jego panele (pusty start).
+`ui_audit` :5183: 0 wysokich / 0 średnich / 0 niskich (poprawione: 11 px → 12 px w szynie, minimaksy paneli,
+media query <720 px, `.pi/` z referencjami w `.gitignore`).
+Niesprawdzone: okno Tauri. Przełączenie **dwóch** projektów nie do przejścia w podglądzie: „+ Projekt” dodaje
+zawsze `~`, a `addProject` deduplikuje po ścieżce → drugiego projektu nie da się utworzyć przed etapem 6
+(logikę pilnują testy `reduce`: fokus/select między projektami). Artefakt wizualny: cienki poziomy pasek pod
+terminalem xterm w podglądzie Chromium – nie znika po regułach `overflow`/`.scrollbar`, nie pochodzi z układu
+z etapu 5; do sprawdzenia w oknie Tauri (etap 11).
+
 ## M1 Etap 4 – 2026-09-30
 Model workspace'u bez Reacta w `src/workspace.ts`: typy `Pane/Project/Preset/Workspace`, `emptyWorkspace`,
 `MAX_PANES = 16`, `gridShape` (cols = ceil(√n)), `neighbor` (poza siatkę → bez zmiany; w dół do dziury

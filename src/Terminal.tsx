@@ -11,18 +11,30 @@ type Props = {
   command: string;
   args?: string[];
   cwd?: string;
+  focused?: boolean;
   onExit?: (info: ExitInfo) => void;
+  onFocus?: () => void;
 };
 
-/** One agent process rendered by xterm.js. The process lives as long as the component. */
-export function Terminal({ command, args, cwd, onExit }: Props) {
+/**
+ * One agent process rendered by xterm.js. The process lives exactly as long as the
+ * component: the effect has no dependencies, so it restarts only under a new React key.
+ */
+export function Terminal({ command, args, cwd, focused, onExit, onFocus }: Props) {
   const host = useRef<HTMLDivElement>(null);
+  const term = useRef<XTerm | undefined>(undefined);
+  // Read once at mount; later prop changes must never restart the process.
+  const spec = useRef({ command, args, cwd });
+  spec.current = { command, args, cwd };
   const exitRef = useRef(onExit);
   exitRef.current = onExit;
+  const focusRef = useRef(onFocus);
+  focusRef.current = onFocus;
 
   useEffect(() => {
     const el = host.current!;
-    const term = new XTerm({
+    const spec0 = spec.current;
+    const x = new XTerm({
       fontFamily: FONT,
       fontSize: 13,
       cursorBlink: true,
@@ -30,10 +42,11 @@ export function Terminal({ command, args, cwd, onExit }: Props) {
       scrollback: 5000,
       theme: { background: "#1a1918", foreground: "#e8e6e3" },
     });
+    term.current = x;
     const fit = new FitAddon();
-    term.loadAddon(fit);
-    term.loadAddon(new Unicode11Addon());
-    term.unicode.activeVersion = "11";
+    x.loadAddon(fit);
+    x.loadAddon(new Unicode11Addon());
+    x.unicode.activeVersion = "11";
 
     let pty: PtyHandle | undefined;
     let disposed = false;
@@ -46,35 +59,45 @@ export function Terminal({ command, args, cwd, onExit }: Props) {
       // xterm measures the cell once; the font has to be there first.
       await document.fonts.load(`13px ${FONT}`).catch(() => undefined);
       if (disposed) return;
-      term.open(el);
+      x.open(el);
       fit.fit();
-      term.onResize(({ cols, rows }) => pty?.resize(cols, rows));
-      term.onData((d) => pty?.write(d));
+      // the webfont can land after the first measure, which changes the cell size
+      document.fonts.ready.then(() => { if (!disposed) fit.fit(); }).catch(() => undefined);
+      x.onResize(({ cols, rows }) => pty?.resize(cols, rows));
+      x.onData((d) => pty?.write(d));
       observer.observe(el);
+      x.textarea?.addEventListener("focus", () => focusRef.current?.());
       try {
         const handle = await backend.spawnPty(
-          { command, args, cwd, cols: term.cols, rows: term.rows },
-          (bytes) => term.write(bytes),
+          { ...spec0, cols: x.cols, rows: x.rows },
+          (bytes) => x.write(bytes),
           (info) => {
-            term.write(`\r\n\x1b[2m[proces zakończony: ${info.signal ?? `kod ${info.code}`}]\x1b[0m\r\n`);
+            x.write(`\r\n\x1b[2m[proces zakończony: ${info.signal ?? `kod ${info.code}`}]\x1b[0m\r\n`);
             exitRef.current?.(info);
           },
         );
         if (disposed) handle.kill();
         else pty = handle;
       } catch (e) {
-        term.write(`\x1b[31mNie udało się uruchomić: ${String(e)}\x1b[0m\r\n`);
+        x.write(`\x1b[31mNie udało się uruchomić: ${String(e)}\x1b[0m\r\n`);
       }
-      term.focus();
+      x.focus();
     })();
 
     return () => {
       disposed = true;
       observer.disconnect();
       pty?.kill();
-      term.dispose();
+      x.dispose();
+      term.current = undefined;
     };
-  }, [command, cwd, JSON.stringify(args)]);
+    // The process depends on the React key only, that is the whole design.
+  }, []);
+
+  // The pane owns clicks; when it becomes the focused one its terminal takes the keyboard.
+  useEffect(() => {
+    if (focused) term.current?.focus();
+  }, [focused]);
 
   return <div className="terminal" ref={host} />;
 }

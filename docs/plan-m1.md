@@ -9,7 +9,7 @@ Jeden etap = jedna sesja = jeden commit.
 - [x] Etap 2 – warstwa backendu i tryb podglądu w przeglądarce
 - [x] Etap 3 – konfiguracja agentów i argumenty sesji
 - [x] Etap 4 – model workspace'u (czyste funkcje)
-- [ ] Etap 5 – szyna projektów i siatka paneli
+- [x] Etap 5 – szyna projektów i siatka paneli
 - [ ] Etap 6 – dodawanie projektu i panelu
 - [ ] Etap 7 – zapis i wznawianie
 - [ ] Etap 8 – skróty klawiszowe i schowek

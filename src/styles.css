@@ -3,24 +3,117 @@
   --panel: #242220;
   --line: #3a3734;
   --text: #e8e6e3;
+  --muted: #9a948e;
   --accent: #d97757;
+  --ok: #79b38b;
+  --radius: 6px;
   color-scheme: dark;
 }
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); font: 13px system-ui, sans-serif; overflow: hidden; }
-.app { display: flex; flex-direction: column; height: 100%; }
-.bar { display: flex; gap: 8px; padding: 8px; background: var(--panel); border-bottom: 1px solid var(--line); }
-.bar select, .bar input, .bar button {
-  background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font: inherit;
+button {
+  background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 4px 8px; font: inherit; cursor: pointer;
 }
-.bar input { flex: 1; font-family: "JetBrains Mono Variable", monospace; }
-.bar button:hover { border-color: var(--accent); }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { color: var(--muted); cursor: default; }
+button.is-on { color: var(--accent); border-color: var(--accent); }
+button.is-confirm { color: var(--accent); border-color: var(--accent); }
+.app { display: flex; height: 100%; overflow: hidden; }
+
+/* left rail: projects and their panes */
+.rail { width: 220px; flex: none; display: flex; flex-direction: column; background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; }
+.rail-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px; color: var(--muted); font-size: 12px; text-transform: uppercase;
+}
+.rail-head button { padding: 0 8px; height: 20px; line-height: 16px; }
+.rail-list { list-style: none; margin: 0; padding: 0 4px 8px; }
+.rail-project + .rail-project { margin-top: 2px; }
+.rail-row {
+  display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 4px;
+  border-radius: var(--radius); cursor: pointer;
+}
+.rail-row:hover { background: #2c2926; }
+.rail-project.is-active > .rail-row { background: #33302c; }
+.rail-project.is-active > .rail-row .rail-name { color: var(--text); }
+.rail-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.rail-close { display: none; padding: 0 4px; height: 20px; line-height: 18px; border-color: transparent; background: transparent; }
+.rail-row:hover .rail-close, .rail-close.is-confirm { display: block; }
+.rail-close.is-confirm { width: auto; padding: 0 4px; font-size: 12px; color: var(--accent); }
+.rail-edit {
+  flex: 1; min-width: 0; height: 20px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--accent); border-radius: var(--radius); padding: 0 4px; font: inherit;
+}
+.rail-panes { list-style: none; margin: 0; padding: 0 0 0 12px; }
+.rail-pane {
+  display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 4px;
+  border-radius: var(--radius); color: var(--muted); cursor: pointer;
+}
+.rail-pane:hover { background: #2c2926; color: var(--text); }
+.rail-pane.is-focused { color: var(--text); }
+
+/* grid area */
+.area { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.area-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  min-height: 36px; flex: none; padding: 0 8px 0 12px; border-bottom: 1px solid var(--line);
+}
+.area-id { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
+.area-name { font-size: 14px; font-weight: 500; }
+.area-path {
+  color: var(--muted); font: 12px "JetBrains Mono Variable", monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.area-tools { display: flex; align-items: center; gap: 8px; flex: none; }
+.area-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.grids { flex: 1; min-height: 0; position: relative; }
+/* each project grid fills the area; the inactive ones are hidden, never unmounted */
+.project-grid { position: absolute; inset: 4px; display: grid; gap: 4px; }
+.pane-cell { min-width: 0; min-height: 0; overflow: hidden; }
+
+.pane {
+  display: flex; flex: 1; flex-direction: column; min-width: 120px; min-height: 120px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+}
+.pane.is-focused { border-color: var(--accent); }
+.pane-head {
+  display: flex; align-items: center; gap: 8px; height: 26px; flex: none;
+  padding: 0 4px 0 8px; background: #2a2724; border-bottom: 1px solid var(--line);
+}
+.pane-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.pane-tools { display: flex; gap: 4px; }
+.pane-tools button { padding: 0 4px; height: 20px; line-height: 18px; background: transparent; border-color: transparent; }
+.pane-tools button:hover:not(:disabled) { border-color: var(--accent); }
+.pane-tools .is-confirm { width: 64px; font-size: 12px; color: var(--accent); }
+.pane-body { flex: 1; min-height: 0; padding: 4px; }
+.terminal { width: 100%; height: 100%; overflow: hidden; }
+
+.dot { width: 6px; height: 6px; flex: none; border-radius: 50%; }
+.dot--on { background: var(--ok); }
+.dot--off { background: var(--muted); }
+
+.empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  height: 100%; color: var(--muted);
+}
+.empty p { margin: 0; }
+.empty button { color: var(--accent); }
+
 .config-errors {
   padding: 4px 8px; background: #3a2318; color: #f0a58a; border-bottom: 1px solid var(--line); font-size: 12px;
 }
-.terminal { flex: 1; min-height: 0; padding: 4px 0 0 8px; }
 .preview-badge {
-  position: fixed; right: 10px; bottom: 8px; z-index: 10; pointer-events: none;
+  position: absolute; right: 10px; bottom: 8px; z-index: 10; pointer-events: none;
   padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
   background: rgba(36, 34, 32, 0.9); color: var(--accent); font-size: 12px;
+}
+
+/* narrow window: the grid must shrink instead of pushing a horizontal scrollbar */
+@media (max-width: 720px) {
+  .rail { width: 160px; }
+  .area-path { display: none; }
+  .area-head { padding: 0 4px 0 8px; }
+  .pane-tools button { padding: 0; width: 20px; }
 }
