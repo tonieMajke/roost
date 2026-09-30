@@ -94,6 +94,29 @@ export function sessionTitles(projects: Project[], contexts: Record<string, Sess
   return out;
 }
 
+/** Terminal titles programs keep that say nothing about the conversation. */
+const GENERIC_TERM_TITLES = new Set(["claude", "claude code", "pi"]);
+
+/**
+ * Title a program set with OSC 0/2 (claude: "✳ Naprawa paska xterm", with a spinner in
+ * place of ✳ while it works). The leading status marks go: the pane shows the state itself,
+ * and without them a spinner frame does not count as a new title. Blank or generic = none.
+ */
+export function cleanTermTitle(raw: string): string | null {
+  const text = raw.replace(/^[^\p{L}\p{N}]+/u, "").replace(/\s+/g, " ").trim().slice(0, 80).trim();
+  return text === "" || GENERIC_TERM_TITLES.has(text.toLowerCase()) ? null : text;
+}
+
+/** Pane titles: the live terminal title wins, the session file title fills in (resumed, not started yet). */
+export function paneTitles(
+  session: Record<string, string>,
+  term: Record<string, { termTitle?: string | null }>,
+): Record<string, string> {
+  const out = { ...session };
+  for (const [id, s] of Object.entries(term)) if (s.termTitle) out[id] = s.termTitle;
+  return out;
+}
+
 /** Meter of one pane, or `null` when its agent has none (shell, unknown program, no session). */
 export function paneMeter(
   pane: Pane,

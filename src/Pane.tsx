@@ -24,6 +24,8 @@ type Props = {
   state: PaneState; // stan ulotny: proces + aktywność
   /** Miernik kontekstu w nagłówku; `null` = agent bez miernika. */
   meter: ContextMeter | null;
+  /** Tytuł rozmowy (terminal albo plik sesji); brak = sama nazwa agenta. */
+  title?: string;
   /** Trwa animacja `paneOut`; reduktor zamknie panel po PANE_OUT_MS. */
   closing: boolean;
   /** true gdy skrót z klawiatury uzbroił „Na pewno?” na zamknięciu tego panelu. */
@@ -39,7 +41,7 @@ const claudeSettingsArg = () => (settingsArg ??= backend.claudeSettingsArg().cat
 export const PANE_OUT_MS = 190;
 
 /** Frame around one terminal: header with agent, state and controls. */
-export function Pane({ pane, path, agent, accent, fontSize, focused, maximized, state, meter, closing, armed, actions }: Props) {
+export function Pane({ pane, path, agent, accent, fontSize, focused, maximized, state, meter, title, closing, armed, actions }: Props) {
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armedClick, setArmedClick] = useState(false);
@@ -107,7 +109,12 @@ export function Pane({ pane, path, agent, accent, fontSize, focused, maximized, 
         <span className="ag-badge" aria-hidden>
           {name.charAt(0).toUpperCase()}
         </span>
-        <span className="pane-name">{name}</span>
+        <span className={`pane-name${title ? " has-title" : ""}`}>{name}</span>
+        {title && (
+          <span className="pane-title" title={title}>
+            {title}
+          </span>
+        )}
         <span className="pane-state">{status.text}</span>
         {meter && (
           <span
@@ -159,6 +166,7 @@ export function Pane({ pane, path, agent, accent, fontSize, focused, maximized, 
             onFocus={() => actions.focus(pane.id)}
             onOutput={() => actions.output(pane.id)}
             onRedraw={() => actions.redraw(pane.id)}
+            onTitle={(t) => actions.title(pane.id, t)}
           />
         )}
       </div>

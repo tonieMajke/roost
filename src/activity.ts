@@ -56,6 +56,8 @@ export type PaneState = {
   unread?: boolean;
   /** Przez DONE_MS po zdarzeniu `finished` (fala `wave` na panelu). */
   done?: boolean;
+  /** Tytuł terminala ustawiony przez program (OSC 0/2), po `cleanTermTitle`. */
+  termTitle?: string | null;
 };
 
 /** Jak długo panel po skończonej pracy ma klasę `st-done` (animacja `wave` trwa 1,5 s). */

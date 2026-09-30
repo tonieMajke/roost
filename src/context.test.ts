@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS, type AgentDef } from "./agents";
-import { claudeWindow, contextKind, contextLimit, contextMeter, contextTargets, formatTokens, paneMeter, sessionTitles } from "./context";
+import { claudeWindow, contextKind, contextLimit, contextMeter, contextTargets, formatTokens, paneMeter, paneTitles, sessionTitles, cleanTermTitle } from "./context";
 
 const [claude, pi, shell] = DEFAULT_AGENTS;
 
@@ -111,5 +111,33 @@ describe("sessionTitles", () => {
       project("b", [{ id: "4", sessionId: "s3" }, { id: "5", sessionId: "s9" }]),
     ];
     expect(sessionTitles(projects, contexts)).toEqual({ "1": "Naprawa paska", "4": "Etap 11" });
+  });
+});
+
+describe("cleanTermTitle", () => {
+  it("drops claude's status mark and spinner frames", () => {
+    expect(cleanTermTitle("✳ Naprawa paska xterm")).toBe("Naprawa paska xterm");
+    expect(cleanTermTitle("⠐ Naprawa paska xterm")).toBe("Naprawa paska xterm");
+    expect(cleanTermTitle("  ✶  Tytuły   sesji ")).toBe("Tytuły sesji");
+  });
+
+  it("gives none for blank or generic titles", () => {
+    expect(cleanTermTitle("")).toBeNull();
+    expect(cleanTermTitle("✳ ")).toBeNull();
+    expect(cleanTermTitle("✳ Claude Code")).toBeNull();
+    expect(cleanTermTitle("pi")).toBeNull();
+  });
+
+  it("keeps a shell title and cuts long ones", () => {
+    expect(cleanTermTitle("majke@host:~/x")).toBe("majke@host:~/x");
+    expect(cleanTermTitle("a".repeat(200))).toHaveLength(80);
+  });
+});
+
+describe("paneTitles", () => {
+  it("prefers the live terminal title over the session file", () => {
+    const session = { "1": "Z pliku", "2": "Tylko plik" };
+    const term = { "1": { termTitle: "Na żywo" }, "3": { termTitle: "Powłoka" }, "4": { termTitle: null }, "5": {} };
+    expect(paneTitles(session, term)).toEqual({ "1": "Na żywo", "2": "Tylko plik", "3": "Powłoka" });
   });
 });

@@ -24,6 +24,8 @@ export type PaneActions = {
   output(paneId: string): void;
   /** Terminal przerysowany (resize): chwila ciszy, bo to nie praca agenta. */
   redraw(paneId: string): void;
+  /** Surowy tytuł terminala panelu (OSC 0/2), wołany przy każdej klatce spinnera. */
+  title(paneId: string, raw: string): void;
 };
 
 export type ProjectActions = {

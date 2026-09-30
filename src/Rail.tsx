@@ -10,6 +10,8 @@ type Props = {
   ws: Workspace;
   agents: AgentDef[];
   state: Record<string, PaneState>;
+  /** Tytuł rozmowy według id panelu: odróżnia kilka paneli tego samego agenta. */
+  titles: Record<string, string>;
   /** Projekt, którego panel skończył pracę, gdy patrzono gdzie indziej — jednorazowy `ping`. */
   pingId: string | null;
   onSelect(projectId: string): void;
@@ -31,6 +33,7 @@ export function Rail({
   ws,
   agents,
   state,
+  titles,
   pingId,
   onSelect,
   onFocusPane,
@@ -159,7 +162,9 @@ export function Rail({
                         onClick={() => onFocusPane(pane.id)}
                       >
                         <span className="ag-dot" />
-                        <span className="pane-row-name">{name(pane.agentId)}</span>
+                        <span className="pane-row-name" title={titles[pane.id]}>
+                          {titles[pane.id] ?? name(pane.agentId)}
+                        </span>
                         <span className="pane-row-state">{r.text}</span>
                       </div>
                     );

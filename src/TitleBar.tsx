@@ -4,8 +4,13 @@ import { Copy, Minus, Square, X } from "lucide-react";
 import { IconButton } from "./IconButton";
 
 /** Pasek tytułu w UI (okno bez dekoracji systemowych): przeciąganie, min/max/zamknij. */
-export function TitleBar({ onMaximized }: { onMaximized: (max: boolean) => void }) {
+export function TitleBar({ title, onMaximized }: { title: string; onMaximized: (max: boolean) => void }) {
   const [maximized, setMaximized] = useState(false);
+
+  // Tytuł okna systemu: pasek zadań i Alt+Tab pokazują temat rozmowy w fokusie.
+  useEffect(() => {
+    void getCurrentWindow().setTitle(title).catch(() => undefined);
+  }, [title]);
 
   useEffect(() => {
     const win = getCurrentWindow();
@@ -31,8 +36,8 @@ export function TitleBar({ onMaximized }: { onMaximized: (max: boolean) => void 
   return (
     <div className="titlebar" data-tauri-drag-region onDoubleClick={() => void win.toggleMaximize()}>
       <span className="titlebar-mark" aria-hidden />
-      <span className="titlebar-title" data-tauri-drag-region>
-        Agents
+      <span className="titlebar-title" data-tauri-drag-region title={title}>
+        {title}
       </span>
       <div className="titlebar-btns" onDoubleClick={(e) => e.stopPropagation()}>
         <IconButton icon={Minus} label="Minimalizuj" onClick={() => void win.minimize()} />

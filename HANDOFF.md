@@ -15,6 +15,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## Tytuły rozmów z terminala – 2026-10-01 (Claude, master)
+
+- Użytkownik gubił się w panelach: nagłówek i szyna pokazywały tylko „Claude”, tytuł był wyłącznie w pulpicie. W zwykłej konsoli claude ustawia tytuł terminala (OSC 0/2, „✳ temat”), a xterm go tu łapał, tylko nikt tego nie odczytywał.
+- `Terminal` → `onTitle` (`x.onTitleChange`), `PaneActions.title` → `ephemeral[paneId].termTitle` po `cleanTermTitle` (`src/context.ts`: bez znaczka ✳/spinnera, „Claude Code”/„pi”/puste = brak). Render tylko przy nowym temacie, nie przy klatce spinnera.
+- `paneTitles`: tytuł terminala wygrywa, plik sesji (`sessionTitles`) uzupełnia. Tytuł widać w nagłówku panelu (`.pane-title`), w wierszu panelu na szynie (zamiast nazwy agenta; kolor kropki zostaje) i w pulpicie.
+- Tytuł okna = temat panelu w fokusie + „ — Agents” (`TitleBar` → `setTitle`, uprawnienie `core:window:allow-set-title`; w podglądzie `document.title`).
+- Sprawdzenia: typecheck, vitest 216/216, cargo test 39/39, cargo build — OK.
+- Niesprawdzone w oknie: jak wygląda nagłówek z długim tytułem, czy KDE pokazuje tytuł okna na pasku zadań, jakie tytuły ustawia pi i powłoka.
+
 ## Uchwyty zmiany rozmiaru + instalacja – 2026-10-01 (Claude, master)
 
 - Użytkownik w oknie (AppImage `c69831e`): pasek i rogi OK, krawędzie „średnio łapią”, zwłaszcza rogi. Tauri ma na sztywno 5 px (`BORDERLESS_RESIZE_INSET`).

@@ -40,6 +40,8 @@ type Props = {
   onOutput?: () => void;
   /** xterm zmienił rozmiar (panel widoczny, maksymalizacja, resize okna). */
   onRedraw?: () => void;
+  /** Program ustawił tytuł terminala (OSC 0/2) — claude pisze tam krótki temat rozmowy. */
+  onTitle?: (title: string) => void;
   /** Uchwyt dla rodzica (App): kopiowanie zaznaczenia i wklejenie tekstu. */
   apiRef?: Ref<TerminalHandle>;
 };
@@ -60,7 +62,7 @@ export type TerminalHandle = {
  * One agent process rendered by xterm.js. The process lives exactly as long as the
  * component: the effect has no dependencies, so it restarts only under a new React key.
  */
-export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13, focused, onExit, onStart, onFocus, onOutput, onRedraw, apiRef }: Props) {
+export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13, focused, onExit, onStart, onFocus, onOutput, onRedraw, onTitle, apiRef }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm | undefined>(undefined);
   // Read once at mount; later prop changes must never restart the process.
@@ -78,6 +80,8 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13
   outputRef.current = onOutput;
   const redrawRef = useRef(onRedraw);
   redrawRef.current = onRedraw;
+  const titleRef = useRef(onTitle);
+  titleRef.current = onTitle;
   const fitRef = useRef<FitAddon | undefined>(undefined);
   // Przewinięty w górę: pokazuje przycisk „na dół” (scrollback do 3000 wierszy to długa droga).
   const [scrolledUp, setScrolledUp] = useState(false);
@@ -149,6 +153,7 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13
         const b = x.buffer.active;
         setScrolledUp(b.viewportY < b.baseY);
       };
+      x.onTitleChange((t) => titleRef.current?.(t));
       x.onScroll(syncScrolled);
       x.onWriteParsed(syncScrolled); // nowe wyjście przy przewiniętym widoku: baseY rośnie, viewportY stoi
       observer.observe(el);

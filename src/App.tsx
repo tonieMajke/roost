@@ -22,7 +22,7 @@ import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
-import { CONTEXT_POLL_MS, contextKind, contextTargets, sessionTitles, type SessionContext } from "./context";
+import { CONTEXT_POLL_MS, cleanTermTitle, contextKind, contextTargets, paneTitles, sessionTitles, type SessionContext } from "./context";
 import { FALLBACK_MAX_CHARS, SUMMARY_SYSTEM, digestText, handoffText, summaryText } from "./handoff";
 import { FINISHED_TEXT, STARTED_TEXT, exitedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
 import { LIMITS_POLL_MS, type ClaudeLimits } from "./limits";
@@ -234,6 +234,13 @@ export function App() {
     redraw: (paneId) => {
       activity.current.set(paneId, activityResize(activity.current.get(paneId) ?? initialActivity, Date.now()));
     },
+    // Spinner claude zmienia tytuł kilka razy na sekundę; render tylko przy nowym temacie.
+    title: (paneId, raw) => {
+      const termTitle = cleanTermTitle(raw);
+      setEphemeral((prev) =>
+        (prev[paneId]?.termTitle ?? null) === termTitle ? prev : { ...prev, [paneId]: { ...prev[paneId], termTitle } },
+      );
+    },
   };
 
   const projectActions: ProjectActions = {
@@ -326,7 +333,17 @@ export function App() {
   const paneInfoRef = useRef(paneInfo);
   paneInfoRef.current = paneInfo;
   // Tytuły rozmów do pulpitu: szybkie znalezienie panelu po tym, o czym jest rozmowa.
-  const titles = useMemo(() => sessionTitles(ws.projects, contexts), [ws.projects, contexts]);
+  // Żywy tytuł terminala wygrywa, plik sesji uzupełnia (wznowiona rozmowa, zanim claude go ustawi).
+  const titles = useMemo(
+    () => paneTitles(sessionTitles(ws.projects, contexts), ephemeral),
+    [ws.projects, contexts, ephemeral],
+  );
+  // Okno (pasek zadań, przełącznik okien) nosi temat panelu w fokusie, jak zwykła konsola z claude.
+  const focusedTitle = focusedId ? titles[focusedId] : undefined;
+  const windowTitle = focusedTitle ? `${focusedTitle} — Agents` : "Agents";
+  useEffect(() => {
+    document.title = windowTitle; // podgląd w przeglądarce; w Tauri okno ustawia TitleBar
+  }, [windowTitle]);
 
   // Tylko refy i settery: woła to też interwał sprzed wielu renderów.
   const addFeed = (paneId: string, texts: string[]) => {
@@ -684,13 +701,14 @@ export function App() {
 
   return (
     <div className={`shell${winMax ? " is-max" : ""}`}>
-    {inTauri && <TitleBar onMaximized={setWinMax} />}
+    {inTauri && <TitleBar title={windowTitle} onMaximized={setWinMax} />}
     {inTauri && !winMax && <ResizeEdges />}
     <div className={`app ${uiClasses(ws.ui)}`}>
       <Rail
         ws={ws}
         agents={agents}
         state={ephemeral}
+        titles={titles}
         pingId={pingId}
         onSelect={(id) => dispatch({ type: "selectProject", id })}
         onFocusPane={(id) => dispatch({ type: "focus", id })}
@@ -764,6 +782,7 @@ export function App() {
                 motion={ws.ui.motion}
                 state={ephemeral}
                 contexts={contexts}
+                titles={titles}
                 armedPane={armedPane}
                 closing={closing}
                 summarizing={summarizing}

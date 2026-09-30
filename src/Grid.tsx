@@ -34,6 +34,8 @@ type Props = {
   state: Record<string, PaneState>; // stan ulotny (exit + aktywność), patrz src/activity.ts
   /** Ostatni odczyt kontekstu według `sessionId` (miernik `.ctx`). */
   contexts: Record<string, SessionContext>;
+  /** Tytuł rozmowy według id panelu (`paneTitles`). */
+  titles: Record<string, string>;
   /** Panel, dla którego skrót z klawiatury uzbroił „Na pewno?” (etap 8). */
   armedPane: string | null;
   /** Panele w trakcie animacji zamknięcia (`is-closing`). */
@@ -74,6 +76,7 @@ export function Grid({
   motion,
   state,
   contexts,
+  titles,
   armedPane,
   closing,
   summarizing,
@@ -235,6 +238,7 @@ export function Grid({
                       maximized={isMax}
                       state={state[pane.id] ?? NO_STATE}
                       meter={paneMeter(pane, agentById(agents, pane.agentId), contexts)}
+                      title={titles[pane.id]}
                       closing={closing.has(pane.id)}
                       armed={pane.id === armedPane}
                       actions={paneActions}

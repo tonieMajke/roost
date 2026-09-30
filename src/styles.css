@@ -67,7 +67,7 @@ html, body { background: transparent; } /* okno jest przezroczyste: rogi zaokrą
 }
 .titlebar-mark { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); flex: none; }
 .titlebar-title {
-  flex: 1; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--muted);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--muted);
   letter-spacing: 0.04em; margin-right: 12px; /* równoważy znaczek po lewej */
 }
 .titlebar-btns { display: flex; gap: 2px; }
@@ -262,6 +262,12 @@ kbd {
 .pane-name {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+}
+/* z tytułem rozmowy nazwa agenta nie ustępuje miejsca, skraca się tytuł */
+.pane-name.has-title { flex: none; }
+.pane-title {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; color: var(--text);
 }
 .pane-state {
   /* --muted zamiast --faint ze wzoru: 10,5 px potrzebuje kontrastu */
@@ -556,7 +562,7 @@ button.feed-item {
 
 /* focused pane header */
 .fh-fill .pane.is-focused .pane-head { background: var(--ag, var(--accent)); color: var(--on-ag); }
-.fh-fill .pane.is-focused .pane-name { color: var(--on-ag); }
+.fh-fill .pane.is-focused .pane-name, .fh-fill .pane.is-focused .pane-title { color: var(--on-ag); }
 .fh-fill .pane.is-focused .icon { color: var(--on-ag); }
 .fh-fill .pane.is-focused .icon:hover:not(:disabled) { background: var(--on-ag-hover); }
 .fh-fill .pane.is-focused .ag-badge { background: var(--on-ag); color: var(--ag, var(--accent)); }
