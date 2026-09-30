@@ -15,6 +15,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## Pasek tytułu w UI + zaokrąglone rogi – 2026-10-01 (Claude, master, commit `5325bd3`)
+
+- Zrobione: okno bez dekoracji systemowych (`tauri.conf.json`: `decorations: false`, `transparent: true`), własny pasek `src/TitleBar.tsx` (przeciąganie `data-tauri-drag-region`, dwuklik = maksymalizacja, min/max/przywróć/zamknij przez `getCurrentWindow()`), ramka `.shell` w `App.tsx` (kolumna: TitleBar + `.app`), rogi `--r-win: 10px`, po maksymalizacji `is-max` = proste. Uprawnienia w `capabilities/default.json`: `allow-minimize`, `allow-toggle-maximize`, `allow-close`, `allow-start-dragging`, `allow-is-maximized`. Pasek tylko w Tauri (`inTauri`), w podglądzie go nie ma.
+- Pułapka: `html, body { background: transparent }` musi wygrać z dawnym `body { background }` – ta druga reguła została usunięta; inaczej rogi są zamalowane na kwadrat.
+- Sprawdzenia: typecheck czysty, vitest 212/212. Użytkownik potwierdził w oknie (`pnpm desktop`), że pasek i rogi działają – przed scaleniami M4.
+- Niesprawdzone: wygląd po scaleniach M4 (nikt nie uruchomił `pnpm desktop` po nich); zmiana rozmiaru za krawędzie/rogi bez ramki systemowej (jeśli uchwyt łapie słabo – własne uchwyty); dialogi przyciemniają tylko `.app`, nie pasek.
+- Jak uruchomić: w osobnym terminalu, poza aplikacją Agents: `env -u PYTHONHOME -u PYTHONPATH pnpm desktop` (wcześniej zamknąć okno Agents i stary Vite na porcie 5183, inaczej „Port 5183 is already in use”). Sesja Claude działająca *w* panelu Agents nie może jej zrestartować.
+- Zrzut ekranu na KDE/Wayland: `spectacle -b -n -f -o plik.png` (`grim` nie działa – brak protokołu wlroots).
+
 ## M4 Etap 5 – 2026-10-01 (użytkownik, okno Tauri)
 
 - Przeciąganie paneli działa. Shift = przekazanie: w celu wkleiło się streszczenie Haiku (nagłówek, 3 punkty, „Moje polecenie: ” bez Entera). Źródłem była krótka rozmowa testowa – na długiej sesji jeszcze nie sprawdzone.
