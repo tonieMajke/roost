@@ -25,6 +25,12 @@ function benchMode(): boolean {
 function benchSpinner(onData: (b: Uint8Array) => void): ReturnType<typeof setInterval> {
   const frames = "·✢✳✶✻✽";
   let n = 0;
+  // Historia do przewijania: kolorowe linie jak odpowiedź agenta z kodem.
+  let dump = "";
+  for (let i = 0; i < 1500; i++) {
+    dump += `\x1b[38;5;${(i % 6) + 70}m${String(i).padStart(4)}\x1b[0m  const wynik = await backend.sessionContext(kind, id); \x1b[2m// linia ${i}\x1b[0m\r\n`;
+  }
+  onData(enc(dump));
   return setInterval(() => {
     n++;
     if (n % 20 === 0) onData(enc(`\r\x1b[2K● Linia wyjścia numer ${n / 20}: czytam plik src/App.tsx i coś w nim zmieniam\r\n`));

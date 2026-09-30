@@ -15,6 +15,17 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## Płynność 2: przewijanie – bez warstwy nad terminalem – 2026-10-01 (Claude, master)
+
+- Po `4d09f48` w oknie: CPU 38% (było 67–92%), ale użytkownik: „skrolowanie terminala nadal laguje”. Okno ma 1921×1363, głębia 32 (przezroczyste), monitory 5120×2160@165 Hz i 3440×1440@240 Hz.
+- Stanowisko rozszerzone o przewijanie: `WheelEvent` co klatkę na `.xterm-screen`, czasy `requestAnimationFrame` przez 4 s, okno 1921×1363; mock w `aw-bench` wypisuje na start 1500 linii historii.
+- Wnioski: każdy krok poświaty przemalowywał wszystkie pracujące panele naraz (p95 klatki 35 ms nawet bez przewijania). Nawet **statyczny** rozmyty cień `.glow` nad terminalem kosztuje (p95 37 ms), bo WebKit maluje go przy każdej zmianie terminala pod spodem. Zewnętrzny blask panelu też (+4 ms p95).
+- Sprawdzony i odrzucony: `@xterm/addon-webgl` 0.19 (WebGL2 jest mimo braku kompozycji) – przewijanie bez zysku (p95 37 vs 36 ms, bez animacji 23 vs 23), nie zostaje w zależnościach.
+- Zmiana: „Poświata” = ostra ramka 1 px w kolorze agenta, bez rozmycia i animacji; „oddycha” napis stanu w nagłówku (`.pane-state`, mały obszar, wyłączony przy `motion-lite`/reduced motion). `breatheGlow` usunięte.
+- Wynik 1921×1363, 3 pracujące panele: przewijanie średnio 29,9 → 18,5 ms/klatkę, p95 38 → 29 ms; CPU WebKita 95,5% → 43,5%. Podłoga bez animacji i ramki: 31,6% – reszta to xterm DOM (spinnery 10×/s).
+- Sprawdzenia: typecheck, vitest 216/216, cargo test 39/39, cargo build – OK.
+- Niesprawdzone: odczucie w prawdziwym oknie; koszt przezroczystego okna (32 bit, KWin) – stanowisko poza ekranem go nie mierzy.
+
 ## Płynność: animacje bez kompozycji WebKita – 2026-10-01 (Claude, master)
 
 - Objaw: lagi. Pomiar w oknie (AppImage `8f86ac8`): `WebKitWebProcess` 67–92% jednego rdzenia, gdy agent tylko „pracuje” (spinner). Cały koszt w głównym wątku: przy `WEBKIT_DISABLE_COMPOSITING_MODE=1` + `LIBGL_ALWAYS_SOFTWARE=1` każda klatka animacji to malowanie na CPU.

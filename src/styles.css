@@ -192,7 +192,7 @@ kbd {
 @keyframes fold { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .proj.has-work .proj-dot, .pane-row.st-working .ag-dot, .proj.ping .proj-dot,
-  .proj-panes, .pane.st-working .glow, .pane.st-done .glow { animation: none; }
+  .proj-panes, .pane.st-working .pane-state, .pane.st-done .glow { animation: none; }
 }
 
 /* zwiń szyny (Ctrl+Alt+B): 56 px samych <kbd> i kropek */
@@ -576,13 +576,12 @@ button.feed-item {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ag, var(--accent)) 25%, transparent), var(--focus-shadow);
 }
 
-/* working indicator on the .glow layer. Poświata przykrywa cały panel, więc każda klatka to
-   przemalowanie panelu z terminalem pod spodem (na CPU): ~9 kroków/s zamiast 60 kl./s,
-   pomiar 2 pracujące panele 73% → 28% CPU procesu WebKit. */
-.pane.st-working .glow {
-  box-shadow: inset 0 0 0 1px var(--ag), inset 0 0 36px -10px var(--ag);
-  animation: breatheGlow 2.6s steps(12, jump-none) infinite;
-}
+/* working indicator on the .glow layer. Warstwa leży nad terminalem, a WebKit bez kompozycji
+   maluje ją na CPU przy każdej zmianie terminala pod spodem: rozmyty cień (nawet statyczny)
+   i animacja opacity rwały przewijanie (p95 klatki 37 ms → 27 ms, okno 1921×1363).
+   Dlatego ostra ramka 1 px, a „oddycha” tylko napis stanu w nagłówku (mały obszar). */
+.pane.st-working .glow { box-shadow: inset 0 0 0 1px var(--ag); opacity: 1; }
+.pane.st-working .pane-state { animation: breathe 1.4s ease-in-out infinite; }
 /* Skan jeździ płynnie, ale tylko po pasku 2 px: koszt to powierzchnia przemalowania (46% → 16%). */
 .work-scan .pane.st-working .glow {
   inset: 0 0 auto 0; height: 2px;
@@ -592,7 +591,6 @@ button.feed-item {
   animation: scan 1.3s linear infinite;
 }
 .pane.st-done .glow { animation: wave 1.5s var(--ease) 1 both; }
-@keyframes breatheGlow { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 @keyframes wave {
   0% { opacity: 0; box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 0 transparent; }
   12% { opacity: 1; }
@@ -680,5 +678,5 @@ button.feed-item {
 .motion-lite .pane, .motion-lite .grid, .motion-lite .pane-cell, .motion-lite .dialog,
 .motion-lite .tile, .motion-lite .toast, .motion-lite .proj-panes, .motion-lite .dock,
 .motion-lite .settings, .motion-lite .bar span, .motion-lite .feed-item { animation: none !important; }
-.motion-lite .pane.st-working .glow { animation: none; opacity: 0.6; }
+.motion-lite .pane.st-working .pane-state { animation: none; }
 .motion-lite .pane.st-done .glow { animation: none; }
