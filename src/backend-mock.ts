@@ -90,6 +90,15 @@ export const mockBackend: Backend = {
       ? { tokens: tokens * 5, model: "claude-sonnet-5-5", window: null, tools }
       : { tokens, model: "Flash-Next-NVFP4", window: 262_144, tools };
   },
+  // Podgląd: stały wyciąg, żeby było widać wklejenie w panelu docelowym.
+  async sessionHandoff(kind) {
+    return {
+      prompts: ["napraw testy w src/feed.ts", "a teraz dodaj test na pusty katalog"],
+      replies: [`Poprawione (${kind}): relativeTime liczył minuty od złej chwili.`],
+      files: ["/home/podglad/demo/src/feed.ts", "/home/podglad/demo/src/feed.test.ts"],
+      commands: ["pnpm test"],
+    };
+  },
   // Podgląd: bez linii statusu (procesy są udawane), limity zmyślone względem teraz.
   claudeSettingsArg: async () => null,
   async claudeLimits() {

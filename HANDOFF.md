@@ -15,6 +15,14 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M4 Etap 3 – 2026-09-30 (Claude, gałąź `worktree-m4`)
+
+- Rust `handoff.rs`: `session_handoff(kind, session_id) -> Option<{prompts, replies, files, commands}>`, ogon 1 MB (`context::read_last`; 256 KB mierników bez zmian). Z `context.rs` tylko `pub(crate)` dla `Kind`, `valid_id`, `find_session` + `read_last` – bo `user_prompt`/`session_title` z niezacommitowanych zmian głównej kopii nie ma jeszcze w `HEAD` (osobny moduł = mniej konfliktów przy scalaniu).
+- Wyciąg: 5 promptów (≤ 800 znaków, claude bez linii od `<` i `isMeta`), 3 teksty asystenta (≤ 1500), pliki z Edit/Write/MultiEdit/NotebookEdit (pi: edit/write) najnowsze pierwsze bez powtórzeń (≤ 20), 5 poleceń Bash/bash w jednej linii (≤ 120). Bez `isSidechain`. Ucięcia na granicy znaku + „…”. Pusta rozmowa = `None`. 4 testy na fixture (bez prawdziwego `~/.claude`/`~/.pi`).
+- TS `src/handoff.ts` + testy: `handoffText` – nagłówek „Kontekst przekazany z innej sesji (agent · projekt)…”, sekcje (puste pominięte), ścieżki względem projektu (przez `tildify`), na końcu „Moje polecenie: ”, ≤ 8000 znaków (najpierw odpadają stare odpowiedzi, potem stare prompty), bez `\r`. `backend.sessionHandoff` (Tauri + stały wyciąg w mocku).
+- Sprawdzenia: typecheck czysty, vitest 194/194, cargo test 29/29, cargo build 0 ostrzeżeń.
+- Niesprawdzone: wyciąg z prawdziwych plików claude/pi (format ustalony z etapów 8–9).
+
 ## M4 Etap 2 – 2026-09-30 (Claude, gałąź `worktree-m4`)
 
 - `src/drag.ts` + testy: próg 6 px, `dropTarget` (pudełka w układzie okna, własny panel/przerwa = brak), sprężyna `follow` liczona od `dt`, `stretch` (≤ 1,15), `shrinkTo` (pudełko → kulka 48 px; `border-radius: 50%` + skala niejednorodna = koło).

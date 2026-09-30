@@ -34,7 +34,7 @@ Co ma działać po M4:
 
 - [x] Etap 1 (L) – zamiana paneli w modelu + skrót klawiszowy
 - [x] Etap 2 (C) – przeciąganie i kulka
-- [ ] Etap 3 (L) – wyciąg rozmowy w Rust
+- [x] Etap 3 (L) – wyciąg rozmowy w Rust
 - [ ] Etap 4 (C) – Shift = przekazanie kontekstu
 - [ ] Etap 5 (C + użytkownik) – sprawdzenie w oknie
 
