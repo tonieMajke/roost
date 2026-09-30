@@ -15,6 +15,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M4 Etap 4 – 2026-10-01 (Claude, gałąź `worktree-m4`)
+
+- `drag.ts`: `dragMode(shift, maRozmowę)` → `swap | handoff | blocked`, `modeTarget` (kontekst przyjmuje tylko panel, który może go wkleić) + testy.
+- `usePaneDrag`: Shift z `pointermove` i z `keydown/keyup` (bez ruchu myszy też przełącza; Shift i Esc w locie nie trafiają do terminala). Duch `data-mode`: akcent + ikona `Send` (SVG lucide wklejony, duch jest poza Reactem) + etykieta „kontekst →”; źródło bez rozmowy – szara kulka „brak rozmowy”, upuszczenie = powrót. Cel: `data-drag="handoff"` (obrys + plakietka „wklej kontekst” pod nagłówkiem). Upuszczenie: kulka wsiąka w cel, cel dostaje falę `wave` (`data-drag="soak"`, 700 ms).
+- **Bezpieczeństwo wklejenia:** `xterm.paste` zamienia `\n` na `\r`, więc bez bracketed paste każda linia poszłaby jako Enter. `TerminalHandle.bracketedPaste()` (`modes.bracketedPasteMode`), `PaneActions.acceptsPaste` – panel bez tego trybu nie jest celem, a `sendContext` sprawdza to jeszcze raz przed wklejeniem. Nigdy nie wysyłamy `\r`.
+- App `sendContext`: `sessionHandoff` → `handoffText` → `paste` do celu → fokus celu, toast „Wklejono kontekst z „X” – dopisz polecenie i wciśnij Enter”, w „Na żywo” „przekazał kontekst → Y”; błąd odczytu = toast, nic nie wklejamy.
+- Mock: claude/pi włączają bracketed paste (`\x1b[?2004h`) jak prawdziwe, udawana powłoka nie; wklejony blok nie „wciska” Entera.
+- Sprawdzenia: typecheck czysty, vitest 196/196, cargo test 29/29, cargo build 0 ostrzeżeń. Podgląd (BiDi, headless Firefox): Shift claude→pi wkleja wyciąg bez Entera, fokus na pi, toast i zdarzenie; Shift z powłoki = „brak rozmowy”, bez zmian; Shift nad powłoką bez bracketed paste = brak celu; Shift wciśnięty/puszczony w locie przełącza cel `target`↔`handoff`; bez Shiftu dalej zamiana. 0 duchów po każdym locie.
+- Niesprawdzone: prawdziwe claude/pi w oknie (czy pi przyjmuje 8000 znaków blokiem, jak claude zwija wklejenie).
+
 ## M4 Etap 3 – 2026-09-30 (Claude, gałąź `worktree-m4`)
 
 - Rust `handoff.rs`: `session_handoff(kind, session_id) -> Option<{prompts, replies, files, commands}>`, ogon 1 MB (`context::read_last`; 256 KB mierników bez zmian). Z `context.rs` tylko `pub(crate)` dla `Kind`, `valid_id`, `find_session` + `read_last` – bo `user_prompt`/`session_title` z niezacommitowanych zmian głównej kopii nie ma jeszcze w `HEAD` (osobny moduł = mniej konfliktów przy scalaniu).

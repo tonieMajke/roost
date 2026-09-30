@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { BUILT_IN_PRESETS } from "./presets";
 import type { AgentDef } from "./agents";
 import type { PaneState } from "./activity";
-import { paneMeter, type SessionContext } from "./context";
+import { contextKind, paneMeter, type SessionContext } from "./context";
 import type { PaneActions, ProjectActions } from "./handlers";
 import { Pane } from "./Pane";
 import { usePaneDrag } from "./usePaneDrag";
@@ -142,6 +142,12 @@ export function Grid({
     enabled: !!active && active.panes.length > 1 && active.maximized === null,
     animate: motionAllowed(motion, reducedMotion()),
     onDrop: (from, to) => paneActions.swap(from, to),
+    canSend: (id) => {
+      const pane = active?.panes.find((p) => p.id === id);
+      return !!pane?.sessionId && contextKind(agentById(agents, pane.agentId)) !== null;
+    },
+    canReceive: (id) => !state[id]?.exited && paneActions.acceptsPaste(id),
+    onHandoff: (from, to) => paneActions.handoff(from, to),
   });
 
   // Węzły komórek w kolejności utworzenia: zamiana paneli zmienia tylko `order` (patrz mountOrder).

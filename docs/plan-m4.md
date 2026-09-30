@@ -35,7 +35,7 @@ Co ma działać po M4:
 - [x] Etap 1 (L) – zamiana paneli w modelu + skrót klawiszowy
 - [x] Etap 2 (C) – przeciąganie i kulka
 - [x] Etap 3 (L) – wyciąg rozmowy w Rust
-- [ ] Etap 4 (C) – Shift = przekazanie kontekstu
+- [x] Etap 4 (C) – Shift = przekazanie kontekstu
 - [ ] Etap 5 (C + użytkownik) – sprawdzenie w oknie
 
 ---
@@ -129,8 +129,10 @@ puste sekcje pominięte; całość ≤ 8000 znaków (ucinamy najpierw odpowiedzi
   „wklej kontekst” w nagłówku celu).
 - Źródło bez rozmowy (`contextKind` = `null`, np. powłoka) – w trybie Shift kulka szara,
   etykieta „brak rozmowy”, upuszczenie = nic (kulka wraca).
-- Cel: dowolny panel z działającym procesem, inny niż źródło. Cel zakończony (`exited`) –
-  nieaktywny.
+- Cel: dowolny panel z działającym procesem, inny niż źródło, **którego program włączył
+  bracketed paste** (`xterm.modes.bracketedPasteMode`). Bez tego `paste` wysyła nowe linie
+  jako Enter, czyli wyciąg wykonałby się linia po linii. Cel zakończony (`exited`) albo bez
+  bracketed paste – nieaktywny.
 - Upuszczenie: `sessionHandoff` → `handoffText` → `paste` do uchwytu terminala celu
   (`registerTerminal` już je trzyma) → fokus celu. Kulka „wsiąka” w cel (skala do 0 +
   jednorazowa fala `box-shadow` jak przy końcu pracy). **Żadnego `\r`.**

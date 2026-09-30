@@ -4,13 +4,23 @@ import {
   DROP_MS,
   MORPH_MS,
   boxCenter,
+  dragMode,
   dropTarget,
+  modeTarget,
   follow,
   pastThreshold,
   shrinkTo,
   stretch,
+  type DragMode,
   type Point,
 } from "./drag";
+
+/** Czas „wsiąkania” kontekstu w panel docelowy (fala jak przy końcu pracy). */
+const SOAK_MS = 700;
+
+// Ikona `Send` z lucide (ducha tworzymy poza Reactem).
+const SEND_SVG =
+  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>';
 import type { Box } from "./motion";
 
 type Options = {
@@ -19,6 +29,12 @@ type Options = {
   /** Ruch dekoracyjny (motionAllowed): bez niego żeton bez zwijania, sprężyny i powrotu. */
   animate: boolean;
   onDrop(from: string, to: string): void;
+  /** Panel ma rozmowę, z której da się zrobić wyciąg (claude/pi z `session`). */
+  canSend(id: string): boolean;
+  /** Panel może przyjąć wklejenie (proces działa). */
+  canReceive(id: string): boolean;
+  /** Upuszczenie z Shiftem: wyciąg rozmowy `from` wklejony do `to`. */
+  onHandoff(from: string, to: string): void;
 };
 
 type Session = {
@@ -28,6 +44,8 @@ type Session = {
   pointer: Point;
   grid: HTMLElement;
   cell: HTMLElement;
+  shift: boolean;
+  mode: DragMode;
   // Od startu lotu:
   boxes?: Map<string, Box>;
   target?: string | null;
@@ -96,12 +114,15 @@ function createDrag(optsRef: { readonly current: Options }) {
     ghost.className = "drag-ghost";
     if (color) ghost.style.setProperty("--ag", color);
     ghost.style.transform = translate(s.pos);
-    ghost.innerHTML = `<div class="drag-pop"><div class="drag-blob"></div><span class="drag-letter"></span></div>`;
+    ghost.innerHTML =
+      `<div class="drag-pop"><div class="drag-blob"></div><span class="drag-letter"></span>` +
+      `<span class="drag-send">${SEND_SVG}</span></div><span class="drag-label"></span>`;
     ghost.querySelector(".drag-letter")!.textContent = letter;
     app.appendChild(ghost);
     s.ghost = ghost;
     s.blob = ghost.querySelector<HTMLElement>(".drag-blob")!;
     setMark(s.cell, "lifted");
+    update(s);
 
     if (optsRef.current.animate) {
       morph(app, rect(s.cell), s.pointer, color, false);
@@ -154,10 +175,26 @@ function createDrag(optsRef: { readonly current: Options }) {
       return;
     }
     if (!optsRef.current.animate) s.ghost.style.transform = translate(s.pointer);
-    const target = dropTarget(s.boxes!, s.pointer, s.id);
-    if (target !== s.target) {
-      if (s.target) setMark(cellOf(s.grid, s.target), null);
-      if (target) setMark(cellOf(s.grid, target), "target");
+    s.shift = e.shiftKey;
+    update(s);
+  }
+
+  /** Tryb (Shift) i cel pod kursorem → klasy ducha i znacznik celu. */
+  function update(s: Session) {
+    const o = optsRef.current;
+    const mode = dragMode(s.shift, o.canSend(s.id));
+    const target = modeTarget(mode, dropTarget(s.boxes!, s.pointer, s.id), o.canReceive);
+    if (mode !== s.mode || !s.ghost!.dataset.mode) {
+      s.mode = mode;
+      s.ghost!.dataset.mode = mode;
+      s.ghost!.querySelector(".drag-label")!.textContent =
+        mode === "handoff" ? "kontekst →" : mode === "blocked" ? "brak rozmowy" : "";
+    }
+    const mark = mode === "handoff" ? "handoff" : "target";
+    const cell = target ? cellOf(s.grid, target) : null;
+    if (target !== s.target || (cell && cell.dataset.drag !== mark)) {
+      if (s.target && s.target !== target) setMark(cellOf(s.grid, s.target), null);
+      setMark(cell, mark);
       s.target = target;
     }
   }
@@ -173,11 +210,17 @@ function createDrag(optsRef: { readonly current: Options }) {
   }
 
   function key(e: KeyboardEvent) {
-    if (e.key !== "Escape" || !session.current?.ghost) return;
-    // Esc anuluje lot i nie trafia do terminala.
+    const s = session.current;
+    if (!s?.ghost || (e.key !== "Escape" && e.key !== "Shift")) return;
+    // W locie Esc i Shift należą do przeciągania, nie do terminala.
     e.preventDefault();
     e.stopPropagation();
-    finish(false);
+    if (e.key === "Escape") {
+      if (e.type === "keydown") finish(false);
+      return;
+    }
+    s.shift = e.type === "keydown"; // Shift bez ruchu myszy też przełącza tryb
+    update(s);
   }
 
   function listen(on: boolean) {
@@ -187,6 +230,7 @@ function createDrag(optsRef: { readonly current: Options }) {
     f("pointercancel", cancel);
     f("blur", cancel);
     f("keydown", key, true);
+    f("keyup", key, true);
   }
 
   function finish(drop: boolean, instant = false) {
@@ -203,6 +247,28 @@ function createDrag(optsRef: { readonly current: Options }) {
     const animate = optsRef.current.animate && !instant;
     const target = drop ? s.target : null;
     const from = s.pos ?? s.pointer;
+
+    if (target && s.mode === "handoff") {
+      optsRef.current.onHandoff(s.id, target);
+      setMark(s.cell, null);
+      if (!animate) return ghost.remove();
+      // Kulka wsiąka w cel, cel odpowiada falą.
+      const cell = cellOf(s.grid, target);
+      const to = boxCenter(s.boxes!.get(target)!);
+      const anim = ghost.animate(
+        [
+          { transform: translate(from), opacity: 1 },
+          { transform: `${translate(to)} scale(0)`, opacity: 0.6 },
+        ],
+        { duration: DROP_MS + 60, easing: "cubic-bezier(.5,0,.8,.4)", fill: "forwards" },
+      );
+      anim.onfinish = anim.oncancel = () => {
+        ghost.remove();
+        setMark(cell, "soak");
+        setTimeout(() => cell?.dataset.drag === "soak" && setMark(cell, null), SOAK_MS);
+      };
+      return;
+    }
 
     if (target) {
       optsRef.current.onDrop(s.id, target);
@@ -254,6 +320,8 @@ function createDrag(optsRef: { readonly current: Options }) {
       pointer: { x: e.clientX, y: e.clientY },
       grid: e.currentTarget,
       cell,
+      shift: e.shiftKey,
+      mode: "swap",
     };
     listen(true);
   };

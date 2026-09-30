@@ -25,7 +25,24 @@ export function dropTarget(boxes: ReadonlyMap<string, Box>, p: Point, self: stri
   return null;
 }
 
-export const boxCenter = (b: Box): Point => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
+/**
+ * Tryb lotu: zamiana miejsc albo (z Shiftem) przekazanie kontekstu. Źródło bez rozmowy
+ * (np. powłoka) z Shiftem = `blocked`: kulka szara, upuszczenie nic nie robi.
+ */
+export type DragMode = "swap" | "handoff" | "blocked";
+
+export function dragMode(shift: boolean, sourceHasConversation: boolean): DragMode {
+  if (!shift) return "swap";
+  return sourceHasConversation ? "handoff" : "blocked";
+}
+
+/** Cel w danym trybie: kontekst przyjmie tylko panel z działającym procesem. */
+export function modeTarget(mode: DragMode, raw: string | null, canReceive: (id: string) => boolean): string | null {
+  if (raw === null || mode === "blocked") return null;
+  return mode === "handoff" && !canReceive(raw) ? null : raw;
+}
+
+export const boxCenter =(b: Box): Point => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
 
 /** Ułamek dystansu nadrabiany w jednej klatce 60 Hz. */
 const FOLLOW_PER_FRAME = 0.25;

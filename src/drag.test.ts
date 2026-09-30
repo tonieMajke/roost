@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dropTarget, follow, pastThreshold, shrinkTo, stretch } from "./drag";
+import { dragMode, dropTarget, follow, modeTarget, pastThreshold, shrinkTo, stretch } from "./drag";
 import type { Box } from "./motion";
 
 describe("pastThreshold", () => {
@@ -21,6 +21,22 @@ describe("dropTarget", () => {
   it("przerwa między panelami i krawędź po prawej to brak celu", () => {
     expect(dropTarget(boxes, { x: 105, y: 50 }, "a")).toBeNull();
     expect(dropTarget(boxes, { x: 210, y: 50 }, "a")).toBeNull();
+  });
+});
+
+describe("dragMode / modeTarget", () => {
+  it("Shift = przekazanie, ale tylko z rozmowy", () => {
+    expect(dragMode(false, false)).toBe("swap");
+    expect(dragMode(true, true)).toBe("handoff");
+    expect(dragMode(true, false)).toBe("blocked");
+  });
+  it("kontekst przyjmuje tylko działający panel; zamiana bierze każdy", () => {
+    const alive = (id: string) => id !== "dead";
+    expect(modeTarget("handoff", "dead", alive)).toBeNull();
+    expect(modeTarget("handoff", "b", alive)).toBe("b");
+    expect(modeTarget("swap", "dead", alive)).toBe("dead");
+    expect(modeTarget("blocked", "b", alive)).toBeNull();
+    expect(modeTarget("swap", null, alive)).toBeNull();
   });
 });
 
