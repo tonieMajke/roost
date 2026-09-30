@@ -7,6 +7,7 @@ import type { PaneState } from "./activity";
 import { paneMeter, type SessionContext } from "./context";
 import type { PaneActions, ProjectActions } from "./handlers";
 import { Pane } from "./Pane";
+import { usePaneDrag } from "./usePaneDrag";
 import {
   ENTER_WINDOW_MS,
   FLIP_EASE,
@@ -137,6 +138,12 @@ export function Grid({
     return () => observer.disconnect();
   }, [projectIds]);
 
+  const drag = usePaneDrag({
+    enabled: !!active && active.panes.length > 1 && active.maximized === null,
+    animate: motionAllowed(motion, reducedMotion()),
+    onDrop: (from, to) => paneActions.swap(from, to),
+  });
+
   // Węzły komórek w kolejności utworzenia: zamiana paneli zmienia tylko `order` (patrz mountOrder).
   const mounted = useRef(new Map<string, readonly string[]>());
   const domOrder = (project: Project) => {
@@ -163,6 +170,7 @@ export function Grid({
               else gridEls.current.delete(project.id);
             }}
             data-project={project.id}
+            onPointerDown={isActive ? drag.onPointerDown : undefined}
             className={`grid${entering?.cls ? ` ${entering.cls}` : ""}`}
             style={{
               display: isActive ? "grid" : "none",

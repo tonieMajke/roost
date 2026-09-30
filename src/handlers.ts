@@ -7,6 +7,8 @@ export type PaneActions = {
   focus(paneId: string): void;
   restart(paneId: string): void;
   toggleMaximize(paneId: string): void;
+  /** Dwa panele zamieniają się miejscami (przeciąganie, M4). */
+  swap(a: string, b: string): void;
   newConversation(paneId: string): void; // nowa rozmowa: nowe sessionId + run + 1 (tylko agenci z `session`)
   close(paneId: string): void;
   exit(paneId: string, info: ExitInfo): void;

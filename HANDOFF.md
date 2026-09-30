@@ -15,6 +15,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M4 Etap 2 – 2026-09-30 (Claude, gałąź `worktree-m4`)
+
+- `src/drag.ts` + testy: próg 6 px, `dropTarget` (pudełka w układzie okna, własny panel/przerwa = brak), sprężyna `follow` liczona od `dt`, `stretch` (≤ 1,15), `shrinkTo` (pudełko → kulka 48 px; `border-radius: 50%` + skala niejednorodna = koło).
+- `src/usePaneDrag.ts`: pointer na `.pane-head` bez `.tools`/przycisków; nasłuchy okna w jednej instancji na komponent (`createDrag`), lot bez renderów Reacta (duch w `.app`, `data-drag` na komórkach). Obrys panelu zwija się w kulkę (WAAPI, 240 ms), kulka goni kursor i rozciąga się w ruchu, wlot w cel 160 ms, powrót + rozwinięcie przy Esc / upuszczeniu obok / `blur` / `pointercancel`. Esc nie trafia do terminala.
+- Wyłączone przy 1 panelu i maksymalizacji. „Oszczędny” i `prefers-reduced-motion`: żeton przy kursorze bez zwijania, sprężyny i powrotu.
+- CSS: nagłówek `user-select: none; cursor: grab`. Przygaszenie i obrys celu na `.pane-cell` (+ `position: relative`), bo `paneIn` z `both` trzyma `opacity` na `.pane`.
+- Sprawdzenia: typecheck czysty, vitest 191/191. Podgląd (headless Firefox przez WebDriver BiDi, 4 panele, pełny i oszczędny ruch): a→d zamienia miejsca, DOM stały (`order`), treść terminala claude zostaje, po upuszczeniu 0 duchów / `data-drag`, Esc = bez zmian, klik bez ruchu = tylko fokus. Zrzuty klatek: zwijanie, lot, cel, po zamianie.
+- Niesprawdzone: płynność na WebKitGTK (programowe rysowanie), canvas WebGL xterm po zamianie w oknie Tauri.
+
 ## M4 Etap 1 – 2026-09-30 (Claude, gałąź `worktree-m4`)
 
 - `workspace.ts`: akcje `swap {a, b}` i `swapDir {dir}` (panel z fokusem ↔ sąsiad z `neighbor`); przy maksymalizacji, tym samym albo nieznanym id – ten sam `ws`. Fokus idzie z panelem.

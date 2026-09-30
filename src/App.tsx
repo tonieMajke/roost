@@ -190,6 +190,7 @@ export function App() {
       dispatch({ type: "restart", id: paneId });
     },
     toggleMaximize: (paneId) => dispatch({ type: "toggleMaximize", id: paneId }),
+    swap: (a, b) => dispatch({ type: "swap", a, b }),
     newConversation: (paneId) =>
       dispatch({ type: "newConversation", id: paneId, sessionId: crypto.randomUUID() }),
     close: (paneId) => {
