@@ -3,6 +3,7 @@ import type { Dir } from "./workspace";
 /** What a recognised shortcut asks the app to do (stage 8). */
 export type Command =
   | { type: "move"; dir: Dir }
+  | { type: "swap"; dir: Dir } // M4: the focused pane trades places with its neighbor
   | { type: "toggleMaximize" }
   | { type: "newPane" }
   | { type: "closePane" }
@@ -14,6 +15,8 @@ export type Command =
   | { type: "toggleRail" }
   | { type: "toggleDock" }
   | { type: "fontSize"; step: 1 | -1 | 0 }; // terminal font: bigger, smaller, default
+
+const ARROWS: Partial<Record<string, Dir>> = { arrowleft: "left", arrowright: "right", arrowup: "up", arrowdown: "down" };
 
 /** The part of a keydown event the mapping needs. */
 export type KeyLike = Pick<KeyboardEvent, "key" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey">;
@@ -31,6 +34,11 @@ export function commandFor(e: KeyLike): Command | null {
     if (key === "c") return { type: "copy" };
     if (key === "v") return { type: "paste" };
     return null;
+  }
+
+  if (e.ctrlKey && e.altKey && e.shiftKey) {
+    const dir = ARROWS[key];
+    return dir ? { type: "swap", dir } : null;
   }
 
   if (!e.ctrlKey || !e.altKey || e.shiftKey) return null;

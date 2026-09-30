@@ -578,6 +578,70 @@ button.feed-item {
 }
 @keyframes scan { from { background-position: -40% 0; } to { background-position: 140% 0; } }
 
+/* przeciąganie paneli (M4): nagłówek to uchwyt, duch leci w `.app` (usePaneDrag.ts) */
+.pane-head { user-select: none; cursor: grab; }
+.pane-head .tools { cursor: default; }
+.app.is-dragging, .app.is-dragging * { cursor: grabbing !important; user-select: none; }
+/* Na komórce, nie na .pane: `paneIn` z `both` trzyma opacity panelu. */
+.pane-cell { position: relative; transition: opacity 0.2s; }
+.pane-cell[data-drag="lifted"] { opacity: 0.35; }
+.pane-cell[data-drag]::after {
+  content: ""; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  border-radius: var(--r-pane); opacity: 0; transition: opacity 0.15s;
+}
+.pane-cell[data-drag="target"]::after {
+  opacity: 1; box-shadow: inset 0 0 0 2px var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.drag-ghost {
+  position: fixed; left: 0; top: 0; width: 48px; height: 48px; z-index: 30;
+  pointer-events: none; will-change: transform;
+}
+.drag-pop {
+  position: relative; width: 100%; height: 100%; display: grid; place-items: center;
+  animation: bubbleIn 0.3s var(--ease) 0.06s both;
+}
+.drag-blob {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: color-mix(in srgb, var(--ag, var(--accent)) 22%, var(--dialog));
+  border: 1.5px solid var(--ag, var(--accent));
+  box-shadow: 0 0 22px color-mix(in srgb, var(--ag, var(--accent)) 45%, transparent), 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+.drag-letter { position: relative; font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--ag, var(--accent)); }
+.drag-ghost.is-still .drag-pop { animation: none; }
+.drag-shell {
+  position: fixed; z-index: 29; pointer-events: none; transform-origin: 0 0;
+  border: 1px solid var(--ag, var(--accent));
+  background: color-mix(in srgb, var(--ag, var(--accent)) 12%, var(--pane));
+}
+/* Shift w locie: przekazanie kontekstu (akcent + ikona), źródło bez rozmowy – szara kulka. */
+.drag-send { display: none; position: relative; place-items: center; color: var(--on-accent); }
+.drag-label {
+  position: absolute; left: 56px; top: 50%; transform: translateY(-50%); white-space: nowrap;
+  padding: 3px 7px; border-radius: var(--r-ctl); border: 1px solid var(--line-strong);
+  background: var(--badge-bg); color: var(--accent); font-family: var(--mono); font-size: 11px;
+}
+.drag-label:empty { display: none; }
+.drag-ghost[data-mode="handoff"] .drag-blob {
+  background: var(--accent); border-color: var(--accent);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--accent) 60%, transparent), 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+.drag-ghost[data-mode="handoff"] .drag-letter { display: none; }
+.drag-ghost[data-mode="handoff"] .drag-send { display: grid; }
+.drag-ghost[data-mode="blocked"] .drag-blob { background: var(--dialog); border-color: var(--faint); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5); }
+.drag-ghost[data-mode="blocked"] .drag-letter, .drag-ghost[data-mode="blocked"] .drag-label { color: var(--faint); }
+.pane-cell[data-drag="handoff"]::after {
+  opacity: 1; box-shadow: inset 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+/* Plakietka pod nagłówkiem celu (środek zasłania kulka). */
+.pane-cell[data-drag="handoff"]::before {
+  content: "wklej kontekst"; position: absolute; z-index: 6; left: 50%; top: calc(var(--pane-head-h) + 12px);
+  transform: translateX(-50%); padding: 4px 9px; border-radius: var(--r-ctl); pointer-events: none;
+  background: var(--accent); color: var(--on-accent); font-family: var(--mono); font-size: 11px; font-weight: 600;
+}
+.pane-cell[data-drag="soak"]::after { animation: wave 0.7s var(--ease) both; }
+@keyframes bubbleIn { from { transform: scale(0.35); opacity: 0; } 50% { opacity: 1; } to { transform: none; opacity: 1; } }
+
 /* motion */
 .motion-lite .pane, .motion-lite .grid, .motion-lite .pane-cell, .motion-lite .dialog,
 .motion-lite .tile, .motion-lite .toast, .motion-lite .proj-panes, .motion-lite .dock,

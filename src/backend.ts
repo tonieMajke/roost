@@ -3,6 +3,7 @@ import { tauriBackend } from "./backend-tauri";
 import type { AgentDef } from "./agents";
 import type { ContextKind, SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
+import type { Handoff } from "./handoff";
 
 export type ExitInfo = { code: number; signal: string | null };
 
@@ -22,6 +23,8 @@ export interface Backend {
   claudeSessionExists(id: string): Promise<boolean>;
   /** Rozmiar kontekstu z pliku sesji agenta (tylko odczyt); `null` = brak pliku albo danych. */
   sessionContext(kind: ContextKind, sessionId: string): Promise<SessionContext | null>;
+  /** Wyciąg rozmowy do przekazania innemu panelowi (M4); `null` = brak pliku albo pusta rozmowa. */
+  sessionHandoff(kind: ContextKind, sessionId: string): Promise<Handoff | null>;
   /** JSON dla `claude --settings` (linia statusu zapisuje limity); `null` = użytkownik ma własną linię statusu. */
   claudeSettingsArg(): Promise<string | null>;
   /** Ostatnie limity subskrypcji z linii statusu claude; `null` = jeszcze żadnych. */

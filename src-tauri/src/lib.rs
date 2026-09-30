@@ -1,5 +1,6 @@
 mod config;
 mod context;
+mod handoff;
 mod limits;
 mod notify;
 mod pty;
@@ -62,6 +63,7 @@ pub fn run() {
             config::workspace_save,
             config::workspace_backup,
             context::session_context,
+            handoff::session_handoff,
             limits::claude_settings_arg,
             limits::claude_limits,
             notify::notify,

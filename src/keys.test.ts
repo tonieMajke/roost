@@ -19,6 +19,13 @@ describe("commandFor (skróty etapu 8)", () => {
     expect(commandFor(ca("ArrowDown"))).toEqual({ type: "move", dir: "down" });
   });
 
+  it("Ctrl+Alt+Shift+strzałki zamieniają panel z sąsiadem", () => {
+    const cas = (key: string) => k(key, { ctrlKey: true, altKey: true, shiftKey: true });
+    expect(commandFor(cas("ArrowLeft"))).toEqual({ type: "swap", dir: "left" });
+    expect(commandFor(cas("ArrowDown"))).toEqual({ type: "swap", dir: "down" });
+    expect(commandFor(cas("n"))).toBeNull(); // nic innego z Shiftem
+  });
+
   it("Ctrl+Alt+Enter, N, W, R, P, B", () => {
     expect(commandFor(ca("Enter"))).toEqual({ type: "toggleMaximize" });
     expect(commandFor(ca("n"))).toEqual({ type: "newPane" });

@@ -196,6 +196,28 @@ describe("reduce", () => {
     expect(reduce(noPanes, { type: "move", dir: "up" })).toBe(noPanes);
   });
 
+  it("swap trades two panes' places, focus stays with its pane", () => {
+    const w = ws(project("p1", "/a", ["a", "b", "c"])); // focused "c"
+    const s = reduce(w, { type: "swap", a: "a", b: "c" });
+    expect(s.projects[0].panes.map((p) => p.id)).toEqual(["c", "b", "a"]);
+    expect(s.projects[0].focused).toBe("c");
+    expect(reduce(s, { type: "savePreset", name: "x" }).presets[0].agents).toHaveLength(3);
+    expect(reduce(w, { type: "swap", a: "a", b: "a" })).toBe(w);
+    expect(reduce(w, { type: "swap", a: "a", b: "nope" })).toBe(w);
+    const max = reduce(w, { type: "toggleMaximize" });
+    expect(reduce(max, { type: "swap", a: "a", b: "b" })).toBe(max);
+    const back = parseWorkspace(JSON.parse(JSON.stringify(s)), ["claude"]).workspace;
+    expect(back.projects[0].panes.map((p) => p.id)).toEqual(["c", "b", "a"]);
+  });
+
+  it("swapDir moves the focused pane to its grid neighbor", () => {
+    const w = ws(project("p1", "/a", ["a", "b", "c", "d"])); // 2x2, focused "d"
+    const s = reduce(w, { type: "swapDir", dir: "up" });
+    expect(s.projects[0].panes.map((p) => p.id)).toEqual(["a", "d", "c", "b"]);
+    expect(s.projects[0].focused).toBe("d");
+    expect(reduce(w, { type: "swapDir", dir: "right" })).toBe(w); // edge
+  });
+
   it("toggleMaximize uses the focused pane without an id", () => {
     const w = ws(project("p1", "/a", ["a", "b"])); // focused "b"
     const max = reduce(w, { type: "toggleMaximize" });

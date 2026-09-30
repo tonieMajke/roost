@@ -22,7 +22,8 @@ import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { Dock } from "./Dock";
 import { TitleBar } from "./TitleBar";
-import { CONTEXT_POLL_MS, contextTargets, sessionTitles, type SessionContext } from "./context";
+import { CONTEXT_POLL_MS, contextKind, contextTargets, sessionTitles, type SessionContext } from "./context";
+import { handoffText } from "./handoff";
 import { FINISHED_TEXT, STARTED_TEXT, exitedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
 import { LIMITS_POLL_MS, type ClaudeLimits } from "./limits";
 import { TOAST_MS, toastText } from "./toast";
@@ -192,6 +193,9 @@ export function App() {
       dispatch({ type: "restart", id: paneId });
     },
     toggleMaximize: (paneId) => dispatch({ type: "toggleMaximize", id: paneId }),
+    swap: (a, b) => dispatch({ type: "swap", a, b }),
+    handoff: (from, to) => void sendContext(from, to),
+    acceptsPaste: (paneId) => terms.current.get(paneId)?.bracketedPaste() ?? false,
     newConversation: (paneId) =>
       dispatch({ type: "newConversation", id: paneId, sessionId: crypto.randomUUID() }),
     close: (paneId) => {
@@ -336,6 +340,30 @@ export function App() {
     }));
     setFeed((prev) => pushFeed(prev, items));
   };
+  // Shift + upuszczenie (M4): wyciąg rozmowy `from` wklejony do `to`. Bez Entera – polecenie dopisuje użytkownik.
+  const sendContext = async (from: string, to: string) => {
+    const src = paneInfoRef.current.get(from);
+    const dst = paneInfoRef.current.get(to);
+    const pane = ws.projects.flatMap((p) => p.panes).find((p) => p.id === from);
+    const kind = contextKind(agents.find((a) => a.id === pane?.agentId));
+    if (!src || !dst || !pane?.sessionId || kind === null) return;
+    const term = terms.current.get(to);
+    if (!term?.bracketedPaste()) {
+      // Bez bracketed paste każda linia wyciągu poszłaby jako Enter, czyli jako polecenie.
+      setNotice(`„${dst.agent}” nie przyjmuje wklejenia blokiem – kontekstu nie wysłano`);
+      return;
+    }
+    const h = await backend.sessionHandoff(kind, pane.sessionId).catch(() => null);
+    if (!h) {
+      setNotice(`Nie udało się odczytać rozmowy „${src.agent}”`);
+      return;
+    }
+    term.paste(handoffText(h, { agent: src.agent, project: src.project, projectPath: src.path, home: home.current }));
+    dispatch({ type: "focus", id: to });
+    setNotice(`Wklejono kontekst z „${src.agent}” – dopisz polecenie i wciśnij Enter`);
+    addFeed(from, [`przekazał kontekst → ${dst.agent}`]);
+  };
+
   const activeRef = useRef(ws.active);
   activeRef.current = ws.active;
 
@@ -545,6 +573,9 @@ export function App() {
     switch (cmd.type) {
       case "move":
         dispatch({ type: "move", dir: cmd.dir });
+        break;
+      case "swap":
+        dispatch({ type: "swapDir", dir: cmd.dir });
         break;
       case "toggleMaximize":
         dispatch({ type: "toggleMaximize" }); // bez id = panel z fokusem

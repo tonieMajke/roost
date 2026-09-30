@@ -5,6 +5,7 @@ import { DEFAULT_AGENTS, parseAgents } from "./agents";
 import type { Backend, ExitInfo } from "./backend";
 import type { SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
+import type { Handoff } from "./handoff";
 
 /** Start a process in a pseudo-terminal; output arrives as raw bytes. */
 export const tauriBackend: Backend = {
@@ -36,6 +37,7 @@ export const tauriBackend: Backend = {
 
   claudeSessionExists: (id) => invoke<boolean>("claude_session_exists", { id }),
   sessionContext: (kind, sessionId) => invoke<SessionContext | null>("session_context", { kind, sessionId }),
+  sessionHandoff: (kind, sessionId) => invoke<Handoff | null>("session_handoff", { kind, sessionId }),
   claudeSettingsArg: () => invoke<string | null>("claude_settings_arg"),
   claudeLimits: () => invoke<ClaudeLimits | null>("claude_limits"),
   dirExists: (path) => invoke<boolean>("dir_exists", { path }),

@@ -7,6 +7,12 @@ export type PaneActions = {
   focus(paneId: string): void;
   restart(paneId: string): void;
   toggleMaximize(paneId: string): void;
+  /** Dwa panele zamieniają się miejscami (przeciąganie, M4). */
+  swap(a: string, b: string): void;
+  /** Wyciąg rozmowy `from` wklejony (bez Entera) do terminala `to` (Shift przy upuszczeniu, M4). */
+  handoff(from: string, to: string): void;
+  /** Terminal panelu przyjmie wklejenie blokiem (bracketed paste) – warunek celu dla `handoff`. */
+  acceptsPaste(paneId: string): boolean;
   newConversation(paneId: string): void; // nowa rozmowa: nowe sessionId + run + 1 (tylko agenci z `session`)
   close(paneId: string): void;
   exit(paneId: string, info: ExitInfo): void;

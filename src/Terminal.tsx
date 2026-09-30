@@ -49,6 +49,11 @@ export type TerminalHandle = {
   copySelection(): string;
   /** Tekst do terminala tak, jakby wklejony (obsługuje bracketed paste). */
   paste(text: string): void;
+  /**
+   * Program w terminalu włączył bracketed paste (claude, pi, nowe powłoki). Bez tego
+   * `paste` wysyła nowe linie jako Enter, więc wieloliniowy tekst wykonałby się linia po linii.
+   */
+  bracketedPaste(): boolean;
 };
 
 /**
@@ -82,6 +87,7 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13
     () => ({
       copySelection: () => term.current?.getSelection() ?? "",
       paste: (text: string) => term.current?.paste(text),
+      bracketedPaste: () => term.current?.modes.bracketedPasteMode ?? false,
     }),
     [],
   );

@@ -15,7 +15,7 @@ use serde_json::Value;
 const TAIL_BYTES: u64 = 256 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum Kind {
+pub(crate) enum Kind {
     Claude,
     Pi,
 }
@@ -56,12 +56,12 @@ fn one_line(text: &str) -> Option<String> {
 }
 
 /// Session ids are UUIDs; anything else could escape the search (`../x`).
-fn valid_id(id: &str) -> bool {
+pub(crate) fn valid_id(id: &str) -> bool {
     !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b) || b == b'-')
 }
 
 /// claude: `<root>/<encoded cwd>/<id>.jsonl`; pi: `<root>/<encoded cwd>/<timestamp>_<id>.jsonl`.
-fn find_session(root: &Path, kind: Kind, id: &str) -> Option<PathBuf> {
+pub(crate) fn find_session(root: &Path, kind: Kind, id: &str) -> Option<PathBuf> {
     for dir in fs::read_dir(root).ok()?.flatten() {
         let dir = dir.path();
         match kind {
@@ -86,9 +86,14 @@ fn find_session(root: &Path, kind: Kind, id: &str) -> Option<PathBuf> {
 }
 
 fn read_tail(path: &Path) -> Option<String> {
+    read_last(path, TAIL_BYTES)
+}
+
+/// Last `bytes` of the file, starting at a whole line.
+pub(crate) fn read_last(path: &Path, bytes: u64) -> Option<String> {
     let mut file = File::open(path).ok()?;
     let len = file.metadata().ok()?.len();
-    let start = len.saturating_sub(TAIL_BYTES);
+    let start = len.saturating_sub(bytes);
     file.seek(SeekFrom::Start(start)).ok()?;
     let mut buf = Vec::with_capacity((len - start) as usize);
     file.read_to_end(&mut buf).ok()?;

@@ -39,12 +39,21 @@ export const mockBackend: Backend = {
     };
 
     const args = spec.args?.length ? ` ${spec.args.join(" ")}` : "";
-    onData(enc(`\x1b[33m[podgląd]\x1b[0m ${spec.command}${args} w ${spec.cwd ?? "~"}\r\n${PROMPT}`));
+    // Agenci włączają bracketed paste jak prawdziwe claude/pi; udawana powłoka nie (wklejenie kontekstu odmówi).
+    const bracketed = spec.command === "claude" || spec.command === "pi" ? "\x1b[?2004h" : "";
+    onData(enc(`${bracketed}\x1b[33m[podgląd]\x1b[0m ${spec.command}${args} w ${spec.cwd ?? "~"}\r\n${PROMPT}`));
 
     return {
       id,
       write(data) {
         if (closed) return;
+        const paste = /^\x1b\[200~([\s\S]*)\x1b\[201~$/.exec(data);
+        if (paste) {
+          // Wklejony blok: nowe linie to nie Enter.
+          line += paste[1];
+          onData(enc(paste[1].replace(/\r\n?|\n/g, "\r\n")));
+          return;
+        }
         for (const ch of data) {
           if (ch === "\r" || ch === "\n") submit();
           else if (ch === "\x7f") {
@@ -92,6 +101,15 @@ export const mockBackend: Backend = {
     return kind === "claude"
       ? { tokens: tokens * 5, model: "claude-sonnet-5-5", window: null, tools, title }
       : { tokens, model: "Flash-Next-NVFP4", window: 262_144, tools, title };
+  },
+  // Podgląd: stały wyciąg, żeby było widać wklejenie w panelu docelowym.
+  async sessionHandoff(kind) {
+    return {
+      prompts: ["napraw testy w src/feed.ts", "a teraz dodaj test na pusty katalog"],
+      replies: [`Poprawione (${kind}): relativeTime liczył minuty od złej chwili.`],
+      files: ["/home/podglad/demo/src/feed.ts", "/home/podglad/demo/src/feed.test.ts"],
+      commands: ["pnpm test"],
+    };
   },
   // Podgląd: bez linii statusu (procesy są udawane), limity zmyślone względem teraz.
   claudeSettingsArg: async () => null,

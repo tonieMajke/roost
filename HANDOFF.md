@@ -15,6 +15,41 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M4 Etap 4 – 2026-10-01 (Claude, gałąź `worktree-m4`)
+
+- `drag.ts`: `dragMode(shift, maRozmowę)` → `swap | handoff | blocked`, `modeTarget` (kontekst przyjmuje tylko panel, który może go wkleić) + testy.
+- `usePaneDrag`: Shift z `pointermove` i z `keydown/keyup` (bez ruchu myszy też przełącza; Shift i Esc w locie nie trafiają do terminala). Duch `data-mode`: akcent + ikona `Send` (SVG lucide wklejony, duch jest poza Reactem) + etykieta „kontekst →”; źródło bez rozmowy – szara kulka „brak rozmowy”, upuszczenie = powrót. Cel: `data-drag="handoff"` (obrys + plakietka „wklej kontekst” pod nagłówkiem). Upuszczenie: kulka wsiąka w cel, cel dostaje falę `wave` (`data-drag="soak"`, 700 ms).
+- **Bezpieczeństwo wklejenia:** `xterm.paste` zamienia `\n` na `\r`, więc bez bracketed paste każda linia poszłaby jako Enter. `TerminalHandle.bracketedPaste()` (`modes.bracketedPasteMode`), `PaneActions.acceptsPaste` – panel bez tego trybu nie jest celem, a `sendContext` sprawdza to jeszcze raz przed wklejeniem. Nigdy nie wysyłamy `\r`.
+- App `sendContext`: `sessionHandoff` → `handoffText` → `paste` do celu → fokus celu, toast „Wklejono kontekst z „X” – dopisz polecenie i wciśnij Enter”, w „Na żywo” „przekazał kontekst → Y”; błąd odczytu = toast, nic nie wklejamy.
+- Mock: claude/pi włączają bracketed paste (`\x1b[?2004h`) jak prawdziwe, udawana powłoka nie; wklejony blok nie „wciska” Entera.
+- Sprawdzenia: typecheck czysty, vitest 196/196, cargo test 29/29, cargo build 0 ostrzeżeń. Podgląd (BiDi, headless Firefox): Shift claude→pi wkleja wyciąg bez Entera, fokus na pi, toast i zdarzenie; Shift z powłoki = „brak rozmowy”, bez zmian; Shift nad powłoką bez bracketed paste = brak celu; Shift wciśnięty/puszczony w locie przełącza cel `target`↔`handoff`; bez Shiftu dalej zamiana. 0 duchów po każdym locie.
+- Niesprawdzone: prawdziwe claude/pi w oknie (czy pi przyjmuje 8000 znaków blokiem, jak claude zwija wklejenie).
+
+## M4 Etap 3 – 2026-09-30 (Claude, gałąź `worktree-m4`)
+
+- Rust `handoff.rs`: `session_handoff(kind, session_id) -> Option<{prompts, replies, files, commands}>`, ogon 1 MB (`context::read_last`; 256 KB mierników bez zmian). Z `context.rs` tylko `pub(crate)` dla `Kind`, `valid_id`, `find_session` + `read_last` – bo `user_prompt`/`session_title` z niezacommitowanych zmian głównej kopii nie ma jeszcze w `HEAD` (osobny moduł = mniej konfliktów przy scalaniu).
+- Wyciąg: 5 promptów (≤ 800 znaków, claude bez linii od `<` i `isMeta`), 3 teksty asystenta (≤ 1500), pliki z Edit/Write/MultiEdit/NotebookEdit (pi: edit/write) najnowsze pierwsze bez powtórzeń (≤ 20), 5 poleceń Bash/bash w jednej linii (≤ 120). Bez `isSidechain`. Ucięcia na granicy znaku + „…”. Pusta rozmowa = `None`. 4 testy na fixture (bez prawdziwego `~/.claude`/`~/.pi`).
+- TS `src/handoff.ts` + testy: `handoffText` – nagłówek „Kontekst przekazany z innej sesji (agent · projekt)…”, sekcje (puste pominięte), ścieżki względem projektu (przez `tildify`), na końcu „Moje polecenie: ”, ≤ 8000 znaków (najpierw odpadają stare odpowiedzi, potem stare prompty), bez `\r`. `backend.sessionHandoff` (Tauri + stały wyciąg w mocku).
+- Sprawdzenia: typecheck czysty, vitest 194/194, cargo test 29/29, cargo build 0 ostrzeżeń.
+- Niesprawdzone: wyciąg z prawdziwych plików claude/pi (format ustalony z etapów 8–9).
+
+## M4 Etap 2 – 2026-09-30 (Claude, gałąź `worktree-m4`)
+
+- `src/drag.ts` + testy: próg 6 px, `dropTarget` (pudełka w układzie okna, własny panel/przerwa = brak), sprężyna `follow` liczona od `dt`, `stretch` (≤ 1,15), `shrinkTo` (pudełko → kulka 48 px; `border-radius: 50%` + skala niejednorodna = koło).
+- `src/usePaneDrag.ts`: pointer na `.pane-head` bez `.tools`/przycisków; nasłuchy okna w jednej instancji na komponent (`createDrag`), lot bez renderów Reacta (duch w `.app`, `data-drag` na komórkach). Obrys panelu zwija się w kulkę (WAAPI, 240 ms), kulka goni kursor i rozciąga się w ruchu, wlot w cel 160 ms, powrót + rozwinięcie przy Esc / upuszczeniu obok / `blur` / `pointercancel`. Esc nie trafia do terminala.
+- Wyłączone przy 1 panelu i maksymalizacji. „Oszczędny” i `prefers-reduced-motion`: żeton przy kursorze bez zwijania, sprężyny i powrotu.
+- CSS: nagłówek `user-select: none; cursor: grab`. Przygaszenie i obrys celu na `.pane-cell` (+ `position: relative`), bo `paneIn` z `both` trzyma `opacity` na `.pane`.
+- Sprawdzenia: typecheck czysty, vitest 191/191. Podgląd (headless Firefox przez WebDriver BiDi, 4 panele, pełny i oszczędny ruch): a→d zamienia miejsca, DOM stały (`order`), treść terminala claude zostaje, po upuszczeniu 0 duchów / `data-drag`, Esc = bez zmian, klik bez ruchu = tylko fokus. Zrzuty klatek: zwijanie, lot, cel, po zamianie.
+- Niesprawdzone: płynność na WebKitGTK (programowe rysowanie), canvas WebGL xterm po zamianie w oknie Tauri.
+
+## M4 Etap 1 – 2026-09-30 (Claude, gałąź `worktree-m4`)
+
+- `workspace.ts`: akcje `swap {a, b}` i `swapDir {dir}` (panel z fokusem ↔ sąsiad z `neighbor`); przy maksymalizacji, tym samym albo nieznanym id – ten sam `ws`. Fokus idzie z panelem.
+- `keys.ts`: Ctrl+Alt+Shift+strzałka = `swap`; App → `swapDir`.
+- `Grid.tsx`: komórki w DOM w kolejności utworzenia (`mountOrder` w `motion.ts`), miejsce w siatce przez `order`; `maxOrigin` i opóźnienie wjazdu liczone od miejsca. FLIP bez zmian (`layoutKey` ma kolejność, `offsetLeft` uwzględnia `order`).
+- Sprawdzenia: typecheck czysty, vitest 183/183. Rust bez zmian.
+- Niesprawdzone: okno Tauri. Ctrl+Alt+Shift+strzałki mogą być zajęte przez pulpit (przenoszenie okna między obszarami roboczymi w części środowisk).
+
 ## M2 Etap 10 – 2026-09-30 (Claude)
 
 - Źródło: wariant 1. Claude Code 2.1.286 daje linii statusu `rate_limits.five_hour` / `seven_day` (`used_percentage`, `resets_at`; tylko subskrypcja, po pierwszej odpowiedzi API). Wariant 2 (token z `.credentials.json`, `/api/oauth/usage`) niepotrzebny, więc nie ma go w kodzie ani ustawienia „Pokaż limity Claude”. Brak „Tydzień · Opus” ze wzoru – linia statusu go nie podaje.

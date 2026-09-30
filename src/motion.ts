@@ -54,3 +54,16 @@ export function enterDelayMs(index: number, sinceSwitchMs: number | null): numbe
 export function motionAllowed(motion: "full" | "lite", reducedMotion: boolean): boolean {
   return motion === "full" && !reducedMotion;
 }
+
+/**
+ * Kolejność komórek w DOM: stała od utworzenia panelu (nowe na końcu, zamknięte wypadają).
+ * Miejsce w siatce daje CSS `order`, więc zamiana paneli nie przenosi węzłów – canvas xterm
+ * nie jest odpinany. Zwraca `prev`, gdy nic się nie zmieniło.
+ */
+export function mountOrder(prev: readonly string[], ids: readonly string[]): readonly string[] {
+  const live = new Set(ids);
+  const kept = prev.filter((id) => live.has(id));
+  const known = new Set(kept);
+  const next = [...kept, ...ids.filter((id) => !known.has(id))];
+  return next.length === prev.length && next.every((id, i) => id === prev[i]) ? prev : next;
+}
