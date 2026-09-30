@@ -5,6 +5,11 @@ import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
 import { backend, type ExitInfo, type PtyHandle } from "./backend";
 import { commandFor } from "./keys";
+import { WriteQueue, peakQueueBytes } from "./write-queue";
+
+// Ręczny pomiar w oknie (test 16 × 20 MB): w konsoli devtools `awPeakQueueMB()`.
+(globalThis as { awPeakQueueMB?: () => number }).awPeakQueueMB = () =>
+  Math.round((peakQueueBytes() / 1048576) * 10) / 10;
 
 const FONT = '"JetBrains Mono Variable", monospace';
 
@@ -86,6 +91,12 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
 
     let pty: PtyHandle | undefined;
     let disposed = false;
+    // Wyjście PTY trafia do xterm paczkami (etap 7 M2): 16 paneli naraz nie zatyka UI.
+    const queue = new WriteQueue(
+      (data, done) => x.write(data, done),
+      () => el.clientWidth === 0, // schowana siatka albo panel za zmaksymalizowanym
+      (bytes) => console.warn(`[terminal] kolejka zapisu ${Math.round(bytes / 1048576)} MB – PTY szybszy niż xterm`),
+    );
     // Ukryty panel (display:none, maximalizacja, schowana siatka) ma wymiar 0 — fit() na nim
     // nic nie robi, a ResizeObserver i tak strzeli, gdy panel wróci (stąd ten warunek).
     const observer = new ResizeObserver(() => {
@@ -118,8 +129,9 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
           { ...spec0, cols: x.cols, rows: x.rows },
           (bytes) => {
             if (disposed) return;
-            x.write(bytes);
+            // Aktywność liczy wyjście w chwili przyjścia z PTY, nie zapisu do xterm.
             outputRef.current?.();
+            queue.push(bytes);
           },
           (info) => {
             // A killed old run (restart/close) must not mark the pane's next run as exited.
@@ -139,6 +151,7 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
 
     return () => {
       disposed = true;
+      queue.dispose();
       observer.disconnect();
       pty?.kill();
       x.dispose();

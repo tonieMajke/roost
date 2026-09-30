@@ -15,6 +15,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 7 – 2026-09-30 (Claude, za zgodą użytkownika zamiast lokalnego modelu)
+
+- `src/write-queue.ts` + 11 testów (fałszywy zegar): `WriteQueue` na panel – paczki do `BATCH_BYTES` 64 KB (duże kawałki cięte, małe sklejane), następna paczka w callbacku `x.write(data, cb)`; panel z `clientWidth === 0` pisze najwyżej co `HIDDEN_INTERVAL_MS` 250 ms, nic nie gubi; `dispose` przy odmontowaniu.
+- Poza planem, bo sama kolejka nie wystarczyła: `WriteGate` – jedna paczka w xterm naraz dla wszystkich paneli, po kolei. Pomiar pokazał, że skoki robi parsowanie (także przy panelach bez rysowania): 16 timerów xterm wypada naraz i klik czeka na całą serię. `dispose` zwalnia bramkę (zamknięty xterm nie woła callbacku).
+- Aktywność: `onOutput` wołane przy przyjściu kawałka z PTY, przed kolejką (`Terminal.tsx`).
+- Szczyt kolejki: `peak` na panel, `peakQueueBytes()` globalnie, w konsoli devtools okna `awPeakQueueMB()`; > 50 MB = jednorazowy `console.warn`.
+- Pomiar w podglądzie (headless Firefox, temp strona 16 xterm × 20 MB „y\r\n” paczkami po 64 KB, usunięta; opóźnienie = najgorsze spóźnienie timera 16 ms): bez kolejki 530 ms, sama kolejka 447 ms, kolejka + bramka **31 ms** (0 skoków > 100 ms). Cena: całość w xterm 85 s zamiast 57 s. Szczyt kolejki 19,7 MB (< 50 MB, bez etapu z wstrzymywaniem PTY), przy strumieniu szybszym niż prawdziwy PTY.
+- Sprawdzenia: typecheck czysty, vitest 140/140, cargo test 11/11, cargo build 0 ostrzeżeń.
+- Niesprawdzone: test 16 × `yes | head -c 20M` w oknie Tauri (lista wyżej) – wynik i `awPeakQueueMB()` dopisać tutaj.
+
 ## M2 Etap 6 – 2026-09-30 (Claude)
 
 - `src/motion.ts` (czyste) + 12 testów: `flipTransform` (próg 1 px / 1%), `maxOrigin` (środek komórki w `gridShape`), `enterClass` (dalej na szynie = `enter-next`), `enterDelayMs` (60 ms na panel przez 700 ms), `motionAllowed`; stałe `FLIP_MS` 340, `FLIP_EASE` ze wzoru.

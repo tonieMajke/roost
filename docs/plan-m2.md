@@ -52,7 +52,7 @@ w przeglądarce rysuje inaczej niż WebKitGTK). Zasady z `AGENTS.md` bez zmian.
 - [x] Etap 4 (L) – panel i siatka według wzoru
 - [x] Etap 5 (L) – okna: „Wygląd”, „Nowy panel”, „Presety”, komunikaty
 - [x] Etap 6 (C) – ruch: przesuwanie paneli, maksymalizacja, przełączanie projektów
-- [ ] Etap 7 (L) – dławienie zapisu do terminala
+- [x] Etap 7 (L) – dławienie zapisu do terminala
 - [ ] Etap 8 (L) – pulpit i kontekst agentów
 - [ ] Etap 9 (L) – „Na żywo”
 - [ ] Etap 10 (C) – limity Claude (`/usage`)
