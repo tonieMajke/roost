@@ -3,7 +3,7 @@ import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
-import { spawnPty, type ExitInfo, type PtyHandle } from "./pty";
+import { backend, type ExitInfo, type PtyHandle } from "./backend";
 
 const FONT = '"JetBrains Mono Variable", monospace';
 
@@ -52,7 +52,7 @@ export function Terminal({ command, args, cwd, onExit }: Props) {
       term.onData((d) => pty?.write(d));
       observer.observe(el);
       try {
-        const handle = await spawnPty(
+        const handle = await backend.spawnPty(
           { command, args, cwd, cols: term.cols, rows: term.rows },
           (bytes) => term.write(bytes),
           (info) => {

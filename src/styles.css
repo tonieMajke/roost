@@ -16,3 +16,8 @@ body { background: var(--bg); color: var(--text); font: 13px system-ui, sans-ser
 .bar input { flex: 1; font-family: "JetBrains Mono Variable", monospace; }
 .bar button:hover { border-color: var(--accent); }
 .terminal { flex: 1; min-height: 0; padding: 4px 0 0 6px; }
+.preview-badge {
+  position: fixed; right: 10px; bottom: 8px; z-index: 10; pointer-events: none;
+  padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(36, 34, 32, 0.9); color: var(--accent); font-size: 12px;
+}

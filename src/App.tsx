@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { inTauri } from "./backend";
 import { Terminal } from "./Terminal";
 
 const AGENTS = [
@@ -25,6 +26,7 @@ export function App() {
         <button onClick={() => setRun((n) => n + 1)}>Uruchom ponownie</button>
       </header>
       <Terminal key={`${agent.id}:${cwd}:${run}`} command={agent.command} cwd={cwd} />
+      {!inTauri && <div className="preview-badge">podgląd – bez prawdziwych procesów</div>}
     </div>
   );
 }

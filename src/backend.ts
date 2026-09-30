@@ -1,0 +1,23 @@
+import { mockBackend } from "./backend-mock";
+import { tauriBackend } from "./backend-tauri";
+
+export type ExitInfo = { code: number; signal: string | null };
+
+export type SpawnSpec = { command: string; args?: string[]; cwd?: string; cols: number; rows: number };
+
+export type PtyHandle = {
+  id: number;
+  write(data: string): void;
+  resize(cols: number, rows: number): void;
+  kill(): void;
+};
+
+/** Everything a component may ask the backend for. Every call goes through this interface. */
+export interface Backend {
+  spawnPty(spec: SpawnSpec, onData: (bytes: Uint8Array) => void, onExit: (info: ExitInfo) => void): Promise<PtyHandle>;
+}
+
+export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+/** In the browser (`pnpm dev`) the UI runs against the mock, so it is reviewable without a window. */
+export const backend: Backend = inTauri ? tauriBackend : mockBackend;
