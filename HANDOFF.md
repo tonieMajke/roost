@@ -15,6 +15,10 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M4 Etap 5 – 2026-10-01 (użytkownik, okno Tauri)
+
+- Przeciąganie paneli działa. Shift = przekazanie: w celu wkleiło się streszczenie Haiku (nagłówek, 3 punkty, „Moje polecenie: ” bez Entera). Źródłem była krótka rozmowa testowa – na długiej sesji jeszcze nie sprawdzone.
+
 ## M4 Etap 4b – 2026-10-01 (Claude, master)
 
 - Powód: użytkownik w oknie – „przerzuca całość, a nie skompaktowany kontekst”. Wybrał streszczenie przez Haiku.

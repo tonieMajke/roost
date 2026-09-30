@@ -40,7 +40,7 @@ Co ma działać po M4:
 - [x] Etap 3 (L) – wyciąg rozmowy w Rust
 - [x] Etap 4 (C) – Shift = przekazanie kontekstu
 - [x] Etap 4b (C) – streszczenie wyciągu przez Haiku
-- [ ] Etap 5 (C + użytkownik) – sprawdzenie w oknie
+- [x] Etap 5 (C + użytkownik) – sprawdzenie w oknie
 
 ---
 
