@@ -4,7 +4,7 @@ import { buildArgs, type AgentDef } from "./agents";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
-import { Terminal } from "./Terminal";
+import { Terminal, type TerminalHandle } from "./Terminal";
 
 type Props = {
   pane: PaneModel;
@@ -13,16 +13,22 @@ type Props = {
   focused: boolean;
   maximized: boolean;
   exited?: ExitInfo;
+  /** true gdy skrót z klawiatury uzbroił „Na pewno?” na zamknięciu tego panelu. */
+  armed?: boolean;
   actions: PaneActions;
 };
 
 const exitLabel = (info: ExitInfo) => (info.signal ? `sygnał ${info.signal}` : `kod ${info.code}`);
 
 /** Frame around one terminal: header with agent, state and controls. */
-export function Pane({ pane, path, agent, focused, maximized, exited, actions }: Props) {
+export function Pane({ pane, path, agent, focused, maximized, exited, armed, actions }: Props) {
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
-  const [armed, setArmed] = useState(false);
+  const [armedClick, setArmedClick] = useState(false);
+  const actionsRef = useRef(actions);
+  actionsRef.current = actions;
+  // Stable ref callback: App keeps the terminal handle of this pane for Ctrl+Shift+C/V.
+  const register = useRef((h: TerminalHandle | null) => actionsRef.current.registerTerminal(pane.id, h));
   // Args stamped with the pane state they were computed for: the new Conversation
   // changes sessionId + run in one dispatch, and Terminal must never mount with
   // args from the previous conversation (its spawn effect runs once, at mount).
@@ -51,17 +57,19 @@ export function Pane({ pane, path, agent, focused, maximized, exited, actions }:
 
   // "Na pewno?" lasts CONFIRM_MS, then the button goes back to ✕.
   useEffect(() => {
-    if (!armed) return;
-    const t = setTimeout(() => setArmed(false), CONFIRM_MS);
+    if (!armedClick) return;
+    const t = setTimeout(() => setArmedClick(false), CONFIRM_MS);
     return () => clearTimeout(t);
-  }, [armed]);
+  }, [armedClick]);
 
   const close = () => {
     const r = confirmClick(armRef.current, key, Date.now());
     armRef.current = r.arm;
-    setArmed(r.fire ? false : isArmed(r.arm, key, Date.now()));
+    setArmedClick(r.fire ? false : isArmed(r.arm, key, Date.now()));
     if (r.fire) actions.close(pane.id);
   };
+
+  const showArmed = armed === true || armedClick;
 
   return (
     <section
@@ -90,11 +98,11 @@ export function Pane({ pane, path, agent, focused, maximized, exited, actions }:
           </button>
           <button
             type="button"
-            className={armed ? "is-confirm" : undefined}
+            className={showArmed ? "is-confirm" : undefined}
             title="Zamknij panel"
             onClick={close}
           >
-            {armed ? "Na pewno?" : "✕"}
+            {showArmed ? "Na pewno?" : "✕"}
           </button>
         </span>
       </header>
@@ -106,6 +114,7 @@ export function Pane({ pane, path, agent, focused, maximized, exited, actions }:
             args={args}
             cwd={path}
             focused={focused}
+            apiRef={register.current}
             onExit={(info) => actions.exit(pane.id, info)}
             onFocus={() => actions.focus(pane.id)}
           />

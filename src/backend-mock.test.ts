@@ -79,4 +79,19 @@ describe("mock backend (tryb podglądu)", () => {
     await new Promise((r) => setTimeout(r, 150));
     expect(exits).toEqual([{ code: 0, signal: null }]);
   });
+
+  it("kopiuj → wklej w podglądzie zachowuje tekst, puste kopiowanie nie zwraca nic", async () => {
+    // Without a clipboard (node, or a browser tab without focus) the mock falls back to its own buffer.
+    const nav = globalThis.navigator;
+    const real = nav?.clipboard;
+    try {
+      if (nav) Object.defineProperty(nav, "clipboard", { value: undefined, configurable: true });
+      await mockBackend.copyText("klucz");
+      expect(await mockBackend.pasteText()).toBe("klucz");
+      await mockBackend.copyText("");
+      expect(await mockBackend.pasteText()).toBeNull();
+    } finally {
+      if (nav) Object.defineProperty(nav, "clipboard", { value: real, configurable: true });
+    }
+  });
 });

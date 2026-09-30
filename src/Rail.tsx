@@ -47,7 +47,7 @@ export function Rail({ ws, agents, exited, onSelect, onFocusPane, onAddProject, 
         </button>
       </header>
       <ul className="rail-list">
-        {ws.projects.map((project) => (
+        {ws.projects.map((project, i) => (
           <li key={project.id} className={`rail-project${project.id === ws.active ? " is-active" : ""}`}>
             <div
               className="rail-row"
@@ -75,6 +75,12 @@ export function Rail({ ws, agents, exited, onSelect, onFocusPane, onAddProject, 
                 />
               ) : (
                 <>
+                  {/* Ctrl+Alt+1…9 przełącza projekt – numer widać przy nazwie (powyżej 9 nie ma skrótu) */}
+                  {i < 9 && (
+                    <span className="rail-key" title={`Ctrl+Alt+${i + 1}`}>
+                      {i + 1}
+                    </span>
+                  )}
                   <span className="rail-name">{project.name}</span>
                   <span className="rail-count">{project.panes.length}</span>
                   <button

@@ -9,6 +9,8 @@ type Props = {
   activeId: string | null;
   agents: AgentDef[];
   exited: Record<string, ExitInfo>; // stage 9 adds the rest of the ephemeral state
+  /** Panel, dla którego skrót z klawiatury uzbroił „Na pewno?” (etap 8). */
+  armedPane: string | null;
   paneActions: PaneActions;
   projectActions: ProjectActions;
 };
@@ -19,7 +21,7 @@ const agentById = (agents: AgentDef[], id: string) => agents.find((a) => a.id ==
  * One grid per project, all of them mounted: switching projects hides a grid with
  * `display: none`, it never unmounts (unmounting would kill the processes).
  */
-export function Grid({ projects, activeId, agents, exited, paneActions, projectActions }: Props) {
+export function Grid({ projects, activeId, agents, exited, armedPane, paneActions, projectActions }: Props) {
   return (
     <>
       {projects.map((project) => {
@@ -57,6 +59,7 @@ export function Grid({ projects, activeId, agents, exited, paneActions, projectA
                     focused={active && pane.id === project.focused}
                     maximized={project.maximized === pane.id}
                     exited={exited[pane.id]}
+                    armed={pane.id === armedPane}
                     actions={paneActions}
                   />
                 </div>

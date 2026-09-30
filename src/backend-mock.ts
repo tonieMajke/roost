@@ -4,6 +4,9 @@ import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
 const PROMPT = "$ ";
 const WORKSPACE_KEY = "aw-workspace";
 let nextId = 1;
+// Preview copy of the clipboard: Chromium blocks readText() without focus, so copy/paste
+// inside the preview must still round-trip.
+let previewClipboard = "";
 
 const enc = (text: string) => new TextEncoder().encode(text);
 
@@ -102,5 +105,24 @@ export const mockBackend: Backend = {
     } catch {
       // j.w.
     }
+  },
+
+  // Preview clipboard: the browser one when it answers, our own string as the fallback.
+  async copyText(text) {
+    previewClipboard = text;
+    try {
+      await globalThis.navigator?.clipboard?.writeText(text);
+    } catch {
+      // brak dostępu do schowka w przeglądarce: zostaje previewClipboard
+    }
+  },
+  async pasteText() {
+    try {
+      const text = await globalThis.navigator?.clipboard?.readText();
+      if (text) return text;
+    } catch {
+      // odczyt schowka wymaga fokusu karty: używamy previewClipboard
+    }
+    return previewClipboard === "" ? null : previewClipboard;
   },
 };

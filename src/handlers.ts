@@ -1,4 +1,5 @@
 import type { ExitInfo } from "./backend";
+import type { TerminalHandle } from "./Terminal";
 
 /** Callbacks the grid/panes call. App builds them around the workspace reducer. */
 export type PaneActions = {
@@ -8,6 +9,8 @@ export type PaneActions = {
   newConversation(paneId: string): void; // nowa rozmowa: nowe sessionId + run + 1 (tylko agenci z `session`)
   close(paneId: string): void;
   exit(paneId: string, info: ExitInfo): void;
+  /** Uchwyt terminala panelu (kopiuj/wklej); `null` gdy terminal znika. */
+  registerTerminal(paneId: string, handle: TerminalHandle | null): void;
 };
 
 export type ProjectActions = {

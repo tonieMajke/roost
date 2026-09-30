@@ -38,6 +38,13 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .rail-project.is-active > .rail-row { background: #33302c; }
 .rail-project.is-active > .rail-row .rail-name { color: var(--text); }
 .rail-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-key {
+  color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums;
+  min-width: 12px; text-align: center;
+}
+.rail-project.is-active > .rail-row .rail-key { color: var(--text); }
+/* Na jaśniejszym tle aktywnego wiersza #9a948e daje tylko 4,4:1 – licznik idzie za nazwą. */
+.rail-project.is-active > .rail-row .rail-count { color: var(--text); }
 .rail-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .rail-close { display: none; padding: 0 4px; height: 20px; line-height: 18px; border-color: transparent; background: transparent; }
 .rail-row:hover .rail-close, .rail-close.is-confirm { display: block; }

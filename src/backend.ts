@@ -28,6 +28,10 @@ export interface Backend {
   saveWorkspace(json: string): Promise<void>;
   /** Kopia `workspace.json` → `workspace.<date>.bak` (`RRRR-MM-DD`); istniejącej kopii nie nadpisuje. */
   backupWorkspace(date: string): Promise<void>;
+  /** Tekst do schowka (Ctrl+Shift+C). */
+  copyText(text: string): Promise<void>;
+  /** Tekst ze schowka (Ctrl+Shift+V); `null` = pusty schowek. */
+  pasteText(): Promise<string | null>;
 }
 
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;

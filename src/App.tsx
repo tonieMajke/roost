@@ -15,6 +15,9 @@ import {
 import { Rail } from "./Rail";
 import { Grid } from "./Grid";
 import { NewPaneDialog } from "./NewPaneDialog";
+import { commandFor, type Command } from "./keys";
+import { CONFIRM_MS, confirmClick, type Arm } from "./confirm";
+import type { TerminalHandle } from "./Terminal";
 import type { PaneActions, ProjectActions } from "./handlers";
 
 export function App() {
@@ -30,6 +33,11 @@ export function App() {
   const [loaded, setLoaded] = useState(false);
   // Home is fetched once: paths are stored as `~/...` (Rust expands them at spawn).
   const home = useRef<string>("");
+  // Terminal of each mounted pane, for Ctrl+Shift+C / Ctrl+Shift+V.
+  const terms = useRef(new Map<string, TerminalHandle>());
+  // Ctrl+Alt+W on a running pane asks twice, exactly like the ✕ button.
+  const armRef = useRef<Arm>(null);
+  const [armedPane, setArmedPane] = useState<string | null>(null);
 
   // Start: agents first (parseWorkspace needs their ids), then the saved layout.
   useEffect(() => {
@@ -103,13 +111,15 @@ export function App() {
     return last >= 0 ? last : Math.max(0, agents.findIndex((a) => a.id === defaultAgent?.id));
   }, [agents, lastAgentId, defaultAgent]);
 
-  const forget = (ids: string[]) =>
+  const forget = (ids: string[]) => {
+    for (const id of ids) terms.current.delete(id);
     setEphemeral((prev) => {
       if (!ids.some((id) => id in prev)) return prev;
       const next = { ...prev };
       for (const id of ids) delete next[id];
       return next;
     });
+  };
 
   const paneActions: PaneActions = {
     focus: (paneId) => dispatch({ type: "focus", id: paneId }),
@@ -125,6 +135,10 @@ export function App() {
       dispatch({ type: "close", id: paneId });
     },
     exit: (paneId, info) => setEphemeral((prev) => ({ ...prev, [paneId]: { ...prev[paneId], exited: info } })),
+    registerTerminal: (paneId, handle) => {
+      if (handle) terms.current.set(paneId, handle);
+      else terms.current.delete(paneId);
+    },
   };
 
   const projectActions: ProjectActions = {
@@ -183,6 +197,91 @@ export function App() {
     for (const [id, state] of Object.entries(ephemeral)) if (state.exited) map[id] = state.exited;
     return map;
   }, [ephemeral]);
+
+  // "Na pewno?" po Ctrl+Alt+W wraca do ✕ po CONFIRM_MS (tak jak przy kliknięciu).
+  useEffect(() => {
+    if (armedPane === null) return;
+    const t = setTimeout(() => setArmedPane(null), CONFIRM_MS);
+    return () => clearTimeout(t);
+  }, [armedPane]);
+
+  const closeByShortcut = (paneId: string) => {
+    // Panel bez żywego procesu zamyka się od razu; z procesem trzeba potwierdzić.
+    if (paneId in exited) {
+      armRef.current = null;
+      paneActions.close(paneId);
+      return;
+    }
+    const r = confirmClick(armRef.current, `x:${paneId}`, Date.now());
+    armRef.current = r.arm;
+    if (r.fire) {
+      setArmedPane(null);
+      paneActions.close(paneId);
+      return;
+    }
+    setArmedPane(paneId);
+  };
+
+  const runCommand = (cmd: Command) => {
+    const focusedId = active?.focused ?? null;
+    switch (cmd.type) {
+      case "move":
+        dispatch({ type: "move", dir: cmd.dir });
+        break;
+      case "toggleMaximize":
+        dispatch({ type: "toggleMaximize" }); // bez id = panel z fokusem
+        break;
+      case "newPane":
+        projectActions.openPaneDialog();
+        break;
+      case "newProject":
+        projectActions.addProject();
+        break;
+      case "selectProject": {
+        const project = ws.projects[cmd.index]; // poza listą = nic
+        if (project) dispatch({ type: "selectProject", id: project.id });
+        break;
+      }
+      case "restartPane":
+        if (focusedId !== null) paneActions.restart(focusedId);
+        break;
+      case "closePane":
+        if (focusedId !== null) closeByShortcut(focusedId);
+        break;
+      case "copy": {
+        const text = focusedId === null ? "" : (terms.current.get(focusedId)?.copySelection() ?? "");
+        if (text === "") break; // brak zaznaczenia: nie nadpisujemy schowka
+        void backend.copyText(text).catch((e: unknown) => setErrors((prev) => [...prev, `schowek: ${String(e)}`]));
+        break;
+      }
+      case "paste": {
+        void (async () => {
+          try {
+            const text = await backend.pasteText();
+            if (text !== null && focusedId !== null) terms.current.get(focusedId)?.paste(text);
+          } catch (e) {
+            setErrors((prev) => [...prev, `schowek: ${String(e)}`]);
+          }
+        })();
+        break;
+      }
+    }
+  };
+
+  // One capture-phase listener on the window: it runs before xterm, so a recognised
+  // shortcut never reaches the process. The handler lives in a ref -> current state.
+  const onKey = useRef<(e: KeyboardEvent) => void>(() => {});
+  onKey.current = (e: KeyboardEvent) => {
+    const cmd = commandFor(e);
+    if (cmd === null) return;
+    e.preventDefault();
+    runCommand(cmd);
+  };
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => onKey.current(e);
+    window.addEventListener("keydown", h, true);
+    return () => window.removeEventListener("keydown", h, true);
+  }, []);
 
   return (
     <div className="app">
@@ -245,6 +344,7 @@ export function App() {
                 activeId={ws.active}
                 agents={agents}
                 exited={exited}
+                armedPane={armedPane}
                 paneActions={paneActions}
                 projectActions={projectActions}
               />

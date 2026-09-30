@@ -1,5 +1,6 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
 import type { Backend, ExitInfo } from "./backend";
 
@@ -44,4 +45,11 @@ export const tauriBackend: Backend = {
   loadWorkspace: () => invoke<string | null>("workspace_load"),
   saveWorkspace: (json) => invoke<void>("workspace_save", { json }),
   backupWorkspace: (date) => invoke<void>("workspace_backup", { date }),
+
+  copyText: (text) => writeText(text),
+  // Pusty schowek zwracamy jako `null`, żeby wołający nic nie wklejał.
+  async pasteText() {
+    const text = await readText();
+    return text === "" ? null : text;
+  },
 };

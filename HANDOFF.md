@@ -2,6 +2,34 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## M1 Etap 8 – 2026-09-30
+Skróty: `src/keys.ts` (`commandFor`, table Ctrl+Alt+←/→/↑/↓, Enter, N, W, R, P, 1–9 oraz
+Ctrl+Shift+C/V; reszta → `null`, więc Ctrl+C i Ctrl+V zostają dla terminala). App: jeden
+`keydown` na `window` w fazie capture + `preventDefault` dla rozpoznanych; handler w `useRef`
+(ma aktualny stan, subskrypcja efektu z `[]`). `Terminal.tsx`:
+`attachCustomKeyEventHandler(e => commandFor(e) === null)` (xterm nie wysyła naszych skrótów
+do procesu) oraz uchwyt `copySelection()/paste()` przez `useImperativeHandle` → `Pane` rejestruje
+go w mapie App (`registerTerminal` w `PaneActions`, klucz = id panelu, kopiowanie z panelu
+z fokusem modelu). `closePane` z klawiatury używa tej samej reguły co ✕ (`confirmClick`, 3 s);
+`armedPane` w App podświetla „Na pewno?” w nagłówku. Schowek: `Backend.copyText/pasteText`
+tauri-plugin-clipboard-manager ~2.4 / `@tauri-apps/plugin-clipboard-manager` 2.4.0
+(`clipboard-manager:allow-read-text|write-text` w capability, plugin w `lib.rs`; mock =
+`navigator.clipboard` z buforem awaryjnym). Na szynie numery 1–9 przy nazwach (`.rail-key`).
+Sprawdzenia: typecheck czysto, vitest 66/66 (8 nowych `keys.test.ts` + kopiuj→wklej w mocku),
+cargo test 10/10, cargo build 0 ostrzeżeń, `tauri` w `Cargo.lock` nadal 2.12.0.
+`ui_audit` :5183 (stan z 2 projektami i 3 panelami, seed przez temp `seed-preview.html` — usunięty):
+0 wysokich / 8 średnich / 0 niskich. Wysoki (kontrast `rail-count` 4,4:1 na aktywnym wierszu)
+naprawiony; średnie to `text-touches-edge` w kompaktowym chrome (wiersz szyny 28 px, nagłówek
+panelu 26 px, padding 4/8 px) i wewnątrz warstwy xtermu (0 px — siatka komórek xtermu, nasza
+reguła by ją rozjechała) — zostawione celowo.
+Niesprawdzone: **klawiatura interaktywnie** (BrowserOS niedostępny w tej sesji: `fetch failed`,
+brak chromium na PATH → w podglądzie sprawdzony tylko rendering: szyna z numerami, 3 panele,
+fokus; logika mapowania w testach, Wiring `preventDefault`/dispatch tylko z przeglądu diffu),
+oraz okno Tauri: plugin schowka i uprawnienia po raz pierwszy wołane, Ctrl+Alt u WebKitGTK.
+Ręcznie (użytkownik): Ctrl+Alt+N → okno panelu, Ctrl+Alt+Enter maksymalizacja, Ctrl+Alt+W
+dwukrotnie = zamknięcie, Ctrl+Alt+2 zmiana projektu, zaznacz tekst → Ctrl+Shift+C, w drugim
+panelu Ctrl+Shift+V, plain Ctrl+V w claude nadal wkleja, plain Ctrl+C nadal przerywa.
+
 ## Przegląd etapu 7 (Claude) – 2026-09-30
 - Usunięty drugi, stary efekt `loadAgents` w `App.tsx`: biegł równolegle ze startem i jego
   `setErrors(r.errors)` kasował błędy parsowania `workspace.json`.

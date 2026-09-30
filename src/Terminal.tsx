@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import "@xterm/xterm/css/xterm.css";
 import { backend, type ExitInfo, type PtyHandle } from "./backend";
+import { commandFor } from "./keys";
 
 const FONT = '"JetBrains Mono Variable", monospace';
 
@@ -14,13 +15,22 @@ type Props = {
   focused?: boolean;
   onExit?: (info: ExitInfo) => void;
   onFocus?: () => void;
+  /** Uchwyt dla rodzica (App): kopiowanie zaznaczenia i wklejenie tekstu. */
+  apiRef?: Ref<TerminalHandle>;
+};
+
+export type TerminalHandle = {
+  /** Zaznaczony tekst ("" = brak zaznaczenia). */
+  copySelection(): string;
+  /** Tekst do terminala tak, jakby wklejony (obsługuje bracketed paste). */
+  paste(text: string): void;
 };
 
 /**
  * One agent process rendered by xterm.js. The process lives exactly as long as the
  * component: the effect has no dependencies, so it restarts only under a new React key.
  */
-export function Terminal({ command, args, cwd, focused, onExit, onFocus }: Props) {
+export function Terminal({ command, args, cwd, focused, onExit, onFocus, apiRef }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm | undefined>(undefined);
   // Read once at mount; later prop changes must never restart the process.
@@ -32,6 +42,15 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus }: Props
   focusRef.current = onFocus;
   const focusedRef = useRef(focused);
   focusedRef.current = focused;
+
+  useImperativeHandle(
+    apiRef,
+    () => ({
+      copySelection: () => term.current?.getSelection() ?? "",
+      paste: (text: string) => term.current?.paste(text),
+    }),
+    [],
+  );
 
   useEffect(() => {
     const el = host.current!;
@@ -49,6 +68,8 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus }: Props
     x.loadAddon(fit);
     x.loadAddon(new Unicode11Addon());
     x.unicode.activeVersion = "11";
+    // Nasze skróty obsługuje App na oknie; xterm nie może ich połknąć (ani wysłać do procesu).
+    x.attachCustomKeyEventHandler((e) => commandFor(e) === null);
 
     let pty: PtyHandle | undefined;
     let disposed = false;
