@@ -6,5 +6,7 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 
 Jeden terminal (Tauri 2 + portable-pty + xterm.js), wybór agenta i katalogu, restart.
 `pnpm typecheck` czysto, `cargo test --lib` 1/1, `cargo build` bez ostrzeżeń.
-Niesprawdzone: okno Tauri nie było uruchamiane – nie wiadomo, czy wyjście dochodzi jako
-`ArrayBuffer` (kod obsługuje też `number[]`), jak wyglądają TUI claude/pi, wklejanie.
+Sprawdzone przez użytkownika w oknie Tauri: okno się rysuje (zmienne WebKit działają),
+wyjście PTY dochodzi, TUI claude z kolorami i ramkami (pytanie o zaufanie do `~`).
+Do sprawdzenia: klawiatura (Shift+Tab, Esc, Ctrl+C), polskie znaki, zmiana rozmiaru,
+wklejanie, brak procesów po zamknięciu okna.
