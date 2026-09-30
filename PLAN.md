@@ -68,7 +68,7 @@ utworzeniu, zapisany w układzie. Po restarcie aplikacji panel startuje z tym sa
   polskie znaki, skróty (Ctrl+C, Shift+Tab, Esc), szybkość przewijania, zamknięcie aplikacji
   nie zostawia procesów.
 
-**M1 – wersja podstawowa**
+**M1 – wersja podstawowa** – szczegółowe etapy dla lokalnego agenta: `docs/plan-m1.md`
 - Siatka 1–16 paneli (automatyczny układ kolumn/wierszy + ręczna zmiana proporcji).
 - „Nowy panel” → wybór agenta i katalogu (dialog, ostatnie projekty).
 - Nagłówek panelu: agent, katalog, stan (działa / zakończony z kodem), restart, zamknij,
