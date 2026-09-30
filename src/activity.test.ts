@@ -3,14 +3,12 @@ import {
   MIN_BURST_MS,
   QUIET_MS,
   RESIZE_QUIET_MS,
-  dotClass,
-  dotTitle,
   exitText,
   initialActivity,
   onOutput,
   onResize,
   projectState,
-  rowState,
+  paneStatus,
   tick,
 } from "./activity";
 
@@ -96,27 +94,16 @@ describe("activity", () => {
     expect(r).toEqual({ activity: initialActivity, working: false, finished: false });
   });
 
-  it("kropka: pracuje > nieprzeczytane > działa/zakończony", () => {
-    expect(dotClass({})).toBe("dot--on");
-    expect(dotClass({ exited: { code: 0, signal: null } })).toBe("dot--off");
-    expect(dotClass({ unread: true })).toBe("dot--unread");
-    expect(dotClass({ unread: true, exited: { code: 1, signal: null } })).toBe("dot--unread");
-    expect(dotClass({ working: true, unread: true, exited: { code: 1, signal: null } })).toBe("dot--working");
-  });
 
-  it("title kropki mówi, co widać", () => {
-    expect(dotTitle({}, "")).toBe("działa");
-    expect(dotTitle({ exited: { code: 1, signal: null } }, "kod 1")).toBe("kod 1");
-    expect(dotTitle({ unread: true }, "")).toBe("nowe wyjście – panel bez fokusu");
-    expect(dotTitle({ working: true }, "kod 1")).toBe("pracuje");
-  });
 
-  it("wiersz panelu na szynie: klasa st-* i tekst stanu", () => {
-    expect(rowState({})).toEqual({ cls: "st-idle", text: "czeka" });
-    expect(rowState({ exited: { code: 0, signal: null } })).toEqual({ cls: "st-exited", text: "kod 0" });
-    expect(rowState({ exited: { code: 0, signal: "15" } })).toEqual({ cls: "st-exited", text: "sygnał 15" });
-    expect(rowState({ unread: true })).toEqual({ cls: "st-unread", text: "nowe wyjście" });
-    expect(rowState({ working: true, unread: true })).toEqual({ cls: "st-working", text: "pracuje" });
+  it("stan panelu: klasa st-* i tekst (nagłówek i szyna)", () => {
+    expect(paneStatus({})).toEqual({ cls: "st-idle", text: "czeka" });
+    expect(paneStatus({ exited: { code: 0, signal: null } })).toEqual({ cls: "st-exited", text: "kod 0" });
+    expect(paneStatus({ exited: { code: 0, signal: "15" } })).toEqual({ cls: "st-exited", text: "sygnał 15" });
+    expect(paneStatus({ unread: true })).toEqual({ cls: "st-unread", text: "nowe wyjście" });
+    expect(paneStatus({ working: true, unread: true })).toEqual({ cls: "st-working", text: "pracuje" });
+    expect(paneStatus({ done: true, unread: true })).toEqual({ cls: "st-done", text: "skończył" });
+    expect(paneStatus({ done: true, working: true }).cls).toBe("st-working");
   });
 
   it("kropka projektu: nieprzeczytane wygrywa z pracą", () => {

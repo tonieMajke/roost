@@ -15,9 +15,13 @@ type Props = {
   state: Record<string, PaneState>; // stan ulotny (exit + aktywność), patrz src/activity.ts
   /** Panel, dla którego skrót z klawiatury uzbroił „Na pewno?” (etap 8). */
   armedPane: string | null;
+  /** Panele w trakcie animacji zamknięcia (`is-closing`). */
+  closing: ReadonlySet<string>;
   paneActions: PaneActions;
   projectActions: ProjectActions;
 };
+
+const NO_STATE: PaneState = {};
 
 const agentById = (agents: AgentDef[], id: string) => agents.find((a) => a.id === id);
 
@@ -25,7 +29,7 @@ const agentById = (agents: AgentDef[], id: string) => agents.find((a) => a.id ==
  * One grid per project, all of them mounted: switching projects hides a grid with
  * `display: none`, it never unmounts (unmounting would kill the processes).
  */
-export function Grid({ projects, activeId, agents, accent, state, armedPane, paneActions, projectActions }: Props) {
+export function Grid({ projects, activeId, agents, accent, state, armedPane, closing, paneActions, projectActions }: Props) {
   return (
     <>
       {projects.map((project) => {
@@ -35,11 +39,11 @@ export function Grid({ projects, activeId, agents, accent, state, armedPane, pan
         return (
           <div
             key={project.id}
-            className="project-grid"
+            className="grid"
             style={{
               display: active ? "grid" : "none",
-              gridTemplateColumns: `repeat(${maximized ? 1 : cols}, 1fr)`,
-              gridTemplateRows: `repeat(${maximized ? 1 : rows}, 1fr)`,
+              gridTemplateColumns: `repeat(${maximized ? 1 : cols}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${maximized ? 1 : rows}, minmax(0, 1fr))`,
             }}
           >
             {project.panes.length === 0 ? (
@@ -70,9 +74,8 @@ export function Grid({ projects, activeId, agents, accent, state, armedPane, pan
                     accent={accent}
                     focused={active && pane.id === project.focused}
                     maximized={project.maximized === pane.id}
-                    exited={state[pane.id]?.exited}
-                    working={state[pane.id]?.working}
-                    unread={state[pane.id]?.unread}
+                    state={state[pane.id] ?? NO_STATE}
+                    closing={closing.has(pane.id)}
                     armed={pane.id === armedPane}
                     actions={paneActions}
                   />

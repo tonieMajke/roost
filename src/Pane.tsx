@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { backend, type ExitInfo } from "./backend";
+import { backend } from "./backend";
 import { agentColor, buildArgs, type AgentDef } from "./agents";
-import { dotClass, dotTitle, exitText } from "./activity";
+import { exitText, paneStatus, type PaneState } from "./activity";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
@@ -17,16 +17,19 @@ type Props = {
   accent: string;
   focused: boolean;
   maximized: boolean;
-  exited?: ExitInfo;
-  working?: boolean;
-  unread?: boolean;
+  state: PaneState; // stan ulotny: proces + aktywność
+  /** Trwa animacja `paneOut`; reduktor zamknie panel po PANE_OUT_MS. */
+  closing: boolean;
   /** true gdy skrót z klawiatury uzbroił „Na pewno?” na zamknięciu tego panelu. */
   armed?: boolean;
   actions: PaneActions;
 };
 
+/** Czas animacji `paneOut` w styles.css — tyle App czeka z `close` w reduktorze. */
+export const PANE_OUT_MS = 190;
+
 /** Frame around one terminal: header with agent, state and controls. */
-export function Pane({ pane, path, agent, accent, focused, maximized, exited, working, unread, armed, actions }: Props) {
+export function Pane({ pane, path, agent, accent, focused, maximized, state, closing, armed, actions }: Props) {
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armedClick, setArmedClick] = useState(false);
@@ -75,22 +78,26 @@ export function Pane({ pane, path, agent, accent, focused, maximized, exited, wo
   };
 
   const showArmed = armed === true || armedClick;
-  const state = { exited, working, unread };
+  const status = paneStatus(state);
+  const name = agent?.name ?? pane.agentId;
 
   return (
     <section
-      className={`pane${focused ? " is-focused" : ""}`}
+      className={`pane ${status.cls}${focused ? " is-focused" : ""}${closing ? " is-closing" : ""}`}
       // Kolor agenta dla CSS (--ag): poświata, ramka, nagłówek (wzór D).
       style={{ "--ag": agentColor(agent) } as CSSProperties}
       onPointerDown={() => actions.focus(pane.id)}
     >
+      {/* poświata pracy / fala po skończeniu (st-working, st-done) */}
+      <div className="glow" />
       <header className="pane-head">
-        <span className="pane-name">{agent?.name ?? pane.agentId}</span>
-        <span
-          className={`dot ${dotClass(state)}`}
-          title={dotTitle(state, exited ? exitText(exited) : "")}
-        />
-        <span className="pane-tools">
+        <span className="ag-badge" aria-hidden>
+          {name.charAt(0).toUpperCase()}
+        </span>
+        <span className="pane-name">{name}</span>
+        <span className="pane-state">{status.text}</span>
+        {/* .ctx – miernik kontekstu, etap 8 */}
+        <span className="tools">
           {agent?.session && (
             <IconButton icon={MessageSquarePlus} label="Nowa rozmowa" onClick={() => actions.newConversation(pane.id)} />
           )}
@@ -130,6 +137,15 @@ export function Pane({ pane, path, agent, accent, focused, maximized, exited, wo
           />
         )}
       </div>
+      {state.exited && (
+        <div className="pane-exit">
+          Proces zakończony ({exitText(state.exited)}) ·{" "}
+          <button type="button" className="link" onClick={() => actions.restart(pane.id)}>
+            Uruchom ponownie
+          </button>{" "}
+          <kbd>Ctrl+Alt+R</kbd>
+        </div>
+      )}
     </section>
   );
 }

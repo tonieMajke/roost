@@ -124,8 +124,7 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
           (info) => {
             // A killed old run (restart/close) must not mark the pane's next run as exited.
             if (disposed) return;
-            x.write(`\r\n\x1b[2m[proces zakończony: ${info.signal ?? `kod ${info.code}`}]\x1b[0m\r\n`);
-            exitRef.current?.(info);
+            exitRef.current?.(info); // Pane shows the „Proces zakończony” bar
           },
         );
         if (disposed) handle.kill();

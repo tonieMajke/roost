@@ -15,6 +15,17 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 4 – 2026-09-30 (Claude)
+
+- Panel według wzoru D: `.glow`, `.ag-badge` (pierwsza litera agenta), `.pane-name`/`.pane-state` (mono, wersaliki), `.tools` przygaszone do 0,3 (pełne przy fokusie, najechaniu i `:focus-within`), miejsce na `.ctx` (komentarz, etap 8).
+- `paneStatus()` w `activity.ts` zastępuje `rowState`/`dotClass`/`dotTitle`: `st-working` > `st-done` > `st-unread` > `st-exited` > `st-idle`; ten sam stan na szynie i w nagłówku.
+- `done` w `PaneState`: App ustawia go na zdarzenie `finished` i zdejmuje po `DONE_MS` = 1600 ms (fala `wave`). Timery App w jednym `later()`, czyszczone przy odmontowaniu.
+- Zamykanie: `closing` w App → `is-closing` (`paneOut` 190 ms, `PANE_OUT_MS` w `Pane.tsx`), dopiero potem `forget` + `close`; drugi klik w trakcie ignorowany.
+- Proces zakończony: pasek `.pane-exit` „Proces zakończony (kod N) · Uruchom ponownie Ctrl+Alt+R”; szara linia w xterm usunięta z `Terminal.tsx`.
+- Siatka: `.project-grid` → `.grid`, odstępy `var(--gap)`, ścieżki `minmax(0, 1fr)`. Stare `.dot*` i `.pane-tools` usunięte.
+- Sprawdzenia: typecheck czysty, vitest 109/109 (usunięte testy `dotClass`/`dotTitle`), `vite build` OK. Podgląd w headless Firefoksie: nagłówek, plakietki, `fh-fill` OK.
+- Niesprawdzone: pasek `.pane-exit`, fala `st-done` i `paneOut` na żywo (headless robi zrzut przed wyjściem procesu z mocka). Headless Firefox czasem nie rysuje tekstu Geist Mono 10,5 px (`kbd`, `.pane-state`) – DOM jest poprawny, w Tauri sprawdzić.
+
 ## M2 Etap 3 – poprawki (Claude)
 
 - `--accent-hover` przeniesiony z `:root` na `.app` (na `:root` zawsze dawał pomarańcz, niezależnie od `acc-*`).

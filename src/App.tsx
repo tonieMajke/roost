@@ -19,8 +19,10 @@ import { Rail } from "./Rail";
 import { Grid } from "./Grid";
 import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
+import { PANE_OUT_MS } from "./Pane";
 import { planPreset } from "./presets";
 import {
+  DONE_MS,
   PING_MS,
   TICK_MS,
   initialActivity,
@@ -56,6 +58,21 @@ export function App() {
   // Ctrl+Alt+W on a running pane asks twice, exactly like the ✕ button.
   const armRef = useRef<Arm>(null);
   const [armedPane, setArmedPane] = useState<string | null>(null);
+  // Panele w animacji `paneOut`: reduktor dostaje `close` dopiero po PANE_OUT_MS.
+  const [closing, setClosing] = useState<ReadonlySet<string>>(new Set());
+  // Timery zdejmujące `done` (DONE_MS) i kończące zamykanie paneli (PANE_OUT_MS).
+  const timers = useRef(new Set<number>());
+  const later = (ms: number, fn: () => void) => {
+    const t = window.setTimeout(() => {
+      timers.current.delete(t);
+      fn();
+    }, ms);
+    timers.current.add(t);
+  };
+  useEffect(() => {
+    const all = timers.current;
+    return () => all.forEach((t) => clearTimeout(t));
+  }, []);
 
   // Start: agents first (parseWorkspace needs their ids), then the saved layout.
   useEffect(() => {
@@ -158,8 +175,17 @@ export function App() {
     newConversation: (paneId) =>
       dispatch({ type: "newConversation", id: paneId, sessionId: crypto.randomUUID() }),
     close: (paneId) => {
-      forget([paneId]);
-      dispatch({ type: "close", id: paneId });
+      if (closing.has(paneId)) return; // drugi klik / skrót w trakcie animacji
+      setClosing((prev) => new Set(prev).add(paneId));
+      later(PANE_OUT_MS, () => {
+        forget([paneId]);
+        dispatch({ type: "close", id: paneId });
+        setClosing((prev) => {
+          const next = new Set(prev);
+          next.delete(paneId);
+          return next;
+        });
+      });
     },
     exit: (paneId, info) => setEphemeral((prev) => ({ ...prev, [paneId]: { ...prev[paneId], exited: info } })),
     registerTerminal: (paneId, handle) => {
@@ -306,6 +332,20 @@ export function App() {
         }
         return next ?? prev;
       });
+      // Skończona praca: `st-done` (fala) na DONE_MS, potem zostaje `st-unread` albo nic.
+      const finished = updates.filter((u) => u.finished).map((u) => u.id);
+      if (finished.length > 0) {
+        const setDone = (done: boolean) =>
+          setEphemeral((prev) => {
+            const ids = finished.filter((id) => id in prev || done); // zamknięte już nie wracają
+            if (ids.length === 0) return prev;
+            const next = { ...prev };
+            for (const id of ids) next[id] = { ...prev[id], done };
+            return next;
+          });
+        setDone(true);
+        later(DONE_MS, () => setDone(false));
+      }
       for (const u of updates) {
         if (!u.finished) continue;
         if (u.id === focusedRef.current && windowFocused) continue; // exactly what is on screen
@@ -496,6 +536,7 @@ export function App() {
                 accent={accentHex}
                 state={ephemeral}
                 armedPane={armedPane}
+                closing={closing}
                 paneActions={paneActions}
                 projectActions={projectActions}
               />

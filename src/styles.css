@@ -153,7 +153,7 @@ kbd {
 @keyframes fold { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .proj.has-work .proj-dot, .pane-row.st-working .ag-dot, .proj.ping .proj-dot,
-  .proj-panes, .pane.st-working .glow { animation: none; }
+  .proj-panes, .pane.st-working .glow, .pane.st-done .glow { animation: none; }
 }
 
 /* zwiń szyny (Ctrl+Alt+B): 56 px samych <kbd> i kropek */
@@ -187,38 +187,62 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 .grids { flex: 1; min-height: 0; position: relative; }
-/* each project grid fills the area; the inactive ones are hidden, never unmounted */
-.project-grid { position: absolute; inset: 4px; display: grid; gap: 4px; }
+/* one grid per project, stacked; the inactive ones are hidden, never unmounted */
+.grid { position: absolute; inset: var(--gap); display: grid; gap: var(--gap); }
 .pane-cell { min-width: 0; min-height: 0; overflow: hidden; }
 
+/* panel (wzór D) */
 .pane {
-  display: flex; flex: 1; flex-direction: column; min-width: 120px; min-height: 120px;
+  position: relative; display: flex; flex: 1; flex-direction: column; min-width: 120px; min-height: 120px;
   background: var(--pane); border: var(--pane-bw) solid var(--line); border-radius: var(--r-pane); overflow: hidden;
-  transition: border-color 0.25s, box-shadow 0.3s;
+  animation: paneIn 0.46s var(--ease) both; transition: border-color 0.25s, box-shadow 0.3s;
 }
 /* Defined here, not on :root: a var() inside a token resolves where the token is declared,
    and --ag (per pane) / --accent (.acc-* on .app) do not exist on :root. */
 .pane { --focus-line: var(--ag, var(--accent)); }
 .pane.is-focused { border-color: var(--focus-line); box-shadow: var(--focus-shadow); }
+.pane.is-closing { animation: paneOut 0.19s ease-in forwards; pointer-events: none; }
+.glow { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; opacity: 0; z-index: 2; }
 .pane-head {
   display: flex; align-items: center; gap: 8px; height: var(--pane-head-h); flex: none;
-  padding: 0 4px 0 8px; border-bottom: 1px solid var(--line);
+  padding: 0 6px 0 10px; border-bottom: 1px solid var(--line);
   transition: background 0.25s, color 0.25s;
 }
-.pane-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-.pane-tools { display: flex; gap: 2px; }
-.pane-tools .icon.is-confirm { width: 64px; }
+.ag-badge {
+  width: 20px; height: 20px; border-radius: var(--badge-r); display: grid; place-items: center; flex: none;
+  font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--ag);
+  background: color-mix(in srgb, var(--ag) 16%, transparent);
+}
+.pane-name {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+}
+.pane-state {
+  /* --muted zamiast --faint ze wzoru: 10,5 px potrzebuje kontrastu */
+  font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); white-space: nowrap; flex: none;
+}
+.pane.st-working .pane-state { color: var(--ag); }
+.pane.st-unread .pane-state, .pane.st-done .pane-state { color: var(--accent); }
+.tools { margin-left: auto; display: flex; gap: 1px; opacity: 0.3; transition: opacity 0.2s; flex: none; }
+.pane.is-focused .tools, .pane:hover .tools, .tools:focus-within { opacity: 1; }
+.tools .icon.is-confirm { width: 64px; }
 .pane-body { flex: 1; min-height: 0; padding: 4px; background: var(--term-bg); }
+.pane.st-exited .pane-body { opacity: 0.6; }
 .terminal { width: 100%; height: 100%; overflow: hidden; }
-
-.dot { width: 6px; height: 6px; flex: none; border-radius: 50%; }
-.dot--on { background: var(--ok); }
-.dot--off { background: var(--muted); }
-/* Aktywność panelu w nagłówku: pracuje = pulsuje, nieprzeczytane = akcent. */
-.dot--working { background: var(--accent); animation: dot-pulse 1s ease-in-out infinite; }
-.dot--unread { background: var(--accent); }
-@keyframes dot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-@media (prefers-reduced-motion: reduce) { .dot--working { animation: none; } }
+/* proces zakończony: pasek pod terminalem */
+.pane-exit {
+  flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+  border-top: 1px solid var(--line); background: var(--pane); color: var(--muted); font-size: 12px;
+}
+.pane-exit .link {
+  border: 0; background: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.pane-exit .link:hover { color: var(--text); }
+@keyframes paneIn { from { opacity: 0; transform: scale(0.93); } to { opacity: 1; transform: none; } }
+@keyframes paneOut { to { opacity: 0; transform: scale(0.92); } }
+@media (prefers-reduced-motion: reduce) { .pane, .pane.is-closing { animation: none; } }
 
 .empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
@@ -294,7 +318,7 @@ kbd {
   .area-head { padding: 0 4px 0 8px; }
   .area-count { display: none; }
   .btn { padding: 0 8px; }
-  .pane-tools .icon:not(.is-confirm) { width: 22px; }
+  .tools .icon:not(.is-confirm) { width: 22px; }
 }
 
 /* ---- appearance settings (src/ui.ts): classes set on `.app`, values from docs/design/wzor-d.html ---- */
@@ -324,15 +348,15 @@ kbd {
 .fh-fill .pane.is-focused .pane-name { color: var(--on-ag); }
 .fh-fill .pane.is-focused .icon { color: var(--on-ag); }
 .fh-fill .pane.is-focused .icon:hover:not(:disabled) { background: var(--on-ag-hover); }
-.fh-fill .pane.is-focused .dot--off { background: var(--on-ag); opacity: 0.6; }
+.fh-fill .pane.is-focused .ag-badge { background: var(--on-ag); color: var(--ag, var(--accent)); }
+.fh-fill .pane.is-focused .pane-state { color: var(--on-ag); opacity: 0.72; }
 .fh-line .pane.is-focused {
   border-color: color-mix(in srgb, var(--ag, var(--accent)) 60%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ag, var(--accent)) 25%, transparent), var(--focus-shadow);
 }
 
-/* working indicator (the .glow layer arrives in Etap 4; the class is complete already) */
+/* working indicator on the .glow layer */
 .pane.st-working .glow {
-  position: absolute; inset: 0; pointer-events: none; border-radius: inherit; opacity: 0; z-index: 2;
   box-shadow: inset 0 0 0 1px var(--ag), inset 0 0 36px -10px var(--ag);
   animation: breatheGlow 2.6s ease-in-out infinite;
 }
@@ -342,11 +366,18 @@ kbd {
   background-size: 35% 2px;
   animation: scan 1.3s linear infinite;
 }
+.pane.st-done .glow { animation: wave 1.5s var(--ease) 1 both; }
 @keyframes breatheGlow { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes wave {
+  0% { opacity: 0; box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 0 transparent; }
+  12% { opacity: 1; }
+  100% { opacity: 0; box-shadow: inset 0 0 0 1px var(--accent), inset 0 0 90px 12px color-mix(in srgb, var(--accent) 28%, transparent); }
+}
 @keyframes scan { from { background-position: -40% 0; } to { background-position: 140% 0; } }
 
 /* motion */
-.motion-lite .pane, .motion-lite .grid, .motion-lite .project-grid, .motion-lite .dialog,
+.motion-lite .pane, .motion-lite .grid, .motion-lite .dialog,
 .motion-lite .tile, .motion-lite .toast, .motion-lite .proj-panes, .motion-lite .dock,
 .motion-lite .settings { animation: none !important; }
 .motion-lite .pane.st-working .glow { animation: none; opacity: 0.6; }
+.motion-lite .pane.st-done .glow { animation: none; }

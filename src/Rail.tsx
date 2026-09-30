@@ -3,7 +3,7 @@ import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import { agentColor, type AgentDef } from "./agents";
 import { IconButton } from "./IconButton";
 import { FolderPlus, PanelLeft, SlidersHorizontal, X } from "lucide-react";
-import { dotTitle, exitText, projectState, rowState, type PaneState } from "./activity";
+import { paneStatus, projectState, type PaneState } from "./activity";
 import type { Workspace } from "./workspace";
 
 type Props = {
@@ -146,8 +146,7 @@ export function Rail({
               {project.id === ws.active && project.panes.length > 0 && (
                 <div className="proj-panes">
                   {project.panes.map((pane) => {
-                    const s = st(pane.id);
-                    const r = rowState(s);
+                    const r = paneStatus(st(pane.id));
                     return (
                       <div
                         key={pane.id}
@@ -156,10 +155,7 @@ export function Rail({
                         style={{ "--ag": agentColor(agents.find((a) => a.id === pane.agentId)) } as CSSProperties}
                         onClick={() => onFocusPane(pane.id)}
                       >
-                        <span
-                          className="ag-dot"
-                          title={dotTitle(s, s.exited ? exitText(s.exited) : "")}
-                        />
+                        <span className="ag-dot" />
                         <span className="pane-row-name">{name(pane.agentId)}</span>
                         <span className="pane-row-state">{r.text}</span>
                       </div>

@@ -50,38 +50,31 @@ export function tick(a: Activity, now: number): Tick {
 }
 
 /** Stan ulotny panelu (nigdy nie trafia na dysk): proces + aktywność z tego pliku. */
-export type PaneState = { exited?: ExitInfo; working?: boolean; unread?: boolean };
+export type PaneState = {
+  exited?: ExitInfo;
+  working?: boolean;
+  unread?: boolean;
+  /** Przez DONE_MS po zdarzeniu `finished` (fala `wave` na panelu). */
+  done?: boolean;
+};
 
-/**
- * Klasa kropki stanu w nagłówku panelu i wierszu na szynie.
- * `working` i `unread` wygrywają nad „działa/zakończony”.
- */
-export function dotClass(s: PaneState): string {
-  if (s.working) return "dot--working";
-  if (s.unread) return "dot--unread";
-  return s.exited ? "dot--off" : "dot--on";
-}
-
-/** Treść title dla kropki. */
-export function dotTitle(s: PaneState, exitLabel: string): string {
-  if (s.working) return "pracuje";
-  if (s.unread) return "nowe wyjście – panel bez fokusu";
-  return s.exited ? exitLabel : "działa";
-}
+/** Jak długo panel po skończonej pracy ma klasę `st-done` (animacja `wave` trwa 1,5 s). */
+export const DONE_MS = 1600;
 
 /** Opis zakończonego procesu: „kod 0” / „sygnał 15” (używany w panelu i na szynie). */
 export function exitText(info: ExitInfo): string {
   return info.signal ? `sygnał ${info.signal}` : `kod ${info.code}`;
 }
 
-export type RowState = { cls: string; text: string };
+export type PaneStatus = { cls: string; text: string };
 
 /**
- * Wiersz panelu na szynie (wzór D): klasa `st-*` + tekst stanu po prawej.
- * `working` i `unread` wygrywają nad „działa/zakończony”, tak jak w `dotClass`.
+ * Stan panelu (wzór D) dla nagłówka panelu i wiersza na szynie: klasa `st-*` + tekst.
+ * Kolejność: pracuje > skończył > nowe wyjście > zakończony proces > czeka.
  */
-export function rowState(s: PaneState): RowState {
+export function paneStatus(s: PaneState): PaneStatus {
   if (s.working) return { cls: "st-working", text: "pracuje" };
+  if (s.done) return { cls: "st-done", text: "skończył" };
   if (s.unread) return { cls: "st-unread", text: "nowe wyjście" };
   if (s.exited) return { cls: "st-exited", text: exitText(s.exited) };
   return { cls: "st-idle", text: "czeka" };
