@@ -1,20 +1,31 @@
 import { useState, type CSSProperties } from "react";
-import { agentColor, type AgentDef } from "./agents";
+import { agentColor, agentModels, type AgentDef } from "./agents";
 import { Dialog } from "./Dialog";
-import { dialogKey, tileDelayMs } from "./new-pane";
+import { dialogKey, stepModel, tileDelayMs } from "./new-pane";
 
 type Props = {
   projectName: string;
   agents: AgentDef[];
   /** Zaznaczony na starcie: ostatnio użyty agent (stan ulotny, nie plik). */
   startIndex: number;
-  onPick(index: number): void;
+  /** `model`: id wybranego modelu (`--model`), `undefined` = domyślny agenta. */
+  onPick(index: number, model?: string): void;
   onClose(): void;
 };
 
-/** Okno „Nowy panel” (wzór D): kafelki agentów, 1–9 / strzałki / Enter / Esc. */
+/** Okno „Nowy panel” (wzór D): kafelki agentów, 1–9 / strzałki / Enter / Esc; ←/→ model. */
 export function NewPaneDialog({ projectName, agents, startIndex, onPick, onClose }: Props) {
   const [index, setIndex] = useState(Math.min(Math.max(startIndex, 0), Math.max(agents.length - 1, 0)));
+  // Model dotyczy zaznaczonego agenta; zmiana agenta wraca do domyślnego.
+  const [model, setModel] = useState<string | undefined>(undefined);
+  const selected = agents[index];
+  const models = selected ? agentModels(selected) : [];
+  const select = (i: number) => {
+    if (i !== index) setModel(undefined);
+    setIndex(i);
+  };
+  // Model tylko dla agenta, dla którego go wybrano (cyfra może wskazać innego).
+  const pick = (i: number) => onPick(i, i === index ? model : undefined);
 
   return (
     <Dialog label={`Nowy panel w ${projectName}`} onClose={onClose} onKey={(e, cancel) => {
@@ -22,8 +33,9 @@ export function NewPaneDialog({ projectName, agents, startIndex, onPick, onClose
       if (!action) return;
       e.preventDefault();
       if (action.type === "close") cancel();
-      else if (action.type === "move") setIndex(action.index);
-      else onPick(action.index);
+      else if (action.type === "move") select(action.index);
+      else if (action.type === "model") setModel(stepModel(models.map((m) => m.id), model, action.delta));
+      else pick(action.index);
     }}>
       {(cancel) => (
         <>
@@ -40,7 +52,7 @@ export function NewPaneDialog({ projectName, agents, startIndex, onPick, onClose
                   className={`tile${i === index ? " is-active" : ""}`}
                   // opóźnienie wjazdu kafelka (80 + 55·i ms) i kolor agenta dla ramki
                   style={{ "--ag": agentColor(agent), animationDelay: `${tileDelayMs(i)}ms` } as CSSProperties}
-                  onClick={() => onPick(i)}
+                  onClick={() => pick(i)}
                 >
                   <span className="tile-top">
                     <span className="ag-badge" aria-hidden>
@@ -54,6 +66,28 @@ export function NewPaneDialog({ projectName, agents, startIndex, onPick, onClose
               ))}
             </div>
           )}
+          {selected && models.length > 0 && (
+            <div
+              className="models"
+              role="radiogroup"
+              aria-label={`Model: ${selected.name}`}
+              style={{ "--ag": agentColor(selected) } as CSSProperties}
+            >
+              <span className="models-label">Model</span>
+              {[{ id: undefined, name: "domyślny" }, ...models].map((m) => (
+                <button
+                  key={m.id ?? ""}
+                  type="button"
+                  role="radio"
+                  aria-checked={m.id === model}
+                  className={`model-chip${m.id === model ? " is-active" : ""}`}
+                  onClick={() => setModel(m.id)}
+                >
+                  {m.name}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="dialog-foot">
             <span>
               <kbd>1</kbd>–<kbd>{Math.min(agents.length, 9)}</kbd> wybór
@@ -62,6 +96,12 @@ export function NewPaneDialog({ projectName, agents, startIndex, onPick, onClose
               <kbd>↑</kbd>
               <kbd>↓</kbd> ruch
             </span>
+            {models.length > 0 && (
+              <span>
+                <kbd>←</kbd>
+                <kbd>→</kbd> model
+              </span>
+            )}
             <span>
               <kbd>Esc</kbd> zamknij
             </span>

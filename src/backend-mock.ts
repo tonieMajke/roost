@@ -8,6 +8,7 @@ let nextId = 1;
 // inside the preview must still round-trip.
 let previewClipboard = "";
 const mockReads = new Map<string, number>();
+const MOCK_TITLES = ["Naprawa czarnego paska pod xtermem", "Tytuły sesji w pulpicie", "Refaktor kolejki zapisu do terminala", "Przegląd etapu 10"];
 
 const enc = (text: string) => new TextEncoder().encode(text);
 
@@ -86,9 +87,11 @@ export const mockBackend: Backend = {
       const file = `/home/podglad/projekt/src/plik-${n}.ts`;
       return { id, name: kind === "claude" ? "Read" : "edit", file, command: null };
     });
+    // Tytuł pojawia się po pierwszym odczycie, jak aiTitle claude po pierwszej odpowiedzi.
+    const title = reads < 2 ? null : MOCK_TITLES[seed % MOCK_TITLES.length];
     return kind === "claude"
-      ? { tokens: tokens * 5, model: "claude-sonnet-5-5", window: null, tools }
-      : { tokens, model: "Flash-Next-NVFP4", window: 262_144, tools };
+      ? { tokens: tokens * 5, model: "claude-sonnet-5-5", window: null, tools, title }
+      : { tokens, model: "Flash-Next-NVFP4", window: 262_144, tools, title };
   },
   // Podgląd: bez linii statusu (procesy są udawane), limity zmyślone względem teraz.
   claudeSettingsArg: async () => null,

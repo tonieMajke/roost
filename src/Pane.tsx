@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { backend } from "./backend";
-import { agentColor, buildArgs, type AgentDef } from "./agents";
+import { agentColor, buildArgs, withModel, type AgentDef } from "./agents";
 import { exitText, paneStatus, type PaneState } from "./activity";
 import type { ContextMeter } from "./context";
 import { withClaudeSettings } from "./limits";
@@ -17,6 +17,8 @@ type Props = {
   agent?: AgentDef;
   /** Kolor akcentu (#rrggbb) dla motywu xterm. */
   accent: string;
+  /** Rozmiar czcionki terminala (px). */
+  fontSize: number;
   focused: boolean;
   maximized: boolean;
   state: PaneState; // stan ulotny: proces + aktywność
@@ -37,7 +39,7 @@ const claudeSettingsArg = () => (settingsArg ??= backend.claudeSettingsArg().cat
 export const PANE_OUT_MS = 190;
 
 /** Frame around one terminal: header with agent, state and controls. */
-export function Pane({ pane, path, agent, accent, focused, maximized, state, meter, closing, armed, actions }: Props) {
+export function Pane({ pane, path, agent, accent, fontSize, focused, maximized, state, meter, closing, armed, actions }: Props) {
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armedClick, setArmedClick] = useState(false);
@@ -63,7 +65,7 @@ export function Pane({ pane, path, agent, accent, focused, maximized, state, met
     void Promise.all([known, claudeSettingsArg()]).then(([exists, settings]) => {
       if (!live) return;
       // claude: linia statusu z limitami subskrypcji dla pulpitu (Rust `limits.rs`).
-      const args = withClaudeSettings(agent, buildArgs(agent, pane.sessionId, exists), settings);
+      const args = withClaudeSettings(agent, withModel(buildArgs(agent, pane.sessionId, exists), pane.model), settings);
       setArgsFor({ run: pane.run, sessionId: pane.sessionId, args });
     });
     return () => {
@@ -149,6 +151,7 @@ export function Pane({ pane, path, agent, accent, focused, maximized, state, met
             args={args}
             cwd={path}
             accent={accent}
+            fontSize={fontSize}
             focused={focused}
             apiRef={register.current}
             onExit={(info) => actions.exit(pane.id, info)}

@@ -12,7 +12,8 @@ export type Command =
   | { type: "selectProject"; index: number } // 0-based; outside the list -> nothing
   | { type: "newProject" }
   | { type: "toggleRail" }
-  | { type: "toggleDock" };
+  | { type: "toggleDock" }
+  | { type: "fontSize"; step: 1 | -1 | 0 }; // terminal font: bigger, smaller, default
 
 /** The part of a keydown event the mapping needs. */
 export type KeyLike = Pick<KeyboardEvent, "key" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey">;
@@ -56,8 +57,14 @@ export function commandFor(e: KeyLike): Command | null {
       return { type: "toggleRail" };
     case "d":
       return { type: "toggleDock" };
+    case "=":
+    case "+": // numpad plus
+      return { type: "fontSize", step: 1 };
+    case "-":
+      return { type: "fontSize", step: -1 };
+    case "0":
+      return { type: "fontSize", step: 0 };
     default:
-      // Ctrl+Alt+0 has no 10th project to select.
       return /^[1-9]$/.test(key) ? { type: "selectProject", index: Number(key) - 1 } : null;
   }
 }

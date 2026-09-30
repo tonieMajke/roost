@@ -265,7 +265,16 @@ kbd {
 .tools .icon.is-confirm { width: 64px; }
 .pane-body { flex: 1; min-height: 0; padding: 4px; background: var(--term-bg); }
 .pane.st-exited .pane-body { opacity: 0.6; }
+.terminal-wrap { position: relative; width: 100%; height: 100%; }
 .terminal { width: 100%; height: 100%; overflow: hidden; }
+/* przycisk „na dół” nad terminalem, widoczny tylko przy przewiniętym widoku */
+.to-bottom {
+  position: absolute; right: 18px; bottom: 12px; z-index: 5;
+  width: 28px; height: 28px; display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--line-strong); border-radius: var(--r-ctl);
+  background: var(--badge-bg); color: var(--muted); cursor: pointer;
+}
+.to-bottom:hover { color: var(--accent); border-color: var(--accent); }
 /* xterm.css daje viewportowi #000; wiersze nie wypełniają panelu co do piksela (reszta z dzielenia
    przez wysokość wiersza), więc pod ostatnim wierszem był czarny pasek */
 /* xterm 6 rysuje własny suwak (.xterm-scrollable-element); natywny pasek viewportu tylko przeszkadza */
@@ -426,6 +435,18 @@ button.feed-item {
 .tile-top kbd { margin-left: auto; }
 .tile-name { font-family: var(--display); font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
 .tile-cmd { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+/* wybór modelu zaznaczonego agenta („Nowy panel”, ←/→) */
+.models { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.models-label { font-size: 11.5px; color: var(--muted); margin-right: 4px; }
+.model-chip {
+  padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent;
+  font-size: 12px; color: var(--muted); transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.model-chip:hover { color: inherit; }
+.model-chip.is-active {
+  color: inherit; border-color: var(--ag, var(--accent));
+  background: color-mix(in srgb, var(--ag, var(--accent)) 12%, transparent);
+}
 @keyframes pop { from { opacity: 0; transform: translateY(12px) scale(0.95); } to { opacity: 1; transform: none; } }
 @keyframes tileIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes fade { from { opacity: 0; } }

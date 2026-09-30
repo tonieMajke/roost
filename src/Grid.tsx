@@ -25,6 +25,8 @@ type Props = {
   agents: AgentDef[];
   /** Kolor akcentu (#rrggbb) do motywu xterm — zmiany akcentu bez restartu procesu. */
   accent: string;
+  /** Rozmiar czcionki terminali (px, `ui.fontSize`). */
+  fontSize: number;
   /** Ustawienie „Ruch” (`ui.motion`): `lite` wyłącza FLIP, wzrost i wjazd. */
   motion: "full" | "lite";
   state: Record<string, PaneState>; // stan ulotny (exit + aktywność), patrz src/activity.ts
@@ -64,6 +66,7 @@ export function Grid({
   activeId,
   agents,
   accent,
+  fontSize,
   motion,
   state,
   contexts,
@@ -162,7 +165,7 @@ export function Grid({
           >
             {n === 0 ? (
               <div className="empty">
-                <p>Brak paneli</p>
+                <p>Brak paneli w tym projekcie</p>
                 <div className="empty-actions">
                   <button type="button" className="btn primary" onClick={projectActions.openPaneDialog}>
                     <Plus strokeWidth={1.75} aria-hidden /> Panel
@@ -197,6 +200,7 @@ export function Grid({
                       path={project.path}
                       agent={agentById(agents, pane.agentId)}
                       accent={accent}
+                      fontSize={fontSize}
                       focused={isActive && pane.id === project.focused}
                       maximized={isMax}
                       state={state[pane.id] ?? NO_STATE}

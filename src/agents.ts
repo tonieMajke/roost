@@ -11,7 +11,28 @@ export type AgentDef = {
   };
   color?: string; // "#rrggbb", accent of this agent in the UI; absent = agentColor() default
   context?: number; // context window in tokens; absent = contextLimit() default
+  models?: AgentModel[]; // choice offered in „Nowy panel”; absent = agentModels() default
 };
+
+/** A model to pick for a new pane; `id` goes to the agent as `--model <id>`. */
+export type AgentModel = { id: string; name: string };
+
+/** Built in, so an agents.json written before models existed still offers them. */
+export const CLAUDE_MODELS: AgentModel[] = [
+  { id: "claude-sonnet-5-5", name: "Sonnet 5.5" },
+  { id: "claude-opus-5-5", name: "Opus 5.5" },
+];
+
+/** Models offered for an agent: its own `models`, else the claude list for `claude`, else none. */
+export function agentModels(agent: AgentDef): AgentModel[] {
+  if (agent.models) return agent.models;
+  return agent.command.split("/").pop() === "claude" ? CLAUDE_MODELS : [];
+}
+
+/** `--model <id>` appended for a pane that has a model; unchanged without one. */
+export function withModel(args: string[], model: string | undefined): string[] {
+  return model ? [...args, "--model", model] : args;
+}
 
 export const DEFAULT_AGENTS: AgentDef[] = [
   {
@@ -88,6 +109,13 @@ export function parseAgents(raw: unknown): { agents: AgentDef[]; errors: string[
     if (e.context !== undefined) {
       if (typeof e.context === "number" && Number.isInteger(e.context) && e.context > 0) agent.context = e.context;
       else errors.push(`${where}: \`context\` must be a positive whole number of tokens, field ignored`);
+    }
+    if (e.models !== undefined) {
+      const ok =
+        Array.isArray(e.models) &&
+        e.models.every((m) => typeof m?.id === "string" && m.id !== "" && typeof m?.name === "string" && m.name !== "");
+      if (ok) agent.models = (e.models as AgentModel[]).map((m) => ({ id: m.id, name: m.name }));
+      else errors.push(`${where}: \`models\` must be a list of {id, name} strings, field ignored`);
     }
     if (e.session !== undefined) {
       const s = e.session as Record<string, unknown>;

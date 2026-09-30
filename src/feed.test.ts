@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FEED_MAX, exitedText, newTools, pushFeed, relativeTime, toolText, type FeedItem, type ToolUse } from "./feed";
+import { FEED_MAX, exitedText, feedFor, newTools, pushFeed, relativeTime, toolText, type FeedItem, type ToolUse } from "./feed";
 
 const item = (id: number): FeedItem => ({
   id,
@@ -33,6 +33,15 @@ describe("relativeTime", () => {
     [49 * 3_600_000, "2 d temu"],
   ])("%i ms → %s", (ago, text) => {
     expect(relativeTime(1_000_000_000 - ago, 1_000_000_000)).toBe(text);
+  });
+});
+
+describe("feedFor", () => {
+  it("all = the same list, project = only that project's rows, order kept", () => {
+    const feed = [{ ...item(3), projectId: "b" }, item(2), { ...item(1), projectId: "b" }];
+    expect(feedFor(feed, "all", "a")).toBe(feed);
+    expect(feedFor(feed, "project", "b").map((f) => f.id)).toEqual([3, 1]);
+    expect(feedFor(feed, "project", null)).toEqual([]);
   });
 });
 

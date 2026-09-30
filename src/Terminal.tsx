@@ -1,8 +1,7 @@
-import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
-import "@xterm/xterm/css/xterm.css";
 import { backend, type ExitInfo, type PtyHandle } from "./backend";
 import { commandFor } from "./keys";
 import { WriteQueue, peakQueueBytes } from "./write-queue";
@@ -13,8 +12,16 @@ import { WriteQueue, peakQueueBytes } from "./write-queue";
 
 const FONT = '"JetBrains Mono Variable", monospace';
 
-/** Motyw ze wzoru D: tło/tekst stałe, kursor w kolorze akcentu. */
-const termTheme = (accent: string) => ({ background: "#0d0e11", foreground: "#c6ced8", cursor: accent });
+/** Motyw ze wzoru D: tło/tekst stałe, kursor i chwycony suwak w kolorze akcentu.
+ *  Suwak = tokeny `--line-strong` / `--faint` ze styles.css (xterm bierze wartości, nie klasy). */
+const termTheme = (accent: string) => ({
+  background: "#0d0e11",
+  foreground: "#c6ced8",
+  cursor: accent,
+  scrollbarSliderBackground: "rgba(255, 255, 255, 0.15)",
+  scrollbarSliderHoverBackground: "#6f7883",
+  scrollbarSliderActiveBackground: accent,
+});
 
 type Props = {
   command: string;
@@ -22,6 +29,8 @@ type Props = {
   cwd?: string;
   /** Kolor akcentu (#rrggbb): kursor xtermu; zmiana nie restartuje procesu. */
   accent?: string;
+  /** Rozmiar czcionki (px); zmiana przelicza siatkę bez restartu procesu. */
+  fontSize?: number;
   focused?: boolean;
   onExit?: (info: ExitInfo) => void;
   /** Proces wystartował (pulpit „Na żywo”). */
@@ -46,7 +55,7 @@ export type TerminalHandle = {
  * One agent process rendered by xterm.js. The process lives exactly as long as the
  * component: the effect has no dependencies, so it restarts only under a new React key.
  */
-export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onExit, onStart, onFocus, onOutput, onRedraw, apiRef }: Props) {
+export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13, focused, onExit, onStart, onFocus, onOutput, onRedraw, apiRef }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm | undefined>(undefined);
   // Read once at mount; later prop changes must never restart the process.
@@ -64,6 +73,9 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
   outputRef.current = onOutput;
   const redrawRef = useRef(onRedraw);
   redrawRef.current = onRedraw;
+  const fitRef = useRef<FitAddon | undefined>(undefined);
+  // Przewinięty w górę: pokazuje przycisk „na dół” (scrollback do 3000 wierszy to długa droga).
+  const [scrolledUp, setScrolledUp] = useState(false);
 
   useImperativeHandle(
     apiRef,
@@ -79,7 +91,7 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
     const spec0 = spec.current;
     const x = new XTerm({
       fontFamily: FONT,
-      fontSize: 13,
+      fontSize,
       cursorBlink: true,
       allowProposedApi: true,
       scrollback: 3000, // limit pamięci przy 16 panelach (plan M1, ryzyko „xterm wolny”)
@@ -87,6 +99,7 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
     });
     term.current = x;
     const fit = new FitAddon();
+    fitRef.current = fit;
     x.loadAddon(fit);
     x.loadAddon(new Unicode11Addon());
     x.unicode.activeVersion = "11";
@@ -110,7 +123,7 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
 
     (async () => {
       // xterm measures the cell once; the font has to be there first.
-      await document.fonts.load(`13px ${FONT}`).catch(() => undefined);
+      await document.fonts.load(`${fontSize}px ${FONT}`).catch(() => undefined);
       if (disposed) return;
       x.open(el);
       fit.fit();
@@ -126,6 +139,12 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
         if (d === "\x1b[I" || d === "\x1b[O") return;
         pty?.write(d);
       });
+      const syncScrolled = () => {
+        const b = x.buffer.active;
+        setScrolledUp(b.viewportY < b.baseY);
+      };
+      x.onScroll(syncScrolled);
+      x.onWriteParsed(syncScrolled); // nowe wyjście przy przewiniętym widoku: baseY rośnie, viewportY stoi
       observer.observe(el);
       x.textarea?.addEventListener("focus", () => focusRef.current?.());
       try {
@@ -163,6 +182,7 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
       pty?.kill();
       x.dispose();
       term.current = undefined;
+      fitRef.current = undefined;
     };
     // The process depends on the React key only, that is the whole design.
   }, []);
@@ -173,10 +193,38 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onEx
     if (x) x.options.theme = termTheme(accent);
   }, [accent]);
 
+  // Ctrl+Alt+= / - / 0: nowa komórka = nowe cols/rows, fit() wysyła je do PTY (onResize).
+  useEffect(() => {
+    const x = term.current;
+    if (!x || x.options.fontSize === fontSize) return;
+    x.options.fontSize = fontSize;
+    if (x.element && host.current && host.current.clientWidth > 0) fitRef.current?.fit();
+  }, [fontSize]);
+
   // The pane owns clicks; when it becomes the focused one its terminal takes the keyboard.
   useEffect(() => {
     if (focused) term.current?.focus();
   }, [focused]);
 
-  return <div className="terminal" ref={host} />;
+  return (
+    <div className="terminal-wrap">
+      <div className="terminal" ref={host} />
+      {scrolledUp && (
+        <button
+          type="button"
+          className="to-bottom"
+          title="Przewiń na dół"
+          aria-label="Przewiń na dół"
+          onClick={() => {
+            term.current?.scrollToBottom();
+            term.current?.focus();
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 5l4 4 4-4M3 10.5h8" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
 }

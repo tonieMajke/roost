@@ -161,8 +161,19 @@ impl Ptys {
 
     /// Hang up every agent; called when the app exits.
     pub fn kill_all(&self) {
-        let pids: Vec<u32> = self.map.lock().unwrap().drain().map(|(_, p)| p.pid).collect();
-        hang_up(pids, Duration::from_millis(1500));
+        hang_up(self.take_all(), Duration::from_millis(1500));
+    }
+
+    /// Like `kill_all`, without blocking the caller (page reload runs on the main thread).
+    pub fn kill_all_async(&self) {
+        let pids = self.take_all();
+        if !pids.is_empty() {
+            std::thread::spawn(move || hang_up(pids, Duration::from_millis(1500)));
+        }
+    }
+
+    fn take_all(&self) -> Vec<u32> {
+        self.map.lock().unwrap().drain().map(|(_, p)| p.pid).collect()
     }
 }
 
@@ -320,6 +331,23 @@ mod tests {
         let deadline = Instant::now() + FIVE;
         while pid_alive(marker_pid) {
             assert!(Instant::now() < deadline, "sleep survived the group kill");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+
+    #[test]
+    fn kill_all_async_forgets_every_pane_and_kills_it_later() {
+        let ptys = Ptys::default();
+        let (a, _da, _ea) = run(&ptys, "sleep 32");
+        let (b, _db, _eb) = run(&ptys, "sleep 33");
+        let pids = [ptys.pid(a).unwrap(), ptys.pid(b).unwrap()];
+        let started = Instant::now();
+        ptys.kill_all_async();
+        assert!(started.elapsed() < Duration::from_millis(500), "must not wait for the grace period");
+        assert_eq!((ptys.pid(a), ptys.pid(b)), (None, None), "old page's panes stay tracked");
+        let deadline = Instant::now() + FIVE;
+        while pids.iter().any(|&p| pid_alive(p)) {
+            assert!(Instant::now() < deadline, "a pane survived the reload");
             std::thread::sleep(Duration::from_millis(50));
         }
     }

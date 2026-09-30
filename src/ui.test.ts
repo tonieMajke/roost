@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   ACCENT_HEX,
   DEFAULT_UI,
+  FONT_MAX,
+  FONT_MIN,
   UI_CHOICES,
   UI_ROWS,
   parseUi,
+  stepFontSize,
   uiClasses,
   uiPatch,
   type Ui,
@@ -34,7 +37,26 @@ describe("parseUi", () => {
   });
 
   it("unknown extra keys are ignored without errors", () => {
-    expect(parseUi({ fontSize: 12 })).toEqual({ ui: DEFAULT_UI, errors: [] });
+    expect(parseUi({ fontSize2: 12, theme: "light" })).toEqual({ ui: DEFAULT_UI, errors: [] });
+  });
+
+  it("feed: project wczytuje się, zła wartość = all + błąd", () => {
+    expect(parseUi({ feed: "project" }).ui.feed).toBe("project");
+    expect(parseUi({ feed: "mine" })).toEqual({
+      ui: DEFAULT_UI,
+      errors: ["ui.feed: `mine` is not one of all, project, using `all`"],
+    });
+  });
+
+  it("fontSize: liczba całkowita 10–20, inaczej 13 + błąd", () => {
+    expect(parseUi({ fontSize: 10 }).ui.fontSize).toBe(10);
+    expect(parseUi({ fontSize: 20 })).toEqual({ ui: { ...DEFAULT_UI, fontSize: 20 }, errors: [] });
+    for (const bad of [9, 21, 12.5, "14", null]) {
+      const { ui, errors } = parseUi({ fontSize: bad });
+      expect(ui.fontSize).toBe(13);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain("ui.fontSize");
+    }
   });
 
   it("rail: closed wczytuje się, zła wartość = open + błąd", () => {
@@ -58,6 +80,16 @@ describe("uiClasses", () => {
   it("rail=closed dodaje rail-closed, open nic nie dodaje", () => {
     expect(uiClasses({ ...DEFAULT_UI, rail: "closed" }).split(" ")).toContain("rail-closed");
     expect(uiClasses(DEFAULT_UI)).not.toContain("rail");
+  });
+});
+
+describe("stepFontSize", () => {
+  it("+1 / -1 w granicach 10–20, 0 = domyślne 13", () => {
+    expect(stepFontSize(13, 1)).toBe(14);
+    expect(stepFontSize(13, -1)).toBe(12);
+    expect(stepFontSize(FONT_MAX, 1)).toBe(FONT_MAX);
+    expect(stepFontSize(FONT_MIN, -1)).toBe(FONT_MIN);
+    expect(stepFontSize(18, 0)).toBe(DEFAULT_UI.fontSize);
   });
 });
 

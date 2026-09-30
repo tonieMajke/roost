@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { RotateCw, X } from "lucide-react";
 import { agentColor, type AgentDef } from "./agents";
 import { paneMeter, type SessionContext } from "./context";
-import { FEED_CLOCK_MS, relativeTime, type FeedItem } from "./feed";
+import { FEED_CLOCK_MS, feedFor, relativeTime, type FeedItem } from "./feed";
 import { limitMeters, type ClaudeLimits } from "./limits";
 import type { Project } from "./workspace";
 import { IconButton } from "./IconButton";
@@ -11,15 +11,19 @@ type Props = {
   project: Project | null; // aktywny: sekcja „Kontekst” pokazuje jego panele
   agents: AgentDef[];
   contexts: Record<string, SessionContext>;
+  titles: Record<string, string>; // paneId → tytuł rozmowy (sessionTitles)
+  onPickPane: (paneId: string) => void;
   feed: FeedItem[]; // wszystkie projekty, najnowsze pierwsze
   onPickFeed: (item: FeedItem) => void;
+  feedScope: "all" | "project"; // ui.feed
+  onFeedScope: (scope: "all" | "project") => void;
   limits: ClaudeLimits | null; // z linii statusu paneli claude
   onRefreshLimits: () => void;
   onClose: () => void;
 };
 
 /** Pulpit po prawej (wzór D `.dock`): limity Claude (etap 10), kontekst, na żywo (etap 9). */
-export function Dock({ project, agents, contexts, feed, onPickFeed, limits, onRefreshLimits, onClose }: Props) {
+export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPickFeed, feedScope, onFeedScope, limits, onRefreshLimits, onClose }: Props) {
   // „40 s temu” musi się starzeć także bez nowych zdarzeń.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -28,6 +32,7 @@ export function Dock({ project, agents, contexts, feed, onPickFeed, limits, onRe
     return () => clearInterval(timer);
   }, [feed, limits]);
   const meters = limitMeters(limits, now);
+  const shown = feedFor(feed, feedScope, project?.id ?? null);
 
   const rows = (project?.panes ?? []).flatMap((pane) => {
     const agent = agents.find((a) => a.id === pane.agentId);
@@ -75,18 +80,20 @@ export function Dock({ project, agents, contexts, feed, onPickFeed, limits, onRe
         {rows.map(({ pane, agent, meter, model }) => {
           const name = agent?.name ?? pane.agentId;
           return (
-            <div
+            <button
+              type="button"
               key={pane.id}
               className={`ctx-row${meter.warn ? " is-warn" : ""}`}
               style={{ "--ag": agentColor(agent) } as CSSProperties}
-              title={model ?? undefined}
+              title={[titles[pane.id], name, model].filter(Boolean).join(" · ")}
+              onClick={() => onPickPane(pane.id)}
             >
               <span className="ag-badge" aria-hidden>
                 {name.charAt(0).toUpperCase()}
               </span>
               <div className="ctx-main">
                 <div className="ctx-line">
-                  <span>{name}</span>
+                  <span>{titles[pane.id] ?? name}</span>
                   <b>
                     {meter.used} / {meter.limit}
                   </b>
@@ -95,17 +102,39 @@ export function Dock({ project, agents, contexts, feed, onPickFeed, limits, onRe
                   <span style={{ width: `${meter.pct}%` }} />
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </section>
       <section className="dock-sec dock-live">
         <h3>
-          Na żywo <span>wszystkie projekty</span>
+          Na żywo
+          <span className="seg dock-seg" role="group" aria-label="Zdarzenia z projektów">
+            {(
+              [
+                ["project", "Ten projekt"],
+                ["all", "Wszystkie"],
+              ] as const
+            ).map(([scope, label]) => (
+              <button
+                key={scope}
+                type="button"
+                className={feedScope === scope ? "is-on" : undefined}
+                aria-pressed={feedScope === scope}
+                onClick={() => onFeedScope(scope)}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
         </h3>
-        {feed.length === 0 && <span className="meter-note">Jeszcze nic się nie wydarzyło</span>}
+        {shown.length === 0 && (
+          <span className="meter-note">
+            {feedScope === "all" || feed.length === 0 ? "Jeszcze nic się nie wydarzyło" : "Nic w tym projekcie"}
+          </span>
+        )}
         <div className="feed">
-          {feed.map((item) => {
+          {shown.map((item) => {
             const agent = agents.find((a) => a.id === item.agentId);
             const name = agent?.name ?? item.agentId;
             return (
@@ -114,7 +143,7 @@ export function Dock({ project, agents, contexts, feed, onPickFeed, limits, onRe
                 key={item.id}
                 className="feed-item"
                 style={{ "--ag": agentColor(agent) } as CSSProperties}
-                title={`${name}: ${item.text}`}
+                title={[titles[item.paneId], `${name}: ${item.text}`].filter(Boolean).join("\n")}
                 onClick={() => onPickFeed(item)}
               >
                 <span className="ag-badge" aria-hidden>
@@ -123,7 +152,12 @@ export function Dock({ project, agents, contexts, feed, onPickFeed, limits, onRe
                 <span className="feed-text">
                   <span>{item.text}</span>
                   <small>
-                    {item.project} · {relativeTime(item.at, now)}
+                    {titles[item.paneId] && <span className="feed-title">{titles[item.paneId]}</span>}
+                    <span>
+                      {titles[item.paneId] && "· "}
+                      {feedScope === "all" && `${item.project} · `}
+                    {relativeTime(item.at, now)}
+                    </span>
                   </small>
                 </span>
               </button>

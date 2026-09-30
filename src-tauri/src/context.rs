@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::SystemTime;
@@ -30,6 +30,8 @@ pub struct SessionContext {
     provider: Option<String>,
     /// Newest tool calls in the tail, oldest first (feed „Na żywo”); the id tells new from seen.
     tools: Vec<ToolUse>,
+    /// Name of the conversation (dock): claude `/rename` or its AI title, pi `/name` or first prompt.
+    title: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -45,6 +47,13 @@ pub struct ToolUse {
 /// Enough tool calls for the 5 s between reads; older ones are already in the feed.
 const MAX_TOOLS: usize = 10;
 const COMMAND_CHARS: usize = 60;
+const TITLE_CHARS: usize = 80;
+
+/// One line, cut to `TITLE_CHARS`; blank = none.
+fn one_line(text: &str) -> Option<String> {
+    let line: String = text.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(TITLE_CHARS).collect();
+    (!line.is_empty()).then_some(line)
+}
 
 /// Session ids are UUIDs; anything else could escape the search (`../x`).
 fn valid_id(id: &str) -> bool {
@@ -119,7 +128,7 @@ fn last_usage(text: &str, kind: Kind) -> Option<SessionContext> {
             continue;
         }
         let text = |key| message.get(key).and_then(Value::as_str).map(str::to_owned);
-        return Some(SessionContext { tokens, model: text("model"), window: None, provider: text("provider"), tools: Vec::new() });
+        return Some(SessionContext { tokens, model: text("model"), window: None, provider: text("provider"), tools: Vec::new(), title: None });
     }
     None
 }
@@ -159,6 +168,98 @@ fn last_tools(text: &str, kind: Kind) -> Vec<ToolUse> {
     out
 }
 
+/// claude re-appends `{"type":"custom-title","customTitle"}` (`/rename`) and
+/// `{"type":"ai-title","aiTitle"}` every few turns, so the tail has them; the custom one wins.
+fn claude_title(text: &str) -> Option<String> {
+    let newest = |kind: &str, key: &str| {
+        let prefix = format!("{{\"type\":\"{kind}\"");
+        text.lines().rev().filter(|l| l.starts_with(&prefix)).find_map(|l| {
+            let entry = serde_json::from_str::<Value>(l).ok()?;
+            one_line(entry.get(key)?.as_str()?)
+        })
+    };
+    newest("custom-title", "customTitle").or_else(|| newest("ai-title", "aiTitle"))
+}
+
+/// Title parts that can sit MBs before the end: the first prompt (claude and pi) and pi's
+/// `{"type":"session_info","name"}` (once per `/name`). The whole file is scanned, but each
+/// byte only once: `offset` = end of the last full line.
+#[derive(Default)]
+struct TitleScan {
+    offset: u64,
+    name: Option<String>,
+    first_prompt: Option<String>,
+}
+
+/// Text the user typed: a string or the first text block. claude also stores tool results,
+/// subagent turns and injected notes (`isMeta`, `<command-name>…`) as user turns; those are skipped.
+fn user_prompt(entry: &Value, kind: Kind) -> Option<String> {
+    let flag = |key| entry.get(key).and_then(Value::as_bool) == Some(true);
+    if flag("isSidechain") || flag("isMeta") {
+        return None;
+    }
+    let message = entry.get("message")?;
+    if message.get("role").and_then(Value::as_str) != Some("user") {
+        return None;
+    }
+    let text = match message.get("content")? {
+        Value::String(t) => t.as_str(),
+        Value::Array(blocks) => blocks
+            .iter()
+            .find(|b| b.get("type").and_then(Value::as_str) == Some("text"))
+            .and_then(|b| b.get("text")?.as_str())?,
+        _ => return None,
+    };
+    if kind == Kind::Claude && text.trim_start().starts_with('<') {
+        return None;
+    }
+    one_line(text)
+}
+
+fn title_scan(path: &Path, kind: Kind, state: &mut TitleScan) -> Option<()> {
+    let file = File::open(path).ok()?;
+    if file.metadata().ok()?.len() < state.offset {
+        *state = TitleScan::default(); // rewritten file
+    }
+    let mut reader = BufReader::new(file);
+    reader.seek(SeekFrom::Start(state.offset)).ok()?;
+    let mut buf = Vec::new();
+    loop {
+        buf.clear();
+        let n = reader.read_until(b'\n', &mut buf).ok()?;
+        // EOF, or a line still being written: it waits for the next read.
+        if n == 0 || buf.last() != Some(&b'\n') {
+            return Some(());
+        }
+        state.offset += n as u64;
+        let line = String::from_utf8_lossy(&buf);
+        if kind == Kind::Pi && line.contains("\"session_info\"") {
+            let Ok(entry) = serde_json::from_str::<Value>(&line) else { continue };
+            if entry.get("type").and_then(Value::as_str) == Some("session_info") {
+                // An empty name clears it (back to the first prompt).
+                state.name = entry.get("name").and_then(Value::as_str).and_then(one_line);
+            }
+        } else if state.first_prompt.is_none() && line.contains("\"role\":\"user\"") {
+            let Ok(entry) = serde_json::from_str::<Value>(&line) else { continue };
+            state.first_prompt = user_prompt(&entry, kind);
+        }
+    }
+}
+
+/// claude: `/rename` > AI title (both in the tail) > first prompt; pi: `/name` > first prompt.
+fn session_title(path: &Path, kind: Kind, tail: &str) -> Option<String> {
+    static SCANS: Mutex<Option<HashMap<PathBuf, TitleScan>>> = Mutex::new(None);
+    if kind == Kind::Claude {
+        if let Some(title) = claude_title(tail) {
+            return Some(title);
+        }
+    }
+    let mut scans = SCANS.lock().ok()?;
+    let state = scans.get_or_insert_with(HashMap::new).entry(path.to_owned()).or_default();
+    title_scan(path, kind, state);
+    state.name.clone().or_else(|| state.first_prompt.clone())
+}
+
 fn context_in(root: &Path, kind: Kind, id: &str) -> Option<SessionContext> {
     if !valid_id(id) {
         return None;
@@ -178,6 +279,7 @@ fn context_in(root: &Path, kind: Kind, id: &str) -> Option<SessionContext> {
     let tail = read_tail(&path)?;
     let mut ctx = last_usage(&tail, kind)?;
     ctx.tools = last_tools(&tail, kind);
+    ctx.title = session_title(&path, kind, &tail);
     Some(ctx)
 }
 
@@ -395,6 +497,73 @@ mod tests {
         fs::write(root.join("-home-x").join(format!("{ID}.jsonl")), [claude_line(1, 1, 1).as_str(), tool].join("\n")).unwrap();
         let got = context_in(&root, Kind::Claude, ID).unwrap();
         assert_eq!((got.tokens, got.tools.len(), got.tools[0].name.as_str()), (4, 1, "Write"));
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn claude_title_prefers_rename_over_ai_title() {
+        let ai = |t: &str| format!(r#"{{"type":"ai-title","aiTitle":"{t}","sessionId":"x"}}"#);
+        let text = [ai("Stary"), claude_line(1, 1, 1), ai("Naprawa  paska\\nxterm")].join("\n");
+        assert_eq!(claude_title(&text).as_deref(), Some("Naprawa paska xterm"));
+        let renamed = [r#"{"type":"custom-title","customTitle":"Moja nazwa","sessionId":"x"}"#.to_owned(), text].join("\n");
+        assert_eq!(claude_title(&renamed).as_deref(), Some("Moja nazwa"));
+        // A tool result quoting the entry is not an entry (the line does not start with it).
+        assert_eq!(claude_title(r#"{"type":"user","content":"{\"type\":\"ai-title\"}"}"#), None);
+    }
+
+    #[test]
+    fn pi_title_is_the_name_or_the_first_prompt_read_incrementally() {
+        let root = temp_dir("pititle");
+        let file = root.join("s.jsonl");
+        let user = |t: &str| serde_json::json!({"type":"message","message":{"role":"user","content":[{"type":"text","text":t}]}}).to_string();
+        let mut text = format!("{}\n{}\n{}\n", user("Pierwsze pytanie"), pi_line(1, 1, 1), user("drugie"));
+        fs::write(&file, &text).unwrap();
+        let mut state = TitleScan::default();
+        title_scan(&file, Kind::Pi, &mut state).unwrap();
+        assert_eq!((state.name.as_deref(), state.first_prompt.as_deref()), (None, Some("Pierwsze pytanie")));
+        assert_eq!(state.offset, text.len() as u64);
+        // The name lands later; a half-written line is left for the next read.
+        text.push_str(r#"{"type":"session_info","name":"Etap 11"}"#);
+        text.push('\n');
+        text.push_str(r#"{"type":"session_info","na"#);
+        fs::write(&file, &text).unwrap();
+        title_scan(&file, Kind::Pi, &mut state).unwrap();
+        assert_eq!(state.name.as_deref(), Some("Etap 11"));
+        assert_eq!(state.offset, (text.len() - r#"{"type":"session_info","na"#.len()) as u64);
+        // A shorter (rewritten) file starts over.
+        fs::write(&file, user("Nowy") + "\n").unwrap();
+        title_scan(&file, Kind::Pi, &mut state).unwrap();
+        assert_eq!((state.name.as_deref(), state.first_prompt.as_deref()), (None, Some("Nowy")));
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn claude_without_ai_title_falls_back_to_the_first_typed_prompt() {
+        let root = temp_dir("cltitle");
+        let file = root.join("s.jsonl");
+        let user = |content: Value, extra: Value| {
+            let mut entry = serde_json::json!({"parentUuid":null,"type":"user","message":{"role":"user","content":content}});
+            entry.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+            entry.to_string()
+        };
+        let none = serde_json::json!({});
+        let lines = [
+            user("<local-command-caveat>Caveat</local-command-caveat>".into(), none.clone()),
+            user("Wstęp z hooka".into(), serde_json::json!({"isMeta": true})),
+            user("zadanie podagenta".into(), serde_json::json!({"isSidechain": true})),
+            user(serde_json::json!([{"type":"tool_result","tool_use_id":"t","content":"x"}]), none.clone()),
+            user("hej".into(), none.clone()),
+            claude_line(1, 1, 1),
+            user("napisz historię".into(), none),
+        ];
+        fs::write(&file, lines.join("\n") + "\n").unwrap();
+        let tail = read_tail(&file).unwrap();
+        assert_eq!(session_title(&file, Kind::Claude, &tail).as_deref(), Some("hej"));
+        // The AI title, once claude writes it, wins over the prompt.
+        let ai = r#"{"type":"ai-title","aiTitle":"Powitanie i historia o koniach","sessionId":"x"}"#;
+        fs::write(&file, lines.join("\n") + "\n" + ai + "\n").unwrap();
+        let tail = read_tail(&file).unwrap();
+        assert_eq!(session_title(&file, Kind::Claude, &tail).as_deref(), Some("Powitanie i historia o koniach"));
         fs::remove_dir_all(&root).unwrap();
     }
 

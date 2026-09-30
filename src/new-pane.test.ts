@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dialogKey, tileDelayMs } from "./new-pane";
+import { dialogKey, stepModel, tileDelayMs } from "./new-pane";
 
 describe("tileDelayMs (wjazd kafelków)", () => {
   it("startuje od 80 ms i dokłada 55 ms na kafelek", () => {
@@ -35,8 +35,28 @@ describe("dialogKey (okno „Nowy panel”)", () => {
     expect(dialogKey("Escape", 0, 0)).toEqual({ type: "close" });
   });
 
+  it("←/→ zmieniają model zaznaczonego agenta", () => {
+    expect(dialogKey("ArrowLeft", 0, 3)).toEqual({ type: "model", delta: -1 });
+    expect(dialogKey("ArrowRight", 0, 3)).toEqual({ type: "model", delta: 1 });
+    expect(dialogKey("ArrowRight", 0, 0)).toBeNull();
+  });
+
   it("zaznaczenie poza listą (agentów ubyło) jest sprowadzane na koniec", () => {
     expect(dialogKey("Enter", 7, 3)).toEqual({ type: "pick", index: 2 });
     expect(dialogKey("ArrowUp", 7, 3)).toEqual({ type: "move", index: 1 });
+  });
+});
+
+describe("stepModel (wybór modelu)", () => {
+  const ids = ["sonnet", "opus"];
+  it("chodzi w kółko: domyślny → modele → domyślny", () => {
+    expect(stepModel(ids, undefined, 1)).toBe("sonnet");
+    expect(stepModel(ids, "sonnet", 1)).toBe("opus");
+    expect(stepModel(ids, "opus", 1)).toBeUndefined();
+    expect(stepModel(ids, undefined, -1)).toBe("opus");
+  });
+  it("nieznany model liczy się jak domyślny, pusta lista zostaje przy domyślnym", () => {
+    expect(stepModel(ids, "gpt", 1)).toBe("sonnet");
+    expect(stepModel([], undefined, 1)).toBeUndefined();
   });
 });

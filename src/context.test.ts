@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS, type AgentDef } from "./agents";
-import { claudeWindow, contextKind, contextLimit, contextMeter, contextTargets, formatTokens, paneMeter } from "./context";
+import { claudeWindow, contextKind, contextLimit, contextMeter, contextTargets, formatTokens, paneMeter, sessionTitles } from "./context";
 
 const [claude, pi, shell] = DEFAULT_AGENTS;
 
@@ -28,11 +28,11 @@ describe("contextKind / contextLimit", () => {
   });
 
   it("takes the window of the last turn's model, `context` still wins", () => {
-    const local = { tokens: 1, model: "Flash-Next-NVFP4", window: 262_144, tools: [] };
+    const local = { tokens: 1, model: "Flash-Next-NVFP4", window: 262_144, tools: [], title: null };
     expect(contextLimit(pi, local)).toBe(262_144);
     expect(contextLimit(pi, { ...local, window: null })).toBe(128_000);
-    expect(contextLimit(claude, { tokens: 1, model: "claude-sonnet-5-5", window: null, tools: [] })).toBe(1_000_000);
-    expect(contextLimit(claude, { tokens: 1, model: "claude-haiku-4-5", window: null, tools: [] })).toBe(200_000);
+    expect(contextLimit(claude, { tokens: 1, model: "claude-sonnet-5-5", window: null, tools: [], title: null })).toBe(1_000_000);
+    expect(contextLimit(claude, { tokens: 1, model: "claude-haiku-4-5", window: null, tools: [], title: null })).toBe(200_000);
     expect(contextLimit({ ...pi, context: 32_000 }, local)).toBe(32_000);
   });
 });
@@ -86,7 +86,7 @@ describe("formatTokens / contextMeter", () => {
 });
 
 describe("paneMeter", () => {
-  const contexts = { s1: { tokens: 170_000, model: "m", window: null, tools: [] } };
+  const contexts = { s1: { tokens: 170_000, model: "m", window: null, tools: [], title: null } };
   it("reads the pane's own session with the agent's limit", () => {
     const pane = { id: "1", agentId: "claude", run: 1, sessionId: "s1" };
     expect(paneMeter(pane, claude, contexts)).toMatchObject({ known: true, pct: 85, warn: true });
@@ -95,5 +95,21 @@ describe("paneMeter", () => {
   it("is null for panes without a meter", () => {
     expect(paneMeter({ id: "2", agentId: "shell", run: 1 }, shell, contexts)).toBeNull();
     expect(paneMeter({ id: "3", agentId: "claude", run: 1 }, claude, contexts)).toBeNull();
+  });
+});
+
+describe("sessionTitles", () => {
+  it("title by pane id across projects; no session, no read or no title = missing", () => {
+    const ctx = (title: string | null) => ({ tokens: 1, model: null, window: null, tools: [], title });
+    const contexts = { s1: ctx("Naprawa paska"), s2: ctx(null), s3: ctx("Etap 11") };
+    const project = (id: string, panes: { id: string; sessionId?: string }[]) => ({
+      id, name: id, path: "~", focused: null, maximized: null,
+      panes: panes.map((p) => ({ ...p, agentId: "claude", run: 1 })),
+    });
+    const projects = [
+      project("a", [{ id: "1", sessionId: "s1" }, { id: "2", sessionId: "s2" }, { id: "3" }]),
+      project("b", [{ id: "4", sessionId: "s3" }, { id: "5", sessionId: "s9" }]),
+    ];
+    expect(sessionTitles(projects, contexts)).toEqual({ "1": "Naprawa paska", "4": "Etap 11" });
   });
 });

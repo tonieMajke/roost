@@ -42,6 +42,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(pty::Ptys::default())
+        // A reloaded page (Ctrl+R, Vite reload in `pnpm desktop`) never ran its cleanup: without
+        // this its agents live on unseen next to the new page's copies of the same conversations.
+        .on_page_load(|webview, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Started {
+                webview.state::<pty::Ptys>().kill_all_async();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             pty::pty_spawn,
             pty::pty_write,

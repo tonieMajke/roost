@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agentColor, buildArgs, DEFAULT_AGENTS, parseAgents, type AgentDef } from "./agents";
+import { agentColor, agentModels, buildArgs, CLAUDE_MODELS, DEFAULT_AGENTS, parseAgents, withModel, type AgentDef } from "./agents";
 
 const ID = "3f2a1b0c-0000-4000-8000-000000000001";
 
@@ -134,5 +134,22 @@ describe("agentColor", () => {
     expect(agentColor(a("codex"))).toBe("#3dffa2");
     expect(agentColor(a("shell"))).toBe("#8fd3ff");
     expect(agentColor(undefined)).toBe("#8fd3ff");
+  });
+});
+
+describe("agentModels / withModel", () => {
+  const claude = DEFAULT_AGENTS.find((a) => a.id === "claude")!;
+  it("claude bez własnej listy dostaje wbudowane modele, inni nic", () => {
+    expect(agentModels(claude)).toBe(CLAUDE_MODELS);
+    expect(agentModels({ ...claude, command: "/usr/bin/claude" })).toBe(CLAUDE_MODELS);
+    expect(agentModels({ ...claude, id: "sh", command: "bash" })).toEqual([]);
+  });
+  it("własna lista z agents.json ma pierwszeństwo", () => {
+    const models = [{ id: "m", name: "M" }];
+    expect(agentModels({ ...claude, models })).toBe(models);
+  });
+  it("--model dopisany tylko gdy model jest", () => {
+    expect(withModel(["-c"], "claude-opus-5-5")).toEqual(["-c", "--model", "claude-opus-5-5"]);
+    expect(withModel(["-c"], undefined)).toEqual(["-c"]);
   });
 });

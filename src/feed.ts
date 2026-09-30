@@ -27,6 +27,11 @@ export function pushFeed(feed: FeedItem[], items: FeedItem[]): FeedItem[] {
   return [...items].reverse().concat(feed).slice(0, FEED_MAX);
 }
 
+/** Rows shown under the dock switch: all projects, or only the one on screen. */
+export function feedFor(feed: FeedItem[], scope: "all" | "project", projectId: string | null): FeedItem[] {
+  return scope === "all" ? feed : feed.filter((item) => item.projectId === projectId);
+}
+
 /** „teraz”, „40 s temu”, „3 min temu”, „2 godz. temu”, „5 d temu”. */
 export function relativeTime(at: number, now: number): string {
   const s = Math.floor((now - at) / 1000);

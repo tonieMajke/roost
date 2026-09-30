@@ -53,10 +53,19 @@ describe("commandFor (skróty etapu 8)", () => {
     expect(commandFor(k("v"))).toBeNull();
   });
 
-  it("Alt bez Ctrl, Ctrl+Alt+0 i Ctrl+Alt+Shift nic nie robią", () => {
+  it("Ctrl+Alt+= / + / - / 0 zmieniają czcionkę terminali, bez Ctrl+Alt przechodzą", () => {
+    expect(commandFor(ca("="))).toEqual({ type: "fontSize", step: 1 });
+    expect(commandFor(ca("+"))).toEqual({ type: "fontSize", step: 1 });
+    expect(commandFor(ca("-"))).toEqual({ type: "fontSize", step: -1 });
+    expect(commandFor(ca("0"))).toEqual({ type: "fontSize", step: 0 });
+    expect(commandFor(k("=", { ctrlKey: true }))).toBeNull();
+    expect(commandFor(k("-", { altKey: true }))).toBeNull();
+    expect(commandFor(k("0", { ctrlKey: true }))).toBeNull();
+  });
+
+  it("Alt bez Ctrl i Ctrl+Alt+Shift nic nie robią", () => {
     expect(commandFor(k("n", { altKey: true }))).toBeNull();
     expect(commandFor(k("1", { altKey: true }))).toBeNull();
-    expect(commandFor(ca("0"))).toBeNull();
     expect(commandFor(k("n", { ctrlKey: true, altKey: true, shiftKey: true }))).toBeNull();
     expect(commandFor(k("c", { ctrlKey: true, shiftKey: true, altKey: true }))).toBeNull();
   });

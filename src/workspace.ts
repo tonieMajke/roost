@@ -10,6 +10,7 @@ export type Pane = {
   id: string; // crypto.randomUUID(), created by the caller
   agentId: string;
   sessionId?: string; // only when the agent has `session`; crypto.randomUUID()
+  model?: string; // model id passed as `--model`; absent = the agent's own default
   run: number; // bumped on restart -> new React key
 };
 
@@ -256,6 +257,7 @@ export function parseWorkspace(raw: unknown, agentIds: string[]): { workspace: W
         run: typeof p.run === "number" && Number.isFinite(p.run) && p.run >= 1 ? Math.floor(p.run) : 1,
       };
       if (typeof p.sessionId === "string" && p.sessionId !== "") pane.sessionId = p.sessionId;
+      if (typeof p.model === "string" && p.model !== "") pane.model = p.model;
       panes.push(pane);
     });
     if (panes.length > MAX_PANES) {

@@ -1,14 +1,20 @@
 /** Context meter of agent panes (pane header `.ctx`, dock `.ctx-row`). Pure: no React, no DOM. */
 import type { AgentDef } from "./agents";
 import type { ToolUse } from "./feed";
-import type { Pane } from "./workspace";
+import type { Pane, Project } from "./workspace";
 
 /** Which session file reader (Rust `session_context`) understands this agent. */
 export type ContextKind = "claude" | "pi";
 
 /** Numbers read from the newest turn of a session file; `window` = from the agent's model config (pi);
- *  `tools` = newest tool calls, oldest first (feed „Na żywo”). */
-export type SessionContext = { tokens: number; model: string | null; window: number | null; tools: ToolUse[] };
+ *  `tools` = newest tool calls, oldest first (feed „Na żywo”); `title` = name of the conversation. */
+export type SessionContext = {
+  tokens: number;
+  model: string | null;
+  window: number | null;
+  tools: ToolUse[];
+  title: string | null;
+};
 
 /** How often open conversations are re-read (plus once right after `finished`). */
 export const CONTEXT_POLL_MS = 5000;
@@ -76,6 +82,16 @@ export function contextMeter(tokens: number | undefined, limit: number): Context
     limit: formatTokens(limit),
     warn: pct >= CONTEXT_WARN_PCT,
   };
+}
+
+/** Conversation title per pane id, all projects (dock: „Kontekst” and „Na żywo” rows). */
+export function sessionTitles(projects: Project[], contexts: Record<string, SessionContext>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const pane of projects.flatMap((p) => p.panes)) {
+    const title = pane.sessionId ? contexts[pane.sessionId]?.title : null;
+    if (title) out[pane.id] = title;
+  }
+  return out;
 }
 
 /** Meter of one pane, or `null` when its agent has none (shell, unknown program, no session). */

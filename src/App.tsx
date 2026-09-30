@@ -268,13 +268,14 @@ export function App() {
       if (active === null || paneCount >= MAX_PANES) return; // no project to add a pane to
       setDialog(true);
     },
-    addPane: (agentId) => {
+    addPane: (agentId, model) => {
       const agent = agents.find((a) => a.id === agentId);
       if (!agent || paneCount >= MAX_PANES) return;
       setDialog(false);
       setLastAgentId(agent.id);
       const pane: Pane = { id: crypto.randomUUID(), agentId: agent.id, run: 1 };
       if (agent.session) pane.sessionId = crypto.randomUUID();
+      if (model) pane.model = model;
       dispatch({ type: "add", pane });
     },
     applyPreset: (preset) => {
@@ -753,9 +754,9 @@ export function App() {
           projectName={active.name}
           agents={agents}
           startIndex={lastIndex}
-          onPick={(i) => {
+          onPick={(i, model) => {
             const agent = agents[i];
-            if (agent) projectActions.addPane(agent.id);
+            if (agent) projectActions.addPane(agent.id, model);
           }}
           onClose={() => setDialog(false)}
         />

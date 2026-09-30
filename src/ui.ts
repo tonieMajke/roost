@@ -11,7 +11,12 @@ export type Ui = {
   motion: "full" | "lite";
   dock: boolean; // desktop panel visible
   rail: "open" | "closed"; // left rail: full width or 56 px of keys and dots
+  feed: "all" | "project"; // dock „Na żywo”: every project or only the active one
+  fontSize: number; // terminal font px, FONT_MIN..FONT_MAX (Ctrl+Alt+= / - / 0)
 };
+
+export const FONT_MIN = 10;
+export const FONT_MAX = 20;
 
 export const DEFAULT_UI: Ui = {
   accent: "orange",
@@ -23,7 +28,12 @@ export const DEFAULT_UI: Ui = {
   motion: "full",
   dock: true,
   rail: "open",
+  feed: "all",
+  fontSize: 13,
 };
+
+/** Keys with a fixed list of values (the „Wygląd” window); the rest have their own controls. */
+type ChoiceKey = Exclude<keyof Ui, "dock" | "fontSize" | "feed">;
 
 /** Choice lists, in the table order of the plan (the „Wygląd” window renders them). */
 export const UI_CHOICES = {
@@ -35,7 +45,7 @@ export const UI_CHOICES = {
   grid: ["on", "off"],
   motion: ["full", "lite"],
   rail: ["open", "closed"],
-} as const satisfies Record<Exclude<keyof Ui, "dock">, readonly string[]>;
+} as const satisfies Record<ChoiceKey, readonly string[]>;
 
 /** Hex of each accent, kept in sync with the `.acc-*` classes in styles.css (xterm needs the value). */
 export const ACCENT_HEX: Record<Ui["accent"], string> = {
@@ -59,8 +69,9 @@ type Row<K extends keyof Ui> = {
   choices: { value: Ui[K]; label: string; /** kółko koloru zamiast napisu (tylko akcent) */ swatch?: string }[];
 };
 
-/** Wiersz okna „Wygląd”: bez `dock` — pulpit przełącza przycisk „Pulpit” i Ctrl+Alt+D. */
-export type UiRow = { [K in Exclude<keyof Ui, "dock">]: Row<K> }[Exclude<keyof Ui, "dock">];
+/** Wiersz okna „Wygląd”: bez `dock` (przycisk „Pulpit”, Ctrl+Alt+D), `fontSize` (Ctrl+Alt+= / - / 0)
+ *  i `feed` (przełącznik w nagłówku „Na żywo”). */
+export type UiRow = { [K in ChoiceKey]: Row<K> }[ChoiceKey];
 
 /** Wiersze okna „Wygląd” w kolejności tabeli z planu (wzor D: tablica `SET`). */
 export const UI_ROWS: UiRow[] = [
@@ -102,6 +113,15 @@ export function parseUi(raw: unknown): { ui: Ui; errors: string[] } {
     if (typeof v === "string" && choices.includes(v)) ui[key] = v;
     else errors.push(`ui.${key}: \`${String(v)}\` is not one of ${choices.join(", ")}, using \`${DEFAULT_UI[key]}\``);
   }
+  if (r.fontSize !== undefined) {
+    const v = r.fontSize;
+    if (typeof v === "number" && Number.isInteger(v) && v >= FONT_MIN && v <= FONT_MAX) ui.fontSize = v;
+    else errors.push(`ui.fontSize: \`${String(v)}\` is not a whole number ${FONT_MIN}–${FONT_MAX}, using \`${DEFAULT_UI.fontSize}\``);
+  }
+  if (r.feed !== undefined) {
+    if (r.feed === "all" || r.feed === "project") ui.feed = r.feed;
+    else errors.push(`ui.feed: \`${String(r.feed)}\` is not one of all, project, using \`${DEFAULT_UI.feed}\``);
+  }
   if (r.dock !== undefined) {
     if (typeof r.dock === "boolean") ui.dock = r.dock;
     else errors.push(`ui.dock: \`${String(r.dock)}\` is not true/false, using \`${DEFAULT_UI.dock}\``);
@@ -109,6 +129,12 @@ export function parseUi(raw: unknown): { ui: Ui; errors: string[] } {
   // SAFETY: every key of `ui` was copied from DEFAULT_UI or replaced by a value validated above,
   // so the record still has exactly the Ui shape.
   return { ui: ui as Ui, errors };
+}
+
+/** Font size after Ctrl+Alt+= (+1), Ctrl+Alt+- (-1) or Ctrl+Alt+0 (default), kept in range. */
+export function stepFontSize(size: number, step: 1 | -1 | 0): number {
+  if (step === 0) return DEFAULT_UI.fontSize;
+  return Math.min(FONT_MAX, Math.max(FONT_MIN, size + step));
 }
 
 /** Classes on `.app` that realize the settings (dock is handled in the layout, not as a class). */
