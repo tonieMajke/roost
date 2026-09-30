@@ -15,6 +15,13 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## Pomiar obciążenia (lokalny model, podgląd) – 2026-09-30
+- Rdzeń PTY (Rust): 16 procesów × 20 MB w 8,05 s.
+- Podgląd, 16 xterm × 20 MB: przy realnym tempie wyjścia UI żyje (0 longtasków); przy
+  jednoczesnym zrzucie wszystkiego naraz UI się zacina. Na później (M2): dławienie zapisu do
+  xterm (callback `write`, paczki na klatkę), zwłaszcza w schowanych siatkach.
+- Filtr raportów fokusu (DECSET 1004): w oknie nadal do potwierdzenia.
+
 ## M1 Etap 11 – 2026-09-30
 Porządki: scrollback xtermu 5000 → 3000 (limit pamięci przy 16 panelach) + komentarz przy warunku
 `el.clientWidth === 0` w `ResizeObserver`. `fit()` dla ukrytych paneli zmierzony w podglądzie (temp strona
