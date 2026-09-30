@@ -544,6 +544,7 @@ export function App() {
                 activeId={ws.active}
                 agents={agents}
                 accent={accentHex}
+                motion={ws.ui.motion}
                 state={ephemeral}
                 armedPane={armedPane}
                 closing={closing}

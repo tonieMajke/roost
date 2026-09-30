@@ -15,6 +15,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 6 – 2026-09-30 (Claude)
+
+- `src/motion.ts` (czyste) + 12 testów: `flipTransform` (próg 1 px / 1%), `maxOrigin` (środek komórki w `gridShape`), `enterClass` (dalej na szynie = `enter-next`), `enterDelayMs` (60 ms na panel przez 700 ms), `motionAllowed`; stałe `FLIP_MS` 340, `FLIP_EASE` ze wzoru.
+- `Grid.tsx`: FLIP komórek (`element.animate`, `transform-origin: 0 0`) po dodaniu/zamknięciu/przywróceniu, tylko przy zmianie listy paneli lub maksymalizacji w tym samym projekcie. Pudełka z `offset*` (bez transformacji), odświeżane `ResizeObserver`em siatki (okno, szyna) – FLIP nie startuje ze starych pudełek.
+- Maksymalizacja: `.pane-cell.is-maxed` = `grow` 0,44 s z `transform-origin` = miejsce panelu w siatce; przywrócenie = FLIP z pełnego obszaru do komórki. Przełączenie projektu: `enter-next`/`enter-prev` na siatce (`slideNext`/`slidePrev`), panele kolejno przez `--enter-delay` → `animation-delay` `.pane`.
+- `motion-lite` (prop `motion` z `ws.ui`) i `prefers-reduced-motion` wyłączają FLIP (w JS), `grow` i wjazd (w CSS).
+- `fit()`: transformacje nie ruszają `ResizeObserver` ani wymiaru z `getComputedStyle`; xterm 6 mierzy komórkę przez `offsetWidth`/OffscreenCanvas – skala w trakcie animacji go nie myli. Maksymalizacja zmienia rozmiar raz → jeden `fit()` na starcie `grow`.
+- Sprawdzenia: typecheck czysty, vitest 129/129, cargo test 11/11, cargo build 0 ostrzeżeń. Podgląd w headless Firefoksie przez WebDriver BiDi (skrypt w scratchpadzie, świeży profil): `getAnimations()` pokazał FLIP po zamknięciu i dodaniu, `grow` z `75% 50%`, FLIP przy przywróceniu, `slideNext`/`slidePrev` z opóźnieniem 60 ms drugiego panelu, klasa wjazdu zdjęta po 700 ms, przy `motion-lite` zero animacji; zrzuty w połowie `grow` i wjazdu.
+- Użytkownik w oknie Tauri: ruch „może nie 60 fps, ale jest ok” (WebKitGTK, rysowanie programowe). Przy 16 panelach niesprawdzone.
+
 ## M2 Etap 5 – 2026-09-30 (lokalny model, dokończył Claude)
 
 - Wspólny `src/Dialog.tsx`: `.overlay` > `.backdrop` + `.dialog` (`pop`), Esc/klik w tło = anuluj i oddanie fokusu; `scrim={false}` = przezroczyste tło (popover). „Nowy panel” i „Presety” na nim; kafelki `.tile` z `tileDelayMs(i)` = 80 + 55·i ms (`new-pane.ts`, test).

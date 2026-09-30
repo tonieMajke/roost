@@ -190,12 +190,21 @@ kbd {
 /* one grid per project, stacked; the inactive ones are hidden, never unmounted */
 .grid { position: absolute; inset: var(--gap); display: grid; gap: var(--gap); }
 .pane-cell { min-width: 0; min-height: 0; overflow: hidden; }
+/* ruch (etap 6): wjazd siatki po przełączeniu projektu, wzrost zmaksymalizowanego panelu z jego miejsca */
+.enter-next { animation: slideNext 0.42s var(--ease) both; }
+.enter-prev { animation: slidePrev 0.42s var(--ease) both; }
+.pane-cell.is-maxed { animation: grow 0.44s var(--ease) both; }
+@keyframes slideNext { from { opacity: 0; transform: translateY(34px); } to { opacity: 1; transform: none; } }
+@keyframes slidePrev { from { opacity: 0; transform: translateY(-34px); } to { opacity: 1; transform: none; } }
+@keyframes grow { from { opacity: 0.3; transform: scale(0.45); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .enter-next, .enter-prev, .pane-cell.is-maxed { animation: none; } }
 
 /* panel (wzór D) */
 .pane {
   position: relative; display: flex; flex: 1; flex-direction: column; min-width: 120px; min-height: 120px;
   background: var(--pane); border: var(--pane-bw) solid var(--line); border-radius: var(--r-pane); overflow: hidden;
   animation: paneIn 0.46s var(--ease) both; transition: border-color 0.25s, box-shadow 0.3s;
+  animation-delay: var(--enter-delay, 0ms); /* panele kolejno po przełączeniu projektu (Grid) */
 }
 /* Defined here, not on :root: a var() inside a token resolves where the token is declared,
    and --ag (per pane) / --accent (.acc-* on .app) do not exist on :root. */
@@ -429,7 +438,7 @@ kbd {
 @keyframes scan { from { background-position: -40% 0; } to { background-position: 140% 0; } }
 
 /* motion */
-.motion-lite .pane, .motion-lite .grid, .motion-lite .dialog,
+.motion-lite .pane, .motion-lite .grid, .motion-lite .pane-cell, .motion-lite .dialog,
 .motion-lite .tile, .motion-lite .toast, .motion-lite .proj-panes, .motion-lite .dock,
 .motion-lite .settings { animation: none !important; }
 .motion-lite .pane.st-working .glow { animation: none; opacity: 0.6; }
