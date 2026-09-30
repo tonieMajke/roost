@@ -2,7 +2,7 @@
 
 Desktopowa aplikacja (Tauri 2 + React + TypeScript, pnpm, tylko Linux), która uruchamia wiele
 agentów CLI (`claude`, `pi`, powłoka) w siatce terminali. Opis projektu: `PLAN.md`.
-**Plan do wykonania, etap po etapie: `docs/plan-m2.md`** (M1: `docs/plan-m1.md`, zrobione). Etapy oznaczone „Claude” w tabeli „Kto robi” pomijasz – zatrzymaj się i napisz, że następny etap jest dla Claude.
+**Plan do wykonania, etap po etapie: `docs/plan-m2.md`** (M1: `docs/plan-m1.md`, zrobione). Etapy oznaczone **(C)** robi Claude: gdy pierwszy niezrobiony etap ma (C), nie zaczynaj go – zatrzymaj się i napisz, że następny etap jest dla Claude.
 
 ## Jak pracujesz
 

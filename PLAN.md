@@ -99,7 +99,7 @@ utworzeniu, zapisany w układzie. Po restarcie aplikacji panel startuje z tym sa
   (nowe dane na PTY), powiadomienie systemowe, gdy panel bez fokusu przestaje wypisywać
   (heurystyka „agent skończył/czeka”).
 
-**M2 – wygląd** – etapy: `docs/plan-m2.md` (styl jak Pi Code; mechaniczne etapy lokalny model, wizualne Claude).
+**M2 – wygląd „D” i pulpit (limity, kontekst, na żywo)** – etapy: `docs/plan-m2.md`, wzór: `docs/design/wzor-d.html`.
 
 **M3 – zakładka Chat z Pi Code** (dopisane 2026-09-30)
 

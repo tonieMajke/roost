@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Agents workspace – D · Kokpit + Odważny</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&amp;display=swap">
+<style>
+body{margin:0}
+.stage{width:1280px;height:840px;display:flex;flex-direction:column;background:var(--stage);font-family:var(--ui);color:var(--text);overflow:hidden;-webkit-font-smoothing:antialiased}
+.app{position:relative;flex:1;display:flex;min-height:0;background:var(--bg)}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.icon{width:26px;height:26px;display:inline-grid;place-items:center;border-radius:var(--r-ctl);color:var(--muted);transition:background .15s,color .15s}
+.icon:hover{background:var(--hover);color:var(--text)}
+.icon svg{width:15px;height:15px}
+kbd{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;display:inline-grid;place-items:center;border-radius:5px;border:1px solid var(--line-strong);color:var(--muted);padding:0 4px;box-sizing:border-box;flex:none}
+.rail{width:var(--rail-w);flex:none;display:flex;flex-direction:column;background:var(--rail);border-right:1px solid var(--line);padding:10px 8px;box-sizing:border-box;gap:2px}
+.rail-head{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 10px 8px}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--display);font-weight:700;font-size:var(--brand-size);letter-spacing:var(--brand-ls)}
+.brand-mark{width:14px;height:14px;border-radius:var(--mark-r);background:var(--accent)}
+.rail-label{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.1em;padding:8px 8px 6px;font-weight:600}
+.proj-row{width:100%;display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r-ctl);text-align:left;transition:background .15s}
+.proj-row:hover{background:var(--hover)}
+.proj.is-active .proj-row{background:var(--active)}
+.proj-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.proj-name{font-size:13.5px;font-weight:var(--proj-weight);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj-path{font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj-dot{width:7px;height:7px;border-radius:50%;background:transparent;flex:none}
+.proj.has-work .proj-dot{background:var(--muted);animation:breathe 1.6s ease-in-out infinite}
+.proj.has-unread .proj-dot{background:var(--accent)}
+.proj.ping .proj-dot{background:var(--accent);animation:ping .9s ease-out 1}
+.proj-panes{display:flex;flex-direction:column;gap:1px;padding:3px 0 8px 22px;animation:fold .3s var(--ease) both}
+.pane-row{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:var(--r-ctl);font-size:12.5px;color:var(--muted);text-align:left;transition:background .15s,color .15s}
+.pane-row:hover{background:var(--hover);color:var(--text)}
+.pane-row.is-focused{color:var(--text)}
+.ag-dot{width:7px;height:7px;border-radius:50%;background:var(--ag);flex:none}
+.pane-row.st-working .ag-dot{animation:breathe 1.4s ease-in-out infinite}
+.pane-row.st-exited .ag-dot{background:var(--faint)}
+.pane-row-state{margin-left:auto;font-size:11px;color:var(--faint)}
+.pane-row.st-unread .pane-row-state,.pane-row.st-done .pane-row-state{color:var(--accent)}
+.rail-foot{margin-top:auto;display:flex;gap:4px;padding:8px 2px 0;border-top:1px solid var(--line)}
+.area{flex:1;min-width:0;display:flex;flex-direction:column}
+.area-head{height:var(--head-h);flex:none;display:flex;align-items:center;gap:10px;padding:0 14px 0 18px;border-bottom:1px solid var(--line)}
+.area-title{flex:1;min-width:0;display:flex;align-items:baseline;gap:12px}
+.area-name{font-family:var(--display);font-size:var(--title-size);font-weight:var(--title-weight);letter-spacing:var(--title-ls);white-space:nowrap}
+.area-path{font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.area-count{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-right:4px}
+.btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:var(--r-ctl);border:1px solid var(--line-strong);font-size:12.5px;font-weight:500;transition:background .15s,border-color .15s,transform .18s var(--ease)}
+.btn:hover{background:var(--hover)}
+.btn:active{transform:scale(.96)}
+.btn svg{width:14px;height:14px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover{background:var(--accent-hover)}
+.grids{position:relative;flex:1;min-height:0;padding:var(--gap)}
+.grid{height:100%;display:grid;gap:var(--gap)}
+.enter-next{animation:slideNext .42s var(--ease) both}
+.enter-prev{animation:slidePrev .42s var(--ease) both}
+.pane{position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--pane);border:var(--pane-bw) solid var(--line);border-radius:var(--r-pane);overflow:hidden;animation:paneIn .46s var(--ease) both;transition:border-color .25s,box-shadow .3s}
+.pane.is-focused{border-color:var(--focus-line);box-shadow:var(--focus-shadow)}
+.pane.is-closing{animation:paneOut .19s ease-in forwards}
+.glow{position:absolute;inset:0;pointer-events:none;border-radius:inherit;opacity:0;z-index:2}
+.pane.st-working .glow{box-shadow:inset 0 0 0 1px var(--ag),inset 0 0 36px -10px var(--ag);animation:breatheGlow 2.6s ease-in-out infinite}
+.pane.st-done .glow{animation:wave 1.5s var(--ease) 1 both}
+.pane-head{display:flex;align-items:center;gap:8px;height:var(--pane-head-h);padding:0 6px 0 10px;border-bottom:1px solid var(--line);flex:none;transition:background .25s,color .25s}
+.ag-badge{width:20px;height:20px;border-radius:var(--badge-r);display:grid;place-items:center;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ag);background:color-mix(in srgb,var(--ag) 16%,transparent);flex:none}
+.pane-name{font-size:13px;font-weight:600;text-align:left}
+.pane-state{font-size:11.5px;color:var(--faint);white-space:nowrap}
+.pane.st-working .pane-state{color:var(--ag)}
+.pane.st-unread .pane-state,.pane.st-done .pane-state{color:var(--accent)}
+.tools{margin-left:auto;display:flex;gap:1px;opacity:.3;transition:opacity .2s}
+.pane.is-focused .tools,.pane:hover .tools{opacity:1}
+.term{flex:1;margin:0;padding:10px 12px;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--term-text);background:var(--term-bg);white-space:pre-wrap;overflow:hidden}
+.pane.st-exited .term{color:var(--faint)}
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--faint);font-size:13px;animation:fade .3s ease both}
+.maxwrap{position:absolute;inset:var(--gap);z-index:5;display:flex}
+.pane.maxed{flex:1;animation:grow .44s var(--ease) both}
+.overlay{position:absolute;inset:0;z-index:20;display:grid;place-items:center}
+.backdrop{position:absolute;inset:0;background:var(--scrim);animation:fade .22s ease both;cursor:default}
+.dialog{position:relative;width:460px;padding:22px;border-radius:var(--r-dialog);background:var(--dialog);border:1px solid var(--line-strong);box-shadow:var(--shadow);animation:pop .36s var(--ease) both}
+.dialog h2{margin:0 0 4px;font-family:var(--display);font-size:var(--dialog-title);font-weight:700;letter-spacing:var(--title-ls)}
+.dialog p{margin:0 0 16px;font-size:12.5px;color:var(--faint)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px;border-radius:var(--r-pane);border:1px solid var(--line-strong);text-align:left;animation:tileIn .4s var(--ease) both;transition:border-color .15s,background .15s,transform .2s var(--ease)}
+.tile:hover{border-color:var(--ag);background:color-mix(in srgb,var(--ag) 9%,transparent);transform:translateY(-2px)}
+.tile-top{display:flex;align-items:center;gap:8px;width:100%}
+.tile-top kbd{margin-left:auto}
+.tile-name{font-weight:600;font-size:14px}
+.tile-cmd{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.dialog-foot{margin-top:16px;display:flex;gap:14px;font-size:11.5px;color:var(--faint);align-items:center}
+.dialog-foot span{display:inline-flex;gap:5px;align-items:center}
+.toast{position:absolute;right:18px;bottom:18px;z-index:15;display:flex;align-items:center;gap:10px;padding:10px 16px 10px 10px;border-radius:var(--r-pane);background:var(--dialog);border:1px solid var(--line-strong);box-shadow:var(--shadow);font-size:12.5px;animation:toastIn .5s var(--ease) both}
+.demo{height:56px;flex:none;display:flex;align-items:center;gap:8px;padding:0 18px;border-top:1px solid var(--line);background:var(--stage)}
+.demo-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);margin-right:6px;font-weight:600}
+.look-name{margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--display);font-weight:600}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes breatheGlow{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes wave{0%{opacity:0;box-shadow:inset 0 0 0 2px var(--accent),inset 0 0 0 0 transparent}12%{opacity:1}100%{opacity:0;box-shadow:inset 0 0 0 1px var(--accent),inset 0 0 90px 12px color-mix(in srgb,var(--accent) 28%,transparent)}}
+@keyframes ping{0%{box-shadow:0 0 0 0 var(--accent)}100%{box-shadow:0 0 0 12px transparent}}
+@keyframes fold{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes slideNext{from{opacity:0;transform:translateY(34px)}to{opacity:1;transform:none}}
+@keyframes slidePrev{from{opacity:0;transform:translateY(-34px)}to{opacity:1;transform:none}}
+@keyframes paneIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:none}}
+@keyframes paneOut{to{opacity:0;transform:scale(.92)}}
+@keyframes grow{from{opacity:.3;transform:scale(.45)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}}
+@keyframes pop{from{opacity:0;transform:translateY(12px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes tileIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes toastIn{from{opacity:0;transform:translateY(20px) scale(.95)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
+.stage{width:1440px;height:900px;
+--stage:#07080a;--bg:#0b0c0f;--rail:#0d0f12;--pane:#101216;--term-bg:#0d0e11;--dialog:#14161b;
+--line:rgba(255,255,255,.075);--line-strong:rgba(255,255,255,.15);--hover:rgba(255,255,255,.05);--active:rgba(255,255,255,.08);
+--text:#eef1f4;--muted:#a0a8b2;--faint:#6f7883;--term-text:#c6ced8;--accent-hover:var(--accent);
+--scrim:rgba(3,4,6,.7);--shadow:0 24px 70px rgba(0,0,0,.65);--r-ctl:3px;--r-pane:4px;--r-dialog:6px;--badge-r:2px;--mark-r:0;--gap:10px;--pane-bw:1px;
+--focus-line:var(--ag);--focus-shadow:0 10px 30px rgba(0,0,0,.4);--ease:cubic-bezier(.2,.8,.2,1);
+--ui:"Geist",system-ui,sans-serif;--mono:"Geist Mono",ui-monospace,monospace;--display:"Bricolage Grotesque","Geist",sans-serif;
+--rail-w:260px;--head-h:70px;--pane-head-h:36px;--title-size:32px;--title-weight:800;--title-ls:-.035em;--brand-size:12.5px;--brand-ls:.14em;--proj-weight:600;--dialog-title:24px}
+.ag-claude{--ag:#ff7a3d}.ag-pi{--ag:#a78bfa}.ag-codex{--ag:#3dffa2}.ag-shell{--ag:#8fd3ff}
+
+/* customization: accent */
+.acc-orange{--accent:#ff8a4c;--on-accent:#170b04}
+.acc-acid{--accent:#e4ff3a;--on-accent:#0a0a0a}
+.acc-violet{--accent:#b39bff;--on-accent:#0d0820}
+.acc-mint{--accent:#3dffa2;--on-accent:#04140c}
+/* customization: edges */
+.edge-soft{--r-ctl:7px;--r-pane:11px;--r-dialog:16px;--badge-r:6px;--mark-r:4px}
+/* customization: title size */
+.title-compact{--head-h:52px;--title-size:16px;--title-weight:700;--title-ls:-.01em}
+/* customization: background grid */
+.bg-grid .grids{background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:24px 24px}
+/* customization: focused pane header */
+.fh-fill .pane.is-focused .pane-head{background:var(--ag);color:#0a0a0a}
+.fh-fill .pane.is-focused .ag-badge{background:#0a0a0a;color:var(--ag)}
+.fh-fill .pane.is-focused .pane-state,.fh-fill .pane.is-focused .ctx{color:#0a0a0a!important;opacity:.72}
+.fh-fill .pane.is-focused .ctx-bar{background:rgba(0,0,0,.2)}
+.fh-fill .pane.is-focused .ctx-bar span{background:#0a0a0a}
+.fh-fill .pane.is-focused .icon{color:#0a0a0a}
+.fh-fill .pane.is-focused .icon:hover{background:rgba(0,0,0,.12)}
+.fh-line .pane.is-focused{border-color:color-mix(in srgb,var(--ag) 60%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--ag) 25%,transparent),0 10px 30px rgba(0,0,0,.4)}
+/* customization: working indicator */
+.work-scan .pane.st-working .glow{box-shadow:none;opacity:1;background:linear-gradient(90deg,transparent,var(--ag),transparent) no-repeat;background-size:35% 2px;animation:scan 1.3s linear infinite}
+@keyframes scan{from{background-position:-40% 0}to{background-position:140% 0}}
+/* customization: motion */
+.motion-lite .pane,.motion-lite .grid,.motion-lite .dialog,.motion-lite .tile,.motion-lite .toast,.motion-lite .proj-panes,.motion-lite .dock,.motion-lite .settings{animation:none!important}
+.motion-lite .pane.st-working .glow{animation:none;opacity:.6}
+
+.brand{font-family:var(--mono);text-transform:uppercase}
+.brand-mark{box-shadow:0 0 14px var(--accent)}
+.rail-label{color:var(--accent)}
+.proj-name{font-size:14.5px;letter-spacing:-.01em}
+.proj.is-active kbd{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.proj.is-active .proj-row{box-shadow:inset 3px 0 0 var(--accent)}
+.pane-name{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.pane-state{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em}
+.btn{font-weight:600}
+.btn.is-on{border-color:var(--accent);color:var(--accent)}
+.dialog{border:1px solid var(--accent)}
+.tile-name{font-family:var(--display);font-size:18px;font-weight:800;letter-spacing:-.02em}
+.toast{border:1px solid var(--accent)}
+.look-name{font-family:var(--display);font-weight:800;font-size:14px}
+.icon.is-on{color:var(--accent);background:var(--active)}
+
+/* context meter in the pane header */
+.ctx{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-left:6px}
+.ctx-bar{width:46px;height:3px;background:var(--line-strong);border-radius:2px;overflow:hidden}
+.ctx-bar span{display:block;height:100%;background:var(--ag);transition:width .6s var(--ease)}
+.ctx.is-warn{color:var(--accent)}
+.ctx.is-warn .ctx-bar span{background:var(--accent)}
+
+/* right dashboard */
+.dock{width:300px;flex:none;display:flex;flex-direction:column;border-left:1px solid var(--line);background:var(--rail);animation:dockIn .38s var(--ease) both;overflow:hidden}
+.dock-head{height:var(--head-h);flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 16px;border-bottom:1px solid var(--line)}
+.dock-title{font-family:var(--display);font-size:18px;font-weight:800;letter-spacing:-.02em}
+.dock-sec{padding:14px 16px 12px;border-bottom:1px solid var(--line)}
+.dock-sec h3{margin:0 0 12px;display:flex;justify-content:space-between;align-items:baseline;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:600}
+.dock-sec h3 span{color:var(--faint);letter-spacing:.02em;text-transform:none;font-weight:400}
+.meter{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.meter-top{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px}
+.meter-top b{font-family:var(--mono);font-weight:600;font-size:12px}
+.meter-note{font-size:11px;color:var(--faint)}
+.bar{height:6px;background:var(--line);border-radius:var(--badge-r);overflow:hidden}
+.bar span{display:block;height:100%;background:var(--accent);transform-origin:left;animation:barIn .9s var(--ease) both;transition:width .6s var(--ease)}
+.ctx-row{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.ctx-row .ag-badge{width:18px;height:18px;font-size:10px}
+.ctx-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.ctx-line{display:flex;justify-content:space-between;font-size:12px}
+.ctx-line b{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted)}
+.ctx-row .bar{height:4px}
+.ctx-row .bar span{background:var(--ag)}
+.ctx-row.is-warn .bar span{background:var(--accent)}
+.ctx-row.is-warn .ctx-line b{color:var(--accent)}
+.feed{display:flex;flex-direction:column;gap:10px;flex:1;overflow:hidden}
+.feed-item{display:flex;gap:9px;font-size:12px;line-height:1.4;animation:feedIn .45s var(--ease) both}
+.feed-item .ag-badge{width:18px;height:18px;font-size:10px;margin-top:1px}
+.feed-text{flex:1;min-width:0;display:flex;flex-direction:column}
+.feed-text small{font-size:11px;color:var(--faint)}
+.dock-live{flex:1;min-height:0;display:flex;flex-direction:column}
+
+/* customization popover */
+.settings{position:absolute;left:10px;bottom:52px;z-index:25;width:320px;padding:16px;background:var(--dialog);border:1px solid var(--accent);border-radius:var(--r-dialog);box-shadow:var(--shadow);animation:pop .3s var(--ease) both;transform-origin:bottom left}
+.settings h2{margin:0 0 14px;font-family:var(--display);font-size:20px;font-weight:800;letter-spacing:-.02em}
+.set-row{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.set-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:600}
+.seg{display:flex;gap:4px}
+.seg button{flex:1;height:28px;border:1px solid var(--line-strong);border-radius:var(--r-ctl);font-size:12px;color:var(--muted);transition:all .15s}
+.seg button:hover{color:var(--text);background:var(--hover)}
+.seg button.is-on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.swatch{flex:none!important;width:30px;height:28px;padding:0;display:grid;place-items:center}
+.swatch i{width:14px;height:14px;border-radius:50%;display:block}
+.swatch.is-on{background:transparent!important}
+.set-foot{font-size:11px;color:var(--faint);margin-top:4px}
+@keyframes dockIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes barIn{from{transform:scaleX(0)}to{transform:none}}
+@keyframes feedIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div class="stage {{stageCls}}">
+<div class="app" ref="{{setRoot}}">
+<aside class="rail">
+<div class="rail-head">
+<span class="brand"><span class="brand-mark"></span>Agents</span>
+<button type="button" class="icon" aria-label="Zwiń szynę (Ctrl+Alt+B)" title="Zwiń szynę (Ctrl+Alt+B)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg></button>
+</div>
+<div class="rail-label">Projekty</div>
+<sc-for list="{{projects}}" as="p" hint-placeholder-count="3">
+<div class="proj {{p.cls}}">
+<button type="button" class="proj-row" onClick="{{p.select}}">
+<kbd>{{p.num}}</kbd>
+<span class="proj-text"><span class="proj-name">{{p.name}}</span><span class="proj-path">{{p.path}}</span></span>
+<span class="proj-dot"></span>
+</button>
+<sc-if value="{{p.active}}" hint-placeholder-val="{{true}}">
+<div class="proj-panes">
+<sc-for list="{{p.panes}}" as="q" hint-placeholder-count="3">
+<button type="button" class="pane-row ag-{{q.agent}} st-{{q.state}} {{q.focusCls}}" onClick="{{q.focus}}"><span class="ag-dot"></span><span>{{q.label}}</span><span class="pane-row-state">{{q.status}}</span></button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<div class="rail-foot">
+<button type="button" class="icon" aria-label="Dodaj projekt (Ctrl+Alt+P)" title="Dodaj projekt (Ctrl+Alt+P)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path><path d="M12 10v6M9 13h6"></path></svg></button>
+<button type="button" class="icon" aria-label="Motyw" title="Motyw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></button>
+<button type="button" class="icon {{setOnCls}}" aria-label="Wygląd" title="Wygląd" onClick="{{toggleSettings}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"></path></svg></button>
+</div>
+</aside>
+<main class="area">
+<header class="area-head">
+<div class="area-title"><span class="area-name">{{cur.name}}</span><span class="area-path">{{cur.path}}</span></div>
+<span class="area-count">{{cur.count}}/16</span>
+<button type="button" class="btn {{dockOnCls}}" onClick="{{toggleDock}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"></path><path d="M3.34 19a10 10 0 1 1 17.32 0"></path></svg>Pulpit</button>
+<button type="button" class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>Presety</button>
+<button type="button" class="btn primary" onClick="{{openDialog}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>Panel</button>
+</header>
+<div class="grids">
+<sc-for list="{{projects}}" as="p" hint-placeholder-count="1">
+<sc-if value="{{p.active}}" hint-placeholder-val="{{true}}">
+<div class="grid {{enterCls}}" style="grid-template-columns: repeat({{cols}}, minmax(0, 1fr)); grid-template-rows: repeat({{rows}}, minmax(0, 1fr))">
+<sc-for list="{{p.panes}}" as="q" hint-placeholder-count="4">
+<section class="pane ag-{{q.agent}} st-{{q.state}} {{q.focusCls}} {{q.closingCls}}" data-pane="{{q.id}}" style="animation-delay: {{q.delay}}">
+<div class="glow"></div>
+<header class="pane-head">
+<span class="ag-badge">{{q.initial}}</span>
+<button type="button" class="pane-name" onClick="{{q.focus}}">{{q.label}}</button>
+<span class="pane-state">{{q.status}}</span>
+<sc-if value="{{q.hasCtx}}" hint-placeholder-val="{{true}}">
+<span class="ctx {{q.ctxCls}}" title="Kontekst: {{q.ctxUsed}} z {{q.ctxLimit}}"><span class="ctx-bar"><span style="width: {{q.ctxPct}}%"></span></span>{{q.ctxPct}}%</span>
+</sc-if>
+<span class="tools">
+<button type="button" class="icon" aria-label="Nowa rozmowa" title="Nowa rozmowa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M12 7v6M9 10h6"></path></svg></button>
+<button type="button" class="icon" aria-label="Uruchom ponownie (Ctrl+Alt+R)" title="Uruchom ponownie (Ctrl+Alt+R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg></button>
+<button type="button" class="icon" aria-label="Maksymalizuj (Ctrl+Alt+Enter)" title="Maksymalizuj (Ctrl+Alt+Enter)" onClick="{{q.max}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></button>
+<button type="button" class="icon" aria-label="Zamknij panel (Ctrl+Alt+W)" title="Zamknij panel (Ctrl+Alt+W)" onClick="{{q.close}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+</span>
+</header>
+<pre class="term">{{q.text}}</pre>
+</section>
+</sc-for>
+</div>
+</sc-if>
+</sc-for>
+<sc-if value="{{isEmpty}}" hint-placeholder-val="{{false}}">
+<div class="empty"><span>Brak paneli w tym projekcie</span><button type="button" class="btn primary" onClick="{{openDialog}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>Panel</button></div>
+</sc-if>
+<sc-if value="{{hasMax}}" hint-placeholder-val="{{false}}">
+<div class="maxwrap">
+<section class="pane maxed is-focused ag-{{max.agent}} st-{{max.state}}" style="transform-origin: {{max.origin}}">
+<div class="glow"></div>
+<header class="pane-head">
+<span class="ag-badge">{{max.initial}}</span>
+<span class="pane-name">{{max.label}}</span>
+<span class="pane-state">{{max.status}}</span>
+<span class="tools">
+<button type="button" class="icon" aria-label="Przywróć (Ctrl+Alt+Enter)" title="Przywróć (Ctrl+Alt+Enter)" onClick="{{max.max}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"></path></svg></button>
+<button type="button" class="icon" aria-label="Zamknij panel (Ctrl+Alt+W)" title="Zamknij panel (Ctrl+Alt+W)" onClick="{{max.close}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+</span>
+</header>
+<pre class="term">{{max.text}}</pre>
+</section>
+</div>
+</sc-if>
+</div>
+</main>
+<sc-if value="{{dockOpen}}" hint-placeholder-val="{{true}}">
+<aside class="dock">
+<div class="dock-head"><span class="dock-title">Pulpit</span><button type="button" class="icon" aria-label="Zamknij pulpit (Ctrl+Alt+D)" title="Zamknij pulpit (Ctrl+Alt+D)" onClick="{{toggleDock}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></div>
+<section class="dock-sec">
+<h3>Limity Claude <span>/usage · 2 min temu</span></h3>
+<sc-for list="{{usage}}" as="u" hint-placeholder-count="3">
+<div class="meter">
+<div class="meter-top"><span>{{u.label}}</span><b>{{u.pct}}%</b></div>
+<div class="bar"><span style="width: {{u.pct}}%"></span></div>
+<span class="meter-note">{{u.note}}</span>
+</div>
+</sc-for>
+</section>
+<section class="dock-sec">
+<h3>Kontekst <span>{{cur.name}}</span></h3>
+<sc-for list="{{ctxList}}" as="c" hint-placeholder-count="3">
+<div class="ctx-row ag-{{c.agent}} {{c.warnCls}}">
+<span class="ag-badge">{{c.initial}}</span>
+<div class="ctx-main">
+<div class="ctx-line"><span>{{c.label}}</span><b>{{c.used}} / {{c.limit}}</b></div>
+<div class="bar"><span style="width: {{c.pct}}%"></span></div>
+</div>
+</div>
+</sc-for>
+</section>
+<section class="dock-sec dock-live">
+<h3>Na żywo <span>wszystkie projekty</span></h3>
+<div class="feed">
+<sc-for list="{{feed}}" as="f" hint-placeholder-count="4">
+<div class="feed-item ag-{{f.agent}}">
+<span class="ag-badge">{{f.initial}}</span>
+<span class="feed-text"><span>{{f.text}}</span><small>{{f.where}} · {{f.when}}</small></span>
+</div>
+</sc-for>
+</div>
+</section>
+</aside>
+</sc-if>
+<sc-if value="{{dialog}}" hint-placeholder-val="{{false}}">
+<div class="overlay">
+<button type="button" class="backdrop" aria-label="Zamknij okno" onClick="{{closeDialog}}"></button>
+<div class="dialog" role="dialog" aria-label="Nowy panel">
+<h2>Nowy panel w {{cur.name}}</h2>
+<p>Agent startuje w folderze projektu.</p>
+<div class="tiles">
+<sc-for list="{{agents}}" as="a" hint-placeholder-count="4">
+<button type="button" class="tile ag-{{a.id}}" style="animation-delay: {{a.delay}}" onClick="{{a.pick}}">
+<span class="tile-top"><span class="ag-badge">{{a.initial}}</span><kbd>{{a.num}}</kbd></span>
+<span class="tile-name">{{a.name}}</span>
+<span class="tile-cmd">{{a.cmd}}</span>
+</button>
+</sc-for>
+</div>
+<div class="dialog-foot"><span><kbd>1</kbd>–<kbd>4</kbd> wybór</span><span><kbd>↑</kbd><kbd>↓</kbd> ruch</span><span><kbd>Esc</kbd> zamknij</span></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+<div class="toast ag-{{toast.agent}}"><span class="ag-badge">{{toast.initial}}</span><span>{{toast.text}}</span></div>
+</sc-if>
+<sc-if value="{{settingsOpen}}" hint-placeholder-val="{{false}}">
+<div class="settings" role="dialog" aria-label="Wygląd">
+<h2>Wygląd</h2>
+<sc-for list="{{setRows}}" as="r" hint-placeholder-count="6">
+<div class="set-row">
+<span class="set-label">{{r.label}}</span>
+<div class="seg">
+<sc-for list="{{r.choices}}" as="c" hint-placeholder-count="3">
+<sc-if value="{{c.swatch}}" hint-placeholder-val="{{false}}">
+<button type="button" class="swatch {{c.onCls}}" aria-label="{{c.label}}" title="{{c.label}}" onClick="{{c.pick}}"><i style="background: {{c.color}}"></i></button>
+</sc-if>
+<sc-if value="{{c.text}}" hint-placeholder-val="{{true}}">
+<button type="button" class="{{c.onCls}}" onClick="{{c.pick}}">{{c.label}}</button>
+</sc-if>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<div class="set-foot">Zapisywane w workspace.json · kolory agentów w agents.json</div>
+</div>
+</sc-if>
+</div>
+<div class="demo">
+<span class="demo-label">Wypróbuj</span>
+<button type="button" class="btn" onClick="{{openDialog}}">Nowy panel</button>
+<button type="button" class="btn" onClick="{{finish}}">Agent kończy pracę</button>
+<button type="button" class="btn" onClick="{{workAll}}">Wszyscy pracują</button>
+<button type="button" class="btn" onClick="{{maxFocused}}">Maksymalizuj</button>
+<button type="button" class="btn" onClick="{{nextProject}}">Następny projekt</button>
+<span class="look-name">D · Kokpit + Odważny</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.flipMs = 340;
+    this.flipEase = 'cubic-bezier(.2,.8,.2,1)';
+    this.AG = {
+      claude: { name: 'Claude', cmd: 'claude', initial: 'C' },
+      pi: { name: 'pi', cmd: 'pi', initial: 'π' },
+      codex: { name: 'Codex', cmd: 'codex', initial: 'X' },
+      shell: { name: 'Terminal', cmd: '$SHELL', initial: '$' }
+    };
+    this.WORK = {
+      claude: '> dodaj dławienie zapisu do terminala\n\n● Read src/Terminal.tsx\n● Write src/write-queue.ts\n  + const MAX_CHUNK = 64 * 1024\n  + export function enqueue(q, bytes) {\n\n✻ Pracuję… 18 s · esc przerywa',
+      pi: 'pi · Swift Flash Next\n\n> etap 7: kolejka zapisu\n\n• read docs/plan-m2.md\n• edit src/write-queue.ts\n• bash pnpm test\n\n⠋ pracuje · 42 s',
+      codex: 'codex · workspace-write\n\n> popraw README\n\n▸ reading README.md\n▸ applying patch…',
+      shell: '$ yes | head -c 20M > /dev/null\n…'
+    };
+    this.DONE = {
+      claude: '> dodaj dławienie zapisu do terminala\n\n● Write src/write-queue.ts\n● Bash pnpm test\n  Tests  96 passed (96)\n\n✓ Gotowe · 3 pliki zmienione (+84 −6)\n\n> ',
+      pi: 'pi · Swift Flash Next\n\n> etap 7: kolejka zapisu\n\n• bash pnpm test\n  Tests  96 passed (96)\n\nZrobione. Wpis w HANDOFF.md.\n\n> ',
+      codex: 'codex · workspace-write\n\n> popraw README\n\n✓ patch applied · README.md\n\n> ',
+      shell: '$ yes | head -c 20M > /dev/null\n$ '
+    };
+    this.IDLE = {
+      claude: '> czemu kropka pulsuje bez pracy?\n\n● Raporty fokusu (DECSET 1004) trafiają\n  do agenta, a TUI bez fokusu odświeża się.\n  Filtruję \\x1b[I i \\x1b[O w onData.\n\n✓ Zmieniono 1 plik (+5 −1)\n\n> ',
+      pi: 'pi · Swift Flash Next\n\n> przejrzyj HANDOFF.md\n\nEtap 11 zrobiony. Lista rzeczy do\nsprawdzenia w oknie jest w HANDOFF.\n\n> ',
+      codex: 'codex · workspace-write\n\n> ',
+      shell: '$ pnpm test\n\n Test Files  9 passed (9)\n      Tests  93 passed (93)\n\n$ exit\n\n[proces zakończony: kod 0]'
+    };
+    this.timers = [];
+    this.root = null;
+    this.toastN = 0;
+    this.switchedAt = Date.now();
+    this.setRoot = (el) => { this.root = el; };
+    this.LIMIT = { claude: 200000, pi: 128000, codex: 272000, shell: 0 };
+    this.feedN = 10;
+    this.SET = [
+      { key: 'accent', label: 'Akcent', choices: [['orange', 'Pomarańcz', '#ff8a4c'], ['acid', 'Kwas', '#e4ff3a'], ['violet', 'Fiolet', '#b39bff'], ['mint', 'Mięta', '#3dffa2']] },
+      { key: 'head', label: 'Panel z fokusem', choices: [['fill', 'Wypełniony'], ['line', 'Obrys']] },
+      { key: 'work', label: 'Agent pracuje', choices: [['glow', 'Poświata'], ['scan', 'Skan']] },
+      { key: 'edge', label: 'Krawędzie', choices: [['sharp', 'Ostre'], ['soft', 'Miękkie']] },
+      { key: 'title', label: 'Nazwa projektu', choices: [['big', 'Duża'], ['compact', 'Zwarta']] },
+      { key: 'grid', label: 'Siatka w tle', choices: [['on', 'Tak'], ['off', 'Nie']] },
+      { key: 'motion', label: 'Ruch', choices: [['full', 'Pełny'], ['lite', 'Oszczędny']] }
+    ];
+
+    this.state = {
+      settings: { accent: 'orange', head: 'fill', work: 'glow', edge: 'sharp', title: 'big', grid: 'on', motion: 'full' },
+      settingsOpen: false, dockOpen: true,
+      feed: [
+        { id: 'f1', agent: 'claude', text: 'Write src/write-queue.ts', where: 'agents-workspace', when: 'teraz' },
+        { id: 'f2', agent: 'pi', text: 'bash pnpm test · 96 passed', where: 'pi-gui', when: '40 s temu' },
+        { id: 'f3', agent: 'claude', text: 'skończył pracę', where: 'agents-workspace', when: '3 min temu' },
+        { id: 'f4', agent: 'codex', text: 'patch README.md', where: 'pi-gui', when: '12 min temu' }
+      ],
+      active: 0, dir: 1, max: null, dialog: false, toast: null, closing: null, ping: null, seq: 1,
+      projects: [
+        { name: 'agents-workspace', path: '~/Dokumenty/Claude/Agents workspace', focused: 'a2', panes: [
+          { id: 'a1', used: 128000, agent: 'claude', state: 'working', text: this.WORK.claude },
+          { id: 'a2', used: 41000, agent: 'pi', state: 'idle', text: this.IDLE.pi },
+          { id: 'a3', used: 171000, agent: 'claude', state: 'unread', text: this.IDLE.claude },
+          { id: 'a4', agent: 'shell', state: 'exited', text: this.IDLE.shell }
+        ] },
+        { name: 'pi-gui', path: '~/Documents/Pi/pi-gui', focused: 'b1', panes: [
+          { id: 'b1', used: 52000, agent: 'claude', state: 'working', text: this.WORK.claude },
+          { id: 'b2', used: 97000, agent: 'pi', state: 'working', text: this.WORK.pi },
+          { id: 'b3', used: 12000, agent: 'codex', state: 'idle', text: this.IDLE.codex }
+        ] },
+        { name: 'vs-grapplinghook', path: '~/Dokumenty/VS mod grapplinghook', focused: 'c1', panes: [
+          { id: 'c1', used: 8000, agent: 'pi', state: 'idle', text: this.IDLE.pi }
+        ] }
+      ]
+    };
+  }
+
+  stageCls() {
+    const st = this.state.settings;
+    return ['acc-' + st.accent, 'fh-' + st.head, 'work-' + st.work, 'edge-' + st.edge, 'title-' + st.title, st.grid === 'on' ? 'bg-grid' : '', 'motion-' + st.motion].join(' ');
+  }
+
+  k(n) { return n >= 1000000 ? (n / 1000000).toFixed(1) + 'M' : Math.round(n / 1000) + 'k'; }
+
+  ctxView(q) {
+    const limit = this.LIMIT[q.agent] || 0;
+    if (!limit) return { hasCtx: false };
+    const pct = Math.min(100, Math.round((q.used || 0) / limit * 100));
+    return { hasCtx: true, ctxPct: pct, ctxUsed: this.k(q.used || 0), ctxLimit: this.k(limit), ctxCls: pct >= 80 ? 'is-warn' : '' };
+  }
+
+  pushFeed(agent, text, where) {
+    const id = 'f' + (++this.feedN);
+    this.setState((s) => ({ feed: [{ id, agent, text, where, when: 'teraz' }].concat(s.feed.map((f) => (f.when === 'teraz' ? { ...f, when: 'przed chwilą' } : f))).slice(0, 6) }));
+  }
+
+  onFinish(i, q) {
+    this.setPane(q.id, (x) => ({ ...x, used: Math.min(this.LIMIT[x.agent] || 0, (x.used || 0) + 14000) }));
+    this.pushFeed(q.agent, 'skończył pracę', this.state.projects[i].name);
+  }
+
+  onWork(i) {
+    const p = this.state.projects[i];
+    this.setState((s) => ({ projects: s.projects.map((pp, k) => (k !== i ? pp : { ...pp, panes: pp.panes.map((q) => (q.state === 'exited' ? q : { ...q, used: Math.min(this.LIMIT[q.agent] || 0, (q.used || 0) + 9000) })) })) }));
+    const q = p.panes.find((x) => x.state !== 'exited');
+    if (q) this.pushFeed(q.agent, q.agent === 'pi' ? 'edit src/write-queue.ts' : 'Read src/Terminal.tsx', p.name);
+  }
+
+  setOpt(key, value) { this.setState((s) => ({ settings: { ...s.settings, [key]: value } })); }
+
+  componentWillUnmount() { this.timers.forEach((t) => clearTimeout(t)); }
+
+  later(fn, ms) {
+    const t = setTimeout(() => { this.timers = this.timers.filter((x) => x !== t); fn(); }, ms);
+    this.timers.push(t);
+  }
+
+  // FLIP: panes that stay in the grid glide from their old box to the new one.
+  getSnapshotBeforeUpdate(prevProps, prevState) {
+    if (!this.root || prevState.active !== this.state.active) return null;
+    const boxes = {};
+    this.root.querySelectorAll('.grid [data-pane]').forEach((el) => { boxes[el.getAttribute('data-pane')] = el.getBoundingClientRect(); });
+    return boxes;
+  }
+
+  componentDidUpdate(prevProps, prevState, boxes) {
+    if (!boxes || !this.root) return;
+    if (this.state.settings && this.state.settings.motion === 'lite') return;
+    const zoom = this.root.getBoundingClientRect().width / (this.root.offsetWidth || 1) || 1;
+    this.root.querySelectorAll('.grid [data-pane]').forEach((el) => {
+      const a = boxes[el.getAttribute('data-pane')];
+      if (!a || !el.animate) return;
+      const b = el.getBoundingClientRect();
+      if (!b.width || !b.height) return;
+      const dx = (a.left - b.left) / zoom, dy = (a.top - b.top) / zoom, sx = a.width / b.width, sy = a.height / b.height;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) return;
+      el.animate([
+        { transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' },
+        { transformOrigin: '0 0', transform: 'none' }
+      ], { duration: this.flipMs, easing: this.flipEase });
+    });
+  }
+
+  setPane(id, fn) {
+    this.setState((s) => ({ projects: s.projects.map((p) => ({ ...p, panes: p.panes.map((q) => (q.id === id ? fn(q) : q)) })) }));
+  }
+
+  select(i) {
+    if (i === this.state.active) return;
+    this.switchedAt = Date.now();
+    this.setState((s) => ({ active: i, dir: i > s.active ? 1 : -1, max: null }));
+  }
+
+  focus(i, id) {
+    this.setState((s) => ({ projects: s.projects.map((p, k) => (k !== i ? p : {
+      ...p, focused: id, panes: p.panes.map((q) => (q.id === id && q.state === 'unread' ? { ...q, state: 'idle' } : q))
+    })) }));
+  }
+
+  toggleMax(id) { this.setState((s) => ({ max: s.max === id ? null : id })); }
+
+  close(id) {
+    if (this.state.closing) return;
+    this.setState({ closing: id });
+    this.later(() => this.setState((s) => ({
+      closing: null,
+      max: s.max === id ? null : s.max,
+      projects: s.projects.map((p) => {
+        const at = p.panes.findIndex((q) => q.id === id);
+        if (at < 0) return p;
+        const panes = p.panes.filter((q) => q.id !== id);
+        const next = panes[Math.min(at, panes.length - 1)];
+        return { ...p, panes, focused: p.focused === id ? (next ? next.id : null) : p.focused };
+      })
+    })), 190);
+  }
+
+  toast(agent, text) {
+    const n = ++this.toastN;
+    this.setState({ toast: { agent, text } });
+    this.later(() => { if (this.toastN === n) this.setState({ toast: null }); }, 3400);
+  }
+
+  pick(agent) {
+    const s = this.state;
+    const p = s.projects[s.active];
+    if (p.panes.length >= 9) { this.setState({ dialog: false }); this.toast('shell', 'W tej atrapie mieści się 9 paneli'); return; }
+    const id = 'n' + s.seq;
+    const name = this.AG[agent].name;
+    const boot = agent === 'shell' ? '$ ' : name + ' · nowa rozmowa\n\nuruchamiam…';
+    this.setState((st) => ({
+      dialog: false, seq: st.seq + 1,
+      projects: st.projects.map((pp, k) => (k !== st.active ? pp : { ...pp, focused: id, panes: pp.panes.concat([{ id, agent, state: agent === 'shell' ? 'idle' : 'working', text: boot, used: 3000 }]) }))
+    }));
+    if (agent !== 'shell') this.later(() => this.setPane(id, (q) => ({ ...q, state: 'idle', text: name + ' · nowa rozmowa\n\n> ' })), 2200);
+  }
+
+  finish() {
+    const s = this.state;
+    const order = [s.active].concat(s.projects.map((_, i) => i).filter((i) => i !== s.active));
+    let hit = null;
+    for (const i of order) {
+      const q = s.projects[i].panes.find((x) => x.state === 'working');
+      if (q) { hit = { i, q }; break; }
+    }
+    if (!hit) { this.toast('shell', 'Nikt teraz nie pracuje – kliknij „Wszyscy pracują”'); return; }
+    const { i, q } = hit;
+    const seen = i === s.active && s.projects[i].focused === q.id;
+    this.setPane(q.id, (x) => ({ ...x, state: 'done', text: this.DONE[x.agent] }));
+    if (this.onFinish) this.onFinish(i, q);
+    if (!seen) {
+      this.toast(q.agent, this.AG[q.agent].name + ' skończył pracę w ' + s.projects[i].name);
+      this.setState({ ping: i });
+      this.later(() => this.setState({ ping: null }), 1000);
+    }
+    this.later(() => this.setPane(q.id, (x) => (x.state === 'done' ? { ...x, state: seen ? 'idle' : 'unread' } : x)), 1600);
+  }
+
+  workAll() {
+    const s = this.state;
+    if (this.onWork) this.onWork(s.active);
+    this.setState((st) => ({ projects: st.projects.map((p, k) => (k !== s.active ? p : {
+      ...p, panes: p.panes.map((q) => (q.state === 'exited' || q.state === 'working' ? q : { ...q, state: 'working', text: this.WORK[q.agent] }))
+    })) }));
+  }
+
+  renderVals() {
+    const s = this.state;
+    const AG = this.AG;
+    const label = { working: 'pracuje', done: 'skończył', unread: 'nowe wyjście', idle: 'czeka', exited: 'kod 0' };
+    const recent = Date.now() - this.switchedAt < 700;
+    const view = (q, p, i, k) => ({
+      id: q.id, agent: q.agent, state: q.state, label: AG[q.agent].name, initial: AG[q.agent].initial,
+      status: label[q.state], text: q.text,
+      focusCls: q.id === p.focused ? 'is-focused' : '',
+      closingCls: s.closing === q.id ? 'is-closing' : '',
+      delay: recent ? (k * 60) + 'ms' : '0ms',
+      focus: () => this.focus(i, q.id), max: () => this.toggleMax(q.id), close: () => this.close(q.id),
+      ...(this.ctxView ? this.ctxView(q) : {})
+    });
+    const projects = s.projects.map((p, i) => {
+      const work = p.panes.some((q) => q.state === 'working');
+      const unread = p.panes.some((q) => q.state === 'unread' || q.state === 'done');
+      const cls = [i === s.active ? 'is-active' : '', unread ? 'has-unread' : (work ? 'has-work' : ''), s.ping === i ? 'ping' : ''].join(' ');
+      return { num: i + 1, name: p.name, path: p.path, active: i === s.active, cls, select: () => this.select(i), panes: p.panes.map((q, k) => view(q, p, i, k)) };
+    });
+    const cur = s.projects[s.active];
+    const n = cur.panes.length;
+    const cols = n <= 1 ? 1 : n <= 4 ? 2 : n <= 9 ? 3 : 4;
+    const rows = Math.max(1, Math.ceil(n / cols));
+    const k = cur.panes.findIndex((q) => q.id === s.max);
+    let max = null;
+    if (k >= 0) {
+      max = view(cur.panes[k], cur, s.active, k);
+      max.origin = (((k % cols) + 0.5) / cols * 100) + '% ' + ((Math.floor(k / cols) + 0.5) / rows * 100) + '%';
+    }
+    const agents = ['claude', 'pi', 'codex', 'shell'].map((id, i) => ({
+      id, num: i + 1, name: AG[id].name, cmd: AG[id].cmd, initial: AG[id].initial, delay: (80 + i * 55) + 'ms', pick: () => this.pick(id)
+    }));
+    const t = s.toast;
+    return {
+      setRoot: this.setRoot, projects, cols, rows, stageCls: this.stageCls ? this.stageCls() : '',
+      settingsOpen: this.state.settingsOpen, dockOpen: this.state.dockOpen,
+      setOnCls: this.state.settingsOpen ? 'is-on' : '', dockOnCls: this.state.dockOpen ? 'is-on' : '',
+      toggleSettings: () => this.setState((st) => ({ settingsOpen: !st.settingsOpen })),
+      toggleDock: () => this.setState((st) => ({ dockOpen: !st.dockOpen })),
+      setRows: this.SET.map((row) => ({ label: row.label, choices: row.choices.map((c) => ({
+        label: c[1], color: c[2] || '', swatch: !!c[2], text: !c[2],
+        onCls: this.state.settings[row.key] === c[0] ? 'is-on' : '', pick: () => this.setOpt(row.key, c[0])
+      })) })),
+      usage: [
+        { label: 'Sesja (5 h)', pct: 42, note: 'reset o 22:40' },
+        { label: 'Tydzień · wszystkie modele', pct: 18, note: 'reset w pon. 09:00' },
+        { label: 'Tydzień · Opus', pct: 31, note: 'reset w pon. 09:00' }
+      ],
+      ctxList: this.state.projects[this.state.active].panes.filter((q) => this.LIMIT[q.agent]).map((q) => {
+        const v = this.ctxView(q);
+        return { agent: q.agent, initial: this.AG[q.agent].initial, label: this.AG[q.agent].name, used: v.ctxUsed, limit: v.ctxLimit, pct: v.ctxPct, warnCls: v.ctxCls };
+      }),
+      feed: this.state.feed.map((f) => ({ ...f, initial: this.AG[f.agent].initial })),
+
+      cur: { name: cur.name, path: cur.path, count: n },
+      enterCls: s.dir > 0 ? 'enter-next' : 'enter-prev',
+      isEmpty: n === 0, hasMax: !!max, max: max || {},
+      dialog: s.dialog, agents,
+      hasToast: !!t, toast: t ? { agent: t.agent, text: t.text, initial: AG[t.agent].initial } : {},
+      openDialog: () => this.setState({ dialog: true }),
+      closeDialog: () => this.setState({ dialog: false }),
+      finish: () => this.finish(),
+      workAll: () => this.workAll(),
+      maxFocused: () => { const c = this.state.projects[this.state.active]; if (c.focused) this.toggleMax(c.focused); },
+      nextProject: () => this.select((this.state.active + 1) % this.state.projects.length)
+    };
+  }
+}
+</script>
+</body>
+</html>

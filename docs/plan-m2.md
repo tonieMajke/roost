@@ -1,166 +1,227 @@
-# Plan M2 – wygląd
+# Plan M2 – wygląd „D” i pulpit
 
-M1 działa i jest sprawdzone w oknie (2026-09-30). M2 zmienia wygląd, bez nowych funkcji.
-Jedyny wyjątek to etap 7 (dławienie zapisu do terminala) z pomiaru obciążenia.
+M1 działa i jest sprawdzone w oknie (2026-09-30). M2 daje aplikacji wygląd „D · Kokpit +
+Odważny” z ustawieniami wyglądu i dokłada pulpit po prawej: limity Claude (`/usage`),
+kontekst agentów, zdarzenia na żywo.
 
 ## Kierunek
 
-**Ten sam język wizualny co Pi Code** (`~/Documents/Pi/pi-gui`, zrzuty w `docs/screenshots/`).
-Powód: w M3 czat z Pi Code ma wejść jako zakładka tej aplikacji, więc obie części muszą
-wyglądać jak jedna. Z Pi Code bierzemy:
+**Wzór: `docs/design/wzor-d.html`** (plik atrapy; plansza na żywo:
+https://claude.ai/artifact/HjMw3dnoUiR8UL47cLkvYj, artboard „D”). Ze wzoru bierzesz
+**CSS dosłownie**: tokeny, klasy, klatki animacji, rozmiary. Nie wymyślaj własnych
+kolorów ani odstępów. Znaczniki wzoru (`<sc-for>`, `{{...}}`, `DCLogic`) to format
+atrapy – przepisujesz je na React, nie kopiujesz.
 
-- tokeny kolorów z `pi-gui/src/styles.css`: ciepłe szarości (`--bg #262624`, `--bg-side
-  #1f1e1d`, `--surface`, `--hover`, `--border` jako rgba), akcent `#d97757`, `--ok`, `--err`,
-  `--shadow`, i to samo w jasnym motywie;
-- fonty: Inter (UI) i JetBrains Mono (terminal, już jest);
-- ikony: `lucide-react`, 16 px, obrys 1,75;
-- klawisze w podpowiedziach jako „klawisze” (`<kbd>` w ramce, jak `Esc stop` w Pi Code);
-- gęstość: szyna jak lista sesji w Pi Code (wiersze ~32 px, nazwa + szary podpis).
+Najważniejsze decyzje:
+- ciemny motyw (jasny poza M2), tło `#0b0c0f`, siatka w tle, akcent do wyboru;
+- fonty: Geist (UI), Geist Mono (etykiety, liczby, terminal zostaje JetBrains Mono),
+  Bricolage Grotesque (duże nazwy: projekt, okna, pulpit). **Z paczek fontsource**, nie
+  z Google Fonts – aplikacja ma działać bez sieci;
+- kolor agenta (`--ag`) widać w nagłówku, poświacie, szynie, pulpicie;
+- animacje tylko `transform` i `opacity` (+ jednorazowa fala `box-shadow` przy końcu pracy).
+  Powód: WebKitGTK rysuje programowo (`LIBGL_ALWAYS_SOFTWARE`). Nic nie animuje się stale
+  poza poświatą/skanem pracującego panelu, a poświata zmienia tylko `opacity` gotowej warstwy.
 
-Tego nie kopiujemy: czatu, kart, dużych zaokrągleń (`--radius: 12px` jest za duże na
-nagłówki paneli; panele 8 px, przyciski 6 px).
+Ustawienia wyglądu (okno „Wygląd”, zapis w `workspace.json`, pole `ui`):
+
+| Klucz | Wartości (pierwsza = domyślna) | Klasa na `.app` |
+|---|---|---|
+| `accent` | `orange`, `acid`, `violet`, `mint` | `acc-<wartość>` |
+| `head` | `fill`, `line` | `fh-<wartość>` |
+| `work` | `glow`, `scan` | `work-<wartość>` |
+| `edge` | `sharp`, `soft` | `edge-<wartość>` |
+| `title` | `big`, `compact` | `title-<wartość>` |
+| `grid` | `on`, `off` | `bg-grid` gdy `on` |
+| `motion` | `full`, `lite` | `motion-<wartość>` |
+| `dock` | `true`, `false` | – (pulpit widoczny) |
+
+Kolory agentów: pole `color` w `agents.json` (opcjonalne, `#rrggbb`); bez niego
+domyślne ze wzoru: claude `#ff7a3d`, pi `#a78bfa`, codex `#3dffa2`, reszta `#8fd3ff`.
 
 ## Kto robi
 
-| Etap | Kto | Dlaczego |
-|---|---|---|
-| 1 tokeny, fonty, motyw | lokalny model | mechaniczne, jasna specyfikacja |
-| 2 ikony | lokalny model | mechaniczne |
-| 3 szyna | Claude | ocena na oko |
-| 4 panel i siatka | Claude | ocena na oko |
-| 5 okna i komunikaty | Claude | ocena na oko |
-| 6 terminal | Claude + użytkownik | tylko w oknie Tauri (WebKitGTK) widać prawdę |
-| 7 dławienie zapisu | lokalny model, przegląd Claude | asynchroniczne, łatwo o błąd |
-
-Na koniec każdego etapu, który robi Claude: **zrzut ekranu z okna Tauri od użytkownika**
-(podgląd w przeglądarce renderuje inaczej niż WebKitGTK z renderowaniem programowym).
-Zasady z `AGENTS.md` obowiązują bez zmian: jeden etap = jeden commit, wszystkie sprawdzenia.
+Etapy **L** robi lokalny model, etapy **C** – Claude. Po każdym etapie L z interfejsem
+Claude przegląda kod, a użytkownik wysyła zrzut z okna `pnpm desktop` (podgląd
+w przeglądarce rysuje inaczej niż WebKitGTK). Zasady z `AGENTS.md` bez zmian.
 
 ## Postęp
 
-- [ ] Etap 1 – tokeny, fonty, jasny i ciemny motyw
-- [ ] Etap 2 – ikony
-- [ ] Etap 3 – szyna projektów
-- [ ] Etap 4 – nagłówek panelu i siatka
-- [ ] Etap 5 – okna, komunikaty, puste stany
-- [ ] Etap 6 – terminal
-- [ ] Etap 7 – dławienie zapisu do terminala
+- [ ] Etap 1 (L) – tokeny, fonty, model ustawień `ui`
+- [ ] Etap 2 (L) – ikony
+- [ ] Etap 3 (L) – szyna i nagłówek obszaru według wzoru
+- [ ] Etap 4 (L) – panel i siatka według wzoru
+- [ ] Etap 5 (L) – okna: „Wygląd”, „Nowy panel”, „Presety”, komunikaty
+- [ ] Etap 6 (C) – ruch: przesuwanie paneli, maksymalizacja, przełączanie projektów
+- [ ] Etap 7 (L) – dławienie zapisu do terminala
+- [ ] Etap 8 (L) – pulpit i kontekst agentów
+- [ ] Etap 9 (L) – „Na żywo”
+- [ ] Etap 10 (C) – limity Claude (`/usage`)
+- [ ] Etap 11 (C + użytkownik) – szlif na zrzutach z okna
 
 ---
 
-## Etap 1 – tokeny, fonty, jasny i ciemny motyw
+## Etap 1 (L) – tokeny, fonty, model ustawień `ui`
 
-Zależność: `pnpm add @fontsource-variable/inter@^5.3.0` (ta sama co w Pi Code).
+Zależności: `pnpm add @fontsource-variable/geist@^5.3.0 @fontsource-variable/geist-mono@^5.3.0 @fontsource-variable/bricolage-grotesque@^5.3.0`.
+Import w `src/main.tsx` obok JetBrains Mono.
 
-- `src/styles.css`: zastąp obecne `:root` tokenami z Pi Code (lista nazw jak w
-  `pi-gui/src/styles.css`, bez `--bubble`, `--add-*`, `--del-*`, `--serif`). Dopisz
-  `--radius-pane: 8px`, `--radius-control: 6px`. Każdy kolor w pliku idzie przez token –
-  po etapie `grep -nE '#[0-9a-fA-F]{3,8}' src/styles.css` zwraca tylko linie z definicjami
-  tokenów.
-- Motyw: ciemny domyślnie, jasny przez `@media (prefers-color-scheme: light)` oraz
-  `:root[data-theme="light"|"dark"]` (ręczny wybór wygrywa z systemem).
-- Wybór motywu w `workspace.json`: pole `ui: { theme: "system" | "light" | "dark" }`,
-  akcja `setTheme` w `reduce`, `parseWorkspace` akceptuje brak pola (= `"system"`)
-  i odrzuca złą wartość z błędem. Testy vitest dla obu.
-- `src/theme.ts` (czyste): `terminalTheme(mode: "light" | "dark")` → obiekt `ITheme`
-  dla xterm: tło = `--bg`, tekst = `--text`, kursor = akcent, zaznaczenie = `--accent-soft`,
-  16 kolorów ANSI dobranych do tła (ciemny: jak w Pi Code w bloku kodu; jasny: ciemniejsze
-  odcienie, kontrast ≥ 4,5:1 do tła – test liczy kontrast).
-- `Terminal.tsx`: motyw z `terminalTheme`, zmiana motywu podmienia `x.options.theme`
-  **bez** restartu procesu.
-- Przełącznik: przycisk tekstowy w stopce szyny „Motyw: systemowy / ciemny / jasny”
-  (klik = następny). Bez skrótu: Ctrl+Alt+T otwiera terminal w KDE i GNOME. Etap 3
-  zamieni go na ikonę.
+- `src/styles.css`: `:root`/`.app` dostaje tokeny ze wzoru (blok `.stage{...}` w `wzor-d.html`,
+  bez `width`/`height`) i klasy ustawień (`acc-*`, `edge-soft`, `title-compact`, `bg-grid`,
+  `fh-*`, `work-scan`, `motion-lite`). Każdy kolor w pliku przez token: po etapie
+  `grep -nE '#[0-9a-fA-F]{3,8}' src/styles.css` pokazuje tylko definicje tokenów
+  i klasy `acc-*`/`ag-*`.
+- `src/ui.ts` (czyste): typ `Ui`, `DEFAULT_UI`, `parseUi(raw) -> { ui, errors }` (brak pola
+  = domyślne, zła wartość = domyślna + błąd), `uiClasses(ui) -> string`. Testy vitest.
+- `workspace.ts`: pole `ui` w `Workspace`, akcja `setUi { patch: Partial<Ui> }`,
+  `parseWorkspace` używa `parseUi`. Testy: stary plik bez `ui` wczytuje się bez błędów.
+- `agents.ts`: opcjonalne `color` (`#rrggbb`, inaczej błąd i pomijamy pole) + `agentColor(agent)`
+  z domyślnymi kolorami z tabeli wyżej. Testy.
+- `App.tsx`: `className={"app " + uiClasses(ws.ui)}`; każdy panel i wiersz szyny dostaje
+  `style={{ "--ag": agentColor(agent) }}`.
+- Terminal: tło `#0d0e11` (`--term-bg`), tekst `#c6ced8`, kursor = kolor akcentu (zmiana
+  akcentu podmienia `x.options.theme` bez restartu procesu).
 
-**Commit:** `M2 Etap 1: tokeny, fonty, jasny i ciemny motyw`
+Wygląd po etapie może być jeszcze „pół na pół” – ważne, że tokeny i ustawienia działają.
+**Commit:** `M2 Etap 1: tokeny, fonty, ustawienia wyglądu`
 
-## Etap 2 – ikony
+## Etap 2 (L) – ikony
 
-Zależność: `pnpm add lucide-react@^1.47.0` (ta sama co w Pi Code).
+Zależność: `pnpm add lucide-react@^1.47.0`. Wspólny `src/IconButton.tsx`: 26×26 px,
+ikona 15 px, `strokeWidth={1.75}`, `aria-label` i `title` ze skrótem („Zamknij panel
+(Ctrl+Alt+W)”). Klasa `.icon` ze wzoru.
 
-Zamień znaki na ikony (16 px, `strokeWidth={1.75}`, `aria-hidden`, przycisk dostaje
-`aria-label` + `title` ze skrótem, np. „Zamknij panel (Ctrl+Alt+W)”):
-
-| Teraz | Ikona |
+| Teraz | Ikona lucide |
 |---|---|
-| ✕ (panel, projekt, preset) | `X` |
+| ✕ | `X` |
 | ⟳ | `RotateCw` |
 | ⤢ / przywróć | `Maximize2` / `Minimize2` |
-| + (nowa rozmowa) | `MessageSquarePlus` |
-| + (projekt na szynie) | `FolderPlus` |
+| + nowa rozmowa | `MessageSquarePlus` |
+| + projekt | `FolderPlus` |
 | „+ Panel” | `Plus` + tekst |
 | „Presety” | `LayoutGrid` + tekst |
+| „Pulpit” (etap 8) | `Gauge` + tekst |
+| „Wygląd” (etap 5) | `SlidersHorizontal` |
+| zwiń szynę | `PanelLeft` |
 
-„Na pewno?” zostaje tekstem. Przyciski-ikony: 24×24 px, bez ramki, tło `--hover` po najechaniu.
-Wspólny komponent `src/IconButton.tsx`.
-
+„Na pewno?” zostaje tekstem.
 **Commit:** `M2 Etap 2: ikony`
 
-## Etap 3 – szyna projektów (Claude)
+## Etap 3 (L) – szyna i nagłówek obszaru według wzoru
 
-- Nagłówek szyny jak w Pi Code: nazwa aplikacji, przycisk zwijania szyny (`PanelLeft`,
-  Ctrl+Alt+B, stan w `workspace.json` `ui.rail`).
-- Wiersz projektu ~32 px: numer (Ctrl+Alt+1…9) jako `<kbd>`, nazwa, pod nią szara ścieżka
-  `~/...` (skrócona od lewej), kropka „nieprzeczytane”. Aktywny projekt: tło `--active`.
-- Wiersze paneli pod projektem: ikona agenta (pierwsza litera w kółku albo ikona
-  z `agents.json` – decyzja przy etapie), kropka stanu, wcięcie.
-- Zwinięta szyna (48 px): tylko numery projektów z kropkami.
-- Stopka szyny: przełącznik motywu (`Sun`/`Moon`/`Monitor`).
+Przenieś ze wzoru: `.rail`, `.rail-head` (znak + „AGENTS”), `.rail-label`, `.proj*`,
+`.pane-row*`, `.rail-foot`, `.area-head`, `.area-name` (Bricolage, 32 px / 16 px przy
+`title-compact`), `.area-path`, `.area-count`, `.btn`, `.btn.primary`.
 
-## Etap 4 – nagłówek panelu i siatka (Claude)
+- Wiersz projektu: `<kbd>` z numerem (Ctrl+Alt+1…9), nazwa, pod nią ścieżka `~/…`,
+  kropka: `has-work` (oddycha), `has-unread` (akcent), `ping` (jednorazowo, gdy panel
+  schowanego projektu skończył pracę).
+- Panele tylko pod aktywnym projektem (animacja `fold`), stan panelu tekstem po prawej.
+- Zwijanie szyny: `PanelLeft` + Ctrl+Alt+B → szyna 56 px (tylko `<kbd>` i kropki), stan
+  w `ui.rail` (`"open"|"closed"`, dopisz do tabeli w `ui.ts` z testami).
+- Stopka: „Dodaj projekt”, „Wygląd” (otwiera okno z etapu 5; do tego czasu nieaktywny).
+**Commit:** `M2 Etap 3: szyna i nagłówek`
 
-- Odstęp między panelami 6 px, tło siatki `--bg-side`, panel `--bg` z `--radius-pane`.
-- Fokus: obramowanie akcentem 1 px + delikatny cień; panel bez fokusu – przygaszony
-  nagłówek, terminal bez zmian (czytelność).
-- Nagłówek 28 px: ikona agenta, nazwa, kropka stanu, szary podpis (czas od ostatniej
-  aktywności albo „kod 1”), narzędzia po prawej widoczne w całości tylko na panelu
-  z fokusem albo po najechaniu.
-- Proces zakończony: w dole terminala pasek „Proces zakończony (kod 1) · Uruchom
-  ponownie (Ctrl+Alt+R)” zamiast samej szarej linii w xtermie.
-- Maksymalizacja: pasek u góry „Panel 2 z 4 · Przywróć (Ctrl+Alt+Enter)”.
+## Etap 4 (L) – panel i siatka według wzoru
 
-## Etap 5 – okna, komunikaty, puste stany (Claude)
+Przenieś: `.grids`, `.grid`, `.pane`, `.glow`, `.pane-head`, `.ag-badge`, `.pane-name`,
+`.pane-state`, `.tools`, stany `st-working`/`st-done`/`st-unread`/`st-exited`, klasy
+`fh-fill`/`fh-line`, `work-scan`, klatki `breatheGlow`, `wave`, `scan`, `paneIn`, `paneOut`.
 
-- Jeden komponent okna (`Dialog`) dla „Nowy panel” i „Presety”: cień `--shadow`,
-  animacja wejścia 120 ms (wyłączona przy `prefers-reduced-motion`), podpowiedzi
-  klawiszy jako `<kbd>`.
-- Komunikaty (`notice`) i błędy konfiguracji jako „toast” w prawym dolnym rogu
-  zamiast paska nad siatką; błędy zostają do zamknięcia, komunikaty znikają po 5 s.
-- Pusty start („Dodaj folder projektu”) i pusty projekt: ikona, jedno zdanie,
-  przyciski, lista skrótów w `<kbd>`.
+- Stan panelu z etapu 9 M1 mapuje się na klasy: `working` → `st-working`, zdarzenie
+  `finished` → `st-done` na 1,6 s (potem `st-unread` albo nic), `unread` → `st-unread`,
+  `exited` → `st-exited`.
+- Tekst stanu w nagłówku: „pracuje”, „skończył”, „nowe wyjście”, „czeka”, „kod N”.
+- Narzędzia w nagłówku przygaszone (`opacity .3`), pełne na panelu z fokusem i po najechaniu.
+- Miejsce na miernik kontekstu (`.ctx`) w nagłówku – pusty do etapu 8.
+- Zamknięcie panelu: klasa `is-closing` (`paneOut` 190 ms), dopiero potem `close` w reduktorze.
+- Proces zakończony: pod terminalem pasek „Proces zakończony (kod N) · Uruchom ponownie
+  (Ctrl+Alt+R)” zamiast samej szarej linii.
+**Commit:** `M2 Etap 4: panel i siatka`
 
-## Etap 6 – terminal (Claude + użytkownik, w oknie Tauri)
+## Etap 5 (L) – okna i komunikaty
 
-- Czarny pasek pod xtermem (zgłoszony od etapu 5 M1): znaleźć przyczynę w oknie
-  (zwykle reszta z dzielenia wysokości przez wysokość wiersza) – wyrównać tło
-  kontenera do tła terminala i dodać wewnętrzny margines 4–6 px.
-- Pasek przewijania xtermu w kolorach motywu, cienki.
-- Rozmiar czcionki terminali: Ctrl+Alt+= / Ctrl+Alt+- / Ctrl+Alt+0, jeden dla wszystkich
-  paneli (zapis w `ui.fontSize`, 10–20 px). Zwykłe Ctrl+= zostaje dla agentów.
-- Sprawdzenie na zrzutach: TUI claude i pi w ciemnym i jasnym motywie (kolory ANSI
-  z etapu 1 w praktyce).
+- Wspólny `src/Dialog.tsx` (tło `.backdrop`, karta `.dialog`, `pop`, Esc/klik w tło =
+  anuluj i oddanie fokusu jak w `NewPaneDialog`). „Nowy panel” i „Presety” na nim.
+  Kafelki agentów `.tile` z opóźnieniem `80 + 55·i` ms.
+- Okno „Wygląd” (`.settings` ze wzoru, otwierane ze stopki szyny): wiersze z tabeli
+  ustawień, akcent jako kółka kolorów, reszta jako przyciski segmentowe; zmiana
+  = `setUi` od razu (widać na żywo), zapis przez zwykły zapis `workspace.json`.
+- Komunikaty (`notice`) jako `.toast` w prawym dolnym rogu, znikają po 4 s; błędy
+  konfiguracji zostają do zamknięcia (✕).
+- Przycisk-podpowiedzi klawiszy jako `<kbd>`.
+**Commit:** `M2 Etap 5: okna i komunikaty`
 
-## Etap 7 – dławienie zapisu do terminala
+## Etap 6 (C) – ruch
 
-Pomiar z M1: 16 × 20 MB naraz zacina UI. Cel: UI odpowiada (klik w inny panel < 200 ms)
-przy tym samym teście.
+Claude: przesuwanie paneli po dodaniu/zamknięciu (FLIP przez `element.animate`), maksymalizacja
+z miejsca panelu (`transform-origin` z pozycji w siatce), wjazd siatki przy przełączeniu
+projektu (`slideNext`/`slidePrev`, panele kolejno), `motion-lite` i `prefers-reduced-motion`
+wyłączają ruch dekoracyjny. Sprawdzić, że `fit()` terminala nie odpala się w trakcie animacji
+(transform nie zmienia rozmiaru, ale maksymalizacja tak).
 
-- `src/write-queue.ts` (czyste, testowalne z fałszywym zegarem): kolejka kawałków na
-  panel; zapis do xterm paczkami, następna paczka dopiero w callbacku `x.write(data, cb)`;
-  limit paczki 64 KB.
-- Panel w schowanej siatce (`clientWidth === 0`) zbiera dane i zapisuje je rzadziej
-  (np. co 250 ms), ale **nic nie gubi**.
-- Bez limitu rozmiaru kolejki w tym etapie. Pomiar zapisuje szczytową długość kolejki;
-  jeśli przekroczy ~50 MB, osobny etap doda wstrzymywanie czytania PTY po stronie Rusta.
-- Aktywność (etap 9 M1) nadal liczy wyjście w chwili przyjścia, nie zapisu.
-- Test: vitest dla kolejki; ręcznie powtórzony pomiar 16 × 20 MB w oknie, czas zapisany
-  w HANDOFF.
+## Etap 7 (L) – dławienie zapisu do terminala
 
+Pomiar z M1: 16 × 20 MB naraz zacina UI. Cel: klik w inny panel reaguje < 200 ms w tym teście.
+
+- `src/write-queue.ts` (czyste, testy z fałszywym zegarem): kolejka kawałków na panel,
+  zapis paczkami do 64 KB, następna paczka w callbacku `x.write(data, cb)`.
+- Panel w schowanej siatce (`clientWidth === 0`) zapisuje rzadziej (co 250 ms), nic nie gubi.
+- Aktywność (M1 etap 9) liczy wyjście w chwili przyjścia z PTY, nie zapisu.
+- Pomiar szczytowej długości kolejki; > 50 MB = zapisz w HANDOFF, osobny etap doda
+  wstrzymywanie czytania PTY w Rust.
+- Ręcznie: powtórzony test 16 × 20 MB w oknie, wynik w HANDOFF.
 **Commit:** `M2 Etap 7: dławienie zapisu do terminala`
+
+## Etap 8 (L) – pulpit i kontekst agentów
+
+Pulpit (`.dock` ze wzoru, 300 px po prawej, przycisk „Pulpit” w nagłówku + Ctrl+Alt+D,
+stan w `ui.dock`). Trzy sekcje: „Limity Claude” (pusta do etapu 10: napis „wkrótce”),
+„Kontekst”, „Na żywo” (etap 9).
+
+Skąd liczby (tylko **odczyt**, nic nie zapisujemy w katalogach agentów):
+- claude: `~/.claude/projects/*/<sessionId>.jsonl`; ostatnia linia z `message.usage`;
+  kontekst = `input_tokens + cache_read_input_tokens + cache_creation_input_tokens`.
+- pi: pliki `~/.pi/agent/sessions/**.jsonl` – **najpierw ustal**, jak nazwa pliku łączy się
+  z `--session-id` (ls nazw, bez czytania treści cudzych sesji; w razie wątpliwości stop
+  i pytanie). Ostatnia linia z `message.usage`; kontekst = `input + cacheRead + cacheWrite`.
+- Limit okna: pole `context` w `agents.json` (liczba tokenów); bez niego claude 200 000,
+  pi 128 000, inni – brak miernika.
+
+Rust: komenda `session_context(kind, session_id) -> Option<{ tokens, model }>`; czyta tylko
+ostatnie 256 KB pliku (seek od końca). Testy na plikach-fixture w katalogu tymczasowym –
+**testy nie czytają prawdziwego `~/.claude` ani `~/.pi`**.
+TS: odświeżanie co 5 s i zaraz po `finished`, tylko dla paneli z `session`. Miernik w nagłówku
+panelu (`.ctx`, ≥ 80% = akcent) i lista w pulpicie (`.ctx-row`).
+**Commit:** `M2 Etap 8: pulpit i kontekst agentów`
+
+## Etap 9 (L) – „Na żywo”
+
+Lista ostatnich 30 zdarzeń ze wszystkich projektów (`.feed-item`, nowe wjeżdżają `feedIn`):
+- z aplikacji: panel uruchomiony, skończył pracę, proces zakończony (kod N);
+- z pliku sesji (ten sam odczyt co w etapie 8): ostatnie użyte narzędzie – claude:
+  `tool_use.name` + `input.file_path` albo pierwsze 60 znaków `input.command`; pi: ustal
+  format na fixture.
+Czas względny („teraz”, „40 s temu”, „3 min temu”) – czysta funkcja z testami. Klik
+w zdarzenie = fokus panelu (i przełączenie projektu). Stan ulotny, nie trafia na dysk.
+**Commit:** `M2 Etap 9: na żywo`
+
+## Etap 10 (C) – limity Claude (`/usage`)
+
+Claude najpierw sprawdza źródło: (1) czy dane dla linii statusu Claude Code 2.1.x mają
+limity; (2) jeśli nie – nieoficjalny endpoint, którego używa `/usage`, z tokenem
+z `~/.claude/.credentials.json`. Wariant 2 tylko po włączeniu przez użytkownika
+(ustawienie „Pokaż limity Claude”, domyślnie wyłączone), token czytany w Rust, wysyłany
+wyłącznie do api.anthropic.com, nigdy do UI ani logów. Odświeżanie co 5 min + przycisk.
+
+## Etap 11 (C + użytkownik) – szlif na zrzutach z okna
+
+Czarny pasek pod xtermem, pasek przewijania w kolorach motywu, rozmiar czcionki terminali
+Ctrl+Alt+= / Ctrl+Alt+- / Ctrl+Alt+0 (`ui.fontSize`, 10–20), puste stany, drobne
+poprawki z listy użytkownika.
 
 ---
 
 ## Poza M2 (nie rób)
 
-Zakładka Chat (M3), nowe funkcje z listy „Później” w `PLAN.md`, własne proporcje paneli,
-przeciąganie paneli, ikony agentów z plików graficznych.
+Jasny motyw, zakładka Chat (M3), własne proporcje i przeciąganie paneli, pozostałe
+pozycje z „Później” w `PLAN.md`.
