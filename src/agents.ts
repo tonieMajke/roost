@@ -9,6 +9,7 @@ export type AgentDef = {
     resume: string[];
     check?: "claude"; // how to tell if a conversation exists; absent = always "new"
   };
+  color?: string; // "#rrggbb", accent of this agent in the UI; absent = agentColor() default
 };
 
 export const DEFAULT_AGENTS: AgentDef[] = [
@@ -28,6 +29,22 @@ export const DEFAULT_AGENTS: AgentDef[] = [
 ];
 
 const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
+
+const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+/** UI colors of the wzor-D palette, keyed by agent id (agents.ts table in the plan). */
+export const DEFAULT_AGENT_COLORS: Record<string, string> = {
+  claude: "#ff7a3d",
+  pi: "#a78bfa",
+  codex: "#3dffa2",
+};
+const FALLBACK_AGENT_COLOR = "#8fd3ff";
+
+/** Color of an agent: its `color` if set, else the palette by id, else the fallback. */
+export function agentColor(agent: AgentDef | undefined): string {
+  if (!agent) return FALLBACK_AGENT_COLOR;
+  return agent.color ?? DEFAULT_AGENT_COLORS[agent.id] ?? FALLBACK_AGENT_COLOR;
+}
 
 /** Parse `{agents: [...]}`; bad entries are skipped and described in `errors`. Empty result falls back to defaults. */
 export function parseAgents(raw: unknown): { agents: AgentDef[]; errors: string[] } {
@@ -63,6 +80,10 @@ export function parseAgents(raw: unknown): { agents: AgentDef[]; errors: string[
     }
     const agent: AgentDef = { id, name: e.name as string, command: e.command as string };
     if (e.args !== undefined) agent.args = e.args as string[];
+    if (e.color !== undefined) {
+      if (typeof e.color === "string" && COLOR_RE.test(e.color)) agent.color = e.color;
+      else errors.push(`${where}: \`color\` must be "#rrggbb", field ignored`);
+    }
     if (e.session !== undefined) {
       const s = e.session as Record<string, unknown>;
       if (typeof s !== "object" || s === null || !isStringArray(s.new) || !isStringArray(s.resume)) {

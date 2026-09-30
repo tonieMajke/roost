@@ -8,10 +8,15 @@ import { commandFor } from "./keys";
 
 const FONT = '"JetBrains Mono Variable", monospace';
 
+/** Motyw ze wzoru D: tło/tekst stałe, kursor w kolorze akcentu. */
+const termTheme = (accent: string) => ({ background: "#0d0e11", foreground: "#c6ced8", cursor: accent });
+
 type Props = {
   command: string;
   args?: string[];
   cwd?: string;
+  /** Kolor akcentu (#rrggbb): kursor xtermu; zmiana nie restartuje procesu. */
+  accent?: string;
   focused?: boolean;
   onExit?: (info: ExitInfo) => void;
   onFocus?: () => void;
@@ -34,7 +39,7 @@ export type TerminalHandle = {
  * One agent process rendered by xterm.js. The process lives exactly as long as the
  * component: the effect has no dependencies, so it restarts only under a new React key.
  */
-export function Terminal({ command, args, cwd, focused, onExit, onFocus, onOutput, onRedraw, apiRef }: Props) {
+export function Terminal({ command, args, cwd, accent = "#ff8a4c", focused, onExit, onFocus, onOutput, onRedraw, apiRef }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm | undefined>(undefined);
   // Read once at mount; later prop changes must never restart the process.
@@ -69,7 +74,7 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus, onOutpu
       cursorBlink: true,
       allowProposedApi: true,
       scrollback: 3000, // limit pamięci przy 16 panelach (plan M1, ryzyko „xterm wolny”)
-      theme: { background: "#1a1918", foreground: "#e8e6e3" },
+      theme: termTheme(accent),
     });
     term.current = x;
     const fit = new FitAddon();
@@ -142,6 +147,12 @@ export function Terminal({ command, args, cwd, focused, onExit, onFocus, onOutpu
     };
     // The process depends on the React key only, that is the whole design.
   }, []);
+
+  // Zmiana akcentu (okno „Wygląd”) podmienia motyw xtermu bez restartu procesu.
+  useEffect(() => {
+    const x = term.current;
+    if (x) x.options.theme = termTheme(accent);
+  }, [accent]);
 
   // The pane owns clicks; when it becomes the focused one its terminal takes the keyboard.
   useEffect(() => {

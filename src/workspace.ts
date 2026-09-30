@@ -2,6 +2,8 @@
  *  `reduce` never mutates its input and never calls randomUUID/Date.now —
  *  the caller creates ids and passes them in actions. */
 
+import { DEFAULT_UI, parseUi, type Ui } from "./ui";
+
 export const MAX_PANES = 16; // per project
 
 export type Pane = {
@@ -27,9 +29,10 @@ export type Workspace = {
   projects: Project[];
   active: string | null; // active project id
   presets: Preset[];
+  ui: Ui; // appearance settings (M2), see src/ui.ts
 };
 
-export const emptyWorkspace: Workspace = { version: 1, projects: [], active: null, presets: [] };
+export const emptyWorkspace: Workspace = { version: 1, projects: [], active: null, presets: [], ui: DEFAULT_UI };
 
 /** Auto grid layout: cols = ceil(sqrt(n)), rows = ceil(n / cols). */
 export function gridShape(n: number): { cols: number; rows: number } {
@@ -84,6 +87,7 @@ export type Action =
   // Presets (stage 10). Names are compared after trimming; built-ins live in src/presets.ts.
   | { type: "savePreset"; name: string } // from the active project's panes, in their order; same name overwrites
   | { type: "deletePreset"; name: string }
+  | { type: "setUi"; patch: Partial<Ui> } // appearance settings, merged over the current ones
   | { type: "load"; workspace: Workspace };
 
 function mapProject(ws: Workspace, id: string, fn: (p: Project) => Project): Workspace {
@@ -190,6 +194,11 @@ export function reduce(ws: Workspace, action: Action): Workspace {
       const presets = ws.presets.filter((x) => x.name !== name);
       return presets.length === ws.presets.length ? ws : { ...ws, presets };
     }
+    case "setUi": {
+      const ui = { ...ws.ui, ...action.patch };
+      const unchanged = (Object.keys(ui) as (keyof Ui)[]).every((k) => ui[k] === ws.ui[k]);
+      return unchanged ? ws : { ...ws, ui };
+    }
     case "load":
       return action.workspace;
   }
@@ -279,5 +288,9 @@ export function parseWorkspace(raw: unknown, agentIds: string[]): { workspace: W
     }
   });
 
-  return { workspace: { version: 1, projects, active, presets }, errors };
+  // Absent `ui` (files from M1) parses to the defaults without errors.
+  const { ui, errors: uiErrors } = parseUi(r.ui);
+  errors.push(...uiErrors);
+
+  return { workspace: { version: 1, projects, active, presets, ui }, errors };
 }

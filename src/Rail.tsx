@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
-import type { AgentDef } from "./agents";
+import { agentColor, type AgentDef } from "./agents";
 import { dotClass, type PaneState } from "./activity";
 import type { Workspace } from "./workspace";
 
@@ -110,6 +110,8 @@ export function Rail({ ws, agents, state, onSelect, onFocusPane, onAddProject, o
                 <li
                   key={pane.id}
                   className={`rail-pane${pane.id === project.focused ? " is-focused" : ""}`}
+                  // kropka wiersza w kolorze agenta (wzór D)
+                  style={{ "--ag": agentColor(agents.find((a) => a.id === pane.agentId)) } as CSSProperties}
                   title={project.path}
                   onClick={() => onFocusPane(pane.id)}
                 >

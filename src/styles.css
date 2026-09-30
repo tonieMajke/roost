@@ -1,28 +1,70 @@
+/* Tokens from docs/design/wzor-d.html (the `.stage{...}` block, minus width/height).
+   Every color in this file is a token defined here or in the `.acc-*` classes at the bottom. */
 :root {
-  --bg: #1a1918;
-  --panel: #242220;
-  --line: #3a3734;
-  --text: #e8e6e3;
-  --muted: #9a948e;
-  --accent: #d97757;
-  --ok: #79b38b;
-  --radius: 6px;
+  --stage: #07080a;
+  --bg: #0b0c0f;
+  --rail: #0d0f12;
+  --pane: #101216;
+  --term-bg: #0d0e11;
+  --dialog: #14161b;
+  --line: rgba(255, 255, 255, 0.075);
+  --line-strong: rgba(255, 255, 255, 0.15);
+  --hover: rgba(255, 255, 255, 0.05);
+  --active: rgba(255, 255, 255, 0.08);
+  --text: #eef1f4;
+  --muted: #a0a8b2;
+  --faint: #6f7883;
+  --term-text: #c6ced8;
+  --accent: #ff8a4c;
+  --on-accent: #170b04;
+  --accent-hover: var(--accent);
+  --on-ag: #0a0a0a; /* text on an agent-color background (.fh-fill) */
+  --ok: #3dffa2;
+  --warn-bg: #2a1a12;
+  --warn-text: #f0a58a;
+  --scrim: rgba(3, 4, 6, 0.7);
+  --badge-bg: rgba(20, 22, 27, 0.92);
+  --grid-line: rgba(255, 255, 255, 0.03);
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.65);
+  --r-ctl: 3px;
+  --r-pane: 4px;
+  --r-dialog: 6px;
+  --badge-r: 2px;
+  --mark-r: 0;
+  --gap: 10px;
+  --pane-bw: 1px;
+  --focus-line: var(--ag, var(--accent)); /* --ag is stamped per pane/row in the UI */
+  --focus-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ui: "Geist Variable", system-ui, sans-serif;
+  --mono: "Geist Mono Variable", ui-monospace, monospace;
+  --display: "Bricolage Grotesque Variable", "Geist Variable", sans-serif;
+  --rail-w: 260px;
+  --head-h: 70px;
+  --pane-head-h: 36px;
+  --title-size: 32px;
+  --title-weight: 800;
+  --title-ls: -0.035em;
+  --brand-size: 12.5px;
+  --brand-ls: 0.14em;
+  --proj-weight: 600;
+  --dialog-title: 24px;
   color-scheme: dark;
 }
 html, body, #root { height: 100%; margin: 0; }
-body { background: var(--bg); color: var(--text); font: 13px system-ui, sans-serif; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font: 13px var(--ui); overflow: hidden; }
 button {
-  background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: var(--r-ctl);
   padding: 4px 8px; font: inherit; cursor: pointer;
 }
 button:hover:not(:disabled) { border-color: var(--accent); }
 button:disabled { color: var(--muted); cursor: default; }
 button.is-on { color: var(--accent); border-color: var(--accent); }
 button.is-confirm { color: var(--accent); border-color: var(--accent); }
-.app { display: flex; height: 100%; overflow: hidden; }
+.app { display: flex; height: 100%; overflow: hidden; background: var(--bg); }
 
 /* left rail: projects and their panes */
-.rail { width: 220px; flex: none; display: flex; flex-direction: column; background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; }
+.rail { width: 220px; flex: none; display: flex; flex-direction: column; background: var(--rail); border-right: 1px solid var(--line); overflow-y: auto; }
 .rail-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px; color: var(--muted); font-size: 12px; text-transform: uppercase;
@@ -32,34 +74,40 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .rail-project + .rail-project { margin-top: 2px; }
 .rail-row {
   display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 4px;
-  border-radius: var(--radius); cursor: pointer;
+  border-radius: var(--r-ctl); cursor: pointer;
 }
-.rail-row:hover { background: #2c2926; }
-.rail-project.is-active > .rail-row { background: #33302c; }
+.rail-row:hover { background: var(--hover); }
+.rail-project.is-active > .rail-row { background: var(--active); }
 .rail-project.is-active > .rail-row .rail-name { color: var(--text); }
 .rail-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail-key {
-  color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums;
+  color: var(--muted); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums;
   min-width: 12px; text-align: center;
 }
 .rail-project.is-active > .rail-row .rail-key { color: var(--text); }
-/* Na jaśniejszym tle aktywnego wiersza #9a948e daje tylko 4,4:1 – licznik idzie za nazwą. */
+/* Kontrast --muted na tle aktywnego wiersza jest na granicy – licznik idzie za nazwą. */
 .rail-project.is-active > .rail-row .rail-count { color: var(--text); }
-.rail-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.rail-count { color: var(--muted); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 .rail-close { display: none; padding: 0 4px; height: 20px; line-height: 18px; border-color: transparent; background: transparent; }
 .rail-row:hover .rail-close, .rail-close.is-confirm { display: block; }
 .rail-close.is-confirm { width: auto; padding: 0 4px; font-size: 12px; color: var(--accent); }
 .rail-edit {
   flex: 1; min-width: 0; height: 20px; background: var(--bg); color: var(--text);
-  border: 1px solid var(--accent); border-radius: var(--radius); padding: 0 4px; font: inherit;
+  border: 1px solid var(--accent); border-radius: var(--r-ctl); padding: 0 4px; font: inherit;
 }
 .rail-panes { list-style: none; margin: 0; padding: 0 0 0 12px; }
 .rail-pane {
   display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 4px;
-  border-radius: var(--radius); color: var(--muted); cursor: pointer;
+  border-radius: var(--r-ctl); color: var(--muted); cursor: pointer;
 }
-.rail-pane:hover { background: #2c2926; color: var(--text); }
+.rail-pane:hover { background: var(--hover); color: var(--text); }
 .rail-pane.is-focused { color: var(--text); }
+/* Kropka wiersza panelu w kolorze agenta (--ag stemplowany przez Rail). */
+.rail-pane .dot { background: var(--ag, var(--muted)); }
+.rail-pane .dot--off { background: var(--faint); }
+.rail-pane .dot--working { background: var(--ag, var(--accent)); animation: dot-pulse 1s ease-in-out infinite; }
+.rail-pane .dot--unread { background: var(--accent); }
+.rail-pane .dot--hidden { background: transparent; }
 
 /* grid area */
 .area { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -68,13 +116,13 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
   min-height: 36px; flex: none; padding: 0 8px 0 12px; border-bottom: 1px solid var(--line);
 }
 .area-id { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
-.area-name { font-size: 14px; font-weight: 500; }
+.area-name { font-family: var(--display); font-size: 14px; font-weight: 600; }
 .area-path {
-  color: var(--muted); font: 12px "JetBrains Mono Variable", monospace;
+  color: var(--muted); font: 12px var(--mono);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .area-tools { display: flex; align-items: center; gap: 8px; flex: none; }
-.area-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.area-count { color: var(--muted); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 .grids { flex: 1; min-height: 0; position: relative; }
 /* each project grid fills the area; the inactive ones are hidden, never unmounted */
 .project-grid { position: absolute; inset: 4px; display: grid; gap: 4px; }
@@ -82,19 +130,21 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 
 .pane {
   display: flex; flex: 1; flex-direction: column; min-width: 120px; min-height: 120px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  background: var(--pane); border: var(--pane-bw) solid var(--line); border-radius: var(--r-pane); overflow: hidden;
+  transition: border-color 0.25s, box-shadow 0.3s;
 }
-.pane.is-focused { border-color: var(--accent); }
+.pane.is-focused { border-color: var(--focus-line); box-shadow: var(--focus-shadow); }
 .pane-head {
-  display: flex; align-items: center; gap: 8px; height: 26px; flex: none;
-  padding: 0 4px 0 8px; background: #2a2724; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 8px; height: var(--pane-head-h); flex: none;
+  padding: 0 4px 0 8px; border-bottom: 1px solid var(--line);
+  transition: background 0.25s, color 0.25s;
 }
 .pane-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .pane-tools { display: flex; gap: 4px; }
 .pane-tools button { padding: 0 4px; height: 20px; line-height: 18px; background: transparent; border-color: transparent; }
 .pane-tools button:hover:not(:disabled) { border-color: var(--accent); }
 .pane-tools .is-confirm { width: 64px; font-size: 12px; color: var(--accent); }
-.pane-body { flex: 1; min-height: 0; padding: 4px; }
+.pane-body { flex: 1; min-height: 0; padding: 4px; background: var(--term-bg); }
 .terminal { width: 100%; height: 100%; overflow: hidden; }
 
 .dot { width: 6px; height: 6px; flex: none; border-radius: 50%; }
@@ -117,7 +167,7 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 
 .config-errors {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 4px 8px; background: #3a2318; color: #f0a58a; border-bottom: 1px solid var(--line); font-size: 12px;
+  padding: 4px 8px; background: var(--warn-bg); color: var(--warn-text); border-bottom: 1px solid var(--line); font-size: 12px;
 }
 .config-errors button {
   flex: none; padding: 0 4px; height: 20px; line-height: 18px; font-size: 12px;
@@ -126,18 +176,18 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .preview-badge {
   position: absolute; right: 10px; bottom: 8px; z-index: 10; pointer-events: none;
   padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
-  background: rgba(36, 34, 32, 0.9); color: var(--accent); font-size: 12px;
+  background: var(--badge-bg); color: var(--accent); font-size: 12px;
 }
 
 /* dialog „Nowy panel” */
 .dialog-backdrop {
   position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
-  background: rgba(14, 13, 12, 0.64);
+  background: var(--scrim);
 }
 .dialog {
   width: min(384px, calc(100% - 32px)); padding: 8px; outline: none;
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  background: var(--dialog); border: 1px solid var(--accent); border-radius: var(--r-dialog);
+  box-shadow: var(--shadow);
 }
 .dialog h2 { margin: 0 0 8px; padding: 0 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
 .np-list { list-style: none; display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; }
@@ -145,11 +195,11 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
   display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px; text-align: left;
   background: var(--bg);
 }
-.np-tile.is-active { border-color: var(--accent); }
+.np-tile.is-active { border-color: var(--ag, var(--accent)); }
 .np-key { flex: none; width: 12px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .np-tile.is-active .np-key { color: var(--accent); }
 .np-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.np-command { color: var(--muted); font: 12px "JetBrains Mono Variable", monospace; }
+.np-command { color: var(--muted); font: 12px var(--mono); }
 .np-hint { margin: 8px 4px 0; color: var(--muted); font-size: 12px; }
 
 /* menu „Presety” (etap 10) */
@@ -162,7 +212,7 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .pm-name { flex: none; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pm-agents {
   flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--muted); font: 12px "JetBrains Mono Variable", monospace;
+  color: var(--muted); font: 12px var(--mono);
 }
 .pm-sep { margin: 8px 4px; border: 0; border-top: 1px solid var(--line); }
 .pm-del { flex: none; width: 36px; height: 36px; padding: 0; color: var(--muted); }
@@ -171,7 +221,7 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .pm-save button { flex: none; height: 28px; }
 .pm-input {
   flex: 1; min-width: 0; height: 28px; background: var(--bg); color: var(--text);
-  border: 1px solid var(--line); border-radius: var(--radius); padding: 0 8px; font: inherit;
+  border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 0 8px; font: inherit;
 }
 .pm-input:focus { border-color: var(--accent); outline: none; }
 .pm-input::placeholder { color: var(--muted); }
@@ -184,3 +234,57 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
   .area-head { padding: 0 4px 0 8px; }
   .pane-tools button { padding: 0; width: 20px; }
 }
+
+/* ---- appearance settings (src/ui.ts): classes set on `.app`, values from docs/design/wzor-d.html ---- */
+
+/* accent */
+.acc-orange { --accent: #ff8a4c; --on-accent: #170b04; }
+.acc-acid { --accent: #e4ff3a; --on-accent: #0a0a0a; }
+.acc-violet { --accent: #b39bff; --on-accent: #0d0820; }
+.acc-mint { --accent: #3dffa2; --on-accent: #04140c; }
+
+/* edges */
+.edge-soft { --r-ctl: 7px; --r-pane: 11px; --r-dialog: 16px; --badge-r: 6px; --mark-r: 4px; }
+
+/* project name size (used from Etap 3, which renders the wzor area head) */
+.title-compact { --head-h: 52px; --title-size: 16px; --title-weight: 700; --title-ls: -0.01em; }
+
+/* background grid */
+.bg-grid .grids {
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* focused pane header */
+.fh-fill .pane.is-focused .pane-head { background: var(--ag, var(--accent)); color: var(--on-ag); }
+.fh-fill .pane.is-focused .pane-name { color: var(--on-ag); }
+.fh-fill .pane.is-focused .pane-tools button { color: var(--on-ag); }
+.fh-fill .pane.is-focused .pane-tools button:hover:not(:disabled) { border-color: var(--on-ag); }
+.fh-fill .pane.is-focused .dot--off { background: var(--on-ag); opacity: 0.6; }
+.fh-line .pane.is-focused {
+  border-color: color-mix(in srgb, var(--ag, var(--accent)) 60%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ag, var(--accent)) 25%, transparent), var(--focus-shadow);
+}
+
+/* working indicator (the .glow layer arrives in Etap 4; the class is complete already) */
+.pane.st-working .glow {
+  position: absolute; inset: 0; pointer-events: none; border-radius: inherit; opacity: 0; z-index: 2;
+  box-shadow: inset 0 0 0 1px var(--ag), inset 0 0 36px -10px var(--ag);
+  animation: breatheGlow 2.6s ease-in-out infinite;
+}
+.work-scan .pane.st-working .glow {
+  box-shadow: none; opacity: 1;
+  background: linear-gradient(90deg, transparent, var(--ag), transparent) no-repeat;
+  background-size: 35% 2px;
+  animation: scan 1.3s linear infinite;
+}
+@keyframes breatheGlow { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes scan { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+
+/* motion */
+.motion-lite .pane, .motion-lite .grid, .motion-lite .project-grid, .motion-lite .dialog,
+.motion-lite .tile, .motion-lite .toast, .motion-lite .proj-panes, .motion-lite .dock,
+.motion-lite .settings { animation: none !important; }
+.motion-lite .pane.st-working .glow { animation: none; opacity: 0.6; }

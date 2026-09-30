@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { backend, inTauri } from "./backend";
 import type { AgentDef } from "./agents";
+import { ACCENT_HEX, uiClasses } from "./ui";
 import { tildify } from "./paths";
 import {
   MAX_PANES,
@@ -121,6 +122,8 @@ export function App() {
   const active = activeProject(ws);
   const paneCount = active?.panes.length ?? 0;
   const focusedId = active?.focused ?? null;
+  // xterm nie zna klas CSS — kolor akcentu jedzie do terminala jako wartość (etap 1 M2).
+  const accentHex = ACCENT_HEX[ws.ui.accent];
   // Handlerzy spoza renderu (interwał, callbacki terminala) pytają o fokus przez ref.
   const focusedRef = useRef<string | null>(focusedId);
   focusedRef.current = focusedId;
@@ -399,7 +402,7 @@ export function App() {
   }, []);
 
   return (
-    <div className="app">
+    <div className={`app ${uiClasses(ws.ui)}`}>
       <Rail
         ws={ws}
         agents={agents}
@@ -461,6 +464,7 @@ export function App() {
                 projects={ws.projects}
                 activeId={ws.active}
                 agents={agents}
+                accent={accentHex}
                 state={ephemeral}
                 armedPane={armedPane}
                 paneActions={paneActions}

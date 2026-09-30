@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { backend, type ExitInfo } from "./backend";
-import { buildArgs, type AgentDef } from "./agents";
+import { agentColor, buildArgs, type AgentDef } from "./agents";
 import { dotClass, dotTitle } from "./activity";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
@@ -11,6 +11,8 @@ type Props = {
   pane: PaneModel;
   path: string; // folder of the project: cwd of the process
   agent?: AgentDef;
+  /** Kolor akcentu (#rrggbb) dla motywu xterm. */
+  accent: string;
   focused: boolean;
   maximized: boolean;
   exited?: ExitInfo;
@@ -24,7 +26,7 @@ type Props = {
 const exitLabel = (info: ExitInfo) => (info.signal ? `sygnał ${info.signal}` : `kod ${info.code}`);
 
 /** Frame around one terminal: header with agent, state and controls. */
-export function Pane({ pane, path, agent, focused, maximized, exited, working, unread, armed, actions }: Props) {
+export function Pane({ pane, path, agent, accent, focused, maximized, exited, working, unread, armed, actions }: Props) {
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armedClick, setArmedClick] = useState(false);
@@ -78,6 +80,8 @@ export function Pane({ pane, path, agent, focused, maximized, exited, working, u
   return (
     <section
       className={`pane${focused ? " is-focused" : ""}`}
+      // Kolor agenta dla CSS (--ag): poświata, ramka, nagłówek (wzór D).
+      style={{ "--ag": agentColor(agent) } as CSSProperties}
       onPointerDown={() => actions.focus(pane.id)}
     >
       <header className="pane-head">
@@ -120,6 +124,7 @@ export function Pane({ pane, path, agent, focused, maximized, exited, working, u
             command={agent.command}
             args={args}
             cwd={path}
+            accent={accent}
             focused={focused}
             apiRef={register.current}
             onExit={(info) => actions.exit(pane.id, info)}

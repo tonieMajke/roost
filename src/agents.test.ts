@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildArgs, DEFAULT_AGENTS, parseAgents, type AgentDef } from "./agents";
+import { agentColor, buildArgs, DEFAULT_AGENTS, parseAgents, type AgentDef } from "./agents";
 
 const ID = "3f2a1b0c-0000-4000-8000-000000000001";
 
@@ -93,5 +93,34 @@ describe("parseAgents", () => {
     expect(agents[0].session).toEqual({ new: ["x"], resume: ["y"] });
     expect(errors.some((e) => e.includes("duplicate") === false)).toBe(true);
     expect(errors.join("\n")).toContain("check");
+  });
+
+  it("keeps a valid #rrggbb color, drops a bad one with an error", () => {
+    const { agents, errors } = parseAgents({
+      agents: [
+        { id: "a", name: "A", command: "a", color: "#3Dffa2" },
+        { id: "b", name: "B", command: "b", color: "red" },
+      ],
+    });
+    expect(agents.map((a) => a.id)).toEqual(["a", "b"]);
+    expect(agents[0].color).toBe("#3Dffa2");
+    expect(agents[1].color).toBeUndefined();
+    expect(errors.join("\n")).toContain("`color`");
+  });
+});
+
+describe("agentColor", () => {
+  const a = (id: string, color?: string): AgentDef => ({ id, name: id, command: id, ...(color ? { color } : {}) });
+
+  it("prefers the agent's own color", () => {
+    expect(agentColor(a("claude", "#000000"))).toBe("#000000");
+  });
+
+  it("falls back to the wzor palette by id, then to the generic blue", () => {
+    expect(agentColor(a("claude"))).toBe("#ff7a3d");
+    expect(agentColor(a("pi"))).toBe("#a78bfa");
+    expect(agentColor(a("codex"))).toBe("#3dffa2");
+    expect(agentColor(a("shell"))).toBe("#8fd3ff");
+    expect(agentColor(undefined)).toBe("#8fd3ff");
   });
 });

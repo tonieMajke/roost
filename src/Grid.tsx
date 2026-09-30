@@ -9,6 +9,8 @@ type Props = {
   projects: Project[];
   activeId: string | null;
   agents: AgentDef[];
+  /** Kolor akcentu (#rrggbb) do motywu xterm — zmiany akcentu bez restartu procesu. */
+  accent: string;
   state: Record<string, PaneState>; // stan ulotny (exit + aktywność), patrz src/activity.ts
   /** Panel, dla którego skrót z klawiatury uzbroił „Na pewno?” (etap 8). */
   armedPane: string | null;
@@ -22,7 +24,7 @@ const agentById = (agents: AgentDef[], id: string) => agents.find((a) => a.id ==
  * One grid per project, all of them mounted: switching projects hides a grid with
  * `display: none`, it never unmounts (unmounting would kill the processes).
  */
-export function Grid({ projects, activeId, agents, state, armedPane, paneActions, projectActions }: Props) {
+export function Grid({ projects, activeId, agents, accent, state, armedPane, paneActions, projectActions }: Props) {
   return (
     <>
       {projects.map((project) => {
@@ -64,6 +66,7 @@ export function Grid({ projects, activeId, agents, state, armedPane, paneActions
                     pane={pane}
                     path={project.path}
                     agent={agentById(agents, pane.agentId)}
+                    accent={accent}
                     focused={active && pane.id === project.focused}
                     maximized={project.maximized === pane.id}
                     exited={state[pane.id]?.exited}

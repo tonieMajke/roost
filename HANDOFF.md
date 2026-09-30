@@ -15,6 +15,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 1 – 2026-09-30 (lokalny model, dokończył Claude)
+
+- Fonty Geist, Geist Mono, Bricolage Grotesque (`@fontsource-variable/*@^5.3.0`), import w `main.tsx`.
+- `styles.css`: tokeny ze wzoru D w `:root`, klasy `acc-*`, `fh-*`, `work-scan`, `edge-soft`, `title-compact`, `bg-grid`, `motion-lite`; kolory tylko w tokenach i `.acc-*` (grep czysty).
+- `src/ui.ts` (`Ui`, `DEFAULT_UI`, `parseUi`, `uiClasses`, `ACCENT_HEX`) + testy; `workspace.ts`: pole `ui`, akcja `setUi`, stary plik bez `ui` wczytuje się bez błędów.
+- `agents.ts`: `color` (`#rrggbb`) + `agentColor()`; `--ag` na panelach i wierszach szyny; `.app` dostaje `uiClasses(ws.ui)`.
+- Terminal: tło `#0d0e11`, tekst `#c6ced8`, kursor = akcent; zmiana akcentu podmienia `x.options.theme` bez restartu.
+- Sprawdzenia: typecheck czysty, vitest 106/106, cargo test 11/11, cargo build OK.
+- Niesprawdzone: wygląd w oknie Tauri (brak jeszcze okna „Wygląd” – ustawienia zmienia się w `workspace.json` do etapu 5).
+
 ## Pomiar obciążenia (lokalny model, podgląd) – 2026-09-30
 - Rdzeń PTY (Rust): 16 procesów × 20 MB w 8,05 s.
 - Podgląd, 16 xterm × 20 MB: przy realnym tempie wyjścia UI żyje (0 longtasków); przy

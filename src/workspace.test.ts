@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_UI } from "./ui";
 import {
   MAX_PANES,
   activeProject,
@@ -28,6 +29,7 @@ const ws = (...projects: Project[]): Workspace => ({
   projects,
   active: projects[0]?.id ?? null,
   presets: [],
+  ui: DEFAULT_UI,
 });
 
 function deepFreeze<T>(v: T): T {
@@ -261,6 +263,14 @@ describe("reduce presets", () => {
     expect(reduce(w, { type: "deletePreset", name: "nope" })).toBe(w);
   });
 
+  it("setUi merges the patch; a no-op patch returns the same object", () => {
+    const w = deepFreeze(ws(project("p1", "/a")));
+    const next = reduce(w, { type: "setUi", patch: { accent: "mint", dock: false } });
+    expect(next.ui).toEqual({ ...DEFAULT_UI, accent: "mint", dock: false });
+    expect(next.projects).toBe(w.projects);
+    expect(reduce(next, { type: "setUi", patch: { accent: "mint" } })).toBe(next);
+  });
+
   it("does not mutate a frozen workspace", () => {
     const w = deepFreeze({ ...ws(project("p1", "/a", ["x1"])), presets: [{ name: "a", agents: ["pi"] }] });
     expect(reduce(w, { type: "savePreset", name: "b" }).presets.length).toBe(2);
@@ -348,6 +358,19 @@ describe("parseWorkspace", () => {
     expect(errors.length).toBe(2);
   });
 
+  it("an M1 file without `ui` loads with the defaults and no errors", () => {
+    const { workspace, errors } = parseWorkspace({ projects: [{ path: "/a", panes: [{ id: "x1", agentId: "pi" }] }] }, agents);
+    expect(errors).toEqual([]);
+    expect(workspace.ui).toEqual(DEFAULT_UI);
+  });
+
+  it("parses `ui`, keeping good keys and reporting bad ones", () => {
+    const { workspace, errors } = parseWorkspace({ ui: { accent: "violet", title: "huge" } }, agents);
+    expect(workspace.ui.accent).toBe("violet");
+    expect(workspace.ui.title).toBe("big");
+    expect(errors.join(" ")).toContain("ui.title");
+  });
+
   it("round-trips a valid workspace", () => {
     const w: Workspace = {
       version: 1,
@@ -366,6 +389,7 @@ describe("parseWorkspace", () => {
       ],
       active: "p1",
       presets: [{ name: "duo", agents: ["claude", "pi"] }],
+      ui: { ...DEFAULT_UI, accent: "mint", work: "scan" },
     };
     const { workspace, errors } = parseWorkspace(JSON.parse(JSON.stringify(w)), agents);
     expect(errors).toEqual([]);
