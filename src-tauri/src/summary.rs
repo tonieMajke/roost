@@ -31,7 +31,13 @@ fn summary_args(system: &str) -> Vec<String> {
 /// Uruchamia `program args`, podaje `input` na stdin, zwraca przycięte stdout.
 /// Błąd: nie wystartował, przekroczony czas (proces zabity), kod ≠ 0 albo pusta odpowiedź.
 fn run(program: &str, args: &[String], input: String, timeout: Duration) -> Result<String, String> {
-    let mut child = Command::new(program)
+    let (remove, set) = crate::appimage::current_fixes();
+    let mut cmd = Command::new(program);
+    for key in crate::own_env().map(String::from).chain(remove) {
+        cmd.env_remove(key);
+    }
+    let mut child = cmd
+        .envs(set)
         .args(args)
         .current_dir(std::env::temp_dir())
         .stdin(Stdio::piped())

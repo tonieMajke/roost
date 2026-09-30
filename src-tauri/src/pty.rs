@@ -93,6 +93,13 @@ impl Ptys {
         for key in crate::own_env() {
             cmd.env_remove(key);
         }
+        let (remove, set) = crate::appimage::current_fixes();
+        for key in remove {
+            cmd.env_remove(key);
+        }
+        for (key, value) in set {
+            cmd.env(key, value);
+        }
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
         for (key, value) in &spec.env {

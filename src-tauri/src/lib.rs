@@ -1,3 +1,4 @@
+mod appimage;
 mod config;
 mod context;
 mod handoff;

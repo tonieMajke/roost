@@ -15,6 +15,14 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## Środowisko AppImage nie przecieka do paneli – 2026-10-01 (Claude, master)
+
+- Błąd w zainstalowanej AppImage: panele dziedziczyły środowisko AppRun (`LD_LIBRARY_PATH`, `PATH`, `PYTHONHOME`/`PYTHONPATH`, `PERLLIB`, `GTK_*`, `GTK_THEME=Adwaita:dark`…, wszystko na `/tmp/.mount_Agents…`) – `python3` w panelu nie startował („No module named 'encodings'”), stąd obejście `env -u PYTHONHOME -u PYTHONPATH pnpm desktop`.
+- Rust `appimage.rs`: `child_env_fixes` (czysta, 2 testy) – tylko gdy są `APPDIR` i `APPIMAGE`: usuwa `APPDIR`, `APPIMAGE`, `ARGV0`, `OWD`, `PYTHONDONTWRITEBYTECODE`, `GTK_THEME`; z list `a:b` wycina wpisy z `$APPDIR`, pusta lista = zmienna usunięta. Użyte w `pty.rs` (panele) i `summary.rs` (`claude -p`).
+- Pasek tytułu po scaleniach M4 przejrzany w kodzie: `.shell`/`TitleBar`/`html, body { transparent }`/uprawnienia bez zmian. Zmiana rozmiaru bez ramki: tauri-runtime-wry 2.12 ma na Linuksie strefę 5 px przy krawędzi (`undecorated_resizing.rs`).
+- Sprawdzenia: typecheck czysty, vitest 212/212, cargo test 39/39, cargo build 0 ostrzeżeń.
+- Niesprawdzone: okno (pasek, rogi, krawędzie) – po instalacji nowej AppImage u użytkownika.
+
 ## Pasek tytułu w UI + zaokrąglone rogi – 2026-10-01 (Claude, master, commit `5325bd3`)
 
 - Zrobione: okno bez dekoracji systemowych (`tauri.conf.json`: `decorations: false`, `transparent: true`), własny pasek `src/TitleBar.tsx` (przeciąganie `data-tauri-drag-region`, dwuklik = maksymalizacja, min/max/przywróć/zamknij przez `getCurrentWindow()`), ramka `.shell` w `App.tsx` (kolumna: TitleBar + `.app`), rogi `--r-win: 10px`, po maksymalizacji `is-max` = proste. Uprawnienia w `capabilities/default.json`: `allow-minimize`, `allow-toggle-maximize`, `allow-close`, `allow-start-dragging`, `allow-is-maximized`. Pasek tylko w Tauri (`inTauri`), w podglądzie go nie ma.
