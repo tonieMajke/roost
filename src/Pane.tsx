@@ -6,6 +6,8 @@ import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
 import { Terminal, type TerminalHandle } from "./Terminal";
+import { IconButton } from "./IconButton";
+import { Maximize2, MessageSquarePlus, Minimize2, RotateCw, X } from "lucide-react";
 
 type Props = {
   pane: PaneModel;
@@ -92,29 +94,25 @@ export function Pane({ pane, path, agent, accent, focused, maximized, exited, wo
         />
         <span className="pane-tools">
           {agent?.session && (
-            <button type="button" title="Nowa rozmowa" onClick={() => actions.newConversation(pane.id)}>
-              +
-            </button>
+            <IconButton icon={MessageSquarePlus} label="Nowa rozmowa" onClick={() => actions.newConversation(pane.id)} />
           )}
-          <button type="button" title="Uruchom ponownie" onClick={() => actions.restart(pane.id)}>
-            ⟳
-          </button>
-          <button
-            type="button"
+          <IconButton icon={RotateCw} label="Uruchom ponownie" shortcut="Ctrl+Alt+R" onClick={() => actions.restart(pane.id)} />
+          <IconButton
+            icon={maximized ? Minimize2 : Maximize2}
+            label={maximized ? "Przywróć" : "Maksymalizuj"}
+            shortcut="Ctrl+Alt+Enter"
             className={maximized ? "is-on" : undefined}
-            title={maximized ? "Przywróć" : "Maksymalizuj"}
             onClick={() => actions.toggleMaximize(pane.id)}
-          >
-            ⤢
-          </button>
-          <button
-            type="button"
+          />
+          <IconButton
+            icon={X}
+            label="Zamknij panel"
+            shortcut="Ctrl+Alt+W"
             className={showArmed ? "is-confirm" : undefined}
-            title="Zamknij panel"
             onClick={close}
           >
-            {showArmed ? "Na pewno?" : "✕"}
-          </button>
+            {showArmed ? "Na pewno?" : undefined}
+          </IconButton>
         </span>
       </header>
       <div className="pane-body">

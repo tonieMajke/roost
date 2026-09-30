@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AgentDef } from "./agents";
 import type { Preset } from "./workspace";
 import { BUILT_IN_PRESETS } from "./presets";
+import { IconButton } from "./IconButton";
+import { X } from "lucide-react";
 
 type Props = {
   /** Presety własne z workspace.presets. */
@@ -89,14 +91,12 @@ export function PresetMenu({ custom, agents, canSave, onApply, onDelete, onSave,
                 <button type="button" className="pm-row" onClick={() => onApply(preset)}>
                   {row(preset)}
                 </button>
-                <button
-                  type="button"
+                <IconButton
+                  icon={X}
+                  label={`Usuń preset ${preset.name}`}
                   className="pm-del"
-                  aria-label={`Usuń preset ${preset.name}`}
                   onClick={() => onDelete(preset.name)}
-                >
-                  ✕
-                </button>
+                />
               </li>
             ))}
           </ul>

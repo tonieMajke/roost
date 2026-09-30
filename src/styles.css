@@ -19,6 +19,7 @@
   --on-accent: #170b04;
   --accent-hover: var(--accent);
   --on-ag: #0a0a0a; /* text on an agent-color background (.fh-fill) */
+  --on-ag-hover: rgba(0, 0, 0, 0.12);
   --ok: #3dffa2;
   --warn-bg: #2a1a12;
   --warn-text: #f0a58a;
@@ -61,6 +62,18 @@ button:hover:not(:disabled) { border-color: var(--accent); }
 button:disabled { color: var(--muted); cursor: default; }
 button.is-on { color: var(--accent); border-color: var(--accent); }
 button.is-confirm { color: var(--accent); border-color: var(--accent); }
+
+/* icon buttons (src/IconButton.tsx), wzor D `.icon` */
+.icon {
+  width: 26px; height: 26px; padding: 0; flex: none; display: inline-grid; place-items: center;
+  border: 0; border-radius: var(--r-ctl); background: transparent; color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+}
+.icon:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.icon.is-on { color: var(--accent); background: var(--active); }
+.icon.is-confirm { width: auto; padding: 0 6px; font-size: 12px; color: var(--accent); }
+/* text button with a leading icon („Panel”, „Presety”) */
+.btn-ico { display: inline-flex; align-items: center; gap: 6px; }
 .app { display: flex; height: 100%; overflow: hidden; background: var(--bg); }
 
 /* left rail: projects and their panes */
@@ -69,7 +82,6 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px; color: var(--muted); font-size: 12px; text-transform: uppercase;
 }
-.rail-head button { padding: 0 8px; height: 20px; line-height: 16px; }
 .rail-list { list-style: none; margin: 0; padding: 0 4px 8px; }
 .rail-project + .rail-project { margin-top: 2px; }
 .rail-row {
@@ -88,9 +100,9 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 /* Kontrast --muted na tle aktywnego wiersza jest na granicy – licznik idzie za nazwą. */
 .rail-project.is-active > .rail-row .rail-count { color: var(--text); }
 .rail-count { color: var(--muted); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
-.rail-close { display: none; padding: 0 4px; height: 20px; line-height: 18px; border-color: transparent; background: transparent; }
-.rail-row:hover .rail-close, .rail-close.is-confirm { display: block; }
-.rail-close.is-confirm { width: auto; padding: 0 4px; font-size: 12px; color: var(--accent); }
+.rail-row .rail-close { display: none; width: 22px; height: 22px; }
+.rail-row:hover .rail-close, .rail-row .rail-close.is-confirm { display: inline-grid; }
+.rail-row .rail-close.is-confirm { width: auto; }
 .rail-edit {
   flex: 1; min-width: 0; height: 20px; background: var(--bg); color: var(--text);
   border: 1px solid var(--accent); border-radius: var(--r-ctl); padding: 0 4px; font: inherit;
@@ -140,10 +152,8 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
   transition: background 0.25s, color 0.25s;
 }
 .pane-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-.pane-tools { display: flex; gap: 4px; }
-.pane-tools button { padding: 0 4px; height: 20px; line-height: 18px; background: transparent; border-color: transparent; }
-.pane-tools button:hover:not(:disabled) { border-color: var(--accent); }
-.pane-tools .is-confirm { width: 64px; font-size: 12px; color: var(--accent); }
+.pane-tools { display: flex; gap: 2px; }
+.pane-tools .icon.is-confirm { width: 64px; }
 .pane-body { flex: 1; min-height: 0; padding: 4px; background: var(--term-bg); }
 .terminal { width: 100%; height: 100%; overflow: hidden; }
 
@@ -169,10 +179,7 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 4px 8px; background: var(--warn-bg); color: var(--warn-text); border-bottom: 1px solid var(--line); font-size: 12px;
 }
-.config-errors button {
-  flex: none; padding: 0 4px; height: 20px; line-height: 18px; font-size: 12px;
-  background: transparent; border-color: transparent; color: inherit;
-}
+.config-errors .icon { width: 22px; height: 22px; color: inherit; }
 .preview-badge {
   position: absolute; right: 10px; bottom: 8px; z-index: 10; pointer-events: none;
   padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px;
@@ -215,8 +222,8 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
   color: var(--muted); font: 12px var(--mono);
 }
 .pm-sep { margin: 8px 4px; border: 0; border-top: 1px solid var(--line); }
-.pm-del { flex: none; width: 36px; height: 36px; padding: 0; color: var(--muted); }
-.pm-del:hover { color: var(--accent); }
+.pm-del.icon { width: 36px; height: 36px; }
+.pm-del.icon:hover { color: var(--accent); }
 .pm-save { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .pm-save button { flex: none; height: 28px; }
 .pm-input {
@@ -232,7 +239,7 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
   .rail { width: 160px; }
   .area-path { display: none; }
   .area-head { padding: 0 4px 0 8px; }
-  .pane-tools button { padding: 0; width: 20px; }
+  .pane-tools .icon:not(.is-confirm) { width: 22px; }
 }
 
 /* ---- appearance settings (src/ui.ts): classes set on `.app`, values from docs/design/wzor-d.html ---- */
@@ -260,8 +267,8 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 /* focused pane header */
 .fh-fill .pane.is-focused .pane-head { background: var(--ag, var(--accent)); color: var(--on-ag); }
 .fh-fill .pane.is-focused .pane-name { color: var(--on-ag); }
-.fh-fill .pane.is-focused .pane-tools button { color: var(--on-ag); }
-.fh-fill .pane.is-focused .pane-tools button:hover:not(:disabled) { border-color: var(--on-ag); }
+.fh-fill .pane.is-focused .icon { color: var(--on-ag); }
+.fh-fill .pane.is-focused .icon:hover:not(:disabled) { background: var(--on-ag-hover); }
 .fh-fill .pane.is-focused .dot--off { background: var(--on-ag); opacity: 0.6; }
 .fh-line .pane.is-focused {
   border-color: color-mix(in srgb, var(--ag, var(--accent)) 60%, transparent);

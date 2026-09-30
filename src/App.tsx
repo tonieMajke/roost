@@ -2,6 +2,8 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { backend, inTauri } from "./backend";
 import type { AgentDef } from "./agents";
 import { ACCENT_HEX, uiClasses } from "./ui";
+import { IconButton } from "./IconButton";
+import { FolderPlus, LayoutGrid, Plus, X } from "lucide-react";
 import { tildify } from "./paths";
 import {
   MAX_PANES,
@@ -418,9 +420,7 @@ export function App() {
         {notice && (
           <div className="config-errors">
             <span>{notice}</span>
-            <button type="button" aria-label="Zamknij komunikat" onClick={() => setNotice(null)}>
-              ✕
-            </button>
+            <IconButton icon={X} label="Zamknij komunikat" onClick={() => setNotice(null)} />
           </div>
         )}
         {!loaded ? (
@@ -430,8 +430,8 @@ export function App() {
         ) : ws.projects.length === 0 ? (
           <div className="empty">
             <p>Dodaj folder projektu</p>
-            <button type="button" onClick={projectActions.addProject}>
-              + Projekt
+            <button type="button" className="btn-ico" onClick={projectActions.addProject}>
+              <FolderPlus size={14} strokeWidth={1.75} aria-hidden /> Projekt
             </button>
           </div>
         ) : (
@@ -447,15 +447,17 @@ export function App() {
                 <span className="area-count">
                   {paneCount}/{MAX_PANES}
                 </span>
-                <button type="button" onClick={() => setPresetMenu(true)} disabled={active === null}>
-                  Presety
+                <button type="button" className="btn-ico" onClick={() => setPresetMenu(true)} disabled={active === null}>
+                  <LayoutGrid size={14} strokeWidth={1.75} aria-hidden /> Presety
                 </button>
                 <button
                   type="button"
+                  className="btn-ico"
+                  title="Nowy panel (Ctrl+Alt+N)"
                   onClick={projectActions.openPaneDialog}
                   disabled={active === null || paneCount >= MAX_PANES}
                 >
-                  + Panel
+                  <Plus size={14} strokeWidth={1.75} aria-hidden /> Panel
                 </button>
               </div>
             </header>

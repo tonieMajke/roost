@@ -1,4 +1,5 @@
 import { gridShape, type Project } from "./workspace";
+import { Plus } from "lucide-react";
 import { BUILT_IN_PRESETS } from "./presets";
 import type { AgentDef } from "./agents";
 import type { PaneState } from "./activity";
@@ -45,8 +46,8 @@ export function Grid({ projects, activeId, agents, accent, state, armedPane, pan
               <div className="empty">
                 <p>Brak paneli</p>
                 <div className="empty-actions">
-                  <button type="button" onClick={projectActions.openPaneDialog}>
-                    + Panel
+                  <button type="button" className="btn-ico" onClick={projectActions.openPaneDialog}>
+                    <Plus size={14} strokeWidth={1.75} aria-hidden /> Panel
                   </button>
                   {BUILT_IN_PRESETS.map((preset) => (
                     <button key={preset.name} type="button" onClick={() => projectActions.applyPreset(preset)}>

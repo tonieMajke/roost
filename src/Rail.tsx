@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import { agentColor, type AgentDef } from "./agents";
+import { IconButton } from "./IconButton";
+import { FolderPlus, X } from "lucide-react";
 import { dotClass, type PaneState } from "./activity";
 import type { Workspace } from "./workspace";
 
@@ -42,9 +44,7 @@ export function Rail({ ws, agents, state, onSelect, onFocusPane, onAddProject, o
     <aside className="rail">
       <header className="rail-head">
         <span>Projekty</span>
-        <button type="button" title="Dodaj projekt" onClick={onAddProject}>
-          +
-        </button>
+        <IconButton icon={FolderPlus} label="Dodaj projekt" shortcut="Ctrl+Alt+P" onClick={onAddProject} />
       </header>
       <ul className="rail-list">
         {ws.projects.map((project, i) => (
@@ -88,10 +88,10 @@ export function Rail({ ws, agents, state, onSelect, onFocusPane, onAddProject, o
                   />
                   <span className="rail-name">{project.name}</span>
                   <span className="rail-count">{project.panes.length}</span>
-                  <button
-                    type="button"
+                  <IconButton
+                    icon={X}
+                    label={`Usuń projekt ${project.name}`}
                     className={`rail-close${armedId === project.id ? " is-confirm" : ""}`}
-                    aria-label={`Usuń projekt ${project.name}`}
                     title={isArmed(armRef.current, keyOf(project.id), Date.now()) ? "Kliknij ponownie, aby usunąć" : "Usuń projekt"}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -100,8 +100,8 @@ export function Rail({ ws, agents, state, onSelect, onFocusPane, onAddProject, o
                     // two quick clicks on ✕ are also a dblclick; it must not open renaming
                     onDoubleClick={(e) => e.stopPropagation()}
                   >
-                    {armedId === project.id ? "Na pewno?" : "✕"}
-                  </button>
+                    {armedId === project.id ? "Na pewno?" : undefined}
+                  </IconButton>
                 </>
               )}
             </div>

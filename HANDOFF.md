@@ -15,6 +15,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 2 – 2026-09-30 (Claude)
+
+- `lucide-react@^1.48.0` (zgodne z `^1.47.0` z planu); `src/IconButton.tsx`: 26×26, ikona 15 px, `strokeWidth 1.75`, `aria-label`/`title` ze skrótem, klasa `.icon` ze wzoru.
+- Panel: `MessageSquarePlus`, `RotateCw` (Ctrl+Alt+R), `Maximize2`/`Minimize2` (Ctrl+Alt+Enter), `X` (Ctrl+Alt+W); „Na pewno?” zostaje tekstem.
+- Szyna: `FolderPlus` (Ctrl+Alt+P), `X` przy projekcie; górny pasek: `LayoutGrid` Presety, `Plus` Panel; pusty ekran: `FolderPlus` Projekt; komunikat i presety: `X`.
+- „Pulpit”, „Wygląd”, zwijanie szyny – ikony dojdą w etapach 3, 5, 8 (tych przycisków jeszcze nie ma).
+- Sprawdzenia: typecheck czysty, vitest 106/106, cargo test 11/11, cargo build OK; zrzut podglądu (Firefox headless) – ikony na miejscu.
+- Niesprawdzone: okno Tauri.
+
 ## M2 Etap 1 – 2026-09-30 (lokalny model, dokończył Claude)
 
 - Fonty Geist, Geist Mono, Bricolage Grotesque (`@fontsource-variable/*@^5.3.0`), import w `main.tsx`.

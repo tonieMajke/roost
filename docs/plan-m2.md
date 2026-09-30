@@ -47,7 +47,7 @@ w przeglądarce rysuje inaczej niż WebKitGTK). Zasady z `AGENTS.md` bez zmian.
 ## Postęp
 
 - [x] Etap 1 (L) – tokeny, fonty, model ustawień `ui`
-- [ ] Etap 2 (L) – ikony
+- [x] Etap 2 (L) – ikony
 - [ ] Etap 3 (L) – szyna i nagłówek obszaru według wzoru
 - [ ] Etap 4 (L) – panel i siatka według wzoru
 - [ ] Etap 5 (L) – okna: „Wygląd”, „Nowy panel”, „Presety”, komunikaty
