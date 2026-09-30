@@ -8,7 +8,7 @@ Jeden etap = jedna sesja = jeden commit.
 - [x] Etap 1 – testy i rdzeń PTY bez Tauri
 - [x] Etap 2 – warstwa backendu i tryb podglądu w przeglądarce
 - [x] Etap 3 – konfiguracja agentów i argumenty sesji
-- [ ] Etap 4 – model workspace'u (czyste funkcje)
+- [x] Etap 4 – model workspace'u (czyste funkcje)
 - [ ] Etap 5 – szyna projektów i siatka paneli
 - [ ] Etap 6 – dodawanie projektu i panelu
 - [ ] Etap 7 – zapis i wznawianie

@@ -2,6 +2,18 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## M1 Etap 4 – 2026-09-30
+Model workspace'u bez Reacta w `src/workspace.ts`: typy `Pane/Project/Preset/Workspace`, `emptyWorkspace`,
+`MAX_PANES = 16`, `gridShape` (cols = ceil(√n)), `neighbor` (poza siatkę → bez zmiany; w dół do dziury
+ostatniego wiersza → ostatni panel), `activeProject`, `projectName`, `reduce` (12 akcji, czysty —
+id tworzy wywołujący), `parseWorkspace` (naprawia refs, ucina >16 paneli, odrzuca nieznanych agentów
+i duplikaty ścieżek, nieznana wersja → pusty + błąd). `reduce` i `parseWorkspace` nie wołają `randomUUID`
+(w tym drugim tylko uzupełnianie brakujących id). Złapany błąd: `mapProject` aplikował funkcję do
+wszystkich projektów, nie tylko o pasującym id — naprawione, test `focus` między projektami to pilnuje.
+UI (App.tsx) bez zmian — podłączenie w etapie 5. Sprawdzenia: typecheck czysto, vitest 41/41 (24 nowe
+workspace, w tym deep-freeze na wejściu `reduce`), cargo test 9/9, cargo build 0 ostrzeżeń.
+Niesprawdzone: zachowanie w oknie Tauri (etap 4 to tylko funkcje czyste, zero wywołań backendu).
+
 ## M1 Etap 3 – 2026-09-30
 Agenci z pliku: `src/agents.ts` (`AgentDef`, `DEFAULT_AGENTS`, `parseAgents`, `buildArgs` — podmiana `{session}`,
 `exists ? resume : new`); Rust `src-tauri/src/config.rs`: `agents_load` (brak pliku → zapis domyślnego przez
