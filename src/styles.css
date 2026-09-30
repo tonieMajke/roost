@@ -85,7 +85,7 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .btn:disabled { color: var(--muted); }
 /* muted text on the accent fill would be unreadable – dim the whole button instead */
 .btn.primary:disabled { color: var(--on-accent); opacity: 0.45; }
-.app { display: flex; height: 100%; overflow: hidden; background: var(--bg); }
+.app { display: flex; height: 100%; overflow: hidden; background: var(--bg); position: relative; }
 /* Here, not on :root: a var() resolves where it is declared, and .acc-* sets --accent on .app. */
 .app { --accent-hover: var(--accent); }
 
@@ -263,31 +263,85 @@ kbd {
   background: var(--badge-bg); color: var(--accent); font-size: 12px;
 }
 
-/* dialog „Nowy panel” */
-.dialog-backdrop {
-  position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
-  background: var(--scrim);
+/* okna (src/Dialog.tsx): tło + karta ze wzoru D */
+.overlay { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; }
+.backdrop {
+  position: absolute; inset: 0; padding: 0; border: 0; border-radius: 0; cursor: default;
+  background: var(--scrim); animation: fade 0.22s ease both;
 }
+.backdrop.is-clear { background: transparent; }
 .dialog {
-  width: min(384px, calc(100% - 32px)); padding: 8px; outline: none;
+  position: relative; width: min(460px, calc(100% - 32px)); padding: 22px; outline: none;
   background: var(--dialog); border: 1px solid var(--accent); border-radius: var(--r-dialog);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow); animation: pop 0.36s var(--ease) both;
 }
-.dialog h2 { margin: 0 0 8px; padding: 0 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
-.np-list { list-style: none; display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; }
-.np-tile {
-  display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px; text-align: left;
-  background: var(--bg);
+.dialog h2 {
+  margin: 0 0 4px; font-family: var(--display); font-size: var(--dialog-title);
+  font-weight: 700; letter-spacing: var(--title-ls);
 }
-.np-tile.is-active { border-color: var(--ag, var(--accent)); }
-.np-key { flex: none; width: 12px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.np-tile.is-active .np-key { color: var(--accent); }
-.np-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.np-command { color: var(--muted); font: 12px var(--mono); }
-.np-hint { margin: 8px 4px 0; color: var(--muted); font-size: 12px; }
+.dialog p { margin: 0 0 16px; font-size: 12.5px; color: var(--muted); } /* --muted: --faint ze wzoru = 4,0:1 na karcie */
+.dialog-foot { margin-top: 16px; display: flex; gap: 14px; font-size: 11.5px; color: var(--muted); align-items: center; }
+.dialog-foot span { display: inline-flex; gap: 5px; align-items: center; }
+
+/* kafelki agentów w „Nowym panelu” (wzór D `.tiles`/`.tile`) */
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px;
+  border-radius: var(--r-pane); border: 1px solid var(--line-strong); background: transparent; text-align: left;
+  animation: tileIn 0.4s var(--ease) both; transition: border-color 0.15s, background 0.15s, transform 0.2s var(--ease);
+}
+.tile:hover, .tile.is-active {
+  border-color: var(--ag, var(--accent));
+  background: color-mix(in srgb, var(--ag, var(--accent)) 9%, transparent);
+}
+.tile:hover { transform: translateY(-2px); }
+.tile-top { display: flex; align-items: center; gap: 8px; width: 100%; }
+.tile-top kbd { margin-left: auto; }
+.tile-name { font-family: var(--display); font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
+.tile-cmd { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+@keyframes pop { from { opacity: 0; transform: translateY(12px) scale(0.95); } to { opacity: 1; transform: none; } }
+@keyframes tileIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } }
+
+/* komunikat w prawym dolnym rogu (wzór D `.toast`), znika po TOAST_MS */
+.toast {
+  position: absolute; right: 18px; bottom: 18px; z-index: 15; max-width: min(380px, calc(100% - 36px));
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+  border-radius: var(--r-pane); background: var(--dialog); border: 1px solid var(--accent);
+  box-shadow: var(--shadow); font-size: 12.5px; animation: toastIn 0.5s var(--ease) both;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .overlay .backdrop, .dialog, .tile, .toast { animation: none; }
+}
+
+/* okno „Wygląd” (wzór D `.settings`): popover nad stopką szyny */
+.settings {
+  position: absolute; left: 10px; bottom: 52px; width: min(320px, calc(100% - 20px)); padding: 16px;
+  /* 8 rows ≈ 570 px: a low window scrolls the card instead of cutting its top off */
+  max-height: calc(100% - 62px); overflow-y: auto;
+  border: 1px solid var(--accent); border-radius: var(--r-dialog);
+  box-shadow: var(--shadow); animation: pop 0.3s var(--ease) both; transform-origin: bottom left;
+}
+.settings h2 { margin: 0 0 14px; font-family: var(--display); font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+.set-row { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.set-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
+.set-foot { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.seg { display: flex; gap: 4px; }
+.seg button {
+  flex: 1; height: 28px; padding: 0; background: transparent; border: 1px solid var(--line-strong);
+  border-radius: var(--r-ctl); font-size: 12px; color: var(--muted);
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.seg button:hover:not(:disabled) { color: var(--text); background: var(--hover); border-color: var(--line-strong); }
+.seg button.is-on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.swatch { flex: none !important; width: 30px; height: 28px; display: grid; place-items: center; }
+.swatch i { width: 14px; height: 14px; border-radius: 50%; display: block; }
+.swatch.is-on { background: transparent !important; }
+@media (prefers-reduced-motion: reduce) { .settings { animation: none; } }
 
 /* menu „Presety” (etap 10) */
-.pm-list { list-style: none; display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; }
+.pm-list { list-style: none; display: flex; flex-direction: column; gap: 4px; margin: 0 0 4px; padding: 0; }
 .pm-item { display: flex; align-items: center; gap: 4px; }
 .pm-row {
   display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; padding: 0 8px; text-align: left;
@@ -298,18 +352,17 @@ kbd {
   flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--muted); font: 12px var(--mono);
 }
-.pm-sep { margin: 8px 4px; border: 0; border-top: 1px solid var(--line); }
-.pm-del.icon { width: 36px; height: 36px; }
+.pm-sep { margin: 12px 0; border: 0; border-top: 1px solid var(--line); }
+.pm-del.icon { width: 28px; height: 28px; }
 .pm-del.icon:hover { color: var(--accent); }
-.pm-save { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.pm-save button { flex: none; height: 28px; }
+.pm-save { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.pm-save .btn { height: 28px; }
 .pm-input {
   flex: 1; min-width: 0; height: 28px; background: var(--bg); color: var(--text);
   border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 0 8px; font: inherit;
 }
 .pm-input:focus { border-color: var(--accent); outline: none; }
 .pm-input::placeholder { color: var(--muted); }
-.pm-hint { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
 
 /* narrow window: the grid must shrink instead of pushing a horizontal scrollbar */
 @media (max-width: 720px) {

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { dialogKey } from "./new-pane";
+import { dialogKey, tileDelayMs } from "./new-pane";
+
+describe("tileDelayMs (wjazd kafelków)", () => {
+  it("startuje od 80 ms i dokłada 55 ms na kafelek", () => {
+    expect(tileDelayMs(0)).toBe(80);
+    expect(tileDelayMs(1)).toBe(135);
+    expect(tileDelayMs(3)).toBe(245);
+  });
+});
 
 describe("dialogKey (okno „Nowy panel”)", () => {
   it("cyfra 1–9 wybiera agenta od razu", () => {

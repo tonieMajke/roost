@@ -45,6 +45,46 @@ export const ACCENT_HEX: Record<Ui["accent"], string> = {
   mint: "#3dffa2",
 };
 
+const ACCENT_LABELS: Record<Ui["accent"], string> = {
+  orange: "Pomarańcz",
+  acid: "Kwas",
+  violet: "Fiolet",
+  mint: "Mięta",
+};
+
+type Row<K extends keyof Ui> = {
+  key: K;
+  /** Etykieta wiersza w oknie „Wygląd” (po polsku). */
+  label: string;
+  choices: { value: Ui[K]; label: string; /** kółko koloru zamiast napisu (tylko akcent) */ swatch?: string }[];
+};
+
+/** Wiersz okna „Wygląd”: `dock` jest pominięty — pulpit robi etap 8. */
+export type UiRow = { [K in Exclude<keyof Ui, "dock">]: Row<K> }[Exclude<keyof Ui, "dock">];
+
+/** Wiersze okna „Wygląd” w kolejności tabeli z planu (wzor D: tablica `SET`). */
+export const UI_ROWS: UiRow[] = [
+  {
+    key: "accent",
+    label: "Akcent",
+    choices: (Object.keys(ACCENT_HEX) as Ui["accent"][]).map((v) => ({ value: v, label: ACCENT_LABELS[v], swatch: ACCENT_HEX[v] })),
+  },
+  { key: "head", label: "Panel z fokusem", choices: [{ value: "fill", label: "Wypełniony" }, { value: "line", label: "Obrys" }] },
+  { key: "work", label: "Agent pracuje", choices: [{ value: "glow", label: "Poświata" }, { value: "scan", label: "Skan" }] },
+  { key: "edge", label: "Krawędzie", choices: [{ value: "sharp", label: "Ostre" }, { value: "soft", label: "Miękkie" }] },
+  { key: "title", label: "Nazwa projektu", choices: [{ value: "big", label: "Duża" }, { value: "compact", label: "Zwarta" }] },
+  { key: "grid", label: "Siatka w tle", choices: [{ value: "on", label: "Tak" }, { value: "off", label: "Nie" }] },
+  { key: "motion", label: "Ruch", choices: [{ value: "full", label: "Pełny" }, { value: "lite", label: "Oszczędny" }] },
+  { key: "rail", label: "Szyna", choices: [{ value: "open", label: "Otwarta" }, { value: "closed", label: "Zwinięta" }] },
+];
+
+/** Akcja `setUi` dla wyboru z wiersza: `{ [klucz]: wartość }` jako `Partial<Ui>`. */
+export function uiPatch(key: keyof Ui, value: string): Partial<Ui> {
+  // SAFETY: wiersze okna „Wygląd” dobierają wartość do swojego klucza (typ UiRow pilnuje pary),
+  // więc { [key]: value } jest zawsze poprawnym Partial<Ui>.
+  return { [key]: value } as Partial<Ui>;
+}
+
 /** Missing keys fall back to defaults; a bad value falls back too and is reported. */
 export function parseUi(raw: unknown): { ui: Ui; errors: string[] } {
   const errors: string[] = [];

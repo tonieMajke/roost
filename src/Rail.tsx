@@ -18,6 +18,8 @@ type Props = {
   onRename(projectId: string, name: string): void;
   onRemove(projectId: string): void;
   onToggleRail(): void;
+  /** Okno „Wygląd” (etap 5). */
+  onOpenAppearance(): void;
 };
 
 /** Treść title dla kropki projektu — sama kropka nie mówi, który panel. */
@@ -36,6 +38,7 @@ export function Rail({
   onRename,
   onRemove,
   onToggleRail,
+  onOpenAppearance,
 }: Props) {
   const keyOf = (id: string) => `p:${id}`;
   const armRef = useRef<Arm>(null);
@@ -169,8 +172,7 @@ export function Rail({
       </div>
       <footer className="rail-foot">
         <IconButton icon={FolderPlus} label="Dodaj projekt" shortcut="Ctrl+Alt+P" onClick={onAddProject} />
-        {/* Okno „Wygląd” robi etap 5 – do tego czasu przycisk jest nieaktywny. */}
-        <IconButton icon={SlidersHorizontal} label="Wygląd" title="Wygląd (okno w etapie 5)" disabled onClick={() => {}} />
+        <IconButton icon={SlidersHorizontal} label="Wygląd" onClick={onOpenAppearance} />
       </footer>
     </aside>
   );

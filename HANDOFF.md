@@ -15,6 +15,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 5 – 2026-09-30 (lokalny model, dokończył Claude)
+
+- Wspólny `src/Dialog.tsx`: `.overlay` > `.backdrop` + `.dialog` (`pop`), Esc/klik w tło = anuluj i oddanie fokusu; `scrim={false}` = przezroczyste tło (popover). „Nowy panel” i „Presety” na nim; kafelki `.tile` z `tileDelayMs(i)` = 80 + 55·i ms (`new-pane.ts`, test).
+- Okno „Wygląd” (`AppearanceDialog.tsx`, `.settings` ze wzoru) ze stopki szyny: wiersze z `UI_ROWS` w `ui.ts` (akcent = kółka `ACCENT_HEX`, reszta = `.seg`; `dock` pominięty do etapu 8), klik = `setUi` przez `uiPatch`, zapis ze zwykłym zapisem `workspace.json`. Przy niskim oknie karta się przewija (`max-height`).
+- Komunikaty: `.toast` w prawym dolnym rogu, znikają po `TOAST_MS` = 4 s (`toast.ts`); błędy konfiguracji zostają w `.config-errors` z ✕. Podpowiedzi klawiszy w stopkach okien jako `<kbd>`.
+- Claude po przejęciu: `toastText` faktycznie użyty w `applyPreset`, Enter w polu nazwy presetu respektuje `canSave`, wcięcia w `App.tsx`. Lokalny model zawiesił się na temp stronie seed (obserwator `MutationObserver` budził sam siebie → headless Firefox nie kończył ładowania); strona poprawiona na czas zrzutów i usunięta.
+- Sprawdzenia: typecheck czysty, vitest 117/117, cargo test 11/11, cargo build 0 ostrzeżeń. Zrzuty headless Firefox (animacje wyłączone na czas zrzutu): „Nowy panel” (3 kafelki), „Presety” (wbudowane, własne z ✕, zapis), „Wygląd” (8 wierszy), toast „Brak agentów w konfiguracji: codex”.
+- Niesprawdzone: animacje `pop`/`tileIn`/`toastIn` na żywo, znikanie toastu po 4 s, okno Tauri. W podglądzie toast nachodzi na napis „podgląd – bez prawdziwych procesów” (tylko podgląd).
+
 ## M2 Etap 4 – 2026-09-30 (Claude)
 
 - Panel według wzoru D: `.glow`, `.ag-badge` (pierwsza litera agenta), `.pane-name`/`.pane-state` (mono, wersaliki), `.tools` przygaszone do 0,3 (pełne przy fokusie, najechaniu i `:focus-within`), miejsce na `.ctx` (komentarz, etap 8).

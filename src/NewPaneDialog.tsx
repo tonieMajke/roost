@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import type { AgentDef } from "./agents";
-import { dialogKey } from "./new-pane";
+import { useState, type CSSProperties } from "react";
+import { agentColor, type AgentDef } from "./agents";
+import { Dialog } from "./Dialog";
+import { dialogKey, tileDelayMs } from "./new-pane";
 
 type Props = {
   projectName: string;
@@ -11,67 +12,62 @@ type Props = {
   onClose(): void;
 };
 
-/** Nakładka „Nowy panel”: kafelki agentów, klawiatura 1–9 / strzałki / Enter / Esc. */
+/** Okno „Nowy panel” (wzór D): kafelki agentów, 1–9 / strzałki / Enter / Esc. */
 export function NewPaneDialog({ projectName, agents, startIndex, onPick, onClose }: Props) {
   const [index, setIndex] = useState(Math.min(Math.max(startIndex, 0), Math.max(agents.length - 1, 0)));
-  const box = useRef<HTMLDivElement>(null);
-  // Where the keyboard was (usually the focused terminal); cancelling gives it back there.
-  // Not on pick: the new pane takes focus itself, and restoring the old one would steal it back.
-  const before = useRef(document.activeElement as HTMLElement | null);
-  const cancel = () => {
-    onClose();
-    before.current?.focus();
-  };
-
-  // The window owns the keyboard while it is open.
-  useEffect(() => {
-    box.current?.focus();
-  }, []);
-
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    const action = dialogKey(e.key, index, agents.length);
-    if (!action) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (action.type === "close") cancel();
-    else if (action.type === "move") setIndex(action.index);
-    else onPick(action.index);
-  };
 
   return (
-    <div className="dialog-backdrop" onMouseDown={cancel}>
-      <div
-        className="dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="np-title"
-        tabIndex={-1}
-        ref={box}
-        onKeyDown={onKeyDown}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <h2 id="np-title">Nowy panel w {projectName}</h2>
-        {agents.length === 0 ? (
-          <p className="np-hint">Brak agentów w agents.json</p>
-        ) : (
-          <ul className="np-list">
-            {agents.map((agent, i) => (
-              <li key={agent.id}>
+    <Dialog label={`Nowy panel w ${projectName}`} onClose={onClose} onKey={(e, cancel) => {
+      const action = dialogKey(e.key, index, agents.length);
+      if (!action) return;
+      e.preventDefault();
+      if (action.type === "close") cancel();
+      else if (action.type === "move") setIndex(action.index);
+      else onPick(action.index);
+    }}>
+      {(cancel) => (
+        <>
+          <h2>Nowy panel w {projectName}</h2>
+          <p>Agent startuje w folderze projektu.</p>
+          {agents.length === 0 ? (
+            <p className="tile-cmd">Brak agentów w agents.json</p>
+          ) : (
+            <div className="tiles">
+              {agents.map((agent, i) => (
                 <button
+                  key={agent.id}
                   type="button"
-                  className={`np-tile${i === index ? " is-active" : ""}`}
+                  className={`tile${i === index ? " is-active" : ""}`}
+                  // opóźnienie wjazdu kafelka (80 + 55·i ms) i kolor agenta dla ramki
+                  style={{ "--ag": agentColor(agent), animationDelay: `${tileDelayMs(i)}ms` } as CSSProperties}
                   onClick={() => onPick(i)}
                 >
-                  <span className="np-key">{i < 9 ? i + 1 : ""}</span>
-                  <span className="np-name">{agent.name}</span>
-                  <span className="np-command">{agent.command}</span>
+                  <span className="tile-top">
+                    <span className="ag-badge" aria-hidden>
+                      {agent.name.charAt(0).toUpperCase()}
+                    </span>
+                    <kbd>{i < 9 ? i + 1 : ""}</kbd>
+                  </span>
+                  <span className="tile-name">{agent.name}</span>
+                  <span className="tile-cmd">{agent.command}</span>
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="np-hint">1–{Math.min(agents.length, 9)} lub Enter wybiera · ↑↓ przechodzą · Esc zamyka</p>
-      </div>
-    </div>
+              ))}
+            </div>
+          )}
+          <div className="dialog-foot">
+            <span>
+              <kbd>1</kbd>–<kbd>{Math.min(agents.length, 9)}</kbd> wybór
+            </span>
+            <span>
+              <kbd>↑</kbd>
+              <kbd>↓</kbd> ruch
+            </span>
+            <span>
+              <kbd>Esc</kbd> zamknij
+            </span>
+          </div>
+        </>
+      )}
+    </Dialog>
   );
 }

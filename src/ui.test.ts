@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { ACCENT_HEX, DEFAULT_UI, parseUi, uiClasses, type Ui } from "./ui";
+import {
+  ACCENT_HEX,
+  DEFAULT_UI,
+  UI_CHOICES,
+  UI_ROWS,
+  parseUi,
+  uiClasses,
+  uiPatch,
+  type Ui,
+} from "./ui";
 
 describe("parseUi", () => {
   it("missing key (or missing block) = defaults, no errors", () => {
@@ -57,5 +66,39 @@ describe("ACCENT_HEX", () => {
     for (const a of ["orange", "acid", "violet", "mint"] as const) {
       expect(ACCENT_HEX[a]).toMatch(/^#[0-9a-f]{6}$/);
     }
+  });
+});
+
+describe("UI_ROWS (okno „Wygląd”)", () => {
+  it("każdy klucz ustawień (bez dock) ma dokładnie jeden wiersz, w kolejności UI_CHOICES", () => {
+    const keys = UI_ROWS.map((r) => r.key);
+    expect(keys).toEqual(Object.keys(UI_CHOICES));
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("wiersz pokrywa się z UI_CHOICES: te same wartości, etykieta przy każdej", () => {
+    for (const row of UI_ROWS) {
+      expect(row.label).not.toBe("");
+      expect(row.choices.map((c) => c.value)).toEqual([...UI_CHOICES[row.key]]);
+      for (const c of row.choices) {
+        expect(c.label).not.toBe("");
+        expect(c.value).not.toBe("");
+      }
+    }
+  });
+
+  it("tylko akcent ma kółka koloru, a ich barwy to ACCENT_HEX", () => {
+    for (const row of UI_ROWS) {
+      const swatches = row.choices.filter((c) => c.swatch !== undefined);
+      expect(swatches.length).toBe(row.key === "accent" ? row.choices.length : 0);
+    }
+    const accent = UI_ROWS.find((r) => r.key === "accent")!;
+    for (const c of accent.choices) expect(c.swatch).toBe(ACCENT_HEX[c.value as Ui["accent"]]);
+  });
+
+  it("uiPatch z pary wiersz/wartość daje Partial<Ui> do reduktora", () => {
+    expect(uiPatch("edge", "soft")).toEqual({ edge: "soft" });
+    const row = UI_ROWS.find((r) => r.key === "rail")!;
+    expect(uiPatch(row.key, row.choices[1].value)).toEqual({ rail: "closed" });
   });
 });

@@ -19,6 +19,8 @@ import { Rail } from "./Rail";
 import { Grid } from "./Grid";
 import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
+import { AppearanceDialog } from "./AppearanceDialog";
+import { TOAST_MS, toastText } from "./toast";
 import { PANE_OUT_MS } from "./Pane";
 import { planPreset } from "./presets";
 import {
@@ -48,6 +50,7 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [dialog, setDialog] = useState(false);
   const [presetMenu, setPresetMenu] = useState(false);
+  const [appearance, setAppearance] = useState(false);
   const [lastAgentId, setLastAgentId] = useState<string | null>(null);
   // false do końca startu: zapis `ws` na dysk musi ruszyć dopiero po wczytaniu pliku.
   const [loaded, setLoaded] = useState(false);
@@ -270,7 +273,7 @@ export function App() {
       if (plan.dropped > 0) {
         msgs.push(`Pominięto ${plan.dropped} z powodu limitu ${MAX_PANES} paneli na projekt`);
       }
-      if (msgs.length > 0) setNotice(msgs.join(" · "));
+      if (msgs.length > 0) setNotice(toastText(...msgs));
     },
   };
 
@@ -388,6 +391,13 @@ export function App() {
     return () => clearTimeout(t);
   }, [armedPane]);
 
+  // Komunikat to toast: sam znika po TOAST_MS (błędy konfiguracji zostają do ✕).
+  useEffect(() => {
+    if (notice === null) return;
+    const t = setTimeout(() => setNotice(null), TOAST_MS);
+    return () => clearTimeout(t);
+  }, [notice]);
+
   const closeByShortcut = (paneId: string) => {
     // Panel bez żywego procesu zamyka się od razu; z procesem trzeba potwierdzić.
     if (ephemeral[paneId]?.exited) {
@@ -483,13 +493,13 @@ export function App() {
         onToggleRail={() =>
           dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } })
         }
+        onOpenAppearance={() => setAppearance(true)}
       />
       <main className="area">
-        {errors.length > 0 && <div className="config-errors">{errors.join(" · ")}</div>}
-        {notice && (
+        {errors.length > 0 && (
           <div className="config-errors">
-            <span>{notice}</span>
-            <IconButton icon={X} label="Zamknij komunikat" onClick={() => setNotice(null)} />
+            <span>{errors.join(" · ")}</span>
+            <IconButton icon={X} label="Zamknij błędy konfiguracji" onClick={() => setErrors([])} />
           </div>
         )}
         {!loaded ? (
@@ -544,30 +554,42 @@ export function App() {
           </>
         )}
         {!inTauri && <div className="preview-badge">podgląd – bez prawdziwych procesów</div>}
-        {presetMenu && active && (
-          <PresetMenu
-            custom={ws.presets}
-            agents={agents}
-            canSave={paneCount > 0}
-            onApply={projectActions.applyPreset}
-            onDelete={(name) => dispatch({ type: "deletePreset", name })}
-            onSave={(name) => dispatch({ type: "savePreset", name })}
-            onClose={() => setPresetMenu(false)}
-          />
-        )}
-        {dialog && active && (
-          <NewPaneDialog
-            projectName={active.name}
-            agents={agents}
-            startIndex={lastIndex}
-            onPick={(i) => {
-              const agent = agents[i];
-              if (agent) projectActions.addPane(agent.id);
-            }}
-            onClose={() => setDialog(false)}
-          />
-        )}
       </main>
+      {notice && (
+        <div className="toast" role="status">
+          <span>{notice}</span>
+        </div>
+      )}
+      {appearance && (
+        <AppearanceDialog
+          ui={ws.ui}
+          onSet={(patch) => dispatch({ type: "setUi", patch })}
+          onClose={() => setAppearance(false)}
+        />
+      )}
+      {presetMenu && active && (
+        <PresetMenu
+          custom={ws.presets}
+          agents={agents}
+          canSave={paneCount > 0}
+          onApply={projectActions.applyPreset}
+          onDelete={(name) => dispatch({ type: "deletePreset", name })}
+          onSave={(name) => dispatch({ type: "savePreset", name })}
+          onClose={() => setPresetMenu(false)}
+        />
+      )}
+      {dialog && active && (
+        <NewPaneDialog
+          projectName={active.name}
+          agents={agents}
+          startIndex={lastIndex}
+          onPick={(i) => {
+            const agent = agents[i];
+            if (agent) projectActions.addPane(agent.id);
+          }}
+          onClose={() => setDialog(false)}
+        />
+      )}
     </div>
   );
 }

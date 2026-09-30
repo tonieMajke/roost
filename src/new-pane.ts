@@ -6,6 +6,11 @@ export type DialogKey =
   | { type: "close" }
   | null;
 
+/** Opóźnienie wjazdu i-tego kafelka agenta (wzór D: 80 + 55·i ms). */
+export function tileDelayMs(index: number): number {
+  return 80 + 55 * index;
+}
+
 /** `index` is the current selection, `count` the number of agents (only keys 1–9 exist). */
 export function dialogKey(key: string, index: number, count: number): DialogKey {
   if (key === "Escape") return { type: "close" };
