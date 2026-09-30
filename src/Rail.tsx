@@ -65,7 +65,12 @@ export function Rail({
           <span className="brand-mark" />
           Agents
         </span>
-        <IconButton icon={PanelLeft} label="Zwiń szynę" shortcut="Ctrl+Alt+B" onClick={onToggleRail} />
+        <IconButton
+          icon={PanelLeft}
+          label={ws.ui.rail === "closed" ? "Rozwiń szynę" : "Zwiń szynę"}
+          shortcut="Ctrl+Alt+B"
+          onClick={onToggleRail}
+        />
       </header>
       <div className="rail-label">Projekty</div>
       <div className="rail-list">

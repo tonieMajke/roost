@@ -16,7 +16,6 @@
   --faint: #6f7883;
   --term-text: #c6ced8;
   --accent: #ff8a4c;
-  --accent-hover: var(--accent); /* token ze wzoru D (`.btn.primary:hover`) */
   --on-accent: #170b04;
   --on-ag: #0a0a0a; /* text on an agent-color background (.fh-fill) */
   --on-ag-hover: rgba(0, 0, 0, 0.12);
@@ -84,7 +83,11 @@ button.is-confirm { color: var(--accent); border-color: var(--accent); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 .btn:disabled { color: var(--muted); }
+/* muted text on the accent fill would be unreadable – dim the whole button instead */
+.btn.primary:disabled { color: var(--on-accent); opacity: 0.45; }
 .app { display: flex; height: 100%; overflow: hidden; background: var(--bg); }
+/* Here, not on :root: a var() resolves where it is declared, and .acc-* sets --accent on .app. */
+.app { --accent-hover: var(--accent); }
 
 /* klawisz skrótu w wierszu projektu, wzór D `kbd` */
 kbd {
@@ -159,6 +162,8 @@ kbd {
 .rail-closed .proj-panes, .rail-closed .proj-close { display: none; }
 .rail-closed .rail-head, .rail-closed .rail-foot { justify-content: center; padding-left: 0; padding-right: 0; }
 .rail-closed .proj-row { justify-content: center; gap: 6px; padding: 7px 0; }
+/* two 26 px icons do not fit side by side in 44 px */
+.rail-closed .rail-foot { flex-direction: column; align-items: center; }
 
 /* grid area */
 .area { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }

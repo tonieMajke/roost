@@ -15,6 +15,12 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M2 Etap 3 – poprawki (Claude)
+
+- `--accent-hover` przeniesiony z `:root` na `.app` (na `:root` zawsze dawał pomarańcz, niezależnie od `acc-*`).
+- `.btn.primary:disabled`: przygaszony cały przycisk (wcześniej `--muted` na tle akcentu – nieczytelne).
+- Zwinięta szyna: stopka w kolumnie (dwie ikony 26 px nie mieściły się w 44 px); `PanelLeft` ma etykietę „Rozwiń/Zwiń szynę”.
+
 ## M2 Etap 3 – 2026-09-30 (lokalny model)
 
 - `Rail.tsx` przepisany na wzór D: `.rail-head` (marka „AGENTS" + `PanelLeft`), `.rail-label`, `.proj` / `.proj-row` (`<kbd>` z numerem, nazwa, ścieżka `~/…`, `.proj-dot`), `.proj-panes` tylko pod aktywnym projektem (animacja `fold`), `.rail-foot` (`FolderPlus` + `SlidersHorizontal` „Wygląd", nieaktywny do etapu 5).
