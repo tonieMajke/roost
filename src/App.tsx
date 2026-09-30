@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { backend, inTauri } from "./backend";
 import type { AgentDef } from "./agents";
-import { ACCENT_HEX, uiClasses } from "./ui";
+import { ACCENT_HEX, stepFontSize, uiClasses } from "./ui";
 import { IconButton } from "./IconButton";
 import { FolderPlus, Gauge, LayoutGrid, Plus, X } from "lucide-react";
 import { tildify } from "./paths";
@@ -21,7 +21,8 @@ import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { Dock } from "./Dock";
-import { CONTEXT_POLL_MS, contextTargets, type SessionContext } from "./context";
+import { TitleBar } from "./TitleBar";
+import { CONTEXT_POLL_MS, contextTargets, sessionTitles, type SessionContext } from "./context";
 import { FINISHED_TEXT, STARTED_TEXT, exitedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
 import { LIMITS_POLL_MS, type ClaudeLimits } from "./limits";
 import { TOAST_MS, toastText } from "./toast";
@@ -62,6 +63,7 @@ export function App() {
   const seenTools = useRef(new Map<string, string | null>());
   // Numer odczytu według sessionId: odpowiedź starsza od już obsłużonej nie dubluje zdarzeń.
   const readSeq = useRef(new Map<string, { sent: number; done: number }>());
+  const [winMax, setWinMax] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [dialog, setDialog] = useState(false);
   const [presetMenu, setPresetMenu] = useState(false);
@@ -314,6 +316,8 @@ export function App() {
   }, [ws.projects, agents]);
   const paneInfoRef = useRef(paneInfo);
   paneInfoRef.current = paneInfo;
+  // Tytuły rozmów do pulpitu: szybkie znalezienie panelu po tym, o czym jest rozmowa.
+  const titles = useMemo(() => sessionTitles(ws.projects, contexts), [ws.projects, contexts]);
 
   // Tylko refy i settery: woła to też interwał sprzed wielu renderów.
   const addFeed = (paneId: string, texts: string[]) => {
@@ -368,7 +372,9 @@ export function App() {
           if (c === null) return;
           setContexts((prev) => {
             const old = prev[t.sessionId];
-            return old?.tokens === c.tokens && old.model === c.model ? prev : { ...prev, [t.sessionId]: c };
+            return old?.tokens === c.tokens && old.model === c.model && old.title === c.title
+              ? prev
+              : { ...prev, [t.sessionId]: c };
           });
         })
         .catch(() => undefined); // brak odczytu = miernik bez zmian
@@ -554,6 +560,12 @@ export function App() {
       case "toggleDock":
         dispatch({ type: "setUi", patch: { dock: !ws.ui.dock } });
         break;
+      case "fontSize": {
+        const size = stepFontSize(ws.ui.fontSize, cmd.step);
+        dispatch({ type: "setUi", patch: { fontSize: size } });
+        setNotice(`Czcionka terminali: ${size} px`);
+        break;
+      }
       case "selectProject": {
         const project = ws.projects[cmd.index]; // poza listą = nic
         if (project) dispatch({ type: "selectProject", id: project.id });
@@ -601,6 +613,8 @@ export function App() {
   }, []);
 
   return (
+    <div className={`shell${winMax ? " is-max" : ""}`}>
+    {inTauri && <TitleBar onMaximized={setWinMax} />}
     <div className={`app ${uiClasses(ws.ui)}`}>
       <Rail
         ws={ws}
@@ -675,6 +689,7 @@ export function App() {
                 activeId={ws.active}
                 agents={agents}
                 accent={accentHex}
+                fontSize={ws.ui.fontSize}
                 motion={ws.ui.motion}
                 state={ephemeral}
                 contexts={contexts}
@@ -693,6 +708,10 @@ export function App() {
           project={active}
           agents={agents}
           contexts={contexts}
+          titles={titles}
+          onPickPane={(id) => dispatch({ type: "focus", id })}
+          feedScope={ws.ui.feed}
+          onFeedScope={(feed) => dispatch({ type: "setUi", patch: { feed } })}
           feed={feed}
           limits={limits}
           onRefreshLimits={readLimits}
@@ -741,6 +760,7 @@ export function App() {
           onClose={() => setDialog(false)}
         />
       )}
+    </div>
     </div>
   );
 }

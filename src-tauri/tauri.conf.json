@@ -11,7 +11,7 @@
   },
   "app": {
     "windows": [
-      { "title": "Agents", "width": 1400, "height": 900, "minWidth": 640, "minHeight": 400 }
+      { "title": "Agents", "width": 1400, "height": 900, "minWidth": 640, "minHeight": 400, "decorations": false, "transparent": true }
     ],
     "security": { "csp": null }
   },
