@@ -15,6 +15,9 @@ body { background: var(--bg); color: var(--text); font: 13px system-ui, sans-ser
 }
 .bar input { flex: 1; font-family: "JetBrains Mono Variable", monospace; }
 .bar button:hover { border-color: var(--accent); }
+.config-errors {
+  padding: 4px 8px; background: #3a2318; color: #f0a58a; border-bottom: 1px solid var(--line); font-size: 12px;
+}
 .terminal { flex: 1; min-height: 0; padding: 4px 0 0 8px; }
 .preview-badge {
   position: fixed; right: 10px; bottom: 8px; z-index: 10; pointer-events: none;

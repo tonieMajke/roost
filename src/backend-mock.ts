@@ -1,3 +1,4 @@
+import { DEFAULT_AGENTS } from "./agents";
 import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
 
 const PROMPT = "$ ";
@@ -61,4 +62,9 @@ export const mockBackend: Backend = {
       },
     };
   },
+
+  // Preview mode: defaults only; sessions never exist here, every path is "it exists".
+  loadAgents: async () => ({ agents: DEFAULT_AGENTS, errors: [] }),
+  claudeSessionExists: async () => false,
+  dirExists: async () => true,
 };

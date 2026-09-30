@@ -1,5 +1,6 @@
 import { mockBackend } from "./backend-mock";
 import { tauriBackend } from "./backend-tauri";
+import type { AgentDef } from "./agents";
 
 export type ExitInfo = { code: number; signal: string | null };
 
@@ -15,6 +16,9 @@ export type PtyHandle = {
 /** Everything a component may ask the backend for. Every call goes through this interface. */
 export interface Backend {
   spawnPty(spec: SpawnSpec, onData: (bytes: Uint8Array) => void, onExit: (info: ExitInfo) => void): Promise<PtyHandle>;
+  loadAgents(): Promise<{ agents: AgentDef[]; errors: string[] }>;
+  claudeSessionExists(id: string): Promise<boolean>;
+  dirExists(path: string): Promise<boolean>;
 }
 
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;

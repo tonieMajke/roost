@@ -52,7 +52,7 @@ fn size(cols: u16, rows: u16) -> PtySize {
 }
 
 /// `$SHELL` → the variable's value, `~/x` → home-relative.
-fn expand(value: &str) -> String {
+pub(crate) fn expand(value: &str) -> String {
     if let Some(var) = value.strip_prefix('$') {
         return std::env::var(var).unwrap_or_default();
     }

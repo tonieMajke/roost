@@ -1,5 +1,6 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
-import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
+import { DEFAULT_AGENTS, parseAgents } from "./agents";
+import type { Backend, ExitInfo } from "./backend";
 
 /** Start a process in a pseudo-terminal; output arrives as raw bytes. */
 export const tauriBackend: Backend = {
@@ -17,4 +18,18 @@ export const tauriBackend: Backend = {
       kill: () => void invoke("pty_kill", { id }).catch(report),
     };
   },
+
+  async loadAgents() {
+    // Rust returns the raw file text; a file we cannot even parse must not brick the UI.
+    let raw: string;
+    try {
+      raw = await invoke<string>("agents_load");
+      return parseAgents(JSON.parse(raw));
+    } catch (e) {
+      return { agents: DEFAULT_AGENTS, errors: [`agents.json: ${String(e)}`] };
+    }
+  },
+
+  claudeSessionExists: (id) => invoke<boolean>("claude_session_exists", { id }),
+  dirExists: (path) => invoke<boolean>("dir_exists", { path }),
 };

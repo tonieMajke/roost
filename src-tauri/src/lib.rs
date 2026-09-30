@@ -1,3 +1,4 @@
+mod config;
 mod pty;
 
 use std::sync::OnceLock;
@@ -34,7 +35,15 @@ pub fn set_webview_env() {
 pub fn run() {
     tauri::Builder::default()
         .manage(pty::Ptys::default())
-        .invoke_handler(tauri::generate_handler![pty::pty_spawn, pty::pty_write, pty::pty_resize, pty::pty_kill])
+        .invoke_handler(tauri::generate_handler![
+            pty::pty_spawn,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_kill,
+            config::agents_load,
+            config::claude_session_exists,
+            config::dir_exists,
+        ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
