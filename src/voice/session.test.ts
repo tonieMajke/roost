@@ -114,6 +114,37 @@ describe("VoiceSession", () => {
     expect(r.asked[1].map((e) => e.user)).toEqual(["cześć", "cześć"]);
   });
 
+  it("szum w trakcie myślenia (wolny model lokalny) nie przerywa odpowiedzi", async () => {
+    const r = rig();
+    r.s.start();
+    await r.say();
+    r.hear("");
+    await r.say();
+    expect(r.stops()).toBe(0);
+    expect(r.asked).toHaveLength(1);
+    expect(r.s.state.phase).toBe("thinking");
+    r.send({ type: "text", text: "Jestem." });
+    r.send({ type: "done" });
+    await flush();
+    expect(r.log).toEqual(["play 0-0:Jestem."]);
+  });
+
+  it("pytanie w trakcie myślenia zastępuje odpowiedź; mowa, gdy ta miała zagrać, przerywa", async () => {
+    const r = rig();
+    r.s.start();
+    await r.say();
+    r.hear("jednak inaczej");
+    await r.say();
+    expect(r.stops()).toBe(1);
+    expect(r.asked[1].map((e) => e.user)).toEqual(["cześć", "jednak inaczej"]);
+    r.s.speechStart();
+    r.send({ type: "text", text: "Zaraz. " });
+    await flush();
+    expect(r.log).toEqual([]);
+    expect(r.stops()).toBe(2);
+    expect(r.s.state.history[1].interrupted).toBe(true);
+  });
+
   it("bez silnika mowy odpowiedź jest tylko tekstem i wraca do słuchania", async () => {
     const r = rig({ tts: false });
     r.s.start();

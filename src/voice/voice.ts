@@ -300,6 +300,9 @@ export function voiceReducer(s: VoiceState, ev: VoiceEvent): VoiceState {
       if (s.phase === "idle") return s;
       // Przy karcie mowa to odpowiedź na kartę („tak”, „popraw…”), nie przerwanie.
       if (s.card) return { ...s, hearing: true };
+      // Zanim cokolwiek zagra, mowa nie przerywa: szum albo kaszel nie zabije wolnej odpowiedzi
+      // (model lokalny ładuje się kilka sekund). Przerywa dopiero niepusty transkrypt.
+      if (s.phase === "thinking") return { ...s, hearing: true, error: undefined };
       return { ...cut(s), hearing: true, error: undefined };
     case "speech_end":
       if (s.phase === "idle") return s;
@@ -309,6 +312,11 @@ export function voiceReducer(s: VoiceState, ev: VoiceEvent): VoiceState {
       const text = [s.carry, ev.text.trim()].filter(Boolean).join(" ");
       // Użytkownik mówi dalej albo już skończył następny kawałek: czekamy na resztę.
       if (s.hearing) return { ...s, carry: text };
+      if (s.phase === "thinking") {
+        if (!text) return { ...s, carry: "" };
+        const ex: VoiceExchange = { user: text, reply: "", spoken: [], done: false, t: { heard: s.heardAt, text: ev.at } };
+        return { ...s, carry: "", history: [...cut(s).history, ex] };
+      }
       if (s.phase !== "transcribing") return { ...s, carry: text };
       if (!text) return { ...s, phase: "listening", carry: "" };
       const ex: VoiceExchange = { user: text, reply: "", spoken: [], done: false, t: { heard: s.heardAt, text: ev.at } };

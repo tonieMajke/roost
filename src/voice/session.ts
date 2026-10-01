@@ -109,7 +109,8 @@ export class VoiceSession {
       this.deps.cancelSpeak(n.id);
     }
     if (this.card) return this.emit({ type: "speech_start" }); // odpowiedź na kartę, nie przerwanie
-    if (this.state.phase === "thinking" || this.state.phase === "speaking") this.cancelReply();
+    // W trakcie „myśli” odpowiedź czeka: przerwie ją dopiero niepusty transkrypt (`answer`).
+    if (this.state.phase === "speaking") this.cancelReply();
     this.emit({ type: "speech_start" });
   }
 
@@ -209,6 +210,11 @@ export class VoiceSession {
           return fail(`mowa: ${message(e)}`);
         }
         if (!live()) return;
+        // Użytkownik mówi, a odpowiedź właśnie miałaby zagrać: to przerwanie, nie gramy na niego.
+        if (this.state.hearing) {
+          this.cancelReply();
+          return this.emit({ type: "interrupt" });
+        }
         this.emit({ type: "audio_start", n, text: sentence, at: this.deps.now() });
         await this.deps.play(bytes, ac.signal).catch((e: unknown) => fail(`odtwarzanie: ${message(e)}`));
       });

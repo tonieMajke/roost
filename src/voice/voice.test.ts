@@ -155,9 +155,10 @@ describe("voiceReducer", () => {
     };
     for (const [name, s0] of Object.entries(states)) {
       const s = voiceReducer(s0, { type: "speech_start" });
-      expect(s.phase, name).toBe(name === "idle" ? "idle" : name === "transcribing" ? "transcribing" : "listening");
+      expect(s.phase, name).toBe(name === "idle" ? "idle" : name === "transcribing" || name === "thinking" ? name : "listening");
       if (name === "speaking") expect(s.history[0]).toMatchObject({ interrupted: true, done: true, spoken: ["Raz."] });
-      if (name === "thinking") expect(s.history[0]).toMatchObject({ interrupted: true, spoken: [] });
+      // Myśli dalej: przerwie dopiero niepusty transkrypt.
+      if (name === "thinking") expect(s.history[0].interrupted).toBeUndefined();
       expect(voiceReducer(s0, { type: "interrupt" }).phase, name).toBe(name === "thinking" || name === "speaking" ? "listening" : s0.phase);
     }
   });
@@ -175,6 +176,20 @@ describe("voiceReducer", () => {
     expect(s.history[1].reply).toBe("nowe");
     expect(s.phase).toBe("thinking");
     expect(s.error).toBeUndefined();
+  });
+
+  it("mowa w trakcie myślenia: pusty transkrypt (szum) nie przerywa, niepusty zaczyna nowe pytanie", () => {
+    let s = run([{ type: "speech_start" }, { type: "speech_end", at: 5 }, { type: "transcript", text: " ", at: 6 }], asked());
+    expect(s).toMatchObject({ phase: "thinking", hearing: false });
+    expect(s.history).toHaveLength(1);
+    expect(s.history[0].interrupted).toBeUndefined();
+    s = run([{ type: "delta", n: 0, text: "Odpowiedź", at: 7 }], s);
+    expect(s.history[0].reply).toBe("Odpowiedź");
+    s = run([{ type: "speech_start" }, { type: "speech_end", at: 8 }, { type: "transcript", text: "jednak inaczej", at: 9 }], s);
+    expect(s.phase).toBe("thinking");
+    expect(s.history).toHaveLength(2);
+    expect(s.history[0]).toMatchObject({ interrupted: true, done: true });
+    expect(s.history[1].user).toBe("jednak inaczej");
   });
 
   it("transkrypt w trakcie dalszego mówienia dokleja się do następnego", () => {
