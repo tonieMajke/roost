@@ -346,7 +346,7 @@ export function App() {
   }, [windowTitle]);
 
   // Tylko refy i settery: woła to też interwał sprzed wielu renderów.
-  const addFeed = (paneId: string, texts: string[]) => {
+  const addFeed = (paneId: string, texts: string[], kind: FeedItem["kind"] = "event") => {
     const info = paneInfoRef.current.get(paneId);
     if (!info || texts.length === 0) return;
     const at = Date.now();
@@ -358,6 +358,7 @@ export function App() {
       project: info.project,
       text,
       at,
+      kind,
     }));
     setFeed((prev) => pushFeed(prev, items));
   };
@@ -451,7 +452,7 @@ export function App() {
             if (last !== undefined) seenTools.current.set(t.sessionId, last);
             else if (seen === undefined) seenTools.current.set(t.sessionId, null);
             const path = paneInfoRef.current.get(t.paneId)?.path ?? "";
-            addFeed(t.paneId, fresh.map((tool) => toolText(tool, path, home.current)));
+            addFeed(t.paneId, fresh.map((tool) => toolText(tool, path, home.current)), "tool");
           }
           if (c === null) return;
           setContexts((prev) => {

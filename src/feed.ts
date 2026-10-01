@@ -14,6 +14,8 @@ export type FeedItem = {
   project: string;
   text: string;
   at: number;
+  /** `tool` = one call of the agent: only the newest per pane is kept; `event` = start, finish, exit, handoff. */
+  kind: "tool" | "event";
 };
 
 export const FEED_MAX = 30;
@@ -21,10 +23,16 @@ export const FEED_MAX = 30;
 /** How often the „N s temu” labels are recomputed while the dock is open. */
 export const FEED_CLOCK_MS = 5000;
 
-/** Newest first, at most FEED_MAX; `items` come oldest first. */
+/**
+ * Newest first, at most FEED_MAX; `items` come oldest first. A pane shows what it does
+ * now: its older `tool` rows go away when a newer one (or any event) arrives.
+ */
 export function pushFeed(feed: FeedItem[], items: FeedItem[]): FeedItem[] {
   if (items.length === 0) return feed;
-  return [...items].reverse().concat(feed).slice(0, FEED_MAX);
+  const fresh = new Set(items.map((i) => i.paneId));
+  const kept = feed.filter((i) => i.kind !== "tool" || !fresh.has(i.paneId));
+  const added = [...items].reverse().filter((i, n, all) => i.kind !== "tool" || all.findIndex((j) => j.kind === "tool" && j.paneId === i.paneId) === n);
+  return added.concat(kept).slice(0, FEED_MAX);
 }
 
 /** Rows shown under the dock switch: all projects, or only the one on screen. */

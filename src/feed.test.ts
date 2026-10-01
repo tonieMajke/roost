@@ -9,6 +9,7 @@ const item = (id: number): FeedItem => ({
   project: "x",
   text: `e${id}`,
   at: id,
+  kind: "event",
 });
 const tool = (id: string, extra: Partial<ToolUse> = {}): ToolUse => ({
   id,
@@ -52,6 +53,15 @@ describe("pushFeed", () => {
     const full = pushFeed([], Array.from({ length: 40 }, (_, i) => item(i)));
     expect(full).toHaveLength(FEED_MAX);
     expect(full[0].id).toBe(39);
+  });
+
+  it("keeps one tool row per pane, events stay", () => {
+    const t = (id: number, paneId: string): FeedItem => ({ ...item(id), paneId, kind: "tool" });
+    let feed = pushFeed([], [t(1, "a"), t(2, "a"), t(3, "b")]);
+    expect(feed.map((f) => f.id)).toEqual([3, 2]);
+    feed = pushFeed(feed, [item(4)]); // event of pane "p": nothing removed
+    feed = pushFeed(feed, [t(5, "a")]);
+    expect(feed.map((f) => f.id)).toEqual([5, 4, 3]);
   });
 
   it("returns the same array when nothing is new", () => {
