@@ -23,6 +23,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 5: narzędzia bota w claude i codex – 2026-10-01 (Claude, master)
+
+- `electron/src/bot/mcp.ts` (JSON-RPC po liniach: `initialize`, `ping`, `tools/list`, `tools/call`; błąd narzędzia = `isError`) i `mcp-server.ts` → `out/mcp-server.cjs` (nowe wejście w `vite.config.ts`). Serwer odpowiada bez kolejki, więc `ping` przechodzi w trakcie czekania na zgodę; koniec stdin albo zamknięte gniazdo = wyjście.
+- `bridge.ts`: `ToolBridge.start()` – gniazdo `$XDG_RUNTIME_DIR/agents-bot-<pid>.sock` (umask → od razu 0600), `register({tools, call})` → env `AW_BOT_SOCKET`/`AW_BOT_TOKEN` + `dispose`, `serverSpec(execPath, script, env)` z `ELECTRON_RUN_AS_NODE=1`. Klient gniazda w `bridge-client.ts` (bez Electrona).
+- `ChatRequest.mcp`: claude dostaje `--mcp-config` (plik 0600 w prywatnym katalogu tymczasowym, usuwany po odpowiedzi), `--allowedTools mcp__bot__*` (+ WebSearch/WebFetch przy `search`), `MCP_TOOL_TIMEOUT` 6 h; wbudowane narzędzia dalej tylko `--tools`. Codex: `-c mcp_servers.bot.{command,args,env,tool_timeout_sec}` i `default_tools_approval_mode="approve"` – bez tego `codex exec` odrzuca każde wywołanie MCP („zgody wyłączone”).
+- Zmiana wobec planu: zdarzenia `tool_call`/`tool_result` wysyła sesja mostu (`reportedCall` wydzielone z `loop.ts`), nie parser wyjścia CLI – most zna decyzję o zgodzie i pełne argumenty. Parsery claude/codex bez zmian (wywołania `mcp__bot__*` ignorują).
+- Na żywo (`AW_LIVE=1 pnpm vitest run electron/src/bot/cli-live.test.ts`, 4/4): claude (haiku) i codex (gpt-5.6-luna) ładują serwer, wołają narzędzie i czekają 75 s bez zerwania; Stop w trakcie wywołania zabija CLI i serwer MCP (oba).
+- Sprawdzenia: `pnpm typecheck`, `pnpm test` (50 plików, 519 testów + 4 na żywo pominięte), `electron` typecheck + build – przechodzą. `bridge.test.ts` uruchamia zbudowany `out/mcp-server.cjs` (jak test linii statusu).
+- Niesprawdzone: serwer z AppImage (`app.asar/out/mcp-server.cjs` – ta sama droga co działający `statusline.cjs`, bez `asarUnpack`); podpięcie mostu w `main.ts` i `botSystemPrompt` jako `--system-prompt` – etap 6.
+
 ## M5 Etap 4: pętla narzędzi – 2026-10-01 (Claude, master)
 
 - `electron/src/bot/loop.ts`: `runBotTurn(req, tools, step, run, signal, emit)` – model → wywołania → `runTool` po kolei → model, najwyżej 25 kroków, potem tekst „Przerwałem po 25 krokach”. Zamiast `broker` z planu dostaje `run` (runTool z kontekstem, zgoda jest w nim). Tekst kolejnego kroku od nowego akapitu.

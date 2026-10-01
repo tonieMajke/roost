@@ -7,6 +7,7 @@ import { runCli, type LineParser } from "./cli";
 
 /** Wartość `-c klucz=wartość` jako napis TOML (JSON escaping jest poprawnym TOML basic string). */
 const toml = (s: string) => JSON.stringify(s);
+export const MCP_TOOL_TIMEOUT_SEC = 6 * 60 * 60;
 
 export function codexArgs(req: ChatRequest): string[] {
   const resume = req.session?.resume ? ["resume"] : [];
@@ -17,6 +18,18 @@ export function codexArgs(req: ChatRequest): string[] {
     "-c", `web_search=${req.search ? '"live"' : '"disabled"'}`,
     "-c", `developer_instructions=${toml(req.system)}`,
   ];
+  if (req.mcp) {
+    // Serwer `bot` z `-c`, bo `--ignore-user-config` pomija config.toml. Zgoda jest w narzędziu:
+    // codex nie pyta sam (w `exec` odrzuciłby wywołanie), a limit czasu przetrwa czekanie na kliknięcie.
+    const env = Object.entries(req.mcp.env).map(([k, v]) => `${k} = ${toml(v)}`).join(", ");
+    args.push(
+      "-c", `mcp_servers.bot.command=${toml(req.mcp.command)}`,
+      "-c", `mcp_servers.bot.args=${JSON.stringify(req.mcp.args)}`,
+      "-c", `mcp_servers.bot.env={ ${env} }`,
+      "-c", `mcp_servers.bot.tool_timeout_sec=${MCP_TOOL_TIMEOUT_SEC}`,
+      "-c", 'mcp_servers.bot.default_tools_approval_mode="approve"',
+    );
+  }
   if (req.model) args.push("-m", req.model);
   if (req.session?.resume) args.push(req.session.id);
   return args; // polecenie na stdin

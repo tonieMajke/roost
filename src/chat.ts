@@ -81,6 +81,8 @@ export type ChatRequest = {
   /** Pętla bota: rozmowa z wywołaniami zamiast `messages` i narzędzia dla modelu. */
   turns?: Turn[];
   tools?: ToolSpec[];
+  /** Tryb bota w claude/codex: serwer MCP `bot` (stdio) z narzędziami bota zamiast wbudowanych. */
+  mcp?: { command: string; args: string[]; env: Record<string, string> };
 };
 
 export type ChatEvent =

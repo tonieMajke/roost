@@ -1,6 +1,6 @@
 //! Pętla narzędzi dla dostawców HTTP (`openai`, `anthropic`): model → wywołania → wyniki →
 //! model, najwyżej `MAX_STEPS` razy na wiadomość. Claude i codex mają własną pętlę i dostają
-//! te same narzędzia przez MCP (etap 5).
+//! te same narzędzia przez MCP (`bridge.ts`).
 
 import type { ChatEvent, ChatRequest, ToolCall, ToolSpec, Turn } from "../../../src/chat";
 import { clipResult } from "../../../src/bot";
@@ -12,6 +12,17 @@ export const MAX_STEPS = 25;
 export type Step = (req: ChatRequest, signal: AbortSignal, emit: (e: ChatEvent) => void) => Promise<ToolCall[]>;
 /** Wykonanie narzędzia (`runTool` z kontekstem bota i rozmowy, razem z pytaniem o zgodę). */
 export type RunTool = (name: string, args: Record<string, unknown>) => Promise<ToolOutcome>;
+
+/** Wywołanie narzędzia ze zdarzeniami `tool_call` / `tool_result` (pętla HTTP i serwer MCP). */
+export async function reportedCall(c: ToolCall, run: RunTool, emit: (e: ChatEvent) => void): Promise<ToolOutcome> {
+  emit({ type: "tool_call", id: c.id, name: c.name, args: c.args });
+  const out: ToolOutcome =
+    c.bad !== undefined
+      ? { ok: false, text: `argumenty nie są poprawnym obiektem JSON: ${c.bad.slice(0, 200)}`, approval: "auto" }
+      : await run(c.name, c.args);
+  emit({ type: "tool_result", id: c.id, text: clipResult(out.text), error: !out.ok, approval: out.approval });
+  return out;
+}
 
 /** Kody, którymi serwer odrzuca samo `tools` (np. llama-server bez `--jinja`); 401/404/429 to co innego. */
 const REJECTS_TOOLS = new Set([400, 422, 500, 501]);
@@ -68,12 +79,7 @@ export async function runBotTurn(
     toolsWorked = true;
     turns.push({ role: "assistant", content: text, calls });
     for (const c of calls) {
-      emit({ type: "tool_call", id: c.id, name: c.name, args: c.args });
-      const out: ToolOutcome =
-        c.bad !== undefined
-          ? { ok: false, text: `argumenty nie są poprawnym obiektem JSON: ${c.bad.slice(0, 200)}`, approval: "auto" }
-          : await run(c.name, c.args);
-      emit({ type: "tool_result", id: c.id, text: clipResult(out.text), error: !out.ok, approval: out.approval });
+      const out = await reportedCall(c, run, emit);
       turns.push({ role: "tool", id: c.id, content: out.text, ...(out.ok ? {} : { error: true }) });
       if (signal.aborted) return;
     }
