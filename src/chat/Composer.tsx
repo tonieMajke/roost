@@ -38,15 +38,17 @@ function ModelMenu({ providers, offline, model, onModel, onProviders, onClose }:
     };
   }, [onClose]);
 
-  // Strona i wysokość według miejsca w oknie: tam, gdzie go więcej, przycięte do krawędzi.
+  // Strona i wysokość według miejsca w obszarze czatu (bez paska tytułu okna): tam, gdzie
+  // go więcej, przycięte do krawędzi.
   const [place, setPlace] = useState<{ up: boolean; max: number } | null>(null);
   useLayoutEffect(() => {
     const fit = () => {
       const anchor = ref.current?.parentElement?.getBoundingClientRect();
+      const area = ref.current?.closest(".chat-main")?.getBoundingClientRect() ?? { top: 0, bottom: window.innerHeight };
       if (!anchor) return;
-      const margin = 12 + 8; // od krawędzi okna + odstęp od przycisku
-      const below = window.innerHeight - anchor.bottom - margin;
-      const above = anchor.top - margin;
+      const margin = 12 + 8; // od krawędzi obszaru + odstęp od przycisku
+      const below = area.bottom - anchor.bottom - margin;
+      const above = anchor.top - area.top - margin;
       const up = above > below;
       setPlace({ up, max: Math.max(120, Math.min(520, up ? above : below)) });
     };
