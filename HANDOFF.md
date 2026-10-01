@@ -15,6 +15,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## Electron dogania Tauri: pasek tytułu, krawędzie, AppImage – 2026-10-01 (Claude, master)
+
+- Sterowanie oknem przeniesione do backendu: `WindowControls` (`backend.window`) w `src/backend.ts`; Tauri `getCurrentWindow()` w `backend-tauri.ts`, Electron przez IPC `win_*` w `electron/src/main.ts`. `TitleBar`/`ResizeEdges` nie importują `@tauri-apps`, pokazują się przy każdym backendzie z oknem (w podglądzie nadal nie).
+- Okno Electrona: `frame: false`, `transparent: true` (rogi z `.shell`), przeciąganie przez `-webkit-app-region: drag` na `.titlebar` (przyciski i uchwyty `no-drag`).
+- Krawędzie: Electron nie ma `startResizeDragging` – uchwyt łapie wskaźnik, proces główny liczy granice (`electron/src/window.ts`, `resizedBounds`, testy). Na Wayland okno nie zmienia położenia, więc uchwyty w UI tylko dół/prawo/róg dolny-prawy (`--aw-wayland` z `additionalArguments`); góra/lewo zostają ramce okna. Na X11 wszystkie 8.
+- AppImage: electron-builder (`npm run dist` w `electron/`), `StartupWMClass=agents-workspace`, ikona z `branding/`. Sprawdzone na zbudowanej AppImage: start, pty, brak zmiennych AppImage w panelu, `python3` działa, pomocnik linii statusu z `app.asar` zapisuje limity.
+- Sprawdzone przez CDP w oknie: róg −200×−100 i prawa +150 px dokładnie, maksymalizacja/przywrócenie (`is-max`, uchwyty znikają, ikona), tytuł okna. Testy 273/273, typecheck (frontend i electron) czysty.
+- Niesprawdzone (potrzebna prawdziwa mysz): przeciąganie za pasek, dwuklik na pasku (przy `app-region: drag` strona nie dostaje `dblclick` – zależy od Chromium/KWin), góra/lewo natywną ramką na Wayland, powiadomienie na pulpicie, okno wyboru folderu.
+
 ## Płynność 2: przewijanie – bez warstwy nad terminalem – 2026-10-01 (Claude, master)
 
 - Po `4d09f48` w oknie: CPU 38% (było 67–92%), ale użytkownik: „skrolowanie terminala nadal laguje”. Okno ma 1921×1363, głębia 32 (przezroczyste), monitory 5120×2160@165 Hz i 3440×1440@240 Hz.

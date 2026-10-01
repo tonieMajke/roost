@@ -70,6 +70,9 @@ html, body { background: transparent; } /* okno jest przezroczyste: rogi zaokrą
   flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--muted);
   letter-spacing: 0.04em; margin-right: 12px; /* równoważy znaczek po lewej */
 }
+/* Electron: przeciąganie okna za pasek (Tauri robi to przez data-tauri-drag-region) */
+.titlebar { -webkit-app-region: drag; }
+.titlebar-btns, .resize-edge { -webkit-app-region: no-drag; }
 .titlebar-btns { display: flex; gap: 2px; }
 .titlebar-close:hover:not(:disabled) { background: #e5484d; color: #fff; border-color: transparent; }
 /* uchwyty zmiany rozmiaru (ResizeEdges): niewidoczne, nad treścią przy samej krawędzi */

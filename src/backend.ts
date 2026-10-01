@@ -1,5 +1,6 @@
 import { mockBackend } from "./backend-mock";
 import { tauriBackend } from "./backend-tauri";
+import { electronBackend } from "./backend-electron";
 import type { AgentDef } from "./agents";
 import type { ContextKind, SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
@@ -8,6 +9,26 @@ import type { Handoff } from "./handoff";
 export type ExitInfo = { code: number; signal: string | null };
 
 export type SpawnSpec = { command: string; args?: string[]; cwd?: string; cols: number; rows: number };
+
+export const ALL_EDGES: readonly ResizeEdge[] = ["North", "South", "East", "West", "NorthWest", "NorthEast", "SouthWest", "SouthEast"];
+
+export type ResizeEdge = "North" | "South" | "East" | "West" | "NorthEast" | "NorthWest" | "SouthEast" | "SouthWest";
+
+/** Okno bez dekoracji systemowych: pasek tytułu i uchwyty krawędzi są w UI (`TitleBar.tsx`). */
+export interface WindowControls {
+  /** Tytuł okna systemu (pasek zadań, Alt+Tab). */
+  setTitle(title: string): void;
+  isMaximized(): Promise<boolean>;
+  /** `cb` po każdej zmianie rozmiaru albo maksymalizacji; zwraca wyrejestrowanie. */
+  onResized(cb: () => void): () => void;
+  minimize(): void;
+  toggleMaximize(): void;
+  close(): void;
+  /** Krawędzie z uchwytem w UI; pozostałe zostają oknu (np. Electron na Wayland nie przesuwa okna). */
+  edges: readonly ResizeEdge[];
+  /** Zmiana rozmiaru od krawędzi, zaczęta wciśnięciem przycisku na uchwycie. */
+  startResize(edge: ResizeEdge, e: PointerEvent): void;
+}
 
 export type PtyHandle = {
   id: number;
@@ -47,9 +68,13 @@ export interface Backend {
   pasteText(): Promise<string | null>;
   /** Powiadomienie na pulpicie, gdy panel bez fokusu skończył pracę. */
   notify(title: string, body: string): Promise<void>;
+  /** Własny pasek tytułu; brak = podgląd w przeglądarce, bez okna. */
+  window?: WindowControls;
 }
 
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+export const inElectron = typeof window !== "undefined" && "agentsElectron" in window;
+
 /** In the browser (`pnpm dev`) the UI runs against the mock, so it is reviewable without a window. */
-export const backend: Backend = inTauri ? tauriBackend : mockBackend;
+export const backend: Backend = inTauri ? tauriBackend : inElectron ? electronBackend : mockBackend;

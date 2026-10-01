@@ -1,0 +1,52 @@
+{
+  "name": "agents-workspace",
+  "version": "0.0.1",
+  "private": true,
+  "main": "out/main.cjs",
+  "scripts": {
+    "build:web": "../node_modules/.bin/vite build .. --base ./ --outDir electron/dist-web --emptyOutDir",
+    "build:main": "../node_modules/.bin/vite build",
+    "build": "npm run build:web && npm run build:main",
+    "typecheck": "../node_modules/.bin/tsc --noEmit",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --linux AppImage"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0"
+  },
+  "allowScripts": {
+    "node-pty@1.1.0": true
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.0",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  },
+  "productName": "Agents",
+  "description": "Agents workspace",
+  "desktopName": "agents-workspace.desktop",
+  "build": {
+    "appId": "dev.majke.agents",
+    "productName": "Agents",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**",
+      "dist-web/**",
+      "package.json"
+    ],
+    "linux": {
+      "target": "AppImage",
+      "icon": "../branding/icon.png",
+      "category": "Development",
+      "executableName": "agents-workspace",
+      "artifactName": "Agents-${version}.AppImage",
+      "desktop": {
+        "entry": {
+          "StartupWMClass": "agents-workspace"
+        }
+      }
+    }
+  }
+}

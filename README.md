@@ -14,9 +14,16 @@ aplikacji wrócić do tych samych rozmów.
 ```bash
 pnpm install
 pnpm desktop          # okno Tauri (dev)
+pnpm electron         # okno Electron (build + start; raz wcześniej: cd electron && npm install)
 ```
 
-Produktowo: `pnpm tauri build` (binarka w `src-tauri/target/release/bundle/`).
+Produktowo: `pnpm tauri build` (binarka w `src-tauri/target/release/bundle/`) albo
+`pnpm electron:dist` (`electron/release/Agents-<wersja>.AppImage`).
+
+Wersja Electron (`electron/`): ten sam frontend z `src/`, backend w Node (`electron/src/`,
+IPC przez `preload.ts` → `src/backend-electron.ts`), ta sama konfiguracja
+`~/.config/dev.majke.agents/` (`AGENTS_CONFIG_DIR` przestawia ją na inną – nie uruchamiaj
+obu wersji naraz na wspólnym `workspace.json`).
 
 Sprawdzenia: `pnpm typecheck`, `pnpm test` (vitest),
 `cargo test --manifest-path src-tauri/Cargo.toml --lib`,

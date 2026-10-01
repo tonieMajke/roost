@@ -1,11 +1,28 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
-import type { Backend, ExitInfo } from "./backend";
+import { ALL_EDGES, type Backend, type ExitInfo, type WindowControls } from "./backend";
 import type { SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
+
+const ignore = () => undefined;
+
+const tauriWindow: WindowControls = {
+  setTitle: (title) => void getCurrentWindow().setTitle(title).catch(ignore),
+  isMaximized: () => getCurrentWindow().isMaximized(),
+  onResized(cb) {
+    const off = getCurrentWindow().onResized(cb);
+    return () => void off.then((f) => f());
+  },
+  minimize: () => void getCurrentWindow().minimize(),
+  toggleMaximize: () => void getCurrentWindow().toggleMaximize(),
+  close: () => void getCurrentWindow().close(),
+  edges: ALL_EDGES,
+  startResize: (edge) => void getCurrentWindow().startResizeDragging(edge),
+};
 
 /** Start a process in a pseudo-terminal; output arrives as raw bytes. */
 export const tauriBackend: Backend = {
@@ -62,4 +79,5 @@ export const tauriBackend: Backend = {
   },
 
   notify: (title, body) => invoke<void>("notify", { title, body }),
+  window: tauriWindow,
 };

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "desktop": "tauri dev",
+    "electron": "cd electron && npm start",
+    "electron:dist": "cd electron && npm run dist",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { backend, inTauri } from "./backend";
+import { backend, inElectron, inTauri } from "./backend";
 import type { AgentDef } from "./agents";
 import { ACCENT_HEX, stepFontSize, uiClasses } from "./ui";
 import { IconButton } from "./IconButton";
@@ -702,8 +702,8 @@ export function App() {
 
   return (
     <div className={`shell${winMax ? " is-max" : ""}`}>
-    {inTauri && <TitleBar title={windowTitle} onMaximized={setWinMax} />}
-    {inTauri && !winMax && <ResizeEdges />}
+    {backend.window && <TitleBar win={backend.window} title={windowTitle} onMaximized={setWinMax} />}
+    {backend.window && !winMax && <ResizeEdges win={backend.window} />}
     <div className={`app ${uiClasses(ws.ui)}`}>
       <Rail
         ws={ws}
@@ -793,7 +793,7 @@ export function App() {
             </div>
           </>
         )}
-        {!inTauri && <div className="preview-badge">podgląd – bez prawdziwych procesów</div>}
+        {!inTauri && !inElectron && <div className="preview-badge">podgląd – bez prawdziwych procesów</div>}
       </main>
       {loaded && ws.ui.dock && ws.projects.length > 0 && (
         <Dock

@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { backend, type ExitInfo, type PtyHandle } from "./backend";
 import { commandFor } from "./keys";
+import { ResizeThrottle } from "./resize-throttle";
 import { WriteQueue, peakQueueBytes } from "./write-queue";
 
 // Ręczny pomiar w oknie (test 16 × 20 MB): w konsoli devtools `awPeakQueueMB()`.
@@ -126,9 +127,13 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13
     );
     // Ukryty panel (display:none, maximalizacja, schowana siatka) ma wymiar 0 — fit() na nim
     // nic nie robi, a ResizeObserver i tak strzeli, gdy panel wróci (stąd ten warunek).
+    // Przeciąganie krawędzi okna: fit co klatkę we wszystkich panelach dławił UI (ResizeThrottle).
+    const refit = new ResizeThrottle(() => {
+      if (el.clientWidth > 0 && !disposed) fit.fit();
+    });
     const observer = new ResizeObserver(() => {
       if (el.clientWidth === 0) return; // hidden pane
-      fit.fit();
+      refit.request();
     });
 
     (async () => {
@@ -190,6 +195,7 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13
       disposed = true;
       queue.dispose();
       observer.disconnect();
+      refit.dispose();
       pty?.kill();
       x.dispose();
       term.current = undefined;
