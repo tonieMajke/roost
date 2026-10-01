@@ -89,5 +89,5 @@ export class CodexParser implements LineParser {
 }
 
 export function streamCodex(req: ChatRequest, cwd: string, signal: AbortSignal, emit: (e: ChatEvent) => void): Promise<void> {
-  return runCli(req.provider.command || "codex", codexArgs(req), req.prompt, cwd, new CodexParser(), signal, emit);
+  return runCli(req.provider.command || "codex", codexArgs(req), req.prompt, req.folder ?? cwd, new CodexParser(), signal, emit);
 }

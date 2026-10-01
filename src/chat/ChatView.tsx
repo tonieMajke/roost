@@ -8,6 +8,7 @@ import {
   chatTitle,
   cliPrompt,
   DEFAULT_SYSTEM,
+  FOLDER_SYSTEM,
   displayTitle,
   findModel,
   firstModel,
@@ -39,6 +40,7 @@ import "./chat.css";
 
 const MODEL_KEY = "aw-chat-model";
 const SEARCH_KEY = "aw-chat-search";
+const FOLDER_KEY = "aw-chat-folder";
 
 function stored<T>(key: string): T | null {
   try {
@@ -74,6 +76,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
   const [list, setList] = useState<ChatMeta[]>([]);
   const [chat, setChat] = useState<Chat | null>(null);
   const [model, setModel] = useState<ModelRef | null>(() => stored<ModelRef>(MODEL_KEY));
+  const [folder, setFolder] = useState<string | undefined>(() => stored<string>(FOLDER_KEY) ?? undefined);
   const [search, setSearch] = useState(() => stored<boolean>(SEARCH_KEY) ?? false);
   const [live, setLive] = useState<Live | null>(null);
   const [inject, setInject] = useState<{ text: string; seq: number } | null>(null);
@@ -137,6 +140,23 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
     store(MODEL_KEY, m);
     if (chat && !live) setChat({ ...chat, model: m });
   };
+  /** Folder dotyczy bieżącej rozmowy (albo następnej nowej). Sesje CLI są przywiązane do katalogu,
+   *  więc zmiana folderu zaczyna je od nowa (historia idzie jako tło). */
+  const applyFolder = (next: string | undefined) => {
+    setFolder(next);
+    store(FOLDER_KEY, next ?? null);
+    if (chat && !live) {
+      const c = { ...chat, folder: next, cli: {} };
+      setChat(c);
+      if (c.messages.length) save(c);
+    }
+  };
+  const pickFolder = () => {
+    void backend
+      .pickDir()
+      .then((p) => p && applyFolder(p))
+      .catch((e: unknown) => setErrors((prev) => [...prev, t("chat.folder.pickFailed", { error: String(e) })]));
+  };
   const pickSearch = (on: boolean) => {
     setSearch(on);
     store(SEARCH_KEY, on);
@@ -152,8 +172,9 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
     const key = modelKey(ref);
     const session = base.cli[key];
     const withSearch = search && supportsSearch(provider);
+    const dir = isCli(provider) ? base.folder : undefined;
     const reply: Message = { id: crypto.randomUUID(), role: "assistant", text: "", at: Date.now(), model: ref };
-    let current: Chat = { ...base, model: ref, search: withSearch, updated: Date.now(), messages: [...base.messages, reply] };
+    let current: Chat = { ...base, model: ref, search: withSearch, folder: base.folder, updated: Date.now(), messages: [...base.messages, reply] };
     // claude dostaje własne id nowej sesji; codex podaje swoje w zdarzeniu `session`.
     const newSession = provider.kind === "claude-cli" ? crypto.randomUUID() : undefined;
     if (newSession && !session) current = { ...current, cli: { ...current.cli, [key]: newSession } };
@@ -176,7 +197,8 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
       {
         provider,
         model: ref.model,
-        system: DEFAULT_SYSTEM + (withSearch ? SEARCH_SYSTEM : ""),
+        system: DEFAULT_SYSTEM + (withSearch ? SEARCH_SYSTEM : "") + (dir ? FOLDER_SYSTEM : ""),
+        folder: dir,
         messages: wireHistory(base.messages),
         // Dostawcy HTTP biorą `messages`; `prompt` z historią czyta CLI i pi (wyszukiwanie).
         prompt: cliPrompt(prior, isCli(provider) && session !== undefined, question.text),
@@ -223,7 +245,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
   const send = (text: string) => {
     if (!model || live) return;
     const now = Date.now();
-    const base = chat ?? newChat(crypto.randomUUID(), now, model, search);
+    const base = chat ?? { ...newChat(crypto.randomUUID(), now, model, search), folder };
     const q: Message = { id: crypto.randomUUID(), role: "user", text, at: now };
     respond({ ...base, title: base.title || chatTitle(text), messages: [...base.messages, q] }, model);
   };
@@ -263,6 +285,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
     setChat(c);
     stick.current = true;
     if (findModel(providers, c.model)) setModel(c.model);
+    setFolder(c.folder);
   };
 
   const newConversation = () => {
@@ -312,6 +335,9 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
       inject={inject}
       big={empty}
       onProviders={() => setProvidersOpen(true)}
+      folder={chat ? chat.folder : folder}
+      onFolder={pickFolder}
+      onClearFolder={() => applyFolder(undefined)}
     />
   );
 

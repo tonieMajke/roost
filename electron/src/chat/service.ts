@@ -55,6 +55,9 @@ export class ChatService {
     const viaPi = req.search && (req.provider.kind === "openai" || req.provider.kind === "anthropic");
     const adapter = viaPi ? this.adapters.pi : this.adapters[req.provider.kind];
     if (!adapter) return emit({ type: "error", message: t("chat.noProvider", { kind: req.provider.kind }) });
+    // Brakujący folder zgłaszamy, zamiast po cichu go tworzyć (`runCli` robi `mkdir -p` katalogu roboczego).
+    if (req.folder && !fs.statSync(req.folder, { throwIfNoEntry: false })?.isDirectory())
+      return emit({ type: "error", message: t("chat.folderMissing", { folder: req.folder }) });
     const ctl = new AbortController();
     this.running.get(reqId)?.abort();
     this.running.set(reqId, ctl);

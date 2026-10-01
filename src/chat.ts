@@ -49,6 +49,8 @@ export type Chat = {
   updated: number;
   model: ModelRef;
   search: boolean;
+  /** Opcjonalny folder, który agent CLI może czytać (tylko odczyt). */
+  folder?: string;
   messages: Message[];
   /** Sesje programów CLI: `modelKey` → id sesji (claude `--resume`, codex `resume`). */
   cli: Record<string, string>;
@@ -80,6 +82,8 @@ export type ChatRequest = {
   /** Sesja CLI: `resume` = istniejąca, inaczej nowa o tym id (claude) albo nowa bez id (codex). */
   session?: { id: string; resume: boolean };
   search: boolean;
+  /** Folder roboczy dla claude/codex: katalog CLI i dostęp do odczytu plików w nim. */
+  folder?: string;
   /** Pętla bota: rozmowa z wywołaniami zamiast `messages` i narzędzia dla modelu. */
   turns?: Turn[];
   tools?: ToolSpec[];
@@ -141,6 +145,10 @@ export const DEFAULT_PROVIDERS: ProviderDef[] = [
 export const DEFAULT_SYSTEM =
   "Jesteś pomocnym asystentem w zwykłej rozmowie. Odpowiadaj w języku pytania, zwięźle i konkretnie. " +
   "Formatuj w markdownie, kod w blokach z nazwą języka.";
+
+export const FOLDER_SYSTEM =
+  " Masz podgląd (tylko do odczytu) folderu użytkownika, który jest Twoim katalogiem roboczym: " +
+  "przeszukuj i czytaj pliki, gdy pytanie ich dotyczy, i podawaj ścieżki względne. Niczego nie zmieniasz.";
 
 export const SEARCH_SYSTEM =
   " Masz wyszukiwanie w sieci: używaj go do faktów, które mogą być nieaktualne. Oznaczaj fakty przypisami [1], [2]. " +
