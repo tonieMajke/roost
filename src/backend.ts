@@ -54,7 +54,7 @@ export interface Backend {
   /** Rozmiar kontekstu z pliku sesji agenta (tylko odczyt); `null` = brak pliku albo danych. */
   sessionContext(kind: ContextKind, sessionId: string, dir?: string): Promise<SessionContext | null>;
   /** Wyciąg rozmowy do przekazania innemu panelowi (M4); `null` = brak pliku albo pusta rozmowa. */
-  sessionHandoff(kind: ContextKind, sessionId: string): Promise<Handoff | null>;
+  sessionHandoff(kind: ContextKind, sessionId: string, dir?: string): Promise<Handoff | null>;
   /** Streszczenie `input` przez jednorazowe `claude -p --model haiku` (`command` = program claude); odrzuca z powodem. */
   claudeSummary(command: string, system: string, input: string): Promise<string>;
   /** Jak `claudeSummary`, ale streszcza lokalny model przez program pi. */

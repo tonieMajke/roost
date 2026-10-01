@@ -68,3 +68,20 @@ export function limitBlocks(
     return meters.length > 0 ? [{ id: s.id, name: s.name, limits, meters }] : [];
   });
 }
+
+/**
+ * Okno, które właśnie zablokowało konto: użyte w 100 % i jeszcze przed resetem. Przy kilku wygrywa to,
+ * które skończy się najpóźniej (to ono mówi, kiedy da się wrócić). Tekst do paska w panelu.
+ */
+export function limitHit(limits: ClaudeLimits | undefined, now: number): { text: string; resetsAt: number } | null {
+  if (!limits) return null;
+  const rows: [string, LimitWindow | null][] = [
+    ["sesji (5 h)", limits.fiveHour],
+    ["tygodnia", limits.sevenDay],
+  ];
+  let hit: { label: string; w: LimitWindow } | null = null;
+  for (const [label, w] of rows) {
+    if (w && w.pct >= 100 && w.resetsAt * 1000 > now && (!hit || w.resetsAt > hit.w.resetsAt)) hit = { label, w };
+  }
+  return hit && { text: `Limit ${hit.label} wyczerpany · ${resetText(hit.w.resetsAt, now)}`, resetsAt: hit.w.resetsAt };
+}

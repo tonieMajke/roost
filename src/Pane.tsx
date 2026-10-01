@@ -10,7 +10,7 @@ import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
 import { Terminal, type TermLook, type TerminalHandle } from "./Terminal";
 import { IconButton } from "./IconButton";
-import { Maximize2, MessageSquarePlus, Minimize2, RotateCw, X } from "lucide-react";
+import { ArrowRightLeft, Maximize2, MessageSquarePlus, Minimize2, RotateCw, X } from "lucide-react";
 
 type Props = {
   pane: PaneModel;
@@ -20,6 +20,10 @@ type Props = {
   account?: AccountDef;
   /** Plakietka z nazwą konta w nagłówku (gdy użytkownik ma więcej niż jedno). */
   showAccount?: boolean;
+  /** Konto panelu wyczerpało okno limitu (pasek z propozycją kontynuacji); `null` = nic. */
+  limitHit?: { text: string; resetsAt: number } | null;
+  /** Można przenieść rozmowę: panel ma sesję i czytnik wyciągu. */
+  canContinue?: boolean;
   /** Kolory i font xtermu (motyw + akcent). */
   look: TermLook;
   /** Rozmiar czcionki terminala (px). */
@@ -55,10 +59,12 @@ const claudeSettingsArg = (account?: AccountDef) => {
 export const PANE_OUT_MS = 190;
 
 /** Frame around one terminal: header with agent, state and controls. */
-export function Pane({ pane, path, agent, account, showAccount, look, fontSize, focused, maximized, state, meter, title, closing, armed, actions }: Props) {
+export function Pane({ pane, path, agent, account, showAccount, limitHit, canContinue, look, fontSize, focused, maximized, state, meter, title, closing, armed, actions }: Props) {
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armedClick, setArmedClick] = useState(false);
+  // Odrzucony pasek limitu wraca dopiero przy nowym czasie resetu (nowe okno).
+  const [dismissedReset, setDismissedReset] = useState(0);
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
   // Stable ref callback: App keeps the terminal handle of this pane for Ctrl+Shift+C/V.
@@ -147,6 +153,9 @@ export function Pane({ pane, path, agent, account, showAccount, look, fontSize, 
           </span>
         )}
         <span className="tools">
+          {canContinue && (
+            <IconButton icon={ArrowRightLeft} label="Kontynuuj gdzie indziej" onClick={() => actions.continueFrom(pane.id)} />
+          )}
           {agent?.session && (
             <IconButton icon={MessageSquarePlus} label="Nowa rozmowa" onClick={() => actions.newConversation(pane.id)} />
           )}
@@ -190,6 +199,18 @@ export function Pane({ pane, path, agent, account, showAccount, look, fontSize, 
           />
         )}
       </div>
+      {canContinue && limitHit && limitHit.resetsAt !== dismissedReset && (
+        <div className="pane-exit pane-limit">
+          {limitHit.text} ·{" "}
+          <button type="button" className="link" onClick={() => actions.continueFrom(pane.id)}>
+            Kontynuuj gdzie indziej
+          </button>{" "}
+          ·{" "}
+          <button type="button" className="link" onClick={() => setDismissedReset(limitHit.resetsAt)}>
+            Poczekam
+          </button>
+        </div>
+      )}
       {state.exited && (
         <div className="pane-exit">
           Proces zakończony ({exitText(state.exited)}) ·{" "}

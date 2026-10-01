@@ -13,6 +13,8 @@ export type PaneActions = {
   handoff(from: string, to: string): void;
   /** Terminal panelu przyjmie wklejenie blokiem (bracketed paste) – warunek celu dla `handoff`. */
   acceptsPaste(paneId: string): boolean;
+  /** Otwiera okno „Kontynuuj gdzie indziej”: nowy panel na innym koncie / u innego agenta ze streszczeniem. */
+  continueFrom(paneId: string): void;
   newConversation(paneId: string): void; // nowa rozmowa: nowe sessionId + run + 1 (tylko agenci z `session`)
   close(paneId: string): void;
   exit(paneId: string, info: ExitInfo): void;

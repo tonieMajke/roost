@@ -50,7 +50,7 @@ więc funkcja jest opcjonalna: bez dodanych kont aplikacja zachowuje się jak do
   odłożone (panel + domyślne wystarczają). „Zaloguj” w oknie Kont = nowy panel agenta na tym koncie.
 - [x] **Etap 4 – limity per konto.** `--settings` z plikiem limitów konta, `claude_limits(accountId)`,
   dok i `limits.ts` z kontem.
-- [ ] **Etap 5 – Kontynuuj.** Pasek przy limicie + pozycja w menu panelu; nowy panel z kontem/agentem
+- [x] **Etap 5 – Kontynuuj.** Pasek przy limicie + pozycja w menu panelu; nowy panel z kontem/agentem
   docelowym i streszczeniem. Dopasować `sessionHandoff` do katalogu konta.
 - [ ] **Etap 6 – README i sprawdzenie na żywo.** Opis kont w README (po angielsku dla GitHuba),
   próba z drugim kontem Claude i `CODEX_HOME`, lista do odhaczenia w `HANDOFF.md`.

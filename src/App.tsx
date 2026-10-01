@@ -23,6 +23,8 @@ import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { AccountsDialog } from "./AccountsDialog";
+import { ContinueDialog } from "./ContinueDialog";
+import { continueTargets, type ContinueTarget } from "./continue";
 import { NO_ACCOUNTS, accountById, accountKind, pickAccountId, type Accounts } from "./accounts";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
@@ -51,11 +53,15 @@ import { CONFIRM_MS, confirmClick, type Arm } from "./confirm";
 import type { TerminalHandle } from "./Terminal";
 import type { PaneActions, ProjectActions } from "./handlers";
 
+/** Ile czekamy, aż agent w nowym panelu włączy wklejanie blokiem, zanim wyślemy streszczenie. */
+const CONTINUE_WAIT_MS = 20_000;
+
 export function App() {
   const [ws, dispatch] = useReducer(reduce, emptyWorkspace);
   const [agents, setAgents] = useState<AgentDef[]>([]);
   const [accounts, setAccounts] = useState<Accounts>(NO_ACCOUNTS);
   const [accountsDialog, setAccountsDialog] = useState(false);
+  const [continuePane, setContinuePane] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   // Ephemeral only: never written to disk (exit + aktywność z src/activity.ts).
   const [ephemeral, setEphemeral] = useState<Record<string, PaneState>>({});
@@ -226,6 +232,7 @@ export function App() {
     toggleMaximize: (paneId) => dispatch({ type: "toggleMaximize", id: paneId }),
     swap: (a, b) => dispatch({ type: "swap", a, b }),
     handoff: (from, to) => void sendContext(from, to),
+    continueFrom: (paneId) => setContinuePane(paneId),
     acceptsPaste: (paneId) => terms.current.get(paneId)?.bracketedPaste() ?? false,
     newConversation: (paneId) =>
       dispatch({ type: "newConversation", id: paneId, sessionId: crypto.randomUUID() }),
@@ -425,7 +432,7 @@ export function App() {
     let text: string;
     let failed: string | null = null;
     try {
-      const h = await backend.sessionHandoff(kind, pane.sessionId).catch(() => null);
+      const h = await backend.sessionHandoff(kind, pane.sessionId, accountById(accounts, pane.account)?.dir).catch(() => null);
       if (!h) {
         setNotice(`Nie udało się odczytać rozmowy „${src.agent}”`);
         return;
@@ -464,6 +471,32 @@ export function App() {
         : `Streszczenie nie wyszło (${failed}) – wklejono skrócony wyciąg z „${src.agent}”`,
     );
     addFeed(from, [`przekazał kontekst → ${dst.agent}`]);
+  };
+
+  // Ref, bo `continueTo` czeka na nowy panel: domknięcie sprzed renderu nie widzi jeszcze jego ani `ws`.
+  const sendContextRef = useRef(sendContext);
+  sendContextRef.current = sendContext;
+
+  // „Kontynuuj gdzie indziej”: nowy panel (inne konto / inny agent) i streszczenie rozmowy `from` w jego prompcie.
+  const continueTo = async (from: string, target: ContinueTarget) => {
+    const agent = agents.find((a) => a.id === target.agentId);
+    if (!agent || paneCount >= MAX_PANES) return;
+    setContinuePane(null);
+    setLastAgentId(agent.id);
+    const pane: Pane = { id: crypto.randomUUID(), agentId: agent.id, run: 1 };
+    if (agent.session) pane.sessionId = crypto.randomUUID();
+    if (target.account) pane.account = target.account;
+    dispatch({ type: "add", pane });
+    setNotice(`Uruchamiam ${target.label}…`);
+    // Agent musi wstać i włączyć wklejanie blokiem (bracketed paste); inaczej wyciąg poszedłby jako Enter-y.
+    for (let waited = 0; waited < CONTINUE_WAIT_MS; waited += 250) {
+      await new Promise((r) => setTimeout(r, 250));
+      if (terms.current.get(pane.id)?.bracketedPaste() && paneInfoRef.current.has(pane.id)) {
+        await sendContextRef.current(from, pane.id);
+        return;
+      }
+    }
+    setNotice(`„${target.label}” nie wystartował na czas – przeciągnij rozmowę z Shiftem, żeby wkleić kontekst`);
   };
 
   const activeRef = useRef(ws.active);
@@ -531,7 +564,7 @@ export function App() {
     return () => clearInterval(timer);
   }, [allContextKey]);
 
-  // Limity czytane tylko przy otwartym pulpicie: od razu, co LIMITS_POLL_MS i na przycisk.
+  // Limity czytane po starcie: od razu, co LIMITS_POLL_MS i na przycisk.
   const limitSources = [
     { id: "", name: accounts.accounts.some((x) => x.kind === "claude") ? "Domyślne konto" : "Claude" },
     ...accounts.accounts.filter((x) => x.kind === "claude").map((x) => ({ id: x.id, name: x.name })),
@@ -547,13 +580,14 @@ export function App() {
         .catch(() => undefined); // brak pliku = zostaje ostatni odczyt
     }
   };
-  const dockOpen = loaded && ws.ui.dock;
+  // Czytamy też bez pulpitu (jeden mały plik na konto): pasek „limit wyczerpany” w panelu musi wiedzieć o limicie.
+  const watchLimits = loaded;
   useEffect(() => {
-    if (!dockOpen) return;
+    if (!watchLimits) return;
     readLimits();
     const timer = setInterval(readLimits, LIMITS_POLL_MS);
     return () => clearInterval(timer);
-  }, [dockOpen, accounts]);
+  }, [watchLimits, accounts]);
 
   // `ping` kropeczki projektu (wzór D): praca skończyła się w siatce, której teraz nie widać.
   const [pingId, setPingId] = useState<string | null>(null);
@@ -852,6 +886,7 @@ export function App() {
                 activeId={ws.active}
                 agents={agents}
                 accounts={accounts}
+                limits={limits}
                 look={termLook}
                 fontSize={ws.ui.fontSize}
                 motion={ws.ui.motion}
@@ -904,6 +939,20 @@ export function App() {
           onClose={() => setAppearance(false)}
         />
       )}
+      {continuePane !== null && (() => {
+        const src = ws.projects.flatMap((p) => p.panes).find((p) => p.id === continuePane);
+        const info = paneInfo.get(continuePane);
+        if (!src || !info) return null;
+        return (
+          <ContinueDialog
+            source={`${info.agent} · ${info.project}`}
+            targets={continueTargets(src, agents, accounts)}
+            canAdd={paneCount < MAX_PANES}
+            onPick={(t) => void continueTo(continuePane, t)}
+            onClose={() => setContinuePane(null)}
+          />
+        );
+      })()}
       {accountsDialog && (
         <AccountsDialog
           value={accounts}

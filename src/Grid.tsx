@@ -5,6 +5,7 @@ import { BUILT_IN_PRESETS } from "./presets";
 import type { AgentDef } from "./agents";
 import { accountById, type Accounts } from "./accounts";
 import type { PaneState } from "./activity";
+import { limitHit, type ClaudeLimits } from "./limits";
 import { contextKind, paneMeter, type SessionContext } from "./context";
 import type { PaneActions, ProjectActions } from "./handlers";
 import { Pane } from "./Pane";
@@ -28,6 +29,8 @@ type Props = {
   activeId: string | null;
   agents: AgentDef[];
   accounts: Accounts;
+  /** Limity Claude według id konta (`""` = domyślne): pasek „limit wyczerpany” w panelu. */
+  limits: Record<string, ClaudeLimits>;
   /** Kolory i font xtermu (motyw + akcent) — zmiana bez restartu procesu. */
   look: TermLook;
   /** Rozmiar czcionki terminali (px, `ui.fontSize`). */
@@ -75,6 +78,7 @@ export function Grid({
   activeId,
   agents,
   accounts,
+  limits,
   look,
   fontSize,
   motion,
@@ -238,6 +242,8 @@ export function Grid({
                       agent={agentById(agents, pane.agentId)}
                       account={accountById(accounts, pane.account)}
                       showAccount={accounts.accounts.length > 0}
+                      limitHit={agentById(agents, pane.agentId)?.command.split("/").pop() === "claude" ? limitHit(limits[pane.account ?? ""], Date.now()) : null}
+                      canContinue={Boolean(pane.sessionId) && contextKind(agentById(agents, pane.agentId)) !== null}
                       look={look}
                       fontSize={fontSize}
                       focused={isActive && pane.id === project.focused}

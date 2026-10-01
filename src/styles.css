@@ -717,3 +717,4 @@ button.feed-item {
 .meter-block { display: flex; flex-direction: column; gap: 8px; }
 .meter-block + .meter-block { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
 .meter-account { font-size: 11px; font-weight: 600; color: var(--muted); }
+.pane-limit { color: var(--text); border-top-color: var(--accent); }
