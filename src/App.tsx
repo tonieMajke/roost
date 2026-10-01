@@ -5,7 +5,7 @@ import { accentHex, nextMode, stepFontSize, uiClasses } from "./ui";
 import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";
 import type { TermLook } from "./Terminal";
 import { IconButton } from "./IconButton";
-import { FolderPlus, Gauge, LayoutGrid, Plus, UserRound, X } from "lucide-react";
+import { FolderPlus, FolderTree, Gauge, LayoutGrid, Plus, UserRound, X } from "lucide-react";
 import { tildify } from "./paths";
 import {
   MAX_PANES,
@@ -35,6 +35,7 @@ import { activeStt, DEFAULT_STT, type SttConfig } from "./stt";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
 import { ChatView } from "./chat/ChatView";
+import { GitPanel } from "./GitPanel";
 import { BotView } from "./bot/BotView";
 import type { Mode } from "./chat/ModeTabs";
 import { CONTEXT_POLL_MS, cleanTermTitle, contextKind, contextTargets, paneMeter, paneTitles, sessionTitles, type SessionContext } from "./context";
@@ -73,6 +74,7 @@ export function App() {
   const [agents, setAgents] = useState<AgentDef[]>([]);
   const [accounts, setAccounts] = useState<Accounts>(NO_ACCOUNTS);
   const [accountsDialog, setAccountsDialog] = useState(false);
+  const [gitOpen, setGitOpen] = useState(false);
   const [continuePane, setContinuePane] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   // Ephemeral only: never written to disk (exit + aktywność z src/activity.ts).
@@ -1126,6 +1128,15 @@ export function App() {
               >
                 <Gauge strokeWidth={1.75} aria-hidden /> Pulpit
               </button>
+              <button
+                type="button"
+                className={`btn${gitOpen ? " is-on" : ""}`}
+                title="Pliki i git projektu"
+                aria-pressed={gitOpen}
+                onClick={() => setGitOpen((v) => !v)}
+              >
+                <FolderTree strokeWidth={1.75} aria-hidden /> Pliki
+              </button>
               <button type="button" className="btn" title="Konta agentów" onClick={() => setAccountsDialog(true)}>
                 <UserRound strokeWidth={1.75} aria-hidden /> Konta
               </button>
@@ -1164,6 +1175,7 @@ export function App() {
                 paneActions={paneActions}
                 projectActions={projectActions}
               />
+              {gitOpen && active && <GitPanel key={active.id} path={active.path} onClose={() => setGitOpen(false)} onNotice={setNotice} />}
             </div>
           </>
         )}

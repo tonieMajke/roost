@@ -4,6 +4,7 @@ import type { Backend, BotApprovalChange, BotSkillMeta, BotSkillSource, ExitInfo
 import type { SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
+import type { GitStatus } from "./git";
 import { buildChatConfig, parseChat, type ChatEvent, type ChatMeta, type ChatRequest } from "./chat";
 import { parseSttConfig, sttConfigJson, sttKeyId } from "./stt";
 import { parseTtsConfig, parseVoiceConfig, ttsConfigJson, ttsKeyId, voiceConfigJson } from "./voice/voice";
@@ -116,6 +117,14 @@ export const electronBackend: Backend = {
   piSummary: (command, system, input) => call<string>("pi_summary", command, system, input),
   claudeSettingsArg: (account) => call<string | null>("claude_settings_arg", account),
   claudeLimits: (accountId) => call<ClaudeLimits | null>("claude_limits", accountId),
+  gitStatus: (cwd) => call<GitStatus | null>("git_status", cwd),
+  gitFiles: (cwd) => call<string[]>("git_files", cwd),
+  gitDiff: (cwd, path, mode) => call<string>("git_diff", cwd, path, mode),
+  gitStage: (cwd, paths) => call<void>("git_stage", cwd, paths),
+  gitUnstage: (cwd, paths) => call<void>("git_unstage", cwd, paths),
+  gitDiscard: (cwd, tracked, untracked) => call<void>("git_discard", cwd, tracked, untracked),
+  gitCommit: (cwd, message) => call<string>("git_commit", cwd, message),
+  gitSync: (cwd, op) => call<string>("git_sync", cwd, op),
   dirExists: (path) => call<boolean>("dir_exists", path),
   pickDir: () => call<string | null>("pick_dir"),
   pickImage: () => call<string | null>("pick_image"),

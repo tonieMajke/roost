@@ -5,6 +5,7 @@ import { parseSttConfig, sttConfigJson, sttKeyId } from "./stt";
 import { parseTtsConfig, parseVoiceConfig, ttsConfigJson, ttsKeyId, voiceConfigJson } from "./voice/voice";
 import { encodeWav } from "./voice/vad";
 import { mockBotBackend } from "./bot-mock";
+import { mockGitBackend } from "./git-mock";
 import { buildChatConfig, chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, type Chat, type ChatEvent, type ChatMeta } from "./chat";
 
 const PROMPT = "$ ";
@@ -104,6 +105,7 @@ function benchSpinner(onData: (b: Uint8Array) => void): ReturnType<typeof setInt
  */
 export const mockBackend: Backend = {
   ...mockBotBackend,
+  ...mockGitBackend,
   async spawnPty(spec: SpawnSpec, onData: (b: Uint8Array) => void, onExit: (i: ExitInfo) => void): Promise<PtyHandle> {
     const id = nextId++;
     let line = "";
