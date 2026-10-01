@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { backend } from "../backend";
-import { findModel, firstModel } from "../chat";
 import { activeStt, cleanTranscript } from "../stt";
 import { Mic, micError, Player } from "./audio";
 import { VoiceSession } from "./session";
+import type { VoiceTab } from "./TalkSettings";
 import { encodeWav, Utterances, VAD_DEFAULT, VAD_PLAYING } from "./vad";
-import { activeTts, VOICE_IDLE, voicePrompt, voiceRequest, type VoiceState } from "./voice";
+import { activeTts, resolveBrain, VOICE_IDLE, voicePrompt, voiceRequest, type VoiceState } from "./voice";
 
 export type VoiceSetup =
   | { status: "loading" }
-  | { status: "error"; message: string; /** brak ustawień: przycisk otwiera okno głosu */ settings: boolean }
+  | { status: "error"; message: string; /** brak ustawień: przycisk otwiera tę zakładkę okna głosu */ settings: VoiceTab | null }
   | { status: "ready"; brain: string; tts: string | null };
 
 /** Bieżąca głośność: mikrofonu i tego, co gra. Ref, nie stan: zmienia się co ramkę. */
@@ -32,7 +32,7 @@ export function useVoiceSession() {
     let raf = 0;
     const cleanup: (() => void)[] = [];
     void (async () => {
-      const fail = (message: string, settings = false) => !closed && setSetup({ status: "error", message, settings });
+      const fail = (message: string, settings: VoiceTab | null = null) => !closed && setSetup({ status: "error", message, settings });
       let stt, voice, tts, chat;
       try {
         [stt, voice, tts, chat] = await Promise.all([backend.sttConfig(), backend.voiceConfig(), backend.ttsConfig(), backend.chatConfig()]);
@@ -40,10 +40,12 @@ export function useVoiceSession() {
         return fail(`ustawienia: ${e instanceof Error ? e.message : String(e)}`);
       }
       if (closed) return;
-      if (!activeStt(stt.config)) return fail("Wybierz silnik transkrypcji (Dyktowanie).", true);
-      const ref = voice.config.brain ?? firstModel(chat.providers);
-      const found = ref && findModel(chat.providers, ref);
-      if (!found) return fail(ref ? `Nie ma modelu ${ref.provider}/${ref.model} w Czacie.` : "Brak modeli w Czacie.", true);
+      if (!activeStt(stt.config)) return fail("Wybierz silnik transkrypcji (Dyktowanie).", "dictation");
+      const found = resolveBrain(chat.providers, voice.config.brain);
+      if (!found) {
+        const ref = voice.config.brain;
+        return fail(ref ? `Nie ma modelu ${ref.provider}/${ref.model} w Czacie.` : "Brak modeli w Czacie.", "talk");
+      }
       const ttsP = activeTts(tts.config, voice.config);
       const headphones = voice.config.headphones;
 

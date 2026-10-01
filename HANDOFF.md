@@ -2,6 +2,15 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Głos Etap 4: ustawienia rozmowy – 2026-10-01 (Claude, gałąź `glos`)
+
+- Okno „Głos” (`VoiceDialog.tsx`) ma zakładki **Dyktowanie | Rozmowa**; treść dyktowania bez zmian (dopisek: mikrofon i język obowiązują też w rozmowie). Rail → mikrofon i mikrofon panelu otwierają „Dyktowanie”, zębatka kuleczki „Rozmowę”, błąd kuleczki otwiera zakładkę, której brakuje.
+- `src/voice/TalkSettings.tsx`: mózg (modele z Czatu z wykrytymi `discover`, grupa CLI z dopiskiem „bez narzędzi, wolniejszy start”, domyślnie pierwszy model), silniki mowy (szablony OpenAI / Lokalny serwer / Piper; `speech`: adres, model, klucz; `piper`: program, plik `.onnx`), głos/mówca, „Posłuchaj” (synteza przez `voiceSpeak` + czas), „Mam słuchawki”. Zapis od razu do `voice.json`/`tts.json`.
+- `resolveBrain` (`voice.ts`): model wykryty przez `GET /models` działa także jako mózg, choć nie ma go w `chat.json`.
+- Kuleczka ma `z-index: 19` (pod `.overlay`): okno ustawień ją przykrywa.
+- Sprawdzone w ukrytym oknie Electrona na mocku: zakładka „Rozmowa”, Posłuchaj (ton z mocka, czas syntezy). Sprawdzenia: typecheck, `pnpm test` (571 + 1 pominięty), electron typecheck + build – przechodzą.
+- Niesprawdzone: „Posłuchaj” z prawdziwym Piperem/API, klucz TTS w sejfie na żywo.
+
 ## Głos Etap 3: kuleczka i rozmowa na żywo – 2026-10-01 (Claude, gałąź `glos`)
 
 - Zmiana planu: VAD własny po energii (`src/voice/vad.ts`) zamiast `@ricky0123/vad-web` (ładuje `.onnx`/`.wasm` przez `fetch`, a strona stoi na `file://`). Próg = szum tła × 3, 300 ms kalibracji, start po 60 ms mowy, koniec po 600 ms ciszy, < 240 ms = szum; w trakcie odtwarzania (bez słuchawek) próg × 6 i start po 160 ms. Preroll 300 ms, wypowiedź → WAV 16 kHz → istniejące `sttTranscribe(…, "audio/wav")`.

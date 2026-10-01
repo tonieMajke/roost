@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  activeTts, DEFAULT_TTS, exchangeTimes, fmtMs, DEFAULT_VOICE, INTERRUPTED, MAX_SENTENCE, parseTtsConfig, parseVoiceConfig, speakable, splitSentences,
+  activeTts, resolveBrain, DEFAULT_TTS, exchangeTimes, fmtMs, DEFAULT_VOICE, INTERRUPTED, MAX_SENTENCE, parseTtsConfig, parseVoiceConfig, speakable, splitSentences,
   TTS_PRESETS, VOICE_IDLE, voiceCliPrompt, voicePrompt, voiceReducer, voiceTurns, type VoiceEvent, type VoiceExchange, type VoiceState,
 } from "./voice";
 
@@ -255,5 +255,19 @@ describe("exchangeTimes", () => {
     expect(exchangeTimes(ex("a", "b", { t: { heard: 1000, text: 1400, first: 2100, audio: 2350.6 } }))).toEqual({ stt: 400, model: 700, voice: 251, total: 1351 });
     expect(exchangeTimes(ex("a", "b", { t: { heard: 1000, text: 1400 } }))).toEqual({ stt: 400, model: undefined, voice: undefined, total: undefined });
     expect([fmtMs(350), fmtMs(1351)]).toEqual(["350 ms", "1,4 s"]);
+  });
+});
+
+describe("resolveBrain", () => {
+  const providers = [
+    { id: "cl", name: "Claude", kind: "claude-cli" as const, group: "sub" as const, models: [{ id: "opus", name: "Opus" }] },
+    { id: "loc", name: "Lokalny", kind: "openai" as const, group: "local" as const, baseUrl: "http://x", discover: true, models: [] },
+  ];
+  it("wybrany, pierwszy z listy, wykryty i nieznany", () => {
+    expect(resolveBrain(providers, { provider: "cl", model: "opus" })?.model.name).toBe("Opus");
+    expect(resolveBrain(providers, null)?.provider.id).toBe("cl");
+    expect(resolveBrain(providers, { provider: "loc", model: "qwen" })).toMatchObject({ provider: { id: "loc" }, model: { id: "qwen", name: "qwen" } });
+    expect(resolveBrain(providers, { provider: "cl", model: "brak" })).toBeNull();
+    expect(resolveBrain([], null)).toBeNull();
   });
 });

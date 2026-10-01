@@ -110,7 +110,7 @@ Bez nowych zależności (VAD własny, patrz „Decyzje”).
 - [x] Etap 1 (L) – logika rozmowy bez UI
 - [x] Etap 2 (C) – silniki TTS w procesie głównym
 - [x] Etap 3 (C) – kuleczka: rozmowa na żywo bez narzędzi
-- [ ] Etap 4 (C) – ustawienia rozmowy
+- [x] Etap 4 (C) – ustawienia rozmowy
 - [ ] Etap 5 (C) – narzędzia: panele i „deploy”
 - [ ] Etap 6 (C + użytkownik) – próba w oknie i decyzja: zostaje albo wycinamy
 

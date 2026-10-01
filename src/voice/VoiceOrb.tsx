@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageSquareText, Mic, MicOff, PhoneOff, Settings } from "lucide-react";
 import { IconButton } from "../IconButton";
+import type { VoiceTab } from "./TalkSettings";
 import { useVoiceSession } from "./useVoiceSession";
 import { exchangeTimes, fmtMs, INTERRUPTED, type VoiceExchange, type VoiceState } from "./voice";
 import "./voice.css";
 
 type Props = {
   onClose(): void;
-  /** Okno głosu (silnik transkrypcji, a od etapu 4 mózg i mowa). */
-  onOpenSettings(): void;
+  /** Okno głosu na zakładce: rozmowa (mózg, mowa) albo dyktowanie (silnik transkrypcji, mikrofon). */
+  onOpenSettings(tab: VoiceTab): void;
 };
 
 function statusText(s: VoiceState, muted: boolean): string {
@@ -80,7 +81,7 @@ export function VoiceOrb({ onClose, onOpenSettings }: Props) {
             <>
               <span className="vorb-status is-error">{setup.message}</span>
               {setup.settings && (
-                <button type="button" className="vorb-link" onClick={onOpenSettings}>
+                <button type="button" className="vorb-link" onClick={() => onOpenSettings(setup.settings!)}>
                   Ustawienia głosu
                 </button>
               )}
@@ -113,7 +114,7 @@ export function VoiceOrb({ onClose, onOpenSettings }: Props) {
             disabled={setup.status !== "ready"}
             onClick={() => setShowLog(!showLog)}
           />
-          <IconButton icon={Settings} label="Ustawienia głosu" onClick={onOpenSettings} />
+          <IconButton icon={Settings} label="Ustawienia rozmowy" onClick={() => onOpenSettings("talk")} />
           <IconButton icon={PhoneOff} label="Zakończ rozmowę" shortcut="Esc" onClick={onClose} />
         </div>
         <button

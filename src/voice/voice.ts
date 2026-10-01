@@ -1,7 +1,7 @@
 // Rozmowa głosowa (eksperyment, `docs/plan-glos.md`): konfiguracja, cięcie odpowiedzi na zdania
 // dla TTS, tekst do czytania i stan rozmowy. Czyste funkcje — mikrofon, VAD i IPC są w hooku.
 
-import type { ChatRequest, ModelRef, ProviderDef, WireMessage } from "../chat";
+import { findModel, firstModel, type ChatModel, type ChatRequest, type ModelRef, type ProviderDef, type WireMessage } from "../chat";
 
 // ── konfiguracja ────────────────────────────────────────────────────────────
 
@@ -363,6 +363,17 @@ export function voiceCliPrompt(history: VoiceExchange[]): string {
   const turns = voiceTurns(history);
   if (turns.length === 1) return turns[0].content;
   return turns.map((m) => `${m.role === "user" ? "Użytkownik" : "Asystent"}: ${m.content}`).join("\n\n");
+}
+
+/** Mózg rozmowy: wybrany w `voice.json` albo pierwszy model z Czatu. Model wykrywany przez
+ *  `GET /models` (`discover`) nie musi być na liście z pliku. */
+export function resolveBrain(providers: ProviderDef[], ref: ModelRef | null): { provider: ProviderDef; model: ChatModel } | null {
+  const r = ref ?? firstModel(providers);
+  if (!r) return null;
+  const found = findModel(providers, r);
+  if (found) return found;
+  const provider = providers.find((p) => p.id === r.provider);
+  return provider?.discover ? { provider, model: { id: r.model, name: r.model } } : null;
 }
 
 /** Żądanie do mózgu: dostawcy HTTP biorą `messages`, CLI `prompt` z całą rozmową (bez sesji:
