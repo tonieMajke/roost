@@ -150,6 +150,10 @@ Większe:
   z ich changelogu: skrót globalny na Wayland wymaga xdg-desktop-portal ≥ 1.21, wklejanie do
   XWayland działa inaczej.
 - **Scratchpad** – notatki w projekcie z prostym formatowaniem.
+- **Kalendarz i mail dla botów** (dopisane 2026-10-01, szkic: `docs/plan-kalendarz-mail.md`).
+  Wspólny kalendarz aplikacji (lokalny ICS + subskrypcje, ewentualnie CalDAV) i poczta przez
+  IMAP/SMTP jako grupy narzędzi bota, przypomnienia z harmonogramu. Przed startem: pytania
+  z „Do ustalenia” w tym pliku.
 
 Lekcje do przeniesienia:
 - Pauzować renderowanie (animacje, zegary) gdy panel/okno jest nieaktywne – dotyczy ryzyka
