@@ -1,6 +1,6 @@
 import { DEFAULT_AGENTS } from "./agents";
 import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
-import { chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, withDiscovered, type Chat, type ChatEvent, type ChatMeta } from "./chat";
+import { chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, type Chat, type ChatEvent, type ChatMeta } from "./chat";
 
 const PROMPT = "$ ";
 const WORKSPACE_KEY = "aw-workspace";
@@ -272,7 +272,7 @@ export const mockBackend: Backend = {
   },
   async chatModels(p) {
     if (p.kind === "openai") return ["Qwen-3.8-27B (podgląd)"];
-    return p.kind === "codex-cli" ? withDiscovered(p, []).models.map((m) => m.id) : [];
+    return [];
   },
   async openExternal(url) {
     globalThis.open?.(url, "_blank", "noopener");

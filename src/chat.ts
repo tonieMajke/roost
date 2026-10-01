@@ -16,7 +16,7 @@ export type ProviderDef = {
   command?: string; // claude-cli / codex-cli; domyślnie `claude` / `codex`
   key?: boolean; // wymaga klucza API (zapisany w procesie głównym, nie tutaj)
   models: ChatModel[];
-  discover?: boolean; // modele dopisywane z `GET {baseUrl}/models` (codex: z jego pamięci podręcznej)
+  discover?: boolean; // modele dopisywane z `GET {baseUrl}/models`
 };
 
 export type ModelRef = { provider: string; model: string };
@@ -97,12 +97,11 @@ export const DEFAULT_PROVIDERS: ProviderDef[] = [
     kind: "codex-cli",
     group: "sub",
     command: "codex",
+    // Lista stała: pamięć podręczna codex podaje też modele, których subskrypcja nie ma.
     models: [
       { id: "gpt-5.6-luna", name: "GPT-5.6 Luna" },
       { id: "gpt-5.6-terra", name: "GPT-5.6 Terra" },
-      { id: "gpt-5.5", name: "GPT-5.5" },
     ],
-    discover: true, // ~/.codex/models_cache.json
   },
   {
     id: "llama",

@@ -8,6 +8,7 @@ import { writeAtomic } from "../config";
 import { isAbort } from "./http";
 import { openaiModels, streamOpenAI } from "./openai";
 import { streamClaude } from "./claude";
+import { streamCodex } from "./codex";
 
 const CONFIG_FILE = "chat.json";
 
@@ -83,6 +84,7 @@ export function defaultChatService(cwd: string, key: (p: ProviderDef) => string 
     {
       openai: (req, signal, emit) => streamOpenAI(req, key(req.provider), signal, emit),
       "claude-cli": (req, signal, emit) => streamClaude(req, cwd, signal, emit),
+      "codex-cli": (req, signal, emit) => streamCodex(req, cwd, signal, emit),
     },
     { openai: (p) => openaiModels(p.baseUrl ?? "", key(p)) },
   );

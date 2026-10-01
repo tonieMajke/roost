@@ -1,0 +1,7 @@
+{"type":"thread.started","thread_id":"01a0f760-3613-78b0-93b6-43b7ef9149f7"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Sprawdzę oficjalne źródła Rust, żeby potwierdzić bieżącą stabilną wersję."}}
+{"type":"item.started","item":{"id":"item_1","type":"web_search","id":"exec-d06210e6-8396-485e-b3e6-248ee8dbf757","query":"","action":{"type":"other"}}}
+{"type":"item.completed","item":{"id":"item_1","type":"web_search","id":"exec-d06210e6-8396-485e-b3e6-248ee8dbf757","query":"site:rust-lang.org latest stable Rust version release","action":{"type":"search","query":"site:rust-lang.org latest stable Rust version release"}}}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"Najnowsza stabilna wersja Rusta to **Rust 1.98.1**. Możesz ją zainstalować lub zaktualizować poleceniem:\n\n```bash\nrustup update stable\n```\n\n[1]\n\n### Źródła:\n\n[1] [Oficjalny blog Rust — Rust 1.98.1](https://blog.rust-lang.org/releases/latest/)"}}
+{"type":"turn.completed","usage":{"input_tokens":28814,"cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":237,"reasoning_output_tokens":63}}
