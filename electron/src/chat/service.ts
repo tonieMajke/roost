@@ -10,10 +10,12 @@ import { openaiModels, streamOpenAI } from "./openai";
 import { streamClaude } from "./claude";
 import { streamCodex } from "./codex";
 import { anthropicModels, streamAnthropic } from "./anthropic";
+import { streamPi } from "./pi";
 
 const CONFIG_FILE = "chat.json";
 
 export type Adapter = (req: ChatRequest, signal: AbortSignal, emit: (e: ChatEvent) => void) => Promise<void>;
+type AdapterKey = ProviderDef["kind"] | "pi";
 
 /** Surowy `chat.json` (brak = powstaje z domyślnymi) i `~/.pi/agent/models.json` (tylko odczyt). */
 export function chatConfigLoad(dir: string, home = os.homedir()): { chat: string; pi: string | null } {
@@ -40,13 +42,15 @@ export class ChatService {
   private running = new Map<string, AbortController>();
 
   constructor(
-    private adapters: Partial<Record<ProviderDef["kind"], Adapter>>,
+    private adapters: Partial<Record<AdapterKey, Adapter>>,
     private discover: Partial<Record<ProviderDef["kind"], (p: ProviderDef) => Promise<string[]>>>,
   ) {}
 
   /** Uruchamia odpowiedź; zdarzenia idą do `emit`, ostatnie to zawsze `done` albo `error`. */
   async send(reqId: string, req: ChatRequest, emit: (e: ChatEvent) => void): Promise<void> {
-    const adapter = this.adapters[req.provider.kind];
+    // Wyszukiwanie dla dostawców HTTP idzie przez pi (adapter "pi"); CLI szukają same.
+    const viaPi = req.search && (req.provider.kind === "openai" || req.provider.kind === "anthropic");
+    const adapter = viaPi ? this.adapters.pi : this.adapters[req.provider.kind];
     if (!adapter) return emit({ type: "error", message: `dostawca „${req.provider.kind}” jeszcze nie działa` });
     const ctl = new AbortController();
     this.running.get(reqId)?.abort();
@@ -79,10 +83,12 @@ export class ChatService {
   }
 }
 
-/** `cwd`: pusty katalog roboczy programów CLI (bez CLAUDE.md; ten sam przy `--resume`). */
-export function defaultChatService(cwd: string, key: (p: ProviderDef) => string | null = () => null): ChatService {
+/** `cwd`: pusty katalog roboczy programów CLI (bez CLAUDE.md; ten sam przy `--resume`).
+ *  `piDir`: własny katalog agenta pi do wyszukiwania z modelami lokalnymi i API. */
+export function defaultChatService(cwd: string, piDir: string, key: (p: ProviderDef) => string | null = () => null): ChatService {
   return new ChatService(
     {
+      pi: (req, signal, emit) => streamPi(req, key(req.provider), piDir, cwd, signal, emit),
       openai: (req, signal, emit) => streamOpenAI(req, key(req.provider), signal, emit),
       anthropic: (req, signal, emit) => streamAnthropic(req, key(req.provider), signal, emit),
       "claude-cli": (req, signal, emit) => streamClaude(req, cwd, signal, emit),

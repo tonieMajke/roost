@@ -204,7 +204,8 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
         model: ref.model,
         system: DEFAULT_SYSTEM + (withSearch ? SEARCH_SYSTEM : ""),
         messages: wireHistory(base.messages),
-        prompt: isCli(provider) ? cliPrompt(prior, session !== undefined, question.text) : question.text,
+        // Dostawcy HTTP biorą `messages`; `prompt` z historią czyta CLI i pi (wyszukiwanie).
+        prompt: cliPrompt(prior, isCli(provider) && session !== undefined, question.text),
         session: session ? { id: session, resume: true } : newSession ? { id: newSession, resume: false } : undefined,
         search: withSearch,
       },

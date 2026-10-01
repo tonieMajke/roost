@@ -23,10 +23,11 @@ export function runCli(
   parser: LineParser,
   signal: AbortSignal,
   emit: (e: ChatEvent) => void,
+  env: Record<string, string> = {},
 ): Promise<void> {
   fs.mkdirSync(cwd, { recursive: true });
   return new Promise((resolve, reject) => {
-    const child = spawn(program, args, { cwd, env: childEnv(), stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(program, args, { cwd, env: childEnv(env), stdio: ["pipe", "pipe", "pipe"] });
     let buf = "";
     let err = "";
     let killTimer: ReturnType<typeof setTimeout> | undefined;

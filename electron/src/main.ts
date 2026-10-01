@@ -36,7 +36,9 @@ const keys = new KeyStore(config.configDir(), {
   encrypt: (s) => safeStorage.encryptString(s),
   decrypt: (b) => safeStorage.decryptString(b),
 });
-const chat = defaultChatService(path.join(config.configDir(), "chat-cwd"), (p) => keys.get(p.id, p.keyEnv));
+const chat = defaultChatService(path.join(config.configDir(), "chat-cwd"), path.join(config.configDir(), "pi-agent"), (p) =>
+  keys.get(p.id, p.keyEnv),
+);
 let win: BrowserWindow | null = null;
 
 /** Każde wywołanie z `backend-electron.ts` to `invoke(name, ...args)`; błąd wraca jako odrzucenie. */

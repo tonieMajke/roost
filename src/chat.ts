@@ -401,8 +401,8 @@ export function linkCitations(text: string, sources: Source[] | undefined): stri
     .join("");
 }
 
-/** Czy dostawca umie „Szukaj w sieci” (CLI natywnie, HTTP przez pi – etap 7b). */
-export const supportsSearch = (p: ProviderDef | undefined) => p?.kind === "claude-cli" || p?.kind === "codex-cli";
+/** Czy dostawca umie „Szukaj w sieci”: CLI natywnie, HTTP przez pi z pi-web-access. */
+export const supportsSearch = (p: ProviderDef | undefined) => p !== undefined;
 
 export const GROUP_LABELS: Record<ProviderGroup, string> = { sub: "Subskrypcje", api: "API", local: "Lokalne" };
 

@@ -90,7 +90,7 @@ Nowe zależności dozwolone tylko w etapie, który je wymienia.
 - [x] Etap 5 (L) – adapter Claude (subskrypcja)
 - [x] Etap 6 (L) – adapter ChatGPT (subskrypcja)
 - [x] Etap 7 (C) – API: klucze, adapter `anthropic`, okno „Dostawcy”
-- [ ] Etap 7b (C) – research: „Szukaj w sieci”, źródła, przypisy
+- [x] Etap 7b (C) – research: „Szukaj w sieci”, źródła, przypisy
 - [ ] Etap 8 (C + użytkownik) – sprawdzenie w oknie
 
 ---
