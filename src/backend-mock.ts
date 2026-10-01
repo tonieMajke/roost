@@ -4,6 +4,7 @@ import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
 import { parseSttConfig, sttConfigJson, sttKeyId } from "./stt";
 import { parseTtsConfig, parseVoiceConfig, ttsConfigJson, ttsKeyId, voiceConfigJson } from "./voice/voice";
 import { encodeWav } from "./voice/vad";
+import { mockUsageRows } from "./usage-mock";
 import { mockBotBackend } from "./bot-mock";
 import { mockGitBackend } from "./git-mock";
 import { buildChatConfig, chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, type Chat, type ChatEvent, type ChatMeta } from "./chat";
@@ -230,6 +231,9 @@ export const mockBackend: Backend = {
       sevenDay: { pct: 83, resetsAt: now + 4 * 86_400 },
       at: now - 120,
     };
+  },
+  async usageStats() {
+    return { rows: mockUsageRows(new Date()), at: Date.now() };
   },
   dirExists: async () => true,
 

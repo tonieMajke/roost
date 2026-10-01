@@ -882,3 +882,53 @@ button.feed-item {
   .git-side { border-right: 0; border-bottom: 1px solid var(--line); }
 }
 @media (prefers-reduced-motion: reduce) { .icon.is-spin svg { animation: none; } }
+
+/* okno „Statystyki” (src/StatsDialog.tsx): kolory z tokenów motywu, słupki ze stałym odstępem w kolorze karty */
+.dialog.is-stats { width: min(780px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow-y: auto; }
+.stats-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stats-head h2 { margin: 0; }
+.stats-head .btn { height: 28px; flex: none; }
+.stats-err { color: var(--warn-text); background: var(--warn-bg); padding: 6px 10px; border-radius: var(--r-ctl); }
+.stats-filters { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+.stats-filters .seg { flex: 1; max-width: 360px; }
+.stats-source { flex: none; width: 170px; }
+.stats-empty { padding: 18px 0; text-align: center; }
+.stats-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.stats-tile { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; min-width: 0; border: 1px solid var(--line); border-radius: var(--r-ctl); }
+.stats-tile-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.stats-tile-value { font-family: var(--display); font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.stats-tile-value.is-small { font-size: 14px; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-tile-note { font-size: 11px; color: var(--muted); }
+.stats-break { margin-bottom: 14px; }
+.stats-break-bar { display: flex; gap: 2px; height: 10px; }
+.stats-break-bar span { min-width: 2px; border-radius: 2px; }
+.p-input { background: var(--accent); }
+.p-output { background: color-mix(in srgb, var(--accent) 55%, var(--dialog)); }
+.p-cread { background: color-mix(in srgb, var(--text) 38%, var(--dialog)); }
+.p-cwrite { background: color-mix(in srgb, var(--text) 20%, var(--dialog)); }
+.stats-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 0; padding: 0; font-size: 11.5px; color: var(--muted); }
+.stats-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.stats-legend b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.stats-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+.stats-chart { margin: 0 0 14px; }
+.stats-chart figcaption { display: flex; justify-content: space-between; gap: 12px; font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
+.stats-readout { font-variant-numeric: tabular-nums; color: var(--text); text-align: right; }
+.stats-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.stats-axis { stroke: var(--line); stroke-width: 1; }
+.stats-tick { fill: var(--muted); font-size: 10px; }
+.bar-fresh, .bar-fresh-key { fill: var(--accent); background: var(--accent); }
+.bar-cache, .bar-cache-key { fill: color-mix(in srgb, var(--text) 38%, var(--dialog)); background: color-mix(in srgb, var(--text) 38%, var(--dialog)); }
+.bar-hit { fill: transparent; }
+.stats-chart g.is-hover .bar-fresh, .stats-chart g.is-hover .bar-cache { opacity: 0.7; }
+.stats-dims { margin-bottom: 8px; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 8px; }
+.stats-table th, .stats-table td { padding: 5px 6px; text-align: left; font-weight: 400; border-bottom: 1px solid var(--line); }
+.stats-table thead th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.stats-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stats-table tbody th { color: var(--text); max-width: 320px; }
+.stats-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-share { display: block; height: 3px; margin-top: 3px; }
+.stats-share i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+.stats-days { margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+.stats-days summary { cursor: pointer; padding: 4px 0; }
+.stats-days summary:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }

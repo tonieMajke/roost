@@ -12,6 +12,8 @@ import { streamClaude } from "./claude";
 import { streamCodex } from "./codex";
 import { anthropicModels, streamAnthropic } from "./anthropic";
 import { streamPi } from "./pi";
+import { providerLabel } from "../usage-store";
+import type { Usage } from "../../../src/usage";
 import { ensureFreeToken, freeGpuForRouter, freetokenInstance, isRouter } from "./freetoken";
 
 const CONFIG_FILE = "chat.json";
@@ -41,12 +43,22 @@ export function chatConfigLoad(dir: string, home = os.homedir()): { chat: string
   return { chat, pi };
 }
 
+/** Zużycie jednego wywołania modelu, z dostawcą i modelem z żądania (gdy adapter go nie podał). */
+export type UsageReport = { provider: string; model: string; usage: Usage; costUsd?: number };
+
+/** Zdarzenie `usage` → raport; model z adaptera, a bez niego z żądania. */
+export function usageReport(req: Pick<ChatRequest, "provider" | "model">, e: Extract<ChatEvent, { type: "usage" }>): UsageReport {
+  return { provider: providerLabel(req.provider), model: e.model || req.model, usage: e.usage, ...(e.costUsd ? { costUsd: e.costUsd } : {}) };
+}
+
 export class ChatService {
   private running = new Map<string, AbortController>();
 
   constructor(
     private adapters: Partial<Record<AdapterKey, Adapter>>,
     private discover: Partial<Record<ProviderDef["kind"], (p: ProviderDef) => Promise<string[]>>>,
+    /** Wołane dla każdego zużycia, także gdy odpowiedź przerwano (tokeny i tak poszły). */
+    private onUsage?: (r: UsageReport) => void,
   ) {}
 
   /** Uruchamia odpowiedź; zdarzenia idą do `emit`, ostatnie to zawsze `done` albo `error`. */
@@ -63,6 +75,7 @@ export class ChatService {
     this.running.set(reqId, ctl);
     try {
       const calls = await adapter(req, ctl.signal, (e) => {
+        if (e.type === "usage") this.onUsage?.(usageReport(req, e));
         if (!ctl.signal.aborted) emit(e);
       });
       // Z `req.tools` wywołania wracają do strony, która wykonuje narzędzia i pyta dalej (rozmowa głosowa).
@@ -94,7 +107,12 @@ export class ChatService {
 
 /** `cwd`: pusty katalog roboczy programów CLI (bez CLAUDE.md; ten sam przy `--resume`).
  *  `piDir`: własny katalog agenta pi do wyszukiwania z modelami lokalnymi i API. */
-export function defaultChatService(cwd: string, piDir: string, key: (p: ProviderDef) => string | null = () => null): ChatService {
+export function defaultChatService(
+  cwd: string,
+  piDir: string,
+  key: (p: ProviderDef) => string | null = () => null,
+  onUsage?: (r: UsageReport) => void,
+): ChatService {
   return new ChatService(
     {
       pi: (req, signal, emit) => streamPi(req, key(req.provider), piDir, cwd, signal, emit),
@@ -115,6 +133,7 @@ export function defaultChatService(cwd: string, piDir: string, key: (p: Provider
       openai: (p) => openaiModels(p.baseUrl ?? "", key(p)),
       anthropic: (p) => anthropicModels(p.baseUrl ?? "", key(p)),
     },
+    onUsage,
   );
 }
 

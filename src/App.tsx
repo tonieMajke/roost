@@ -7,7 +7,7 @@ import { accentHex, nextMode, stepFontSize, uiClasses } from "./ui";
 import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";
 import type { TermLook } from "./Terminal";
 import { IconButton } from "./IconButton";
-import { FolderPlus, FolderTree, Gauge, LayoutGrid, NotebookPen, Plus, UserRound, X } from "lucide-react";
+import { BarChart3, FolderPlus, FolderTree, Gauge, LayoutGrid, NotebookPen, Plus, UserRound, X } from "lucide-react";
 import { Scratchpad } from "./Scratchpad";
 import { tildify } from "./paths";
 import {
@@ -26,6 +26,7 @@ import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { AccountsDialog } from "./AccountsDialog";
+import { StatsDialog } from "./StatsDialog";
 import { ContinueDialog } from "./ContinueDialog";
 import { continueTargets, type ContinueTarget } from "./continue";
 import { NO_ACCOUNTS, accountById, accountKind, accountsFor, pickAccountId, type Accounts } from "./accounts";
@@ -79,6 +80,8 @@ export function App() {
   const [agents, setAgents] = useState<AgentDef[]>([]);
   const [accounts, setAccounts] = useState<Accounts>(NO_ACCOUNTS);
   const [accountsDialog, setAccountsDialog] = useState(false);
+  const [statsDialog, setStatsDialog] = useState(false);
+  const statsProjects = useMemo(() => ws.projects.map((p) => ({ name: p.name, path: p.path })), [ws.projects]);
   const [scratchOpen, setScratchOpen] = useState(false);
   const [gitOpen, setGitOpen] = useState(false);
   const [continuePane, setContinuePane] = useState<string | null>(null);
@@ -1168,6 +1171,9 @@ export function App() {
               <button type="button" className="btn" title={t("app.accountsTitle")} onClick={() => setAccountsDialog(true)}>
                 <UserRound strokeWidth={1.75} aria-hidden /> {t("app.accounts")}
               </button>
+              <button type="button" className="btn" title="Statystyki zużycia tokenów" onClick={() => setStatsDialog(true)}>
+                <BarChart3 strokeWidth={1.75} aria-hidden /> Statystyki
+              </button>
               <button type="button" className="btn" onClick={() => setPresetMenu(true)} disabled={active === null}>
                 <LayoutGrid strokeWidth={1.75} aria-hidden /> {t("app.presets")}
               </button>
@@ -1277,6 +1283,14 @@ export function App() {
           />
         );
       })()}
+      {statsDialog && (
+        <StatsDialog
+          load={(rescan) => backend.usageStats(rescan)}
+          projects={statsProjects}
+          accounts={accounts.accounts}
+          onClose={() => setStatsDialog(false)}
+        />
+      )}
       {accountsDialog && (
         <AccountsDialog
           value={accounts}

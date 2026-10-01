@@ -2,6 +2,7 @@
  *  Typy żądania i zdarzeń (`ChatRequest`, `ChatEvent`) są wspólne ze `electron/src/chat/`. */
 
 import { t, tp } from "./i18n";
+import type { Usage } from "./usage";
 
 export type ProviderKind = "claude-cli" | "codex-cli" | "openai" | "anthropic";
 /** Grupa w menu modeli: subskrypcja (program CLI), API z kluczem, serwer lokalny. */
@@ -98,6 +99,7 @@ export type ChatEvent =
   | { type: "source"; url: string; title: string } // źródło przypisu, w kolejności numerów
   | { type: "found"; url: string; title: string } // strona z wyników wyszukiwania
   | { type: "session"; id: string }
+  | { type: "usage"; usage: Usage; model?: string; costUsd?: number } // zużycie jednego wywołania modelu
   | { type: "done" }
   | { type: "error"; message: string }
   | { type: "tool_call"; id: string; name: string; args: Record<string, unknown>; bad?: string } // `bad`: argumenty nie są JSON-em

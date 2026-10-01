@@ -9,6 +9,7 @@ import { streamAnthropic } from "../chat/anthropic";
 import { streamClaude } from "../chat/claude";
 import { streamCodex } from "../chat/codex";
 import { isAbort } from "../chat/http";
+import { usageReport, type UsageReport } from "../chat/service";
 import { streamOpenAI } from "../chat/openai";
 import type { ApprovalBroker } from "./approvals";
 import { ToolBridge } from "./bridge";
@@ -29,6 +30,8 @@ export type BotServiceDeps = {
   beforeOpenAI?: (req: ChatRequest, signal: AbortSignal, emit: (e: ChatEvent) => void) => Promise<void>;
   web?: ToolContext["web"];
   now?: () => number;
+  /** Zużycie każdego wywołania modelu w odpowiedzi bota. */
+  onUsage?: (r: UsageReport & { bot: string }) => void;
 };
 
 export class BotService {
@@ -49,6 +52,7 @@ export class BotService {
     this.running.get(reqId)?.abort();
     this.running.set(reqId, ctl);
     const out = (e: ChatEvent) => {
+      if (e.type === "usage") this.deps.onUsage?.({ ...usageReport(req, e), bot: chat.bot });
       if (!ctl.signal.aborted) emit(e);
     };
     try {

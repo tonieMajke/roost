@@ -3,6 +3,7 @@
 
 import { t } from "../i18n";
 import type { ChatEvent, ChatRequest, ToolCall, Turn } from "../../../src/chat";
+import { NO_USAGE, tokenCount, type Usage } from "../../../src/usage";
 import { CallParts, httpError, networkError } from "./http";
 import { sseEvents } from "./sse";
 
@@ -49,17 +50,45 @@ export function anthropicBody(req: ChatRequest): Record<string, unknown> {
   };
 }
 
+type ApiUsage = { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
+
+/** Zużycie jednego wywołania: wejście z `message_start`, wyjście (narastająco) z `message_delta`. */
+export class UsageAcc {
+  usage: Usage = { ...NO_USAGE };
+  model?: string;
+  seen = false;
+
+  add(u: ApiUsage | undefined): void {
+    if (!u) return;
+    this.seen = true;
+    const pick = (v: number | undefined, cur: number) => (v === undefined ? cur : tokenCount(v));
+    this.usage = {
+      ...this.usage,
+      input: pick(u.input_tokens, this.usage.input),
+      output: pick(u.output_tokens, this.usage.output),
+      cacheRead: pick(u.cache_read_input_tokens, this.usage.cacheRead),
+      cacheWrite: pick(u.cache_creation_input_tokens, this.usage.cacheWrite),
+    };
+  }
+}
+
 type Event = {
   type?: string;
   index?: number;
+  message?: { model?: string; usage?: ApiUsage };
+  usage?: ApiUsage;
   content_block?: { type?: string; id?: string; name?: string };
   delta?: { type?: string; text?: string; thinking?: string; partial_json?: string };
   error?: { message?: string };
 };
 
 /** Zdarzenia z jednego `data:`; bloki `tool_use` składane w `calls`. */
-export function anthropicEvents(data: string, calls?: CallParts): ChatEvent[] {
+export function anthropicEvents(data: string, calls?: CallParts, usage?: UsageAcc): ChatEvent[] {
   const e = JSON.parse(data) as Event;
+  if (usage && e.type === "message_start") {
+    usage.model = e.message?.model ?? usage.model;
+    usage.add(e.message?.usage);
+  } else if (usage && e.type === "message_delta") usage.add(e.usage);
   if (e.type === "error") return [{ type: "error", message: e.error?.message ?? t("chat.apiError") }];
   if (e.type === "content_block_start" && e.content_block?.type === "tool_use")
     calls?.add(e.index ?? 0, { id: e.content_block.id, name: e.content_block.name });
@@ -90,17 +119,23 @@ export async function streamAnthropic(
   }
   if (!res.ok || !res.body) throw await httpError(res);
   const calls = new CallParts();
-  for await (const ev of sseEvents(res.body)) {
-    let events: ChatEvent[];
-    try {
-      events = anthropicEvents(ev.data, calls);
-    } catch {
-      continue;
+  const usage = new UsageAcc();
+  // Zużycie zgłaszamy także po przerwaniu strumienia: tokeny do tej pory i tak zostały policzone.
+  try {
+    for await (const ev of sseEvents(res.body)) {
+      let events: ChatEvent[];
+      try {
+        events = anthropicEvents(ev.data, calls, usage);
+      } catch {
+        continue;
+      }
+      for (const e of events) {
+        if (e.type === "error") throw new Error(e.message);
+        emit(e);
+      }
     }
-    for (const e of events) {
-      if (e.type === "error") throw new Error(e.message);
-      emit(e);
-    }
+  } finally {
+    if (usage.seen) emit({ type: "usage", usage: usage.usage, ...(usage.model ? { model: usage.model } : {}) });
   }
   return calls.calls();
 }
