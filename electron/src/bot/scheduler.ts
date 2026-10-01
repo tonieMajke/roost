@@ -31,7 +31,7 @@ export const MAX_PARALLEL = 2;
 export const RUN_PREFIX = "run:";
 /** Ile ostatnich przebiegów bota sprawdzić przy starcie (zostały „w trakcie” po zamknięciu aplikacji). */
 const RECOVER_LAST = 20;
-export const INTERRUPTED = "Przerwane: aplikacja została zamknięta w trakcie przebiegu.";
+export const interrupted = () => t("bot.interrupted");
 
 
 export type SchedulerDeps = {
@@ -114,7 +114,7 @@ export class Scheduler {
 
   /** „Uruchom teraz” z karty bota: przed terminem, także wyłączone zadanie. Kolejka jak zwykle. */
   runNow(bot: string, routine: string): void {
-    if (this.stopped) throw new Error("harmonogram zatrzymany");
+    if (this.stopped) throw new Error(t("sched.stopped"));
     const key = keyOf({ bot, routine });
     if (this.active.has(key)) throw new Error(t("sched.running"));
     if (this.queue.some((j) => keyOf(j) === key)) throw new Error(t("sched.queued"));
@@ -242,7 +242,7 @@ export class Scheduler {
       messages: a.chat.messages.map((m) => {
         if (m.id !== replyId) return m;
         const done = extractSources(applyEvent(m, e));
-        if (this.stopped && e.type === "done") return { ...done, stopped: true, error: INTERRUPTED };
+        if (this.stopped && e.type === "done") return { ...done, stopped: true, error: interrupted() };
         if (done.error) failed = true;
         return done;
       }),
@@ -270,7 +270,7 @@ export class Scheduler {
         const c = parseBotChat(runs.load(meta.id) ?? "");
         if (!c || (c.state !== "running" && c.state !== "waiting_approval")) continue;
         const last = c.messages.length - 1;
-        const messages = c.messages.map((m, i) => (i === last && m.role === "assistant" && !m.error ? { ...m, error: INTERRUPTED } : m));
+        const messages = c.messages.map((m, i) => (i === last && m.role === "assistant" && !m.error ? { ...m, error: interrupted() } : m));
         this.save({ ...c, messages, state: "error" });
       }
     }

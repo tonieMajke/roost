@@ -41,7 +41,7 @@ export type VoiceConfig = {
 
 export const TTS_PRESETS: TtsProvider[] = [
   { id: "openai", name: "OpenAI", kind: "speech", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini-tts", voice: "alloy", keyEnv: "OPENAI_API_KEY", key: true },
-  { id: "local", name: "Lokalny serwer", kind: "speech", baseUrl: "http://127.0.0.1:8000/v1", model: "kokoro", voice: "", key: false },
+  { id: "local", get name() { return t("voice.preset.local"); }, kind: "speech", baseUrl: "http://127.0.0.1:8000/v1", model: "kokoro", voice: "", key: false },
   // Piper mówi głosem modelu, więc jest po jednym szablonie na język; id „piper” zostaje polskie (stare tts.json).
   { id: "piper", name: "Piper (polski)", kind: "piper", model: "~/.local/share/piper/pl_PL-bass-high.onnx", voice: "", key: false },
   { id: "piper-en", name: "Piper (English)", kind: "piper", model: "~/.local/share/piper/en_US-lessac-medium.onnx", voice: "", key: false },

@@ -2,6 +2,8 @@
  *  Konwencja: `input` to tokeny wejścia BEZ cache (cache osobno), `output` zawiera rozumowanie
  *  (`reasoning` jest tylko jego wyróżnioną częścią, nie dodaje się do sumy). */
 
+import { locale, t } from "./i18n";
+
 export type Usage = {
   input: number;
   output: number;
@@ -199,12 +201,12 @@ export function normalizeModel(model: string): string {
   return m.replace(/-\d{8}$/, "").replace(/\[1m\]$/, "");
 }
 
-/** Krótkie liczby do kafelków: 1 234 → „1,2 tys.”, 3 400 000 → „3,4 mln”. */
-export function compact(n: number, locale = "pl-PL"): string {
-  const fmt = (v: number) => v.toLocaleString(locale, { maximumFractionDigits: v >= 100 ? 0 : 1 });
-  if (n >= 1e9) return `${fmt(n / 1e9)} mld`;
-  if (n >= 1e6) return `${fmt(n / 1e6)} mln`;
-  if (n >= 1e3) return `${fmt(n / 1e3)} tys.`;
+/** Krótkie liczby do kafelków: po polsku 1 234 → „1,2 tys.”, 3 400 000 → „3,4 mln”; po angielsku „1.2K”, „3.4M”. */
+export function compact(n: number, loc = locale()): string {
+  const fmt = (v: number) => v.toLocaleString(loc, { maximumFractionDigits: v >= 100 ? 0 : 1 });
+  if (n >= 1e9) return `${fmt(n / 1e9)}${t("stats.unit.billion")}`;
+  if (n >= 1e6) return `${fmt(n / 1e6)}${t("stats.unit.million")}`;
+  if (n >= 1e3) return `${fmt(n / 1e3)}${t("stats.unit.thousand")}`;
   return String(Math.round(n));
 }
 

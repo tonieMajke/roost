@@ -501,7 +501,7 @@ export const PROVIDER_TEMPLATES: ProviderDef[] = [
   },
   { id: "openai", name: "OpenAI API", kind: "openai", group: "api", baseUrl: "https://api.openai.com/v1", key: true, keyEnv: "OPENAI_API_KEY", models: [], discover: true },
   { id: "openrouter", name: "OpenRouter", kind: "openai", group: "api", baseUrl: "https://openrouter.ai/api/v1", key: true, keyEnv: "OPENROUTER_API_KEY", models: [], discover: true },
-  { id: "local", name: "Serwer lokalny", kind: "openai", group: "local", baseUrl: "http://127.0.0.1:8080/v1", models: [], discover: true },
+  { id: "local", get name() { return t("chat.template.local"); }, kind: "openai", group: "local", baseUrl: "http://127.0.0.1:8080/v1", models: [], discover: true },
 ];
 
 /** Id nowego dostawcy: `base`, a gdy zajęte – `base-2`, `base-3`… */

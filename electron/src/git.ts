@@ -136,12 +136,12 @@ export async function gitCommit(cwd: string, message: string): Promise<string> {
 export async function gitSync(cwd: string, op: "pull" | "push"): Promise<string> {
   if (op === "pull") {
     const r = await runGit(cwd, ["pull", "--ff-only"], { timeoutMs: NET_MS });
-    return lastLine(r.stdout) || lastLine(r.stderr) || "Gotowe";
+    return lastLine(r.stdout) || lastLine(r.stderr) || t("git.done");
   }
   const up = await runGit(cwd, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], { okCodes: [0, 128] });
   const args = up.code === 0 ? ["push"] : ["push", "-u", "origin", "HEAD"];
   const r = await runGit(cwd, args, { timeoutMs: NET_MS });
-  return lastLine(r.stderr) || lastLine(r.stdout) || "Gotowe";
+  return lastLine(r.stderr) || lastLine(r.stdout) || t("git.done");
 }
 
 const lastLine = (s: string) => s.trim().split("\n").pop()?.trim() ?? "";

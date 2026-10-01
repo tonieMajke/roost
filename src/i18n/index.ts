@@ -10,6 +10,7 @@ import bot from "./messages/bot";
 import voice from "./messages/voice";
 import backend from "./messages/backend";
 import core from "./messages/core";
+import stats from "./messages/stats";
 
 export type Lang = "pl" | "en";
 /** `auto` follows the system language: Polish for Polish systems, English for everything else. */
@@ -17,14 +18,14 @@ export type LangPref = "auto" | Lang;
 export const LANGS: readonly Lang[] = ["pl", "en"];
 export const LANG_PREFS: readonly LangPref[] = ["auto", "pl", "en"];
 
-const AREAS = [app, ui, panes, chat, bot, voice, backend, core];
+const AREAS = [app, ui, panes, chat, bot, voice, backend, core, stats];
 const DICT: Record<Lang, Record<string, string>> = {
   pl: Object.assign({}, ...AREAS.map((a) => a.pl)),
   en: Object.assign({}, ...AREAS.map((a) => a.en)),
 };
 
 type Merged = typeof app.pl & typeof ui.pl & typeof panes.pl & typeof chat.pl & typeof bot.pl &
-  typeof voice.pl & typeof backend.pl & typeof core.pl;
+  typeof voice.pl & typeof backend.pl & typeof core.pl & typeof stats.pl;
 export type Key = keyof Merged;
 /** Base of a plural group: `x` for the keys `x.one`, `x.few`, `x.many`, `x.other`. */
 export type PluralKey = Key extends infer K ? (K extends `${infer B}.other` ? B : never) : never;

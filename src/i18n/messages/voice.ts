@@ -4,6 +4,7 @@ const pl = {
   "voice.mic.notFound": "nie znaleziono mikrofonu",
   "voice.mic.busy": "mikrofon zajęty przez inny program",
   "voice.mic.other": "mikrofon: {msg}",
+  "voice.dictation.error": "Dyktowanie: {message}",
   "voice.dictation.nothing": "nic nie usłyszano",
   "voice.dictation.recError": "błąd nagrywania",
 
@@ -136,6 +137,7 @@ const pl = {
   "voice.dict.micErr": "nie udało się odczytać listy mikrofonów (brak zgody?)",
   "voice.dict.micNote": "Mikrofon i język obowiązują też w rozmowie głosowej.",
   "voice.dict.language": "Język",
+  "voice.preset.local": "Lokalny serwer",
   "voice.lang.auto": "Wykryj automatycznie",
   "voice.lang.pl": "Polski",
   "voice.lang.en": "Angielski",
@@ -173,6 +175,7 @@ const en: Record<keyof typeof pl, string> = {
   "voice.mic.notFound": "no microphone found",
   "voice.mic.busy": "microphone is in use by another program",
   "voice.mic.other": "microphone: {msg}",
+  "voice.dictation.error": "Dictation: {message}",
   "voice.dictation.nothing": "nothing was heard",
   "voice.dictation.recError": "recording error",
 
@@ -298,6 +301,7 @@ const en: Record<keyof typeof pl, string> = {
   "voice.dict.micErr": "could not read the microphone list (permission denied?)",
   "voice.dict.micNote": "The microphone and language also apply to voice conversation.",
   "voice.dict.language": "Language",
+  "voice.preset.local": "Local server",
   "voice.lang.auto": "Detect automatically",
   "voice.lang.pl": "Polish",
   "voice.lang.en": "English",

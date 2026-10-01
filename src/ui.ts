@@ -103,7 +103,7 @@ export function uiRows(): UiRow[] {
       label: t("ui.row.theme"),
       choices: THEME_IDS.map((id) => ({
         value: id,
-        label: THEMES[id].label,
+        label: t(`ui.theme.${id}`),
         theme: { colors: THEMES[id].swatch, accent: THEMES[id].accent },
       })),
     },

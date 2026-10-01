@@ -287,7 +287,7 @@ export function App() {
       term.paste(`${text} `);
       dispatch({ type: "focus", id: paneId });
     },
-    voiceError: (message) => setNotice(`Dyktowanie: ${message}`),
+    voiceError: (message) => setNotice(t("voice.dictation.error", { message })),
     focus: (paneId) => dispatch({ type: "focus", id: paneId }),
     restart: (paneId) => {
       forget([paneId]);
@@ -1171,8 +1171,8 @@ export function App() {
               <button type="button" className="btn" title={t("app.accountsTitle")} onClick={() => setAccountsDialog(true)}>
                 <UserRound strokeWidth={1.75} aria-hidden /> {t("app.accounts")}
               </button>
-              <button type="button" className="btn" title="Statystyki zużycia tokenów" onClick={() => setStatsDialog(true)}>
-                <BarChart3 strokeWidth={1.75} aria-hidden /> Statystyki
+              <button type="button" className="btn" title={t("stats.tip")} onClick={() => setStatsDialog(true)}>
+                <BarChart3 strokeWidth={1.75} aria-hidden /> {t("stats.title")}
               </button>
               <button type="button" className="btn" onClick={() => setPresetMenu(true)} disabled={active === null}>
                 <LayoutGrid strokeWidth={1.75} aria-hidden /> {t("app.presets")}

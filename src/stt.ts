@@ -30,7 +30,7 @@ export const STT_PRESETS: SttProvider[] = [
   { id: "openrouter", name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", model: "openai/whisper-large-v3", keyEnv: "OPENROUTER_API_KEY", key: true },
   { id: "cortecs", name: "cortecs.ai", baseUrl: "https://api.cortecs.ai/v1", model: "whisper-large-v3", keyEnv: "CORTECS_API_KEY", key: true },
   { id: "openai", name: "OpenAI", baseUrl: "https://api.openai.com/v1", model: "whisper-1", keyEnv: "OPENAI_API_KEY", key: true },
-  { id: "local", name: "Lokalny serwer", baseUrl: "http://127.0.0.1:8080/v1", model: "whisper", key: false },
+  { id: "local", get name() { return t("voice.preset.local"); }, baseUrl: "http://127.0.0.1:8080/v1", model: "whisper", key: false },
 ];
 
 export const DEFAULT_STT: SttConfig = { active: null, language: "auto", mic: "", providers: [] };

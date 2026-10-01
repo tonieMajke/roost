@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { setLang } from "./i18n";
 import {
   NO_USAGE,
   compact,
@@ -108,5 +109,15 @@ describe("modele i liczby", () => {
     expect(compact(999)).toBe("999");
     expect(compact(1500, "en-US")).toBe("1.5 tys.");
     expect(compact(3_400_000, "en-US")).toBe("3.4 mln");
+  });
+  it("compact po angielsku: K / M / B", () => {
+    setLang("en");
+    try {
+      expect(compact(1500)).toBe("1.5K");
+      expect(compact(3_400_000)).toBe("3.4M");
+      expect(compact(2_000_000_000)).toBe("2B");
+    } finally {
+      setLang("pl");
+    }
   });
 });

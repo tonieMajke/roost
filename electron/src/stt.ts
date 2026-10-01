@@ -38,7 +38,7 @@ export async function transcribe(
   language: string,
   signal?: AbortSignal,
 ): Promise<string> {
-  if (audio.byteLength === 0) throw new Error("puste nagranie");
+  if (audio.byteLength === 0) throw new Error(t("stt.empty"));
   if (audio.byteLength > MAX_AUDIO_BYTES) throw new Error(t("stt.tooBig"));
   if (p.key && !key) throw new Error(t("stt.noKey", { name: p.name }));
   // Nagłówek HTTP przyjmuje tylko ASCII; klucz wklejony z dopiskiem dałby niezrozumiały błąd `ByteString`.

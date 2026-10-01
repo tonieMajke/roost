@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import { absolutePath, openPlan } from "../../src/term-links";
+import { t } from "./i18n";
 import { childEnv, expand } from "./env";
 
 const MAX_PATHS = 60;
@@ -24,8 +25,8 @@ export function resolveFiles(cwd: string, paths: string[], home = os.homedir()):
 
 /** Otwiera istniejący plik: $VISUAL/$EDITOR, gdy to znany edytor z GUI, inaczej `xdg-open`. */
 export function openFile(file: string, line?: number, col?: number, env: NodeJS.ProcessEnv = process.env): void {
-  if (typeof file !== "string" || !file.startsWith("/") || file.includes("\0")) throw new Error("zła ścieżka");
-  if (!fs.statSync(file).isFile()) throw new Error("to nie jest plik");
+  if (typeof file !== "string" || !file.startsWith("/") || file.includes("\0")) throw new Error(t("open.badPath"));
+  if (!fs.statSync(file).isFile()) throw new Error(t("open.notFile"));
   const l = Number.isInteger(line) && line! > 0 ? line : undefined;
   const c = l !== undefined && Number.isInteger(col) && col! > 0 ? col : undefined;
   const { command, args } = openPlan(file, l, c, env.VISUAL || env.EDITOR);

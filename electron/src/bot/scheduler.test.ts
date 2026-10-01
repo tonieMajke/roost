@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { newBot, newBotChat, parseBotChat, serializeBot, type BotChat, type Routine } from "../../../src/bot";
 import type { ChatEvent, ChatRequest, ProviderDef } from "../../../src/chat";
 import { ApprovalBroker } from "./approvals";
-import { INTERRUPTED, RUN_PREFIX, Scheduler, TICK_MS, type RunInfo } from "./scheduler";
+import { interrupted, RUN_PREFIX, Scheduler, TICK_MS, type RunInfo } from "./scheduler";
 import { BotStore } from "./store";
 
 const local = (y: number, mo: number, d: number, h = 0, mi = 0) => new Date(y, mo - 1, d, h, mi).getTime();
@@ -215,7 +215,7 @@ describe("Scheduler", () => {
     expect(aborted).toEqual([sent[0].reqId]);
     expect(ticker).toBeNull();
     expect(runs("rusty")[0]).toMatchObject({ state: "error" });
-    expect(runs("rusty")[0].messages[1]).toMatchObject({ text: "Zaczynam…", error: INTERRUPTED });
+    expect(runs("rusty")[0].messages[1]).toMatchObject({ text: "Zaczynam…", error: interrupted() });
 
     // plik „w trakcie” po twardym zamknięciu
     const stale: BotChat = { ...newBotChat("cccccccc-0001", "rusty", 5, { provider: "claude", model: "haiku" }, "rano"), state: "waiting_approval" };
@@ -227,6 +227,6 @@ describe("Scheduler", () => {
     new Scheduler({ store, service, providers: () => [claude], now: () => now, every: () => () => {} }).start();
     const after = runs("rusty").find((c) => c.id === "cccccccc-0001")!;
     expect(after.state).toBe("error");
-    expect(after.messages[1].error).toBe(INTERRUPTED);
+    expect(after.messages[1].error).toBe(interrupted());
   });
 });
