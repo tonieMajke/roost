@@ -1,4 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import { pathForFile } from "./backend-electron";
+import { droppedPaths, hasFiles } from "./drop";
 import { gridShape, type Project } from "./workspace";
 import { Plus } from "lucide-react";
 import { BUILT_IN_PRESETS } from "./presets";
@@ -167,6 +169,53 @@ export function Grid({
     onHandoff: (from, to) => paneActions.handoff(from, to),
   });
 
+  // Pliki z menedżera plików (natywne HTML5 drag&drop; przeciąganie nagłówków to zdarzenia
+  // pointer, więc się nie mieszają). Podświetlenie: `data-drop` na komórce, bez renderu Reacta.
+  const clearDrop = () => {
+    for (const el of document.querySelectorAll("[data-drop]")) el.removeAttribute("data-drop");
+  };
+  const onFileOver = (e: DragEvent<HTMLDivElement>) => {
+    if (!hasFiles(e.dataTransfer.types)) return;
+    e.preventDefault(); // bez tego upuszczenie nie wystartuje
+    const found = (e.target as HTMLElement).closest<HTMLElement>(".pane-cell");
+    // Panel z zakończonym procesem nie ma komu odebrać ścieżki.
+    const cell = found && !state[found.dataset.pane ?? ""]?.exited ? found : null;
+    e.dataTransfer.dropEffect = cell ? "copy" : "none";
+    if (cell?.dataset.drop) return;
+    clearDrop();
+    cell?.setAttribute("data-drop", "file");
+  };
+  const onFileLeave = (e: DragEvent<HTMLDivElement>) => {
+    const to = e.relatedTarget as Node | null;
+    if (!to || !e.currentTarget.contains(to)) clearDrop();
+  };
+  const onFileDrop = (e: DragEvent<HTMLDivElement>) => {
+    if (!hasFiles(e.dataTransfer.types)) return;
+    e.preventDefault();
+    clearDrop();
+    const id = (e.target as HTMLElement).closest<HTMLElement>(".pane-cell")?.dataset.pane;
+    if (!id || state[id]?.exited) return;
+    const paths = droppedPaths(e.dataTransfer.files, pathForFile);
+    if (paths.length) paneActions.dropFiles(id, paths);
+  };
+  // Plik upuszczony obok paneli (pasek, szyna) nie może nawigować okna do `file://`.
+  useEffect(() => {
+    const stop = (e: globalThis.DragEvent) => {
+      if (hasFiles(e.dataTransfer?.types)) e.preventDefault();
+    };
+    const end = () => clearDrop();
+    window.addEventListener("dragover", stop);
+    window.addEventListener("drop", stop);
+    window.addEventListener("drop", end);
+    window.addEventListener("dragend", end);
+    return () => {
+      window.removeEventListener("dragover", stop);
+      window.removeEventListener("drop", stop);
+      window.removeEventListener("drop", end);
+      window.removeEventListener("dragend", end);
+    };
+  }, []);
+
   // Węzły komórek w kolejności utworzenia: zamiana paneli zmienia tylko `order` (patrz mountOrder).
   const mounted = useRef(new Map<string, readonly string[]>());
   const domOrder = (project: Project) => {
@@ -194,6 +243,9 @@ export function Grid({
             }}
             data-project={project.id}
             onPointerDown={isActive ? drag.onPointerDown : undefined}
+            onDragOver={onFileOver}
+            onDragLeave={onFileLeave}
+            onDrop={onFileDrop}
             className={`grid${entering?.cls ? ` ${entering.cls}` : ""}`}
             style={{
               display: isActive ? "grid" : "none",

@@ -58,6 +58,7 @@ import {
 import { commandFor, type Command } from "./keys";
 import { CONFIRM_MS, confirmClick, type Arm } from "./confirm";
 import type { TerminalHandle } from "./Terminal";
+import { quotePaths } from "./drop";
 import { Nebula } from "./Nebula";
 import { motionAllowed } from "./motion";
 import type { PaneActions, ProjectActions } from "./handlers";
@@ -262,6 +263,13 @@ export function App() {
       const term = terms.current.get(paneId);
       if (!term) return;
       term.paste(text);
+      dispatch({ type: "focus", id: paneId });
+    },
+    dropFiles: (paneId, paths) => {
+      const term = terms.current.get(paneId);
+      const text = quotePaths(paths);
+      if (!term || !text) return;
+      term.paste(`${text} `);
       dispatch({ type: "focus", id: paneId });
     },
     voiceError: (message) => setNotice(`Dyktowanie: ${message}`),

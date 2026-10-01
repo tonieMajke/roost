@@ -653,11 +653,11 @@ button.feed-item {
 /* Na komórce, nie na .pane: `paneIn` z `both` trzyma opacity panelu. */
 .pane-cell { position: relative; transition: opacity 0.2s; }
 .pane-cell[data-drag="lifted"] { opacity: 0.35; }
-.pane-cell[data-drag]::after, .pane-cell[data-busy]::after {
+.pane-cell[data-drag]::after, .pane-cell[data-busy]::after, .pane-cell[data-drop]::after {
   content: ""; position: absolute; inset: 0; z-index: 5; pointer-events: none;
   border-radius: var(--r-pane); opacity: 0; transition: opacity 0.15s;
 }
-.pane-cell[data-drag="target"]::after {
+.pane-cell[data-drag="target"]::after, .pane-cell[data-drop="file"]::after {
   opacity: 1; box-shadow: inset 0 0 0 2px var(--accent);
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }

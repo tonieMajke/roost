@@ -14,6 +14,8 @@ type ElectronBridge = {
   invoke<T>(name: string, ...args: unknown[]): Promise<T>;
   spawnPty(spec: SpawnSpec, onData: (bytes: Uint8Array) => void, onExit: (info: ExitInfo) => void): Promise<number>;
   onResized(cb: () => void): () => void;
+  /** `webUtils.getPathForFile`: ścieżka upuszczonego pliku ("" gdy nie leży na dysku). */
+  pathForFile(file: File): string;
   /** Bez odpowiedzi (kolejne wywołania w kolejności); do zdarzeń co klatkę. */
   send(name: string, ...args: unknown[]): void;
   chatSend(reqId: string, req: ChatRequest, onEvent: (e: ChatEvent) => void): void;
@@ -26,6 +28,9 @@ type ElectronBridge = {
 };
 
 const bridge = () => (window as unknown as { agentsElectron: ElectronBridge }).agentsElectron;
+/** Ścieżka upuszczonego pliku; poza Electronem (przeglądarka, mock) brak mostu = "". */
+export const pathForFile = (file: File): string => (typeof window !== "undefined" && "agentsElectron" in window ? bridge().pathForFile(file) : "");
+
 /** Electron opakowuje błąd z procesu głównego w „Error invoking remote method 'x': Error: …”;
  *  UI pokazuje powód (np. streszczenia), więc zostaje sam komunikat, jak w wersji Tauri. */
 export const remoteMessage = (e: unknown) =>
