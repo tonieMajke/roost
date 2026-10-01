@@ -7,6 +7,7 @@ import { DEFAULT_PROVIDERS, type ChatEvent, type ChatRequest, type ProviderDef }
 import { writeAtomic } from "../config";
 import { isAbort } from "./http";
 import { openaiModels, streamOpenAI } from "./openai";
+import { streamClaude } from "./claude";
 
 const CONFIG_FILE = "chat.json";
 
@@ -76,10 +77,13 @@ export class ChatService {
   }
 }
 
-/** Dostawcy dostępni na tym etapie (bez kluczy: klucze API przychodzą w etapie 7). */
-export function defaultChatService(key: (p: ProviderDef) => string | null = () => null): ChatService {
+/** `cwd`: pusty katalog roboczy programów CLI (bez CLAUDE.md; ten sam przy `--resume`). */
+export function defaultChatService(cwd: string, key: (p: ProviderDef) => string | null = () => null): ChatService {
   return new ChatService(
-    { openai: (req, signal, emit) => streamOpenAI(req, key(req.provider), signal, emit) },
+    {
+      openai: (req, signal, emit) => streamOpenAI(req, key(req.provider), signal, emit),
+      "claude-cli": (req, signal, emit) => streamClaude(req, cwd, signal, emit),
+    },
     { openai: (p) => openaiModels(p.baseUrl ?? "", key(p)) },
   );
 }

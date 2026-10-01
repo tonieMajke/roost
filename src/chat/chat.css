@@ -251,7 +251,11 @@
 .chat-fold.is-open .chat-fold-chev { transform: rotate(90deg); }
 .chat-fold.is-live .chat-fold-head span { animation: breathe 1.6s steps(4, jump-none) infinite; }
 .chat-fold-body { margin: 8px 0 0; padding: 10px 14px; border-left: 2px solid var(--line-strong); color: var(--muted); font-size: 13.5px; line-height: 1.6; }
-ul.chat-fold-body { padding-left: 30px; }
+.chat-fold-body ul { margin: 0; padding-left: 18px; }
+.chat-found { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.chat-found a { display: flex; justify-content: space-between; gap: 12px; padding: 4px 6px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 12.5px; }
+.chat-found a:hover { background: var(--hover); }
+.chat-found a span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-thinking { white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
 
 /* źródła */

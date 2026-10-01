@@ -30,7 +30,8 @@ export type Message = {
   model?: ModelRef; // tylko odpowiedzi
   thinking?: string;
   searches?: string[];
-  sources?: Source[];
+  found?: Source[]; // strony z wyników wyszukiwania (licznik „Przeszukano N stron”)
+  sources?: Source[]; // źródła przypisów [n]
   error?: string;
   stopped?: boolean; // przerwane przyciskiem Stop
   ms?: number; // czas odpowiedzi
@@ -71,7 +72,8 @@ export type ChatEvent =
   | { type: "text"; text: string }
   | { type: "thinking"; text: string }
   | { type: "search"; query: string }
-  | { type: "source"; url: string; title: string }
+  | { type: "source"; url: string; title: string } // źródło przypisu, w kolejności numerów
+  | { type: "found"; url: string; title: string } // strona z wyników wyszukiwania
   | { type: "session"; id: string }
   | { type: "done" }
   | { type: "error"; message: string };
@@ -118,8 +120,8 @@ export const DEFAULT_SYSTEM =
   "Formatuj w markdownie, kod w blokach z nazwą języka.";
 
 export const SEARCH_SYSTEM =
-  " Gdy korzystasz z wyszukiwania w sieci, oznaczaj fakty przypisami [1], [2] w kolejności źródeł " +
-  "i nie wymyślaj adresów.";
+  " Masz wyszukiwanie w sieci: używaj go do faktów, które mogą być nieaktualne. Oznaczaj fakty przypisami [1], [2]. " +
+  "Na samym końcu dodaj sekcję `Źródła:` z wierszami `[n] Tytuł — URL` (tylko adresy z wyników wyszukiwania).";
 
 const KINDS: ProviderKind[] = ["claude-cli", "codex-cli", "openai", "anthropic"];
 const GROUPS: ProviderGroup[] = ["sub", "api", "local"];
@@ -337,6 +339,9 @@ export function applyEvent(m: Message, e: ChatEvent): Message {
     case "source":
       if (m.sources?.some((s) => s.url === e.url)) return m;
       return { ...m, sources: [...(m.sources ?? []), { url: e.url, title: e.title }] };
+    case "found":
+      if (m.found?.some((s) => s.url === e.url)) return m;
+      return { ...m, found: [...(m.found ?? []), { url: e.url, title: e.title }] };
     case "error":
       return { ...m, error: e.message };
     default:
@@ -404,4 +409,29 @@ export function greeting(hour: number): string {
   if (hour >= 12 && hour < 18) return "Miłego popołudnia";
   if (hour >= 18 && hour < 23) return "Dobry wieczór";
   return "Nocna zmiana?";
+}
+
+const SOURCES_HEAD = /\n[ \t]*(?:#{1,4}[ \t]*)?\**(?:Źródła|Sources|Zrodla)\**:?\**[ \t]*\n/i;
+const SOURCE_LINE = /^[ \t]*(?:[-*][ \t]*)?\[?(\d{1,2})[\].)][ \t]*(.*?)[ \t]*(?:[—–-][ \t]*)?<?(https?:\/\/[^\s>)]+)>?\)?[ \t]*$/;
+
+/** Koniec odpowiedzi: sekcja „Źródła:” z wierszami `[n] Tytuł — URL` (albo `[n] [Tytuł](URL)`)
+ *  przechodzi do `sources` i znika z tekstu. Bez takiej sekcji wiadomość bez zmian. */
+export function extractSources(m: Message): Message {
+  const head = SOURCES_HEAD.exec(m.text);
+  if (!head) return m;
+  const tail = m.text.slice(head.index + head[0].length);
+  const sources: Source[] = [];
+  for (const raw of tail.split("\n")) {
+    if (raw.trim() === "") continue;
+    const line = raw.replace(/\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/, "$1 — $2"); // [Tytuł](URL)
+    const hit = SOURCE_LINE.exec(line);
+    if (!hit) return m; // coś innego niż lista źródeł: zostawiamy tekst
+    const n = Number(hit[1]);
+    const title = hit[2].replace(/[\s—–:-]+$/, "").replace(/^\*+|\*+$/g, "");
+    // Sam adres bez tytułu: tytuł strony z wyników wyszukiwania, jeśli tam była.
+    sources[n - 1] = { url: hit[3], title: title || (m.found?.find((f) => f.url === hit[3])?.title ?? "") };
+  }
+  if (sources.length === 0) return m;
+  const filled = Array.from(sources, (s) => s ?? { url: "", title: "" });
+  return { ...m, text: m.text.slice(0, head.index).trimEnd(), sources: filled };
 }

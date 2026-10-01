@@ -16,7 +16,7 @@ import type { ChatRequest, ProviderDef } from "../../src/chat";
 
 const ptys = new Ptys();
 const chats = new ChatStore(path.join(config.configDir(), "chats"));
-const chat = defaultChatService();
+const chat = defaultChatService(path.join(config.configDir(), "chat-cwd"));
 let win: BrowserWindow | null = null;
 
 /** Każde wywołanie z `backend-electron.ts` to `invoke(name, ...args)`; błąd wraca jako odrzucenie. */

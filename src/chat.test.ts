@@ -4,6 +4,7 @@ import {
   buildChatConfig,
   linkCitations,
   greeting,
+  extractSources,
   chatTitle,
   cliPrompt,
   dayGroup,
@@ -257,4 +258,30 @@ it("greeting", () => {
   expect(greeting(14)).toBe("Miłego popołudnia");
   expect(greeting(20)).toBe("Dobry wieczór");
   expect(greeting(2)).toBe("Nocna zmiana?");
+});
+
+describe("extractSources", () => {
+  const m = (text: string) => msg("assistant", text);
+  it("sekcja Źródła/Sources na końcu → sources, tekst bez niej", () => {
+    const r = extractSources(m("Node 24 [1], Node 26 [2].\n\nSources:\n- [1] https://nodejs.org/en/blog\n- [2] Node 26 — https://x.pl/a\n"));
+    expect(r.text).toBe("Node 24 [1], Node 26 [2].");
+    expect(r.sources).toEqual([
+      { url: "https://nodejs.org/en/blog", title: "" },
+      { url: "https://x.pl/a", title: "Node 26" },
+    ]);
+  });
+  it("markdown: nagłówek i linki [Tytuł](URL)", () => {
+    const r = extractSources(m("Tekst [1].\n\n**Źródła:**\n1. [MDN](https://developer.mozilla.org/x)"));
+    expect(r.sources).toEqual([{ url: "https://developer.mozilla.org/x", title: "MDN" }]);
+  });
+  it("tytuł z wyników wyszukiwania, gdy model podał sam adres", () => {
+    const r = extractSources({ ...m("X [1].\n\nŹródła:\n[1] https://r.rs/"), found: [{ url: "https://r.rs/", title: "Releases" }] });
+    expect(r.sources).toEqual([{ url: "https://r.rs/", title: "Releases" }]);
+  });
+  it("lista nie-źródeł albo brak sekcji = bez zmian", () => {
+    const a = m("Źródła:\nnie mam żadnych");
+    expect(extractSources(a)).toBe(a);
+    const b = m("zwykły tekst");
+    expect(extractSources(b)).toBe(b);
+  });
 });

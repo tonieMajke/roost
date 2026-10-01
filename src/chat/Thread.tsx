@@ -10,7 +10,7 @@ function Sources({ m }: { m: Message }) {
   if (!m.sources?.length) return null;
   return (
     <div className="chat-sources">
-      {m.sources.map((s, i) => (
+      {m.sources.map((s, i) => !s.url ? null : (
         <a
           key={s.url}
           className="chat-source"
@@ -35,7 +35,7 @@ function Sources({ m }: { m: Message }) {
 function Searches({ m, live }: { m: Message; live: boolean }) {
   const [open, setOpen] = useState(false);
   if (!m.searches?.length) return null;
-  const n = m.sources?.length ?? 0;
+  const n = m.found?.length || m.sources?.length || 0;
   const label = live && m.text === "" ? `Szukam: ${m.searches[m.searches.length - 1]}` : `Przeszukano ${n} ${n === 1 ? "stronę" : n >= 2 && n <= 4 ? "strony" : "stron"}`;
   return (
     <div className={`chat-fold${open ? " is-open" : ""}${live && m.text === "" ? " is-live" : ""}`}>
@@ -45,11 +45,31 @@ function Searches({ m, live }: { m: Message; live: boolean }) {
         <ChevronRight className="chat-fold-chev" aria-hidden />
       </button>
       {open && (
-        <ul className="chat-fold-body">
-          {m.searches.map((q, i) => (
-            <li key={i}>{q}</li>
-          ))}
-        </ul>
+        <div className="chat-fold-body">
+          <ul>
+            {m.searches.map((q, i) => (
+              <li key={i}>{q}</li>
+            ))}
+          </ul>
+          {m.found?.length ? (
+            <div className="chat-found">
+              {m.found.map((s) => (
+                <a
+                  key={s.url}
+                  href={s.url}
+                  title={s.url}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void backend.openExternal(s.url).catch(() => undefined);
+                  }}
+                >
+                  <span>{s.title || domain(s.url)}</span>
+                  <span className="chat-source-domain">{domain(s.url)}</span>
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </div>
       )}
     </div>
   );

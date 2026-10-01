@@ -87,7 +87,7 @@ Nowe zależności dozwolone tylko w etapie, który je wymienia.
 - [x] Etap 2 (L) – adapter `openai-compat` i zapis rozmów
 - [x] Etap 3 (C) – przełącznik Code | Czat i szkielet zakładki
 - [x] Etap 4 (C) – wątek: markdown, kod, strumień, Stop
-- [ ] Etap 5 (L) – adapter Claude (subskrypcja)
+- [x] Etap 5 (L) – adapter Claude (subskrypcja)
 - [ ] Etap 6 (L) – adapter ChatGPT (subskrypcja)
 - [ ] Etap 7 (C) – API: klucze, adapter `anthropic`, okno „Dostawcy”
 - [ ] Etap 7b (C) – research: „Szukaj w sieci”, źródła, przypisy

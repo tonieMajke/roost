@@ -3,6 +3,7 @@ import { MessageSquarePlus, PanelLeft, Search, SlidersHorizontal, X } from "luci
 import { backend } from "../backend";
 import {
   applyEvent,
+  extractSources,
   chatMeta,
   chatTitle,
   cliPrompt,
@@ -202,7 +203,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
           cancelAnimationFrame(frame.current);
           frame.current = 0;
           if (!liveRef.current) return;
-          update((m) => ({ ...applyEvent(m, e), ms: Math.round(performance.now() - started) }));
+          update((m) => ({ ...extractSources(applyEvent(m, e)), ms: Math.round(performance.now() - started) }));
           const final = liveRef.current!.chat;
           liveRef.current = null;
           setLive(null);
