@@ -101,30 +101,13 @@ utworzeniu, zapisany w układzie. Po restarcie aplikacji panel startuje z tym sa
 
 **M2 – wygląd „D” i pulpit (limity, kontekst, na żywo)** – etapy: `docs/plan-m2.md`, wzór: `docs/design/wzor-d.html`.
 
-**M3 – zakładka Chat z Pi Code** (dopisane 2026-09-30)
-
-Obok trybu „Code” (siatka terminali) druga zakładka „Chat”: rozmowa z pi w interfejsie
-Pi Code (`~/Documents/Pi/pi-gui`), a nie w TUI. Jak BridgeMind „Thread/Chat”.
-
-Co wiemy o Pi Code: ten sam stos (Tauri 2 + React 19), ~12,6 tys. linii TS w UI,
-czat działa przez sidecar w Node (`sidecar/`, SDK `@earendil-works/pi-coding-agent`),
-który rozmawia z UI liniami JSON po stdio (`shared/protocol.ts`). Rust w Pi Code tylko
-uruchamia sidecar i przekazuje linie (`pi_send`, zdarzenia), plus schowek z obrazkiem.
-
-Warianty, od najtańszego:
-1. **„Otwórz w Pi Code”** – przycisk na projekcie uruchamia osobne okno Pi Code w folderze
-   projektu (`PI_GUI_CWD`). Kilkadziesiąt linii, ale to osobne okno, nie zakładka.
-2. **Zakładka Chat z kodem Pi Code** (zalecane) – Agents workspace importuje komponenty
-   czatu i `shared/` z repozytorium Pi Code (alias ścieżki / pakiet w workspace pnpm),
-   a Rust uruchamia ten sam sidecar i przekazuje linie jak w Pi Code. Jedno źródło kodu:
-   poprawki w Pi Code od razu są w zakładce. Do zrobienia: wyrównać wersje Tauri (Pi Code
-   2.11, tu 2.12), odizolować style Pi Code, żeby nie psuły siatki, przenieść komendy Rusta
-   (`pi_send`, schowek), jeden sidecar na projekt albo jeden wspólny.
-3. **Kopia UI Pi Code do tego repo** – najprostsze na start, ale dwie wersje zaczną się
-   rozjeżdżać. Odradzane.
-
-Przed rozpisaniem etapów: sprawdzić, jak mocno UI Pi Code zakłada, że ma całe okno
-(globalny stan, style, skróty), i czy sidecar obsługuje kilka sesji naraz.
+**M3 – zakładka Czat** (dopisane 2026-09-30, przepisane 2026-10-01) – etapy: `docs/plan-m3.md`
+- Przełącznik Code | Czat w pasku tytułu. Czat wyglądem jak claude.ai: lista rozmów, wątek, pole wpisywania.
+- Wybór modelu: Claude i ChatGPT z subskrypcji (przez `claude -p` / `codex exec`), API z kluczem,
+  modele lokalne (llama-server, FreeToken). Zmiana modelu w środku rozmowy.
+- „Szukaj w sieci”: odpowiedź ze źródłami i przypisami.
+- Własny czat w procesie głównym Electrona (bez sidecara); pojedyncze kawałki UI z Pi Code.
+  Poprzedni szkic („UI Pi Code przez sidecar”) odrzucony – powstał dla wersji Tauri.
 
 **M4 – przeciąganie paneli i przekazanie kontekstu** (dopisane 2026-09-30, niezależne od M3)
 – etapy: `docs/plan-m4.md`
@@ -142,6 +125,42 @@ Przed rozpisaniem etapów: sprawdzić, jak mocno UI Pi Code zakłada, że ma ca�
 - Wbudowana przeglądarka i edytor.
 - Agent-koordynator przez własny serwer MCP.
 - codex, omp, hermes.
+
+### Pomysły z BridgeMind One (changelog v0.1.69 i strona, obejrzane 2026-10-01)
+
+Na początek, małe:
+- **Klikalne ścieżki w terminalu.** Ctrl-klik na `src/foo.ts:41` otwiera plik w linii
+  (xterm.js `registerLinkProvider`). Na start `$EDITOR` albo `xdg-open`, bez wbudowanego edytora.
+- **Szukanie w terminalu.** Ctrl+F, Ctrl+G / Ctrl+Shift+G między trafieniami (xterm-addon-search).
+- **Dashboard agentów z wyszukiwaniem i „Close idle”.** Szukanie po tytule, agencie, projekcie,
+  branchu, ostatniej wiadomości (każde słowo musi pasować, Esc czyści). „Close idle” zamyka tylko
+  bezczynne, zostawia działające i czekające. Baza: `activity.ts`.
+- **Przeciągnięcie pliku na panel wpisuje jego ścieżkę w prompcie** (w cudzysłowie).
+
+Większe:
+- **Przełączanie kont przy limicie.** Konto = osobny folder logowania agenta (Claude:
+  zapewne `CLAUDE_CONFIG_DIR`), domyślne + nadpisanie per projekt/agent. Przy limicie wybór:
+  poczekać na reset albo kontynuować na innym koncie ze streszczeniem. Baza: `limits.ts`,
+  `handoff.ts`; brakuje zmiennej środowiskowej per panel. (Wcześniej w „pomijamy”.)
+- **Panel plików z gitem.** Drzewo ze statusem, stage/unstage/discard/commit z diffem, chip
+  brancha z ahead/behind i pull/push. Łączy się z pozycją „Kanban + worktree + diff”.
+- **Wybieranie elementu w przeglądarce** → styl i kontekst strony do schowka dla agenta
+  (po dodaniu wbudowanej przeglądarki).
+- **Dyktowanie trzymanym klawiszem** (lokalnie Parakeet/Whisper, „Enhance Prompt”). Pułapki
+  z ich changelogu: skrót globalny na Wayland wymaga xdg-desktop-portal ≥ 1.21, wklejanie do
+  XWayland działa inaczej.
+- **Scratchpad** – notatki w projekcie z prostym formatowaniem.
+
+Lekcje do przeniesienia:
+- Pauzować renderowanie (animacje, zegary) gdy panel/okno jest nieaktywne – dotyczy ryzyka
+  xterm.js przy 16 panelach.
+- Test startu zainstalowanego AppImage po `tauri build` przed wydaniem (BridgeMind wycofał
+  Windows 0.2.0 po crashu przy starcie).
+- Odzyskiwanie sesji: niepotwierdzone przywrócenie agenta zostaje dostępne, gdy agent wyjdzie;
+  przy pełnym dysku zachować zapisany stan zamiast go tracić.
+- Aktualizacje pokazywać w pasku tytułu, nie wyskakującym oknem.
+
+Sugerowana kolejność: klikalne ścieżki → szukanie → Dashboard/„Close idle” → konta.
 
 ## Ryzyka
 
