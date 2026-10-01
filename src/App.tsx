@@ -67,7 +67,7 @@ export function App() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const feedSeq = useRef(0);
   // Limity subskrypcji claude (plik pisany przez linię statusu paneli claude).
-  const [limits, setLimits] = useState<ClaudeLimits | null>(null);
+  const [limits, setLimits] = useState<Record<string, ClaudeLimits>>({});
   // Ostatnie pokazane wywołanie narzędzia według sessionId; brak klucza = jeszcze nie czytano.
   const seenTools = useRef(new Map<string, string | null>());
   // Numer odczytu według sessionId: odpowiedź starsza od już obsłużonej nie dubluje zdarzeń.
@@ -532,13 +532,20 @@ export function App() {
   }, [allContextKey]);
 
   // Limity czytane tylko przy otwartym pulpicie: od razu, co LIMITS_POLL_MS i na przycisk.
+  const limitSources = [
+    { id: "", name: accounts.accounts.some((x) => x.kind === "claude") ? "Domyślne konto" : "Claude" },
+    ...accounts.accounts.filter((x) => x.kind === "claude").map((x) => ({ id: x.id, name: x.name })),
+  ];
   const readLimits = () => {
-    void backend
-      .claudeLimits()
-      .then((l) => {
-        if (l !== null) setLimits((prev) => (prev?.at === l.at ? prev : l));
-      })
-      .catch(() => undefined); // brak pliku = zostaje ostatni odczyt
+    // Konto domyślne (`""`) i każde konto Claude użytkownika, każde ma własny plik limitów.
+    for (const id of limitSources.map((s) => s.id)) {
+      void backend
+        .claudeLimits(id || undefined)
+        .then((l) => {
+          if (l !== null) setLimits((prev) => (prev[id]?.at === l.at ? prev : { ...prev, [id]: l }));
+        })
+        .catch(() => undefined); // brak pliku = zostaje ostatni odczyt
+    }
   };
   const dockOpen = loaded && ws.ui.dock;
   useEffect(() => {
@@ -546,7 +553,7 @@ export function App() {
     readLimits();
     const timer = setInterval(readLimits, LIMITS_POLL_MS);
     return () => clearInterval(timer);
-  }, [dockOpen]);
+  }, [dockOpen, accounts]);
 
   // `ping` kropeczki projektu (wzór D): praca skończyła się w siatce, której teraz nie widać.
   const [pingId, setPingId] = useState<string | null>(null);
@@ -873,6 +880,7 @@ export function App() {
           onFeedScope={(feed) => dispatch({ type: "setUi", patch: { feed } })}
           feed={feed}
           limits={limits}
+          limitSources={limitSources}
           onRefreshLimits={readLimits}
           onPickFeed={(item) =>
             dispatch(

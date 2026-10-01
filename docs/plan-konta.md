@@ -48,7 +48,7 @@ więc funkcja jest opcjonalna: bez dodanych kont aplikacja zachowuje się jak do
   przy tworzeniu (zmiana domyślnego nie przesuwa działających paneli, bo sesje leżą w folderze konta);
   panele konta nie dostają jeszcze `--settings` z limitami do Etapu 4; nadpisanie konta per projekt
   odłożone (panel + domyślne wystarczają). „Zaloguj” w oknie Kont = nowy panel agenta na tym koncie.
-- [ ] **Etap 4 – limity per konto.** `--settings` z plikiem limitów konta, `claude_limits(accountId)`,
+- [x] **Etap 4 – limity per konto.** `--settings` z plikiem limitów konta, `claude_limits(accountId)`,
   dok i `limits.ts` z kontem.
 - [ ] **Etap 5 – Kontynuuj.** Pasek przy limicie + pozycja w menu panelu; nowy panel z kontem/agentem
   docelowym i streszczeniem. Dopasować `sessionHandoff` do katalogu konta.

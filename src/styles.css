@@ -714,3 +714,6 @@ button.feed-item {
   font-size: 10px; padding: 1px 6px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--ag) 45%, transparent); color: var(--ag);
 }
+.meter-block { display: flex; flex-direction: column; gap: 8px; }
+.meter-block + .meter-block { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.meter-account { font-size: 11px; font-weight: 600; color: var(--muted); }

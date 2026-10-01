@@ -83,10 +83,10 @@ handle("session_context", (kind: string, id: string, dir?: string) => sessionCon
 handle("session_handoff", (kind: string, id: string) => sessionHandoff(kind, id));
 handle("claude_summary", (command: string, system: string, input: string) => claudeSummary(command, system, input));
 handle("pi_summary", (command: string, system: string, input: string) => piSummary(command, system, input));
-handle("claude_settings_arg", () =>
-  claudeSettingsArg(process.execPath, path.join(__dirname, "statusline.cjs"), config.configDir()),
+handle("claude_settings_arg", (account?: { id: string; dir: string }) =>
+  claudeSettingsArg(process.execPath, path.join(__dirname, "statusline.cjs"), config.configDir(), account),
 );
-handle("claude_limits", () => claudeLimits(config.configDir()));
+handle("claude_limits", (accountId?: string) => claudeLimits(config.configDir(), accountId));
 handle("notify", (title: string, body: string) => notify(title, body));
 handle("copy_text", (text: string) => clipboard.writeText(text));
 handle("paste_text", () => clipboard.readText());

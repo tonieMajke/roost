@@ -60,9 +60,9 @@ export interface Backend {
   /** Jak `claudeSummary`, ale streszcza lokalny model przez program pi. */
   piSummary(command: string, system: string, input: string): Promise<string>;
   /** JSON dla `claude --settings` (linia statusu zapisuje limity); `null` = użytkownik ma własną linię statusu. */
-  claudeSettingsArg(): Promise<string | null>;
+  claudeSettingsArg(account?: { id: string; dir: string }): Promise<string | null>;
   /** Ostatnie limity subskrypcji z linii statusu claude; `null` = jeszcze żadnych. */
-  claudeLimits(): Promise<ClaudeLimits | null>;
+  claudeLimits(accountId?: string): Promise<ClaudeLimits | null>;
   dirExists(path: string): Promise<boolean>;
   /** Folder wybrany przez użytkownika; `null` = anulowanie. */
   pickDir(): Promise<string | null>;

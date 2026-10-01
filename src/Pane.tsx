@@ -39,8 +39,17 @@ type Props = {
 };
 
 // Jedno pytanie na całą aplikację: odpowiedź się nie zmienia, a paneli jest do 16 na projekt.
-let settingsArg: Promise<string | null> | null = null;
-const claudeSettingsArg = () => (settingsArg ??= backend.claudeSettingsArg().catch(() => null));
+// Odpowiedź zależy tylko od konta (własny plik limitów), więc pamiętamy ją per konto.
+const settingsArgs = new Map<string, Promise<string | null>>();
+const claudeSettingsArg = (account?: AccountDef) => {
+  const key = account?.id ?? "";
+  let hit = settingsArgs.get(key);
+  if (!hit) {
+    hit = backend.claudeSettingsArg(account && { id: account.id, dir: account.dir }).catch(() => null);
+    settingsArgs.set(key, hit);
+  }
+  return hit;
+};
 
 /** Czas animacji `paneOut` w styles.css — tyle App czeka z `close` w reduktorze. */
 export const PANE_OUT_MS = 190;
@@ -69,11 +78,10 @@ export function Pane({ pane, path, agent, account, showAccount, look, fontSize, 
       agent.session?.check === "claude" && pane.sessionId
         ? backend.claudeSessionExists(pane.sessionId, account?.dir).catch(() => false)
         : Promise.resolve(false);
-    void Promise.all([known, claudeSettingsArg()]).then(([exists, settings]) => {
+    void Promise.all([known, claudeSettingsArg(account)]).then(([exists, settings]) => {
       if (!live) return;
       // claude: linia statusu z limitami subskrypcji dla pulpitu (Rust `limits.rs`).
-      // Limity idą do jednego pliku, więc panel konta (inny abonament) ich nie dopisuje – do Etapu 4 w planie kont.
-      const args = withClaudeSettings(agent, withModel(buildArgs(agent, pane.sessionId, exists), pane.model), account ? null : settings);
+      const args = withClaudeSettings(agent, withModel(buildArgs(agent, pane.sessionId, exists), pane.model), settings);
       setArgsFor({ run: pane.run, sessionId: pane.sessionId, args });
     });
     return () => {

@@ -48,3 +48,23 @@ export function limitMeters(limits: ClaudeLimits | null, now: number): LimitMete
       : [{ label, pct: Math.max(0, Math.round(w.pct)), note: resetText(w.resetsAt, now) }],
   );
 }
+
+/** Limity jednego konta: `id` `""` = konto domyślne Claude (własny folder agenta). */
+export type LimitBlock = { id: string; name: string; limits: ClaudeLimits; meters: LimitMeter[] };
+
+/**
+ * Bloki do pulpitu: po jednym na konto, które ma jeszcze ważne okno. Kolejność jak w `sources`
+ * (domyślne, potem konta użytkownika); konto bez odczytu albo po resecie nic nie mówi i znika.
+ */
+export function limitBlocks(
+  sources: { id: string; name: string }[],
+  byId: Record<string, ClaudeLimits | undefined>,
+  now: number,
+): LimitBlock[] {
+  return sources.flatMap((s) => {
+    const limits = byId[s.id];
+    if (!limits) return [];
+    const meters = limitMeters(limits, now);
+    return meters.length > 0 ? [{ id: s.id, name: s.name, limits, meters }] : [];
+  });
+}
