@@ -1,4 +1,4 @@
-# Agents workspace – zasady pracy
+# Roost – zasady pracy
 
 Desktopowa aplikacja (Electron + React + TypeScript, pnpm, tylko Linux), która uruchamia wiele
 agentów CLI (`claude`, `pi`, powłoka) w siatce terminali. Opis projektu: `PLAN.md`.

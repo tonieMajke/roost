@@ -21,7 +21,7 @@ css = sys.argv[4] if len(sys.argv) > 4 else ""
 scroll = os.environ.get("BENCH_SCROLL") == "1"
 resize = os.environ.get("BENCH_RESIZE") == "1"
 
-ws = json.load(open(os.environ.get("BENCH_WORKSPACE", os.path.expanduser("~/.config/dev.majke.agents/workspace.json"))))
+ws = json.load(open(os.environ.get("BENCH_WORKSPACE", os.path.expanduser("~/.config/dev.majke.roost/workspace.json"))))
 ws["ui"].update(override)
 seed = f"""
 try {{

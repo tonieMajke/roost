@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { DEFAULT_AGENTS, parseAgents } from "../../src/agents";
-import { accountsLoad, accountsSave, agentsLoad, claudeSessionExists, defaultAgentsJson, sessionExistsIn, workspaceBackup, workspaceLoad, workspaceSave, writeAtomic } from "./config";
+import { accountsLoad, accountsSave, agentsLoad, claudeSessionExists, defaultAgentsJson, migrateLegacyConfig, sessionExistsIn, workspaceBackup, workspaceLoad, workspaceSave, writeAtomic } from "./config";
 
 const dirs: string[] = [];
 const tempDir = () => {
@@ -92,5 +92,31 @@ describe("config", () => {
 
   it("domyślni agenci to ta sama lista co DEFAULT_AGENTS w src/agents.ts", () => {
     expect(parseAgents(JSON.parse(defaultAgentsJson()))).toEqual({ agents: DEFAULT_AGENTS, errors: [] });
+  });
+
+  it("migracja: kopiuje stary katalog, gdy nowego nie ma, i niczego nie rusza w starym", () => {
+    const root = tempDir();
+    const legacy = path.join(root, "agents");
+    const dir = path.join(root, "roost");
+    fs.mkdirSync(path.join(legacy, "bots", "rust"), { recursive: true });
+    fs.writeFileSync(path.join(legacy, "workspace.json"), '{"a":1}');
+    fs.writeFileSync(path.join(legacy, "bots", "rust", "bot.json"), "{}");
+    expect(migrateLegacyConfig(dir, legacy)).toBe(true);
+    expect(fs.readFileSync(path.join(dir, "workspace.json"), "utf8")).toBe('{"a":1}');
+    expect(fs.existsSync(path.join(dir, "bots", "rust", "bot.json"))).toBe(true);
+    expect(fs.existsSync(path.join(legacy, "workspace.json"))).toBe(true);
+  });
+
+  it("migracja: nie nadpisuje istniejącego nowego katalogu i znosi brak starego", () => {
+    const root = tempDir();
+    const legacy = path.join(root, "agents");
+    const dir = path.join(root, "roost");
+    fs.mkdirSync(legacy);
+    fs.writeFileSync(path.join(legacy, "workspace.json"), "stary");
+    fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(dir, "workspace.json"), "nowy");
+    expect(migrateLegacyConfig(dir, legacy)).toBe(false);
+    expect(fs.readFileSync(path.join(dir, "workspace.json"), "utf8")).toBe("nowy");
+    expect(migrateLegacyConfig(path.join(root, "x"), path.join(root, "brak"))).toBe(false);
   });
 });

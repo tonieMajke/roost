@@ -37,6 +37,21 @@ import { ensureFreeToken, freeGpuForRouter, freetokenInstance, isRouter } from "
 import { isSkillName, parseBotChat, runNotice, type ApprovalDecision } from "../../src/bot";
 import { buildChatConfig, isCli, type ChatEvent, type ChatRequest, type ProviderDef } from "../../src/chat";
 
+// Wewnętrzna nazwa „Agents” zostaje: od niej zależą userData i wpis w sejfie systemowym, w którym leżą
+// klucze API (safeStorage). Zmiana nazwy po cichu unieważniłaby zapisane klucze. Widoczna nazwa to Roost.
+app.setName("Agents");
+app.setPath("userData", path.join(app.getPath("appData"), "Agents"));
+
+// Pierwszy start po zmianie nazwy: konfiguracja ze starego katalogu `dev.majke.agents`. Nie przy
+// własnym `ROOST_CONFIG_DIR`/`AGENTS_CONFIG_DIR` (druga kopia ma zostać pusta).
+if (!process.env.ROOST_CONFIG_DIR && !process.env.AGENTS_CONFIG_DIR) {
+  try {
+    config.migrateLegacyConfig();
+  } catch (e) {
+    console.error("config migration failed:", e);
+  }
+}
+
 // Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
 const store = passwordStore(readOrNull(path.join(app.getPath("home"), ".config", "kwalletrc")), process.env);
 if (store) app.commandLine.appendSwitch("password-store", store);
@@ -354,7 +369,7 @@ function createWindow() {
     height: 900,
     minWidth: 640,
     minHeight: 400,
-    title: "Agents",
+    title: "Roost",
     frame: false,
     transparent: true, // rogi zaokrągla `.shell`
     backgroundColor: "#00000000",

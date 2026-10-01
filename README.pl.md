@@ -1,6 +1,8 @@
 **Polski** · [English](README.md)
 
-# Agents workspace
+# Roost
+
+*Rule the roost.*
 
 Desktopowa aplikacja (Electron + React + TypeScript, tylko Linux) do pracy z wieloma
 agentami CLI naraz. Po lewej szyna z projektami (folderami), po prawej siatka 1–16
@@ -18,12 +20,13 @@ pnpm install
 pnpm desktop          # okno Electron (build + start; raz wcześniej: cd electron && npm install)
 ```
 
-Produktowo: `pnpm electron:dist` (`electron/release/Agents-<wersja>.AppImage`).
+Produktowo: `pnpm electron:dist` (`electron/release/Roost-<wersja>.AppImage`).
 Dawna wersja Tauri leży w `legacy-tauri/` (nieużywana, patrz jej README).
 
 Backend w Node (`electron/src/`, IPC przez `preload.ts` → `src/backend-electron.ts`),
-konfiguracja w `~/.config/dev.majke.agents/` (`AGENTS_CONFIG_DIR` przestawia ją na inną –
-nie uruchamiaj dwóch kopii naraz na wspólnym `workspace.json`).
+konfiguracja w `~/.config/dev.majke.roost/` (`ROOST_CONFIG_DIR` przestawia ją na inną –
+nie uruchamiaj dwóch kopii naraz na wspólnym `workspace.json`). Przy pierwszym starcie po zmianie nazwy z „Agents” stary katalog
+`~/.config/dev.majke.agents/` jest kopiowany do nowego (stary zostaje jako kopia zapasowa).
 
 Sprawdzenia: `pnpm typecheck`, `pnpm test` (vitest),
 `cd electron && npm run typecheck`.
@@ -40,7 +43,7 @@ Służy do sprawdzania układu i stylów bez otwierania okna na pulpicie.
 
 ## Pliki konfiguracyjne
 
-W `~/.config/dev.majke.agents/`:
+W `~/.config/dev.majke.roost/`:
 
 - `agents.json` — lista agentów (tworzona z domyślnymi wpisami przy pierwszym starcie).
   Uszkodzonego pliku aplikacja nie nadpisuje, tylko pokazuje błąd w pasku.

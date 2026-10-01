@@ -65,6 +65,7 @@ import { CONFIRM_MS, confirmClick, type Arm } from "./confirm";
 import type { TerminalHandle } from "./Terminal";
 import { quotePaths } from "./drop";
 import { Nebula } from "./Nebula";
+import { Splash } from "./Splash";
 import { motionAllowed } from "./motion";
 import type { PaneActions, ProjectActions } from "./handlers";
 
@@ -466,12 +467,12 @@ export function App() {
   );
   const windowTitle =
     mode === "chat"
-      ? `${chatTitle || t("app.titleChat")} — Agents`
+      ? `${chatTitle || t("app.titleChat")} — Roost`
       : mode === "bot"
-        ? `${botTitle || t("app.titleBots")} — Agents`
+        ? `${botTitle || t("app.titleBots")} — Roost`
         : focusedTitle
-          ? `${focusedTitle} — Agents`
-          : "Agents";
+          ? `${focusedTitle} — Roost`
+          : "Roost";
   useEffect(() => {
     document.title = windowTitle; // podgląd w przeglądarce; w oknie tytuł ustawia TitleBar
   }, [windowTitle]);
@@ -1061,6 +1062,7 @@ export function App() {
 
   return (
     <div className={`shell${winMax ? " is-max" : ""}`}>
+    {backend.window && <Splash />}
     {backend.window && <TitleBar win={backend.window} title={windowTitle} onMaximized={setWinMax} />}
     {backend.window && !winMax && <ResizeEdges win={backend.window} />}
     <div className={`app ${uiClasses(ws.ui)} mode-${mode}`}>

@@ -2,6 +2,15 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Zmiana nazwy: Agents workspace → Roost (gałąź `roost-rename`) – 2026-10-02 (Claude)
+
+- Nazwa produktu **Roost**, hasło „Rule the roost”, slug `roost-app` (npm wolne, w sprawdzeniu 2026-10-02). `appId` `dev.majke.roost`, AppImage `Roost-<wersja>.AppImage`, `StartupWMClass` `roost-app`.
+- Konfiguracja: `~/.config/dev.majke.roost/`; przy pierwszym starcie stary `dev.majke.agents` jest **kopiowany** (`migrateLegacyConfig` w `electron/src/config.ts`, stary zostaje). Env `ROOST_CONFIG_DIR`, dawny `AGENTS_CONFIG_DIR` nadal działa; przy własnym katalogu z env migracji nie ma.
+- **Nie zmieniać `app.setName("Agents")` i `userData` w `main.ts`**: od nich zależy wpis w sejfie systemowym z kluczami API (safeStorage); zmiana unieważniłaby zapisane klucze.
+- Tytuł okna: „<wybrany panel> — Roost”. Splash (`src/Splash.tsx`, ~1,3 s, tylko w oknie Electrona, klawisz/klik zamyka). Ikona bez zmian (cztery kwadraty); próby z krukiem odrzucone.
+- Zostawione celowo: klucz `aw-workspace` (podgląd w przeglądarce), `AGENTS_DEV_URL`/`AGENTS_DEVTOOLS`, `legacy-tauri/`, dane w testach i mockach.
+- Do zrobienia: przełącznik splasha w Wyglądzie, ręczny test AppImage (start, migracja, klucze API), zmiana nazwy folderu projektu i repo na GitHubie.
+
 ## Konta agentów (gałąź `konta-etapy`, worktree `.claude/worktrees/konta`) – 2026-10-01 (Claude)
 
 Plan: `docs/plan-konta.md` (etapy 1–5 zrobione i zacommitowane, 6 = ten wpis). Praca poszła w osobnym worktree, bo w głównym katalogu równolegle szło M5 – przed scaleniem do `master` trzeba rozwiązać konflikty w `App.tsx`, `Pane.tsx`, `Grid.tsx`, `backend*.ts`, `main.ts`, `handlers.ts`, `styles.css` (obie strony je dotykają).

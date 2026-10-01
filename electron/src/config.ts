@@ -1,4 +1,4 @@
-//! Pliki konfiguracji w `configDir()` (`~/.config/dev.majke.agents/`, jak w wersji Tauri).
+//! Pliki konfiguracji w `configDir()` (`~/.config/dev.majke.roost/`; do wersji „Agents” był to `dev.majke.agents`).
 
 import { t } from "./i18n";
 import fs from "node:fs";
@@ -11,9 +11,26 @@ const AGENTS_FILE = "agents.json";
 const WORKSPACE_FILE = "workspace.json";
 const ACCOUNTS_FILE = "accounts.json";
 
-/** `AGENTS_CONFIG_DIR` pozwala uruchomić drugą kopię obok, bez wspólnego workspace.json. */
+/** `ROOST_CONFIG_DIR` (dawniej `AGENTS_CONFIG_DIR`) pozwala uruchomić drugą kopię obok, bez wspólnego workspace.json. */
 export function configDir(): string {
-  return process.env.AGENTS_CONFIG_DIR || path.join(os.homedir(), ".config", "dev.majke.agents");
+  const env = process.env.ROOST_CONFIG_DIR || process.env.AGENTS_CONFIG_DIR;
+  return env || path.join(os.homedir(), ".config", "dev.majke.roost");
+}
+
+/** Katalog z czasów nazwy „Agents”. */
+export function legacyConfigDir(): string {
+  return path.join(os.homedir(), ".config", "dev.majke.agents");
+}
+
+/**
+ * Pierwszy start po zmianie nazwy: gdy nowego katalogu nie ma, a stary jest, kopiuje go w całości
+ * (workspace, konta, boty, czaty, klucze). Stary zostaje nietknięty jako kopia zapasowa.
+ * Zwraca true, gdy skopiowano.
+ */
+export function migrateLegacyConfig(dir = configDir(), legacy = legacyConfigDir()): boolean {
+  if (fs.existsSync(dir) || !fs.existsSync(legacy)) return false;
+  fs.cpSync(legacy, dir, { recursive: true });
+  return true;
 }
 
 /** Ta sama lista co `DEFAULT_AGENTS` w `src/agents.ts`. */
