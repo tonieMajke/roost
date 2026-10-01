@@ -2,10 +2,10 @@
 import { dayOf, shiftDay, type UsageRow } from "./usage";
 
 const SETS: { provider: string; model: string; source: UsageRow["source"]; project?: string; weight: number; cost?: number }[] = [
-  { provider: "claude", model: "claude-opus-5-5", source: "pane", project: "/home/user/agents-workspace", weight: 5, cost: 0.9 },
+  { provider: "claude", model: "claude-opus-5-5", source: "pane", project: "/home/user/roost-app", weight: 5, cost: 0.9 },
   { provider: "claude", model: "claude-sonnet-5-5", source: "pane", project: "/home/user/vs-mod", weight: 3 },
   { provider: "claude", model: "claude-haiku-4-5", source: "chat", weight: 1, cost: 0.02 },
-  { provider: "codex", model: "gpt-5.6-luna", source: "pane", project: "/home/user/agents-workspace", weight: 2 },
+  { provider: "codex", model: "gpt-5.6-luna", source: "pane", project: "/home/user/roost-app", weight: 2 },
   { provider: "llama", model: "Swift-Flash-Next", source: "bot", weight: 1 },
 ];
 

@@ -4,7 +4,7 @@ import { t } from "./i18n";
 import { spawn } from "node:child_process";
 import { childEnv } from "./env";
 
-const APP_NAME = "Agents";
+const APP_NAME = "Roost";
 /** Akcja `default` = kliknięcie w samo powiadomienie (KDE, GNOME, dunst). */
 const CLICK = "default";
 

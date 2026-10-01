@@ -7,7 +7,7 @@ type File = { head?: string; index?: string; work?: string };
 
 const initial = (): Map<string, File> =>
   new Map<string, File>([
-    ["README.md", { head: "# Agents\n\nPanel agentów.\n", index: "# Agents\n\nPanel agentów.\n", work: "# Agents workspace\n\nPanel agentów CLI.\n" }],
+    ["README.md", { head: "# Roost\n\nPanel agentów.\n", index: "# Roost\n\nPanel agentów.\n", work: "# Roost\n\nPanel agentów CLI.\n" }],
     ["src/App.tsx", { head: "const a = 1;\nconst b = 2;\n", index: "const a = 1;\nconst b = 3;\n", work: "const a = 1;\nconst b = 3;\n" }],
     ["src/git.ts", { head: "export {};\n", index: "export {};\n", work: "export {};\n" }],
     ["src/nowy plik.ts", { work: "export const x = 1;\n" }],

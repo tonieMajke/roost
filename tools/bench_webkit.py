@@ -1,4 +1,4 @@
-"""Pomiar płynności podglądu Agents w WebKitGTK 4.1 poza ekranem (opis: HANDOFF, „Płynność”).
+"""Pomiar płynności podglądu Roost w WebKitGTK 4.1 poza ekranem (opis: HANDOFF, „Płynność”).
 
 Wymaga `pnpm dev`. python3 tools/bench_webkit.py [ui-json] [sekundy] [png] [css]
 Zmienne: BENCH_SCROLL=1 (przewijanie), BENCH_RESIZE=1 (okno zmienia rozmiar co klatkę), BENCH_W/BENCH_H, BENCH_WORKSPACE, BENCH_HASH=#dom, WEBKIT_*.

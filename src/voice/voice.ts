@@ -431,7 +431,7 @@ export function voicePrompt(now: Date, overview?: string): string {
   if (overview !== undefined) {
     lines.push(
       "",
-      "Jesteś też asystentem aplikacji Agents: użytkownik ma w niej projekty, a w nich panele z agentami (claude, pi)",
+      "Jesteś też asystentem aplikacji Roost: użytkownik ma w niej projekty, a w nich panele z agentami (claude, pi)",
       "pracującymi w terminalach. Masz narzędzia, żeby sprawdzać ich postępy i nimi sterować.",
       "- Pytany o postępy albo „co się dzieje”: overview, a po szczegóły read_pane; streść krótko, najpierw to, co wymaga uwagi.",
       "- Gdy użytkownik zatwierdzi plan („OK, deploy”, „zaczynajmy”): podziel go na niezależne zadania i wywołaj open_panes.",

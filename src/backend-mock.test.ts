@@ -98,8 +98,8 @@ describe("mock backend (tryb podglądu)", () => {
   it("notify loguje się w konsoli podglądu", async () => {
     const log = vi.spyOn(console, "info").mockImplementation(() => undefined);
     try {
-      await mockBackend.notify("Agents: Claude", "skończył pracę w projekt");
-      expect(log).toHaveBeenCalledWith("[powiadomienie] Agents: Claude: skończył pracę w projekt");
+      await mockBackend.notify("Roost: Claude", "skończył pracę w projekt");
+      expect(log).toHaveBeenCalledWith("[powiadomienie] Roost: Claude: skończył pracę w projekt");
     } finally {
       log.mockRestore();
     }

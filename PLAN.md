@@ -1,4 +1,4 @@
-# Agents workspace – plan
+# Roost – plan
 
 Osobiste, lokalne środowisko do uruchamiania wielu agentów CLI obok siebie, w stylu
 trybu Code z BridgeMind One (bridgemind.ai), ale bez konta, chmury i subskrypcji.

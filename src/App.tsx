@@ -922,7 +922,7 @@ export function App() {
         // Schowany projekt: kropka na szynie dostaje jednorazowy `ping`.
         if (info.projectId !== activeRef.current) pingRef.current(info.projectId);
         void backend
-          .notify(`Agents: ${info.agent}`, t("app.notifyFinished", { project: info.project }))
+          .notify(`Roost: ${info.agent}`, t("app.notifyFinished", { project: info.project }))
           .catch((e: unknown) => setErrors((prev) => [...prev, t("app.errNotify", { error: String(e) })]));
       }
     }, TICK_MS);
