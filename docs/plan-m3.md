@@ -83,7 +83,7 @@ Nowe zależności dozwolone tylko w etapie, który je wymienia.
 
 ## Postęp
 
-- [ ] Etap 1 (L) – model czatu bez UI
+- [x] Etap 1 (L) – model czatu bez UI
 - [ ] Etap 2 (L) – adapter `openai-compat` i zapis rozmów
 - [ ] Etap 3 (C) – przełącznik Code | Czat i szkielet zakładki
 - [ ] Etap 4 (C) – wątek: markdown, kod, strumień, Stop
