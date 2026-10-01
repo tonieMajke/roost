@@ -69,6 +69,18 @@ const chatWith = (text: string): BotChat => ({
 });
 
 describe("BotService (HTTP)", () => {
+  it("przebieg z harmonogramu: nazwa zadania w prompcie; abortAll z `keep` go nie przerywa", async () => {
+    const s = service();
+    const routine = { id: "r1", name: "Poranne newsy", prompt: "a", schedule: { kind: "every" as const, minutes: 5 }, allow: { writeWork: false, bash: [] }, enabled: true, created: 0 };
+    const out: ChatEvent[] = [];
+    const p = s.send("run:1", { ...chatWith("a"), routine: "r1" }, req(), (e) => out.push(e), routine);
+    s.abortAll((id) => id.startsWith("run:"));
+    await p;
+    expect(out.at(-1)).toEqual({ type: "done" });
+    expect(out.some((e) => e.type === "text")).toBe(true);
+    expect(bodies[0].messages[0].content).toContain("# Zadanie z harmonogramu: Poranne newsy");
+  });
+
   it("prompt bota z pamięcią, narzędzia z rejestru, list_dir w work/ bez pytania, kończy `done`", async () => {
     fs.writeFileSync(path.join(store.work("rusty"), "notatki.md"), "x");
     const out: ChatEvent[] = [];

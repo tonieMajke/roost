@@ -112,6 +112,15 @@ Użytkownik zbiera więcej zmian i zleci wdrożenie wszystkich naraz innemu agen
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 9: harmonogram – 2026-10-01 (Claude zamiast lokalnego modelu, za zgodą użytkownika; konta)
+
+- `electron/src/bot/scheduler.ts` (`Scheduler`): zegar co 30 s (`TICK_MS`) + tyknięcie po `powerMonitor` „resume”; każde tyknięcie czyta `routines.json` wszystkich botów i porównuje czas ścienny (`routineDue`/`routineNext` w `src/bot.ts` – od `lastRun`, bez niego od `created`; `lastRun` z przyszłości liczy się jak teraz). Zaległe terminy = jeden przebieg, bo `lastRun` zapisuje się w `routines.json` przy starcie przebiegu (i w pamięci, gdy pliku nie da się zapisać).
+- Najwyżej 2 przebiegi w stanie `running`; przebieg „czeka na zgodę” nie zajmuje miejsca (inaczej dwie nocne prośby blokowałyby resztę). Kolejka bez duplikatów zadania.
+- Przebieg = rozmowa w `runs/` z `routine`, `title` = nazwa zadania i nowym polem `BotChat.state` (`running` / `waiting_approval` / `done` / `error`, `RUN_STATES`, sprawdzane w `parseBotChat`). Model: `runModel` (model bota albo pierwszy z listy; brak dostawcy = przebieg z błędem bez wywołania). `BotService.send(…, routine)` daje narzędziom `allow` zadania i prompt „# Zadanie z harmonogramu”. Plik zapisywany przy starcie, po każdym wyniku narzędzia, przy zmianie stanu i na końcu.
+- `main.ts`: start po `ready`, `stop` przy `will-quit` (trwające zapisane jako przerwane; po twardym zamknięciu `recover` przy następnym starcie oznacza ostatnie 20 przebiegów „w trakcie” jako przerwane). Przeładowanie strony nie przerywa przebiegów (`abortAll(keep)` po prefiksie `run:`) ani ich próśb o zgodę (`denyAll(keep)`). Zmiana stanu → zdarzenie `bot_run` do okna (bez preload – etap 10).
+- Testy na sztucznym zegarze i atrapie usługi (`scheduler.test.ts`, 7) + `routineDue`/`runModel`/`state` w `bot.test.ts` + przebieg w `service.test.ts`. Sprawdzenia: `pnpm typecheck`, `pnpm test` (59 plików, 636 testów + 9 pominiętych), `electron` typecheck + build – przechodzą.
+- Niesprawdzone: prawdziwy przebieg z modelem i uśpienie komputera w działającej aplikacji (etap 11). Zadanie włączone długo po utworzeniu ruszy od razu, jeśli termin od `created` już minął – etap 10 może przy włączaniu ustawiać `lastRun`. Zapis harmonogramu z UI (etap 10) musi zachować `lastRun`.
+
 ## M5 Etap 8: Kreator botów – 2026-10-01 (Claude, konta)
 
 - Prompt Kreatora (`botSystemPrompt`, sekcja „Jak budujesz boty” + „Istniejące boty” z `PromptContext.bots`): najwyżej 3 pytania, potem `bot_create` z pełną definicją, startowymi skillami i zadaniami (wyłączonymi); foldery tylko podane przez użytkownika; `model` pominięty = model rozmowy z Kreatorem (`ToolContext.model` z `service.ts`).

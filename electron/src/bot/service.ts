@@ -3,7 +3,7 @@
 
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
-import { botSystemPrompt, botTurns, type BotChat } from "../../../src/bot";
+import { botSystemPrompt, botTurns, type BotChat, type Routine } from "../../../src/bot";
 import type { ChatEvent, ChatRequest, ToolSpec } from "../../../src/chat";
 import { streamAnthropic } from "../chat/anthropic";
 import { streamClaude } from "../chat/claude";
@@ -42,8 +42,9 @@ export class BotService {
   constructor(private deps: BotServiceDeps) {}
 
   /** `chat` z ostatnim pytaniem; `req`: dostawca, model, sesja CLI i `prompt` jak w Czacie.
+   *  `routine`: przebieg z harmonogramu (zgody z góry z `allow`, nazwa zadania w prompcie).
    *  Ostatnie zdarzenie to zawsze `done` albo `error`. */
-  async send(reqId: string, chat: BotChat, req: ChatRequest, emit: (e: ChatEvent) => void): Promise<void> {
+  async send(reqId: string, chat: BotChat, req: ChatRequest, emit: (e: ChatEvent) => void, routine?: Routine): Promise<void> {
     const ctl = new AbortController();
     this.running.get(reqId)?.abort();
     this.running.set(reqId, ctl);
@@ -51,7 +52,7 @@ export class BotService {
       if (!ctl.signal.aborted) emit(e);
     };
     try {
-      await this.turn(chat, req, ctl.signal, out);
+      await this.turn(chat, req, ctl.signal, out, routine);
       emit({ type: "done" });
     } catch (e) {
       if (ctl.signal.aborted || isAbort(e)) emit({ type: "done" });
@@ -65,12 +66,16 @@ export class BotService {
     this.running.get(reqId)?.abort();
   }
 
-  abortAll(): void {
-    for (const ctl of this.running.values()) ctl.abort();
-    this.running.clear();
+  /** `keep`: odpowiedzi, które mają przetrwać (przebiegi harmonogramu przy przeładowaniu strony). */
+  abortAll(keep: (reqId: string) => boolean = () => false): void {
+    for (const [id, ctl] of this.running) {
+      if (keep(id)) continue;
+      ctl.abort();
+      this.running.delete(id);
+    }
   }
 
-  private system(chat: BotChat): string {
+  private system(chat: BotChat, routine?: Routine): string {
     const cached = this.prompts.get(chat.id);
     if (cached !== undefined) return cached;
     const { store } = this.deps;
@@ -82,13 +87,14 @@ export class BotService {
       skills: store.skills(bot.id).filter((s) => !s.error),
       now: (this.deps.now ?? Date.now)(),
       work: store.work(bot.id),
+      ...(routine ? { routine: routine.name } : {}),
       ...(bot.builtin === "creator" ? { bots: store.list().bots } : {}),
     });
     this.prompts.set(chat.id, prompt);
     return prompt;
   }
 
-  private async turn(chat: BotChat, req: ChatRequest, signal: AbortSignal, emit: (e: ChatEvent) => void): Promise<void> {
+  private async turn(chat: BotChat, req: ChatRequest, signal: AbortSignal, emit: (e: ChatEvent) => void, routine?: Routine): Promise<void> {
     const { store, broker, key } = this.deps;
     const bot = store.load(chat.bot);
     if (!bot) throw new Error(`nie ma bota „${chat.bot}”`);
@@ -97,10 +103,10 @@ export class BotService {
     let grants = this.grants.get(chat.id);
     if (!grants) this.grants.set(chat.id, (grants = []));
     const model = { provider: req.provider.id, model: req.model };
-    const ctx: ToolContext = { store, bot, chat: chat.id, broker, grants, signal, model, web: this.deps.web, now: this.deps.now };
+    const ctx: ToolContext = { store, bot, chat: chat.id, broker, grants, signal, model, routine: routine?.allow, web: this.deps.web, now: this.deps.now };
     const run: RunTool = (name, args) => runTool(name, args, ctx);
     const tools: ToolSpec[] = chat.toolsUnsupported ? [] : toolDefs(bot);
-    const base: ChatRequest = { ...req, system: this.system(chat), search: false };
+    const base: ChatRequest = { ...req, system: this.system(chat, routine), search: false };
 
     switch (req.provider.kind) {
       case "openai":

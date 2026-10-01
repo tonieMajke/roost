@@ -48,8 +48,9 @@ export class ApprovalBroker {
     return [...this.pending.values()].map((p) => p.req).sort((a, b) => a.at - b.at);
   }
 
-  /** Zamknięcie aplikacji: wszystko odrzucone. */
-  denyAll(): void {
-    for (const id of [...this.pending.keys()]) this.decide(id, "deny");
+  /** Zamknięcie aplikacji: wszystko odrzucone. `keep`: prośby, które czekają dalej
+   *  (przebiegi harmonogramu przy przeładowaniu strony – nowa strona pobierze je przez `list`). */
+  denyAll(keep: (req: ApprovalRequest) => boolean = () => false): void {
+    for (const [id, p] of [...this.pending]) if (!keep(p.req)) this.decide(id, "deny");
   }
 }

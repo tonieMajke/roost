@@ -19,6 +19,9 @@ import {
   newBot,
   newBotChat,
   nextRun,
+  routineDue,
+  routineNext,
+  runModel,
   parseBot,
   parseBotChat,
   parseRoutines,
@@ -31,8 +34,10 @@ import {
   type BotChat,
   type BotDef,
   type PromptContext,
+  type Routine,
   type ToolCallRecord,
 } from "./bot";
+import type { ProviderDef } from "./chat";
 
 // Harmonogram liczy w czasie lokalnym; strefa Europe/Warsaw ustawiona w vitest.config.ts.
 const local = (y: number, mo: number, d: number, h = 0, mi = 0) => new Date(y, mo - 1, d, h, mi).getTime();
@@ -127,6 +132,51 @@ describe("nextRun", () => {
     const second = nextRun(s, first);
     expect(new Date(second).getDate()).toBe(26);
     expect(new Date(second).getHours()).toBe(2);
+  });
+});
+
+describe("routineDue", () => {
+  const r = (patch: Partial<Routine>): Routine => ({
+    id: "r1",
+    name: "Rano",
+    prompt: "newsy",
+    schedule: { kind: "daily", at: "08:00" },
+    allow: { writeWork: false, bash: [] },
+    enabled: true,
+    created: local(2026, 10, 1, 12),
+    ...patch,
+  });
+  it("od utworzenia, potem od ostatniego przebiegu", () => {
+    expect(routineDue(r({}), local(2026, 10, 2, 7, 59))).toBe(false);
+    expect(routineDue(r({}), local(2026, 10, 2, 8, 0))).toBe(true);
+    expect(routineDue(r({ lastRun: local(2026, 10, 2, 8, 0) + 20_000 }), local(2026, 10, 2, 23))).toBe(false);
+    expect(routineDue(r({ enabled: false }), local(2026, 10, 9))).toBe(false);
+  });
+  it("kilka ominiętych terminów = jeden przebieg (po nim lastRun = teraz)", () => {
+    const now = local(2026, 10, 5, 13);
+    const old = r({ lastRun: local(2026, 10, 1, 8) });
+    expect(routineDue(old, now)).toBe(true);
+    expect(routineDue({ ...old, lastRun: now }, now + 60_000)).toBe(false);
+    expect(routineNext({ ...old, lastRun: now }, now)).toBe(local(2026, 10, 6, 8));
+  });
+  it("co N minut; ostatni przebieg z przyszłości (cofnięty zegar) liczy się jak teraz", () => {
+    const every = r({ schedule: { kind: "every", minutes: 30 }, lastRun: 1_000_000 });
+    expect(routineDue(every, 1_000_000 + 29 * 60_000)).toBe(false);
+    expect(routineDue(every, 1_000_000 + 30 * 60_000)).toBe(true);
+    expect(routineNext({ ...every, lastRun: 9e12 }, 2_000_000)).toBe(2_000_000 + 30 * 60_000);
+  });
+});
+
+describe("runModel", () => {
+  const claude: ProviderDef = { id: "claude", name: "Claude", kind: "claude-cli", group: "sub", models: [{ id: "haiku", name: "Haiku" }] };
+  const llama: ProviderDef = { id: "llama", name: "llama", kind: "openai", group: "local", baseUrl: "http://x", models: [], discover: true };
+  it("model bota, także spoza listy (wykryty w oknie)", () => {
+    expect(runModel(newBot("a", 0, { model: { provider: "llama", model: "qwen" } }), [claude, llama])).toEqual({ provider: llama, ref: { provider: "llama", model: "qwen" } });
+  });
+  it("bez modelu = pierwszy z listy; brak dostawcy albo modeli = błąd", () => {
+    expect(runModel(newBot("a", 0), [claude, llama])).toEqual({ provider: claude, ref: { provider: "claude", model: "haiku" } });
+    expect(runModel(newBot("a", 0, { model: { provider: "nie-ma", model: "x" } }), [claude])).toContain("nie ma dostawcy");
+    expect(runModel(newBot("a", 0), [llama])).toContain("nie ma żadnego modelu");
   });
 });
 
@@ -340,6 +390,8 @@ describe("rozmowy bota", () => {
   it("newBotChat → parseBotChat", () => {
     const c = newBotChat("c1", "rust", 5, { provider: "claude", model: "haiku" }, "r1");
     expect(parseBotChat(JSON.stringify(c))).toEqual(c);
+    expect(parseBotChat(JSON.stringify({ ...c, state: "waiting_approval" }))?.state).toBe("waiting_approval");
+    expect(parseBotChat(JSON.stringify({ ...c, state: "zepsuty" }))).not.toHaveProperty("state");
   });
   it("zwykła rozmowa z Czatu to nie rozmowa bota", () => {
     expect(parseBotChat(JSON.stringify({ version: 1, id: "x", messages: [] }))).toBeNull();

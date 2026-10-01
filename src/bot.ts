@@ -1,7 +1,7 @@
 /** Zakładka Bot (M5): model botów, pamięci, skilli i harmonogramu. Czyste funkcje,
  *  bez Reacta i IPC. Wspólne z `electron/src/bot/`. */
 
-import { applyEvent, freeId, parseChat, type Chat, type ChatEvent, type ModelRef, type Turn } from "./chat";
+import { applyEvent, firstModel, freeId, parseChat, type Chat, type ChatEvent, type ModelRef, type ProviderDef, type Turn } from "./chat";
 
 /** Grupy narzędzi, które użytkownik włącza w ustawieniach bota. */
 export type ToolGroup = "web" | "read" | "write" | "bash" | "memory" | "skills";
@@ -117,8 +117,12 @@ export type ToolCallRecord = {
   at?: number; // długość tekstu odpowiedzi w chwili wywołania (kolejność tekstu i kroków w historii)
 };
 
-/** Rozmowa bota albo przebieg z harmonogramu (`routine`). */
-export type BotChat = Chat & { bot: string; calls: ToolCallRecord[]; routine?: string; toolsUnsupported?: boolean };
+/** Stan przebiegu z harmonogramu. `waiting_approval`: narzędzie czeka na decyzję użytkownika. */
+export type RunState = "running" | "done" | "error" | "waiting_approval";
+export const RUN_STATES: RunState[] = ["running", "done", "error", "waiting_approval"];
+
+/** Rozmowa bota albo przebieg z harmonogramu (`routine` = id zadania, `state` = stan przebiegu). */
+export type BotChat = Chat & { bot: string; calls: ToolCallRecord[]; routine?: string; state?: RunState; toolsUnsupported?: boolean };
 
 export const MEMORY_LIMIT = 2200;
 export const USER_LIMIT = 1400;
@@ -293,6 +297,28 @@ export function nextRun(s: Schedule, after: number): number {
     if (c.getTime() > after && (!s.days || s.days.includes(c.getDay()))) return c.getTime();
   }
   return Number.POSITIVE_INFINITY; // nieosiągalne przy poprawnym `days`
+}
+
+/** Termin następnego przebiegu: od ostatniego (albo od utworzenia zadania). Ostatni przebieg
+ *  „z przyszłości” (cofnięty zegar) liczy się jak teraz, żeby zadanie nie utknęło. */
+export function routineNext(r: Routine, now: number): number {
+  return nextRun(r.schedule, Math.min(r.lastRun ?? r.created, now));
+}
+
+/** Czy włączone zadanie powinno ruszyć teraz. Zaległe terminy (aplikacja zamknięta, uśpienie)
+ *  dają jeden przebieg: po nim `lastRun` = teraz, więc następny termin jest już w przyszłości. */
+export function routineDue(r: Routine, now: number): boolean {
+  return r.enabled && routineNext(r, now) <= now;
+}
+
+/** Dostawca i model przebiegu: model bota albo pierwszy z listy (jak w zakładce). Tekst = błąd. */
+export function runModel(bot: BotDef, providers: ProviderDef[]): { provider: ProviderDef; ref: ModelRef } | string {
+  const ref = bot.model ?? firstModel(providers);
+  if (!ref) return "nie ma żadnego modelu – dodaj dostawcę w zakładce Czat";
+  const provider = providers.find((p) => p.id === ref.provider);
+  // Model spoza listy dostawcy jest w porządku: modele lokalne bywają wykryte dopiero w oknie (`/models`).
+  if (!provider) return `nie ma dostawcy „${ref.provider}” (model bota: ${ref.model})`;
+  return { provider, ref };
 }
 
 const DAY_NAMES = ["nd", "pn", "wt", "śr", "cz", "pt", "sb"];
@@ -572,7 +598,8 @@ export function newBotChat(id: string, bot: string, now: number, model: ModelRef
 export function parseBotChat(text: string): BotChat | null {
   const c = parseChat(text) as (Chat & Partial<BotChat>) | null;
   if (!c || typeof c.bot !== "string") return null;
-  return { ...c, bot: c.bot, calls: Array.isArray(c.calls) ? c.calls : [] };
+  const { state, ...rest } = c;
+  return { ...rest, bot: c.bot, calls: Array.isArray(c.calls) ? c.calls : [], ...(RUN_STATES.includes(state as RunState) ? { state } : {}) };
 }
 
 export const RESULT_LIMIT = 4096;

@@ -2,7 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { app, BrowserWindow, clipboard, dialog, ipcMain, safeStorage, shell } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, powerMonitor, safeStorage, shell } from "electron";
 import * as config from "./config";
 import { sessionContext } from "./context";
 import { sessionHandoff } from "./handoff";
@@ -22,9 +22,10 @@ import { BotStore, type ChatKind, type MemoryTarget } from "./bot/store";
 import { ApprovalBroker } from "./bot/approvals";
 import { ToolBridge } from "./bot/bridge";
 import { BotService } from "./bot/service";
+import { RUN_PREFIX, Scheduler } from "./bot/scheduler";
 import { ensureFreeToken, freetokenInstance } from "./chat/freetoken";
 import { isSkillName, parseBotChat, type ApprovalDecision } from "../../src/bot";
-import type { ChatRequest, ProviderDef } from "../../src/chat";
+import { buildChatConfig, type ChatRequest, type ProviderDef } from "../../src/chat";
 
 // Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
 const store = passwordStore(readOrNull(path.join(app.getPath("home"), ".config", "kwalletrc")), process.env);
@@ -54,6 +55,7 @@ const tts = new TtsService(() => config.configDir(), (id, env) => keys.get(id, e
 let win: BrowserWindow | null = null;
 // Prośby botów o zgodę idą do okna (`bot_approval`); decyzja wraca przez `bot_approve`.
 const approvals = new ApprovalBroker((e) => {
+  scheduler.approvalChanged(e);
   if (win && !win.isDestroyed()) win.webContents.send("bot_approval", e);
 });
 
@@ -69,6 +71,20 @@ const botService = new BotService({
   beforeOpenAI: async (req, signal, emit) => {
     const ft = freetokenInstance(req.provider.baseUrl, req.model);
     if (ft) await ensureFreeToken(req.model, ft, signal, (text) => emit({ type: "thinking", text: `${text}\n` }));
+  },
+});
+
+// Harmonogram botów: działa przy otwartej aplikacji, przebiegi w `runs/`. Zmiana stanu idzie do okna
+// (`bot_run`; widok i powiadomienia w etapie 10).
+const scheduler = new Scheduler({
+  store: bots,
+  service: botService,
+  providers: () => {
+    const raw = chatConfigLoad(config.configDir());
+    return buildChatConfig(raw.chat, raw.pi).providers;
+  },
+  onRun: (r) => {
+    if (win && !win.isDestroyed()) win.webContents.send("bot_run", r);
   },
 });
 
@@ -264,8 +280,9 @@ function createWindow() {
     if (details.isMainFrame && !details.isSameDocument) {
       ptys.killAllAsync();
       chat.abortAll();
-      botService.abortAll();
-      approvals.denyAll();
+      // Przebiegi harmonogramu nie należą do strony: pracują dalej, ich prośby o zgodę czekają.
+      botService.abortAll((id) => id.startsWith(RUN_PREFIX));
+      approvals.denyAll((req) => scheduler.owns(req.chat));
       tts.end();
     }
   });
@@ -280,11 +297,17 @@ function createWindow() {
   win.on("closed", () => (win = null));
 }
 
-void app.whenReady().then(createWindow);
+void app.whenReady().then(() => {
+  createWindow();
+  scheduler.start();
+  // Po wybudzeniu od razu, nie po najbliższym tyknięciu.
+  powerMonitor.on("resume", () => scheduler.tick());
+});
 
 // Zamknięte okno, Ctrl+C w terminalu: agenci nigdy nie zostają.
 app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
+  scheduler.stop();
   ptys.killAll();
   chat.abortAll();
   botService.abortAll();
