@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS, type AgentDef } from "./agents";
-import { limitMeters, resetText, withClaudeSettings } from "./limits";
+import { limitBlocks, limitHit, limitMeters, resetText, withClaudeSettings } from "./limits";
 
 const claude = DEFAULT_AGENTS.find((a) => a.id === "claude")!;
 const pi = DEFAULT_AGENTS.find((a) => a.id === "pi")!;
@@ -51,5 +51,41 @@ describe("limitMeters", () => {
     const later = new Date(2026, 8, 30, 23, 0).getTime();
     expect(limitMeters(limits, later).map((m) => m.label)).toEqual(["Tydzień"]);
     expect(limitMeters({ ...limits, sevenDay: null }, later)).toEqual([]);
+  });
+});
+
+describe("limitBlocks", () => {
+  const sources = [
+    { id: "", name: "Domyślne" },
+    { id: "praca", name: "Praca" },
+    { id: "priv", name: "Prywatne" },
+  ];
+  const live = { fiveHour: { pct: 40, resetsAt: secs(new Date(2026, 8, 30, 22, 40)) }, sevenDay: null, at: 1 };
+  const stale = { fiveHour: { pct: 90, resetsAt: secs(new Date(2026, 8, 30, 20, 0)) }, sevenDay: null, at: 1 };
+
+  it("one block per account with a live window, in source order", () => {
+    const blocks = limitBlocks(sources, { praca: live, "": live }, now);
+    expect(blocks.map((b) => b.id)).toEqual(["", "praca"]);
+    expect(blocks[1].meters[0]).toMatchObject({ label: "Sesja (5 h)", pct: 40 });
+  });
+
+  it("drops accounts without a reading or past their reset", () => {
+    expect(limitBlocks(sources, { praca: stale }, now)).toEqual([]);
+    expect(limitBlocks(sources, {}, now)).toEqual([]);
+  });
+});
+
+describe("limitHit", () => {
+  const w = (pct: number, h: number) => ({ pct, resetsAt: secs(new Date(2026, 8, 30, h, 0)) });
+
+  it("a full window before its reset blocks the account", () => {
+    const hit = limitHit({ fiveHour: w(100, 23), sevenDay: w(30, 23), at: 1 }, now)!;
+    expect(hit.text).toBe("Limit sesji (5 h) wyczerpany · reset o 23:00");
+  });
+
+  it("the later reset wins; past or partial windows do not count", () => {
+    expect(limitHit({ fiveHour: w(100, 22), sevenDay: w(120, 23), at: 1 }, now)!.text).toContain("tygodnia");
+    expect(limitHit({ fiveHour: w(100, 20), sevenDay: w(99, 23), at: 1 }, now)).toBeNull();
+    expect(limitHit(undefined, now)).toBeNull();
   });
 });

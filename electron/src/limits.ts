@@ -6,8 +6,18 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { expand } from "./env";
 
 export const LIMITS_FILE = "claude-limits.json";
+
+/** Konto z `accounts.json`: id nazywa plik limitów, `dir` to jego folder logowania. */
+export type AccountRef = { id: string; dir: string };
+
+/** Każde konto ma własny plik (inny abonament = inne limity); id z pliku użytkownika nie może wyjść poza folder. */
+export function limitsFile(configDir: string, accountId?: string): string {
+  if (!accountId) return path.join(configDir, LIMITS_FILE);
+  return path.join(configDir, LIMITS_FILE.replace(".json", `.${accountId.replace(/[^A-Za-z0-9_-]/g, "_")}.json`));
+}
 
 export type Window = { pct: number; resetsAt: number };
 export type ClaudeLimits = { fiveHour: Window | null; sevenDay: Window | null; at: number };
@@ -65,16 +75,17 @@ export function settingsArg(exe: string, helper: string, file: string): string {
 }
 
 /** JSON dla `claude --settings` albo `null`, gdy użytkownik ma własną linię statusu. */
-export function claudeSettingsArg(exe: string, helper: string, configDir: string): string | null {
-  if (userHasStatusLine(path.join(os.homedir(), ".claude", "settings.json"))) return null;
+export function claudeSettingsArg(exe: string, helper: string, configDir: string, account?: AccountRef): string | null {
+  const claudeHome = account ? expand(account.dir) : path.join(os.homedir(), ".claude");
+  if (userHasStatusLine(path.join(claudeHome, "settings.json"))) return null;
   fs.mkdirSync(configDir, { recursive: true });
-  return settingsArg(exe, helper, path.join(configDir, LIMITS_FILE));
+  return settingsArg(exe, helper, limitsFile(configDir, account?.id));
 }
 
-/** Najnowsze limity z dowolnego panelu claude; `null` przed pierwszymi. */
-export function claudeLimits(configDir: string): ClaudeLimits | null {
+/** Najnowsze limity z dowolnego panelu claude (konta `accountId` albo domyślnego); `null` przed pierwszymi. */
+export function claudeLimits(configDir: string, accountId?: string): ClaudeLimits | null {
   try {
-    return JSON.parse(fs.readFileSync(path.join(configDir, LIMITS_FILE), "utf8")) as ClaudeLimits;
+    return JSON.parse(fs.readFileSync(limitsFile(configDir, accountId), "utf8")) as ClaudeLimits;
   } catch {
     return null;
   }

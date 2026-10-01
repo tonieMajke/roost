@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { expand } from "./env";
 
 export type Kind = "claude" | "pi";
 
@@ -338,9 +339,9 @@ export function piWindow(agentDir: string, provider: string | null, model: strin
 }
 
 /** `null`, gdy rodzaj nieznany, pliku jeszcze nie ma albo żadna tura nie ma usage. */
-export function sessionContext(kind: string, sessionId: string, home = os.homedir()): SessionContext | null {
+export function sessionContext(kind: string, sessionId: string, home = os.homedir(), claudeDir?: string): SessionContext | null {
   if (kind === "claude") {
-    const ctx = contextIn(path.join(home, ".claude", "projects"), "claude", sessionId);
+    const ctx = contextIn(path.join(claudeDir ? expand(claudeDir) : path.join(home, ".claude"), "projects"), "claude", sessionId);
     if (!ctx) return null;
     const { provider: _, ...rest } = ctx;
     return rest;

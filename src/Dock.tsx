@@ -3,7 +3,7 @@ import { RotateCw, X } from "lucide-react";
 import { agentColor, type AgentDef } from "./agents";
 import { paneMeter, type SessionContext } from "./context";
 import { FEED_CLOCK_MS, feedFor, relativeTime, type FeedItem } from "./feed";
-import { limitMeters, type ClaudeLimits } from "./limits";
+import { limitBlocks, type ClaudeLimits } from "./limits";
 import type { Project } from "./workspace";
 import { IconButton } from "./IconButton";
 import { Radar } from "./Radar";
@@ -20,7 +20,10 @@ type Props = {
   onPickFeed: (item: FeedItem) => void;
   feedScope: "all" | "project"; // ui.feed
   onFeedScope: (scope: "all" | "project") => void;
-  limits: ClaudeLimits | null; // z linii statusu paneli claude
+  /** Z linii statusu paneli claude, według id konta (`""` = domyślne). */
+  limits: Record<string, ClaudeLimits>;
+  /** Konta, których limity pokazujemy, w kolejności wyświetlania. */
+  limitSources: { id: string; name: string }[];
   onRefreshLimits: () => void;
   onClose: () => void;
   /** Motyw „Wieża”: radar paneli na górze pulpitu (cisza z `activity.ts`). */
@@ -28,7 +31,7 @@ type Props = {
 };
 
 /** Pulpit po prawej (wzór D `.dock`): limity Claude (etap 10), kontekst, na żywo (etap 9). */
-export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPickFeed, feedScope, onFeedScope, limits, onRefreshLimits, onClose, radar }: Props) {
+export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPickFeed, feedScope, onFeedScope, limits, limitSources, onRefreshLimits, onClose, radar }: Props) {
   // „40 s temu” musi się starzeć także bez nowych zdarzeń.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -36,7 +39,8 @@ export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPi
     const timer = setInterval(() => setNow(Date.now()), FEED_CLOCK_MS);
     return () => clearInterval(timer);
   }, [feed, limits]);
-  const meters = limitMeters(limits, now);
+  const blocks = limitBlocks(limitSources, limits, now);
+  const newest = Math.max(0, ...blocks.map((b) => b.limits.at));
   const shown = feedFor(feed, feedScope, project?.id ?? null);
 
   const rows = (project?.panes ?? []).flatMap((pane) => {
@@ -84,23 +88,28 @@ export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPi
         <h3>
           Limity Claude
           <span className="dock-h3-end">
-            {limits && <span>{`linia statusu · ${relativeTime(limits.at * 1000, now)}`}</span>}
+            {newest > 0 && <span>{`linia statusu · ${relativeTime(newest * 1000, now)}`}</span>}
             <IconButton icon={RotateCw} label="Odśwież limity" className="dock-refresh" onClick={onRefreshLimits} />
           </span>
         </h3>
-        {meters.length === 0 && (
+        {blocks.length === 0 && (
           <span className="meter-note">Brak danych: pojawią się po odpowiedzi claude w panelu (subskrypcja)</span>
         )}
-        {meters.map((m) => (
-          <div key={m.label} className="meter">
-            <div className="meter-top">
-              <span>{m.label}</span>
-              <b>{m.pct}%</b>
-            </div>
-            <div className="bar">
-              <span style={{ width: `${Math.min(100, m.pct)}%` }} />
-            </div>
-            <span className="meter-note">{m.note}</span>
+        {blocks.map((block) => (
+          <div key={block.id} className="meter-block">
+            {limitSources.length > 1 && <span className="meter-account">{block.name}</span>}
+            {block.meters.map((m) => (
+              <div key={m.label} className="meter">
+                <div className="meter-top">
+                  <span>{m.label}</span>
+                  <b>{m.pct}%</b>
+                </div>
+                <div className="bar">
+                  <span style={{ width: `${Math.min(100, m.pct)}%` }} />
+                </div>
+                <span className="meter-note">{m.note}</span>
+              </div>
+            ))}
           </div>
         ))}
       </section>

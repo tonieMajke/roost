@@ -21,6 +21,8 @@ type Props = {
   command: string;
   args?: string[];
   cwd?: string;
+  /** Dodatkowe zmienne procesu (konto agenta); czytane raz, przy starcie. */
+  env?: [string, string][];
   /** Kolory i font (motyw + akcent); zmiana nie restartuje procesu. */
   look?: TermLook;
   /** Rozmiar czcionki (px); zmiana przelicza siatkę bez restartu procesu. */
@@ -56,12 +58,12 @@ export type TerminalHandle = {
  * One agent process rendered by xterm.js. The process lives exactly as long as the
  * component: the effect has no dependencies, so it restarts only under a new React key.
  */
-export function Terminal({ command, args, cwd, look = DEFAULT_LOOK, fontSize = 13, focused, onExit, onStart, onFocus, onOutput, onRedraw, onTitle, apiRef }: Props) {
+export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSize = 13, focused, onExit, onStart, onFocus, onOutput, onRedraw, onTitle, apiRef }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm | undefined>(undefined);
   // Read once at mount; later prop changes must never restart the process.
-  const spec = useRef({ command, args, cwd });
-  spec.current = { command, args, cwd };
+  const spec = useRef({ command, args, cwd, env });
+  spec.current = { command, args, cwd, env };
   const exitRef = useRef(onExit);
   exitRef.current = onExit;
   const startRef = useRef(onStart);

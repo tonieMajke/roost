@@ -3,6 +3,7 @@
 
 import os from "node:os";
 import path from "node:path";
+import { expand } from "./env";
 import { findSession, type Kind, readLast, validId } from "./context";
 
 /** Więcej niż czytają liczniki: przekazanie potrzebuje kilku całych tur, nie tylko ostatniego usage. */
@@ -110,8 +111,10 @@ export function handoffIn(root: string, kind: Kind, id: string): Handoff | null 
 }
 
 /** `null`, gdy rodzaj nieznany, pliku nie ma albo rozmowa jest pusta. */
-export function sessionHandoff(kind: string, sessionId: string, home = os.homedir()): Handoff | null {
-  if (kind === "claude") return handoffIn(path.join(home, ".claude", "projects"), "claude", sessionId);
+export function sessionHandoff(kind: string, sessionId: string, home = os.homedir(), claudeDir?: string): Handoff | null {
+  if (kind === "claude") {
+    return handoffIn(path.join(claudeDir ? expand(claudeDir) : path.join(home, ".claude"), "projects"), "claude", sessionId);
+  }
   if (kind === "pi") return handoffIn(path.join(home, ".pi", "agent", "sessions"), "pi", sessionId);
   return null;
 }

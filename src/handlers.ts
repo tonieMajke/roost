@@ -13,6 +13,8 @@ export type PaneActions = {
   handoff(from: string, to: string): void;
   /** Terminal panelu przyjmie wklejenie blokiem (bracketed paste) – warunek celu dla `handoff`. */
   acceptsPaste(paneId: string): boolean;
+  /** Otwiera okno „Kontynuuj gdzie indziej”: nowy panel na innym koncie / u innego agenta ze streszczeniem. */
+  continueFrom(paneId: string): void;
   newConversation(paneId: string): void; // nowa rozmowa: nowe sessionId + run + 1 (tylko agenci z `session`)
   close(paneId: string): void;
   exit(paneId: string, info: ExitInfo): void;
@@ -42,7 +44,7 @@ export type ProjectActions = {
   remove(projectId: string): void;
   addProject(): void; // etap 6: pyta o katalog przez backend.pickDir()
   openPaneDialog(): void; // otwiera okno wyboru agenta (etap 6)
-  addPane(agentId: string, model?: string): void; // dodaje panel z tym agentem do aktywnego projektu
+  addPane(agentId: string, model?: string, account?: string): void; // dodaje panel z tym agentem do aktywnego projektu
   /** Preset (etap 10): dodaje panele na koniec aktywnego projektu, maks. do MAX_PANES. */
   applyPreset(preset: Preset): void;
 };

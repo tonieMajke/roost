@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENTS, type AgentDef } from "./agents";
-import { accountEnv, accountKind, accountsFor, parseAccounts, resolveAccount, type Accounts } from "./accounts";
+import { accountById, accountEnv, pickAccountId, accountKind, accountsFor, parseAccounts, resolveAccount, type Accounts } from "./accounts";
 
 const agent = (id: string) => DEFAULT_AGENTS.find((a) => a.id === id)!;
 
@@ -79,5 +79,30 @@ describe("accountsFor", () => {
   it("lists accounts of the kind", () => {
     expect(accountsFor(sample, "claude").map((a) => a.id)).toEqual(["a", "b"]);
     expect(accountsFor(sample, null)).toEqual([]);
+  });
+});
+
+describe("pickAccountId", () => {
+  it("untouched choice takes the default of the kind", () => {
+    expect(pickAccountId(sample, "claude", null)).toBe("a");
+    expect(pickAccountId(sample, "codex", null)).toBeUndefined();
+  });
+
+  it("empty choice is the agent's own folder, an id picks that account", () => {
+    expect(pickAccountId(sample, "claude", "")).toBeUndefined();
+    expect(pickAccountId(sample, "claude", "b")).toBe("b");
+  });
+
+  it("unknown ids, other kinds and agents without accounts give none", () => {
+    expect(pickAccountId(sample, "claude", "gone")).toBeUndefined();
+    expect(pickAccountId(sample, "claude", "c")).toBeUndefined();
+    expect(pickAccountId(sample, null, "a")).toBeUndefined();
+  });
+});
+
+describe("accountById", () => {
+  it("finds by id", () => {
+    expect(accountById(sample, "b")?.name).toBe("Prywatne");
+    expect(accountById(sample, undefined)).toBeUndefined();
   });
 });

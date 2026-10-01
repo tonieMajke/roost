@@ -41,15 +41,18 @@ więc funkcja jest opcjonalna: bez dodanych kont aplikacja zachowuje się jak do
 - [x] **Etap 1 – model (TS, czysty, testy).** `src/accounts.ts`: `AccountDef {id, name, agent, dir}`,
   `parseAccounts`, `accountEnv(agent, account) -> [k, v][]`, wybór konta (panel > projekt > domyślne),
   test na walidację i na to, że domyślne konto nie ustawia zmiennej.
-- [ ] **Etap 2 – dysk i IPC.** `electron/src/accounts.ts` (`accounts.json`), `accounts_load/save`,
+- [x] **Etap 2 – dysk i IPC.** `electron/src/accounts.ts` (`accounts.json`), `accounts_load/save`, (przycisk „Zaloguj” przeniesiony do Etapu 3: to nowy panel agenta na koncie.)
   `backend*.ts` + mock. Okno „Konta” (lista, dodaj, usuń) i przycisk „Zaloguj”.
-- [ ] **Etap 3 – konto w panelu.** Pole `account` w zapisie panelu (`workspace.json`, wstecznie
-  zgodne), wybór w „Nowy panel”, `env` przy `pty_spawn`, plakietka w nagłówku.
-- [ ] **Etap 4 – limity per konto.** `--settings` z plikiem limitów konta, `claude_limits(accountId)`,
+- [x] **Etap 3 – konto w panelu.** Pole `account` w zapisie panelu (`workspace.json`, wstecznie
+  zgodne), wybór w „Nowy panel”, `env` przy `pty_spawn`, plakietka w nagłówku. Konto jest zapisywane w panelu
+  przy tworzeniu (zmiana domyślnego nie przesuwa działających paneli, bo sesje leżą w folderze konta);
+  panele konta nie dostają jeszcze `--settings` z limitami do Etapu 4; nadpisanie konta per projekt
+  odłożone (panel + domyślne wystarczają). „Zaloguj” w oknie Kont = nowy panel agenta na tym koncie.
+- [x] **Etap 4 – limity per konto.** `--settings` z plikiem limitów konta, `claude_limits(accountId)`,
   dok i `limits.ts` z kontem.
-- [ ] **Etap 5 – Kontynuuj.** Pasek przy limicie + pozycja w menu panelu; nowy panel z kontem/agentem
+- [x] **Etap 5 – Kontynuuj.** Pasek przy limicie + pozycja w menu panelu; nowy panel z kontem/agentem
   docelowym i streszczeniem. Dopasować `sessionHandoff` do katalogu konta.
-- [ ] **Etap 6 – README i sprawdzenie na żywo.** Opis kont w README (po angielsku dla GitHuba),
+- [x] **Etap 6 (opis i lista gotowe, sprawdzenie na żywo czeka na użytkownika) – README i sprawdzenie na żywo.** Opis kont w README (po polsku, jak reszta README),
   próba z drugim kontem Claude i `CODEX_HOME`, lista do odhaczenia w `HANDOFF.md`.
 
 ## Do sprawdzenia na żywo przed Etapem 3

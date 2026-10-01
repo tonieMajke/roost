@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { MAX_COMMANDS, MAX_PROMPTS, PROMPT_CHARS, digest, handoffIn } from "./handoff";
+import { MAX_COMMANDS, MAX_PROMPTS, PROMPT_CHARS, digest, handoffIn, sessionHandoff } from "./handoff";
 
 const ID = "3948700d-cd47-43c0-be0d-1db71d5d5e09";
 const lines = (v: unknown[]) => v.map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join("\n");
@@ -67,6 +67,20 @@ describe("handoff", () => {
     expect(last.endsWith("ż…")).toBe(true);
     expect(h.commands[0]).toBe("cmd 3");
     expect(h.commands.length).toBe(MAX_COMMANDS);
+  });
+
+  it("sessionHandoff czyta folder konta, nie ~/.claude", () => {
+    const acc = fs.mkdtempSync(path.join(os.tmpdir(), "aw-handoff-acc-"));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "aw-handoff-home-"));
+    try {
+      fs.mkdirSync(path.join(acc, "projects", "-p"), { recursive: true });
+      fs.writeFileSync(path.join(acc, "projects", "-p", `${ID}.jsonl`), lines([claudeUser("z konta")]));
+      expect(sessionHandoff("claude", ID, home, acc)!.prompts).toEqual(["z konta"]);
+      expect(sessionHandoff("claude", ID, home)).toBeNull();
+    } finally {
+      fs.rmSync(acc, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
   });
 
   it("znajduje plik, odrzuca pustą rozmowę i złe id", () => {

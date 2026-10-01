@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { LIMITS_FILE, parseStatus, settingsArg, store, userHasStatusLine } from "./limits";
+import { LIMITS_FILE, claudeLimits, claudeSettingsArg, limitsFile, parseStatus, settingsArg, store, userHasStatusLine } from "./limits";
 
 const tempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), "aw-limits-"));
 
@@ -80,6 +80,41 @@ describe("limits", () => {
       expect(JSON.parse(fs.readFileSync(file, "utf8")).fiveHour.pct).toBe(5);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("limity per konto", () => {
+  it("limitsFile: domyślne bez zmiany, konto we własnym pliku, id nie wychodzi poza folder", () => {
+    expect(limitsFile("/c")).toBe(`/c/${LIMITS_FILE}`);
+    expect(limitsFile("/c", "praca")).toBe("/c/claude-limits.praca.json");
+    expect(limitsFile("/c", "../../x")).toBe("/c/claude-limits.______x.json");
+  });
+
+  it("konto czyta i zapisuje własny plik, nie plik domyślnego", () => {
+    const dir = tempDir();
+    try {
+      const own = parseStatus('{"rate_limits":{"five_hour":{"used_percentage":50,"resets_at":2}}}', 3)!;
+      store(limitsFile(dir, "praca"), own);
+      expect(claudeLimits(dir, "praca")).toEqual(own);
+      expect(claudeLimits(dir)).toBeNull();
+      expect(claudeLimits(dir, "inne")).toBeNull();
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("claudeSettingsArg wskazuje plik konta, a własna linia statusu w folderze konta ją wyłącza", () => {
+    const cfg = tempDir();
+    const acc = tempDir();
+    try {
+      const arg = JSON.parse(claudeSettingsArg("/exe", "/h.cjs", cfg, { id: "praca", dir: acc })!);
+      expect(arg.statusLine.command).toContain("claude-limits.praca.json");
+      fs.writeFileSync(path.join(acc, "settings.json"), '{"statusLine":{"type":"command","command":"x"}}');
+      expect(claudeSettingsArg("/exe", "/h.cjs", cfg, { id: "praca", dir: acc })).toBeNull();
+    } finally {
+      fs.rmSync(cfg, { recursive: true, force: true });
+      fs.rmSync(acc, { recursive: true, force: true });
     }
   });
 });

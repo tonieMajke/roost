@@ -1,3 +1,4 @@
+import { NO_ACCOUNTS, type Accounts } from "./accounts";
 import { DEFAULT_AGENTS } from "./agents";
 import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
 import { parseSttConfig, sttConfigJson, sttKeyId } from "./stt";
@@ -7,6 +8,7 @@ import { buildChatConfig, chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, typ
 const PROMPT = "$ ";
 const WORKSPACE_KEY = "aw-workspace";
 let nextId = 1;
+let mockAccounts: Accounts = NO_ACCOUNTS;
 // Preview copy of the clipboard: Chromium blocks readText() without focus, so copy/paste
 // inside the preview must still round-trip.
 let previewClipboard = "";
@@ -171,6 +173,10 @@ export const mockBackend: Backend = {
 
   // Preview mode: defaults only; sessions never exist here, every path is "it exists".
   loadAgents: async () => ({ agents: DEFAULT_AGENTS, errors: [] }),
+  loadAccounts: async () => ({ value: mockAccounts, errors: [] }),
+  saveAccounts: async (value) => {
+    mockAccounts = value;
+  },
   claudeSessionExists: async () => false,
   // Podgląd: kontekst rośnie z każdym odczytem, żeby było widać miernik i próg 80 %.
   async sessionContext(kind, sessionId) {

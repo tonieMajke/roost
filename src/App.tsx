@@ -5,7 +5,7 @@ import { accentHex, nextMode, stepFontSize, uiClasses } from "./ui";
 import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";
 import type { TermLook } from "./Terminal";
 import { IconButton } from "./IconButton";
-import { FolderPlus, Gauge, LayoutGrid, Plus, X } from "lucide-react";
+import { FolderPlus, Gauge, LayoutGrid, Plus, UserRound, X } from "lucide-react";
 import { tildify } from "./paths";
 import {
   MAX_PANES,
@@ -22,6 +22,10 @@ import { Grid } from "./Grid";
 import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
+import { AccountsDialog } from "./AccountsDialog";
+import { ContinueDialog } from "./ContinueDialog";
+import { continueTargets, type ContinueTarget } from "./continue";
+import { NO_ACCOUNTS, accountById, accountKind, pickAccountId, type Accounts } from "./accounts";
 import { VoiceDialog } from "./VoiceDialog";
 import { activeStt, DEFAULT_STT, type SttConfig } from "./stt";
 import { Dock } from "./Dock";
@@ -54,9 +58,15 @@ import { Nebula } from "./Nebula";
 import { motionAllowed } from "./motion";
 import type { PaneActions, ProjectActions } from "./handlers";
 
+/** Ile czekamy, aż agent w nowym panelu włączy wklejanie blokiem, zanim wyślemy streszczenie. */
+const CONTINUE_WAIT_MS = 20_000;
+
 export function App() {
   const [ws, dispatch] = useReducer(reduce, emptyWorkspace);
   const [agents, setAgents] = useState<AgentDef[]>([]);
+  const [accounts, setAccounts] = useState<Accounts>(NO_ACCOUNTS);
+  const [accountsDialog, setAccountsDialog] = useState(false);
+  const [continuePane, setContinuePane] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   // Ephemeral only: never written to disk (exit + aktywność z src/activity.ts).
   const [ephemeral, setEphemeral] = useState<Record<string, PaneState>>({});
@@ -68,7 +78,7 @@ export function App() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const feedSeq = useRef(0);
   // Limity subskrypcji claude (plik pisany przez linię statusu paneli claude).
-  const [limits, setLimits] = useState<ClaudeLimits | null>(null);
+  const [limits, setLimits] = useState<Record<string, ClaudeLimits>>({});
   // Ostatnie pokazane wywołanie narzędzia według sessionId; brak klucza = jeszcze nie czytano.
   const seenTools = useRef(new Map<string, string | null>());
   // Numer odczytu według sessionId: odpowiedź starsza od już obsłużonej nie dubluje zdarzeń.
@@ -125,6 +135,11 @@ export function App() {
         if (!live) return;
         setAgents(r.agents);
         setErrors(r.errors);
+        void backend.loadAccounts().then((acc) => {
+          if (!live) return;
+          setAccounts(acc.value);
+          if (acc.errors.length > 0) setErrors((prev) => [...prev, ...acc.errors]);
+        });
         const raw = await backend.loadWorkspace();
         if (!live || raw === null) return; // pierwszy start: zostaje emptyWorkspace
         let parsed: ReturnType<typeof parseWorkspace>;
@@ -246,6 +261,7 @@ export function App() {
     toggleMaximize: (paneId) => dispatch({ type: "toggleMaximize", id: paneId }),
     swap: (a, b) => dispatch({ type: "swap", a, b }),
     handoff: (from, to) => void sendContext(from, to),
+    continueFrom: (paneId) => setContinuePane(paneId),
     acceptsPaste: (paneId) => terms.current.get(paneId)?.bracketedPaste() ?? false,
     newConversation: (paneId) =>
       dispatch({ type: "newConversation", id: paneId, sessionId: crypto.randomUUID() }),
@@ -330,7 +346,7 @@ export function App() {
       if (active === null || paneCount >= MAX_PANES) return; // no project to add a pane to
       setDialog(true);
     },
-    addPane: (agentId, model) => {
+    addPane: (agentId, model, account) => {
       const agent = agents.find((a) => a.id === agentId);
       if (!agent || paneCount >= MAX_PANES) return;
       setDialog(false);
@@ -338,6 +354,7 @@ export function App() {
       const pane: Pane = { id: crypto.randomUUID(), agentId: agent.id, run: 1 };
       if (agent.session) pane.sessionId = crypto.randomUUID();
       if (model) pane.model = model;
+      if (account) pane.account = account;
       dispatch({ type: "add", pane });
     },
     applyPreset: (preset) => {
@@ -350,6 +367,8 @@ export function App() {
         if (!agent) continue; // planPreset zostawia tylko znanych
         const pane: Pane = { id: crypto.randomUUID(), agentId, run: 1 };
         if (agent.session) pane.sessionId = crypto.randomUUID();
+        const account = pickAccountId(accounts, accountKind(agent), null);
+        if (account) pane.account = account;
         dispatch({ type: "add", pane });
         setLastAgentId(agentId);
       }
@@ -451,7 +470,7 @@ export function App() {
     let text: string;
     let failed: string | null = null;
     try {
-      const h = await backend.sessionHandoff(kind, pane.sessionId).catch(() => null);
+      const h = await backend.sessionHandoff(kind, pane.sessionId, accountById(accounts, pane.account)?.dir).catch(() => null);
       if (!h) {
         setNotice(`Nie udało się odczytać rozmowy „${src.agent}”`);
         return;
@@ -492,6 +511,32 @@ export function App() {
     addFeed(from, [`przekazał kontekst → ${dst.agent}`]);
   };
 
+  // Ref, bo `continueTo` czeka na nowy panel: domknięcie sprzed renderu nie widzi jeszcze jego ani `ws`.
+  const sendContextRef = useRef(sendContext);
+  sendContextRef.current = sendContext;
+
+  // „Kontynuuj gdzie indziej”: nowy panel (inne konto / inny agent) i streszczenie rozmowy `from` w jego prompcie.
+  const continueTo = async (from: string, target: ContinueTarget) => {
+    const agent = agents.find((a) => a.id === target.agentId);
+    if (!agent || paneCount >= MAX_PANES) return;
+    setContinuePane(null);
+    setLastAgentId(agent.id);
+    const pane: Pane = { id: crypto.randomUUID(), agentId: agent.id, run: 1 };
+    if (agent.session) pane.sessionId = crypto.randomUUID();
+    if (target.account) pane.account = target.account;
+    dispatch({ type: "add", pane });
+    setNotice(`Uruchamiam ${target.label}…`);
+    // Agent musi wstać i włączyć wklejanie blokiem (bracketed paste); inaczej wyciąg poszedłby jako Enter-y.
+    for (let waited = 0; waited < CONTINUE_WAIT_MS; waited += 250) {
+      await new Promise((r) => setTimeout(r, 250));
+      if (terms.current.get(pane.id)?.bracketedPaste() && paneInfoRef.current.has(pane.id)) {
+        await sendContextRef.current(from, pane.id);
+        return;
+      }
+    }
+    setNotice(`„${target.label}” nie wystartował na czas – przeciągnij rozmowę z Shiftem, żeby wkleić kontekst`);
+  };
+
   const activeRef = useRef(ws.active);
   activeRef.current = ws.active;
 
@@ -514,7 +559,7 @@ export function App() {
       const mine = ++seq.sent;
       readSeq.current.set(t.sessionId, seq);
       return backend
-        .sessionContext(t.kind, t.sessionId)
+        .sessionContext(t.kind, t.sessionId, accountById(accounts, all.find((p) => p.id === t.paneId)?.account)?.dir)
         .then((c) => {
           if (mine > seq.done) {
             seq.done = mine;
@@ -557,22 +602,30 @@ export function App() {
     return () => clearInterval(timer);
   }, [allContextKey]);
 
-  // Limity czytane tylko przy otwartym pulpicie: od razu, co LIMITS_POLL_MS i na przycisk.
+  // Limity czytane po starcie: od razu, co LIMITS_POLL_MS i na przycisk.
+  const limitSources = [
+    { id: "", name: accounts.accounts.some((x) => x.kind === "claude") ? "Domyślne konto" : "Claude" },
+    ...accounts.accounts.filter((x) => x.kind === "claude").map((x) => ({ id: x.id, name: x.name })),
+  ];
   const readLimits = () => {
-    void backend
-      .claudeLimits()
-      .then((l) => {
-        if (l !== null) setLimits((prev) => (prev?.at === l.at ? prev : l));
-      })
-      .catch(() => undefined); // brak pliku = zostaje ostatni odczyt
+    // Konto domyślne (`""`) i każde konto Claude użytkownika, każde ma własny plik limitów.
+    for (const id of limitSources.map((s) => s.id)) {
+      void backend
+        .claudeLimits(id || undefined)
+        .then((l) => {
+          if (l !== null) setLimits((prev) => (prev[id]?.at === l.at ? prev : { ...prev, [id]: l }));
+        })
+        .catch(() => undefined); // brak pliku = zostaje ostatni odczyt
+    }
   };
-  const dockOpen = loaded && ws.ui.dock;
+  // Czytamy też bez pulpitu (jeden mały plik na konto): pasek „limit wyczerpany” w panelu musi wiedzieć o limicie.
+  const watchLimits = loaded;
   useEffect(() => {
-    if (!dockOpen) return;
+    if (!watchLimits) return;
     readLimits();
     const timer = setInterval(readLimits, LIMITS_POLL_MS);
     return () => clearInterval(timer);
-  }, [dockOpen]);
+  }, [watchLimits, accounts]);
 
   // `ping` kropeczki projektu (wzór D): praca skończyła się w siatce, której teraz nie widać.
   const [pingId, setPingId] = useState<string | null>(null);
@@ -861,6 +914,9 @@ export function App() {
               >
                 <Gauge strokeWidth={1.75} aria-hidden /> Pulpit
               </button>
+              <button type="button" className="btn" title="Konta agentów" onClick={() => setAccountsDialog(true)}>
+                <UserRound strokeWidth={1.75} aria-hidden /> Konta
+              </button>
               <button type="button" className="btn" onClick={() => setPresetMenu(true)} disabled={active === null}>
                 <LayoutGrid strokeWidth={1.75} aria-hidden /> Presety
               </button>
@@ -882,6 +938,8 @@ export function App() {
                 projects={ws.projects}
                 activeId={ws.active}
                 agents={agents}
+                accounts={accounts}
+                limits={limits}
                 look={termLook}
                 fontSize={ws.ui.fontSize}
                 motion={ws.ui.motion}
@@ -910,6 +968,7 @@ export function App() {
           onFeedScope={(feed) => dispatch({ type: "setUi", patch: { feed } })}
           feed={feed}
           limits={limits}
+          limitSources={limitSources}
           onRefreshLimits={readLimits}
           onPickFeed={(item) =>
             dispatch(
@@ -944,6 +1003,38 @@ export function App() {
           onClose={() => setAppearance(false)}
         />
       )}
+      {continuePane !== null && (() => {
+        const src = ws.projects.flatMap((p) => p.panes).find((p) => p.id === continuePane);
+        const info = paneInfo.get(continuePane);
+        if (!src || !info) return null;
+        return (
+          <ContinueDialog
+            source={`${info.agent} · ${info.project}`}
+            targets={continueTargets(src, agents, accounts)}
+            canAdd={paneCount < MAX_PANES}
+            onPick={(t) => void continueTo(continuePane, t)}
+            onClose={() => setContinuePane(null)}
+          />
+        );
+      })()}
+      {accountsDialog && (
+        <AccountsDialog
+          value={accounts}
+          pickDir={() => backend.pickDir()}
+          canLogin={active !== null && paneCount < MAX_PANES}
+          onLogin={(account) => {
+            const agent = agents.find((x) => accountKind(x) === account.kind);
+            if (!agent) return;
+            setAccountsDialog(false);
+            projectActions.addPane(agent.id, undefined, account.id);
+          }}
+          onChange={(next) => {
+            setAccounts(next);
+            void backend.saveAccounts(next).catch((e) => setErrors((prev) => [...prev, `accounts.json: ${String(e)}`]));
+          }}
+          onClose={() => setAccountsDialog(false)}
+        />
+      )}
       {voice && (
         <VoiceDialog
           config={stt}
@@ -969,10 +1060,11 @@ export function App() {
         <NewPaneDialog
           projectName={active.name}
           agents={agents}
+          accounts={accounts}
           startIndex={lastIndex}
-          onPick={(i, model) => {
+          onPick={(i, model, account) => {
             const agent = agents[i];
-            if (agent) projectActions.addPane(agent.id, model);
+            if (agent) projectActions.addPane(agent.id, model, account);
           }}
           onClose={() => setDialog(false)}
         />

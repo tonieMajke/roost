@@ -1,3 +1,4 @@
+import { NO_ACCOUNTS, parseAccounts } from "./accounts";
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
 import type { Backend, BotApprovalChange, BotSkillMeta, BotSkillSource, ExitInfo, KeyState, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
 import type { SessionContext } from "./context";
@@ -95,13 +96,23 @@ export const electronBackend: Backend = {
     }
   },
 
-  claudeSessionExists: (id) => call<boolean>("claude_session_exists", id),
-  sessionContext: (kind, sessionId) => call<SessionContext | null>("session_context", kind, sessionId),
-  sessionHandoff: (kind, sessionId) => call<Handoff | null>("session_handoff", kind, sessionId),
+  async loadAccounts() {
+    try {
+      const raw = await call<string | null>("accounts_load");
+      return parseAccounts(raw === null ? {} : JSON.parse(raw));
+    } catch (e) {
+      return { value: NO_ACCOUNTS, errors: [`accounts.json: ${String(e)}`] };
+    }
+  },
+  saveAccounts: (value) => call<void>("accounts_save", JSON.stringify(value, null, 2)),
+
+  claudeSessionExists: (id, dir) => call<boolean>("claude_session_exists", id, dir),
+  sessionContext: (kind, sessionId, dir) => call<SessionContext | null>("session_context", kind, sessionId, dir),
+  sessionHandoff: (kind, sessionId, dir) => call<Handoff | null>("session_handoff", kind, sessionId, dir),
   claudeSummary: (command, system, input) => call<string>("claude_summary", command, system, input),
   piSummary: (command, system, input) => call<string>("pi_summary", command, system, input),
-  claudeSettingsArg: () => call<string | null>("claude_settings_arg"),
-  claudeLimits: () => call<ClaudeLimits | null>("claude_limits"),
+  claudeSettingsArg: (account) => call<string | null>("claude_settings_arg", account),
+  claudeLimits: (accountId) => call<ClaudeLimits | null>("claude_limits", accountId),
   dirExists: (path) => call<boolean>("dir_exists", path),
   pickDir: () => call<string | null>("pick_dir"),
   pickImage: () => call<string | null>("pick_image"),

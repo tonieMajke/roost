@@ -89,3 +89,17 @@ export function resolveAccount(
 export function accountEnv(account: AccountDef | undefined): [string, string][] {
   return account ? [[ACCOUNT_ENV[account.kind], account.dir]] : [];
 }
+
+export const accountById = (all: Accounts, id: string | undefined): AccountDef | undefined =>
+  id === undefined ? undefined : all.accounts.find((a) => a.id === id);
+
+/**
+ * Konto, które dostanie nowy panel: `choice` z okna „Nowy panel” (`null` = nie ruszano → domyślne
+ * konto rodzaju, `""` = własny folder agenta, inaczej id). Zapisujemy je w panelu na stałe, bo sesje
+ * leżą w folderze konta i zmiana domyślnego nie może przesunąć działających paneli.
+ */
+export function pickAccountId(all: Accounts, kind: AccountKind | null, choice: string | null): string | undefined {
+  if (kind === null) return undefined;
+  const id = choice === null ? all.defaults[kind] : choice === "" ? undefined : choice;
+  return all.accounts.some((a) => a.id === id && a.kind === kind) ? id : undefined;
+}

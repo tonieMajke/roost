@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { DEFAULT_AGENTS, parseAgents } from "../../src/agents";
-import { agentsLoad, defaultAgentsJson, sessionExistsIn, workspaceBackup, workspaceLoad, workspaceSave, writeAtomic } from "./config";
+import { accountsLoad, accountsSave, agentsLoad, claudeSessionExists, defaultAgentsJson, sessionExistsIn, workspaceBackup, workspaceLoad, workspaceSave, writeAtomic } from "./config";
 
 const dirs: string[] = [];
 const tempDir = () => {
@@ -22,6 +22,15 @@ describe("config", () => {
     expect(sessionExistsIn(root, id)).toBe(true);
     expect(sessionExistsIn(root, "00000000-0000-4000-8000-000000000000")).toBe(false);
     expect(sessionExistsIn(path.join(root, "nope"), id)).toBe(false);
+  });
+
+  it("claudeSessionExists szuka w folderze konta, nie w ~/.claude", () => {
+    const dir = tempDir();
+    const id = "11111111-1111-4111-8111-111111111111";
+    fs.mkdirSync(path.join(dir, "projects", "p"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "projects", "p", `${id}.jsonl`), "{}\n");
+    expect(claudeSessionExists(id, dir)).toBe(true);
+    expect(claudeSessionExists("22222222-2222-4222-8222-222222222222", dir)).toBe(false);
   });
 
   it("odrzuca id, które nie są UUID", () => {
@@ -60,6 +69,14 @@ describe("config", () => {
     expect(workspaceLoad(dir)).toBeNull();
     workspaceSave('{"a":1}', dir);
     expect(workspaceLoad(dir)).toBe('{"a":1}');
+  });
+
+  it("accounts.json: brak pliku = null i nie powstaje, potem zapisana treść", () => {
+    const dir = tempDir();
+    expect(accountsLoad(dir)).toBeNull();
+    expect(fs.existsSync(path.join(dir, "accounts.json"))).toBe(false);
+    accountsSave('{"accounts":[]}', dir);
+    expect(accountsLoad(dir)).toBe('{"accounts":[]}');
   });
 
   it("agents.json: brak → domyślne zapisane, zepsuty plik zwracany bez nadpisania", () => {

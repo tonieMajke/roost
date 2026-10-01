@@ -91,20 +91,22 @@ handle("pty_resize", (id: number, cols: number, rows: number) => ptys.resize(id,
 handle("pty_kill", (id: number) => ptys.kill(id));
 
 handle("agents_load", () => config.agentsLoad());
-handle("claude_session_exists", (id: string) => config.claudeSessionExists(id));
+handle("accounts_load", () => config.accountsLoad());
+handle("accounts_save", (json: string) => config.accountsSave(json));
+handle("claude_session_exists", (id: string, dir?: string) => config.claudeSessionExists(id, dir));
 handle("dir_exists", (p: string) => config.dirExists(p));
 handle("home_dir", () => app.getPath("home"));
 handle("workspace_load", () => config.workspaceLoad());
 handle("workspace_save", (json: string) => config.workspaceSave(json));
 handle("workspace_backup", (date: string) => config.workspaceBackup(date));
-handle("session_context", (kind: string, id: string) => sessionContext(kind, id));
-handle("session_handoff", (kind: string, id: string) => sessionHandoff(kind, id));
+handle("session_context", (kind: string, id: string, dir?: string) => sessionContext(kind, id, undefined, dir));
+handle("session_handoff", (kind: string, id: string, dir?: string) => sessionHandoff(kind, id, undefined, dir));
 handle("claude_summary", (command: string, system: string, input: string) => claudeSummary(command, system, input));
 handle("pi_summary", (command: string, system: string, input: string) => piSummary(command, system, input));
-handle("claude_settings_arg", () =>
-  claudeSettingsArg(process.execPath, path.join(__dirname, "statusline.cjs"), config.configDir()),
+handle("claude_settings_arg", (account?: { id: string; dir: string }) =>
+  claudeSettingsArg(process.execPath, path.join(__dirname, "statusline.cjs"), config.configDir(), account),
 );
-handle("claude_limits", () => claudeLimits(config.configDir()));
+handle("claude_limits", (accountId?: string) => claudeLimits(config.configDir(), accountId));
 handle("notify", (title: string, body: string) => notify(title, body));
 handle("copy_text", (text: string) => clipboard.writeText(text));
 handle("paste_text", () => clipboard.readText());
