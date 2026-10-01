@@ -2,6 +2,7 @@
 // dla TTS, tekst do czytania i stan rozmowy. Czyste funkcje — mikrofon, VAD i IPC są w hooku.
 
 import { findModel, firstModel, type ChatModel, type ChatRequest, type ModelRef, type ProviderDef, type WireMessage } from "../chat";
+import type { DeployCard } from "./tools";
 
 // ── konfiguracja ────────────────────────────────────────────────────────────
 
@@ -236,6 +237,8 @@ export type VoiceExchange = {
   done: boolean;
   interrupted?: boolean;
   error?: string;
+  /** Narzędzia użyte w tej odpowiedzi (etap 5), do zapisu rozmowy. */
+  tools?: { label: string; ok: boolean }[];
   t: { heard?: number; text?: number; first?: number; audio?: number };
 };
 
@@ -249,6 +252,8 @@ export type VoiceState = {
   /** Koniec ostatniej wypowiedzi (VAD), czeka na transkrypt. */
   heardAt?: number;
   error?: string;
+  /** Karta deploy czeka na decyzję (narzędzie `open_panes` / `send_to_pane`). */
+  card?: DeployCard;
 };
 
 /** `n` = numer wymiany, której dotyczy zdarzenie: spóźnione zdarzenia z przerwanej odpowiedzi
@@ -264,6 +269,8 @@ export type VoiceEvent =
   | { type: "reply_done"; n: number }
   | { type: "audio_idle"; n: number }
   | { type: "interrupt" }
+  | { type: "tool"; n: number; label: string; ok: boolean }
+  | { type: "card"; card: DeployCard | null }
   | { type: "error"; message: string; n?: number };
 
 export const VOICE_IDLE: VoiceState = { phase: "idle", hearing: false, history: [], carry: "" };
@@ -285,9 +292,11 @@ export function voiceReducer(s: VoiceState, ev: VoiceEvent): VoiceState {
     case "start":
       return s.phase === "idle" ? { ...VOICE_IDLE, phase: "listening" } : s;
     case "stop":
-      return { ...cut(s), phase: "idle", hearing: false, carry: "", heardAt: undefined };
+      return { ...cut(s), phase: "idle", hearing: false, carry: "", heardAt: undefined, card: undefined };
     case "speech_start":
       if (s.phase === "idle") return s;
+      // Przy karcie mowa to odpowiedź na kartę („tak”, „popraw…”), nie przerwanie.
+      if (s.card) return { ...s, hearing: true };
       return { ...cut(s), hearing: true, error: undefined };
     case "speech_end":
       if (s.phase === "idle") return s;
@@ -321,6 +330,12 @@ export function voiceReducer(s: VoiceState, ev: VoiceEvent): VoiceState {
       return { ...s, phase: "listening" };
     case "interrupt":
       return cut(s);
+    case "tool":
+      if (!current(ev.n)) return s;
+      return { ...s, history: replaceLast(s.history, (e) => ({ ...e, tools: [...(e.tools ?? []), { label: ev.label, ok: ev.ok }] })) };
+    case "card":
+      if (!ev.card && !s.card) return s;
+      return { ...s, card: ev.card ?? undefined };
     case "error": {
       if (s.phase === "idle") return s;
       if (ev.n !== undefined && !current(ev.n)) return s;
@@ -382,7 +397,7 @@ export function voiceRequest(provider: ProviderDef, model: string, history: Voic
   return { provider, model, system, messages: voiceTurns(history), prompt: voiceCliPrompt(history), search: false };
 }
 
-/** Panel widziany przez rozmówcę (narzędzia, etap 5). */
+/** Panel widziany przez rozmówcę (narzędzia, etap 5); `id` = krótki prefiks id panelu (`shortId`). */
 export type VoicePane = { id: string; agent: string; title: string; busy: boolean };
 
 /** Prompt systemowy rozmówcy. Ten sam stan daje ten sam tekst (bez sekund w dacie). */
@@ -405,6 +420,9 @@ export function voicePrompt(now: Date, panes?: VoicePane[]): string {
       "Masz narzędzia do paneli z agentami (claude, pi) w aktywnym projekcie. Gdy użytkownik zatwierdzi plan",
       "(„OK, deploy”, „zaczynajmy”), podziel go na niezależne zadania i wywołaj open_panes. Każde zadanie",
       "opisz tak, żeby agent mógł je wykonać bez tej rozmowy. Użytkownik zobaczy kartę i potwierdzi.",
+      "Przed wywołaniem open_panes albo send_to_pane powiedz jednym zdaniem, co proponujesz – karta pokaże szczegóły.",
+      "read_pane pokazuje ekran agenta: gdy użytkownik pyta, co agenci robią, przeczytaj i streść to krótko.",
+      "Nie czytaj na głos id paneli ani poleceń dla agentów – mów o agencie i tytule zadania.",
       panes.length ? "Panele teraz:" : "Projekt nie ma teraz paneli.",
       ...panes.map((p) => `- ${p.id}: ${p.agent}, „${p.title}”, ${p.busy ? "pracuje" : "czeka"}`),
     );

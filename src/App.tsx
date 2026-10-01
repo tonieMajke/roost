@@ -29,6 +29,7 @@ import { NO_ACCOUNTS, accountById, accountKind, pickAccountId, type Accounts } f
 import { VoiceDialog } from "./VoiceDialog";
 import { VoiceOrb } from "./voice/VoiceOrb";
 import type { VoiceTab } from "./voice/TalkSettings";
+import { shortId, type DeployTask, type PaneHost } from "./voice/tools";
 import { activeStt, DEFAULT_STT, type SttConfig } from "./stt";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
@@ -62,6 +63,9 @@ import type { PaneActions, ProjectActions } from "./handlers";
 
 /** Ile czekamy, aż agent w nowym panelu włączy wklejanie blokiem, zanim wyślemy streszczenie. */
 const CONTINUE_WAIT_MS = 20_000;
+/** Rozmowa głosowa: po włączeniu bracketed paste TUI jeszcze chwilę się rysuje; Enter osobno po wklejce. */
+const PASTE_SETTLE_MS = 1500;
+const SUBMIT_DELAY_MS = 150;
 
 export function App() {
   const [ws, dispatch] = useReducer(reduce, emptyWorkspace);
@@ -546,6 +550,71 @@ export function App() {
 
   const activeRef = useRef(ws.active);
   activeRef.current = ws.active;
+
+  // Rozmowa głosowa (etap 5 planu głosu): panele aktywnego projektu dla narzędzi rozmówcy.
+  const fullPaneId = (short: string) => active?.panes.find((p) => shortId(p.id) === short)?.id ?? null;
+  const voiceHost: PaneHost = {
+    panes: () =>
+      active === null
+        ? null
+        : active.panes.map((p) => ({
+            id: shortId(p.id),
+            agent: paneInfo.get(p.id)?.agent ?? p.agentId,
+            title: titles[p.id] ?? "",
+            busy: ephemeral[p.id]?.working ?? false,
+          })),
+    agents: () => agents.map((a) => ({ id: a.id, name: a.name })),
+    free: () => (active === null ? 0 : MAX_PANES - active.panes.length),
+    open: (tasks) => openVoicePanes(tasks),
+    send: (short, text) => {
+      const id = fullPaneId(short);
+      const term = id ? terms.current.get(id) : undefined;
+      if (!id || !term) return `panel ${short} nie ma terminala`;
+      // Bez bracketed paste każda linia poszłaby jako osobny Enter.
+      if (text.includes("\n") && !term.bracketedPaste()) return `panel ${short} nie przyjmuje wklejenia blokiem – wyślij jedną linię`;
+      term.paste(text);
+      later(SUBMIT_DELAY_MS, () => terms.current.get(id)?.type("\r"));
+      addFeed(id, ["dostał wiadomość z rozmowy głosowej"]);
+      return null;
+    },
+    read: (short, lines) => {
+      const id = fullPaneId(short);
+      const term = id ? terms.current.get(id) : undefined;
+      return term ? term.tail(lines) : null;
+    },
+  };
+
+  // „OK, deploy”: panele dla zadań, a gdy agent wstanie (bracketed paste), polecenie i Enter.
+  const openVoicePanes = async (tasks: DeployTask[]): Promise<string> => {
+    const panes: { pane: Pane; task: DeployTask }[] = [];
+    for (const task of tasks.slice(0, Math.max(0, MAX_PANES - paneCount))) {
+      const agent = agents.find((a) => a.id === task.agent);
+      if (!agent) continue;
+      const pane: Pane = { id: crypto.randomUUID(), agentId: agent.id, run: 1 };
+      if (agent.session) pane.sessionId = crypto.randomUUID();
+      dispatch({ type: "add", pane });
+      panes.push({ pane, task });
+    }
+    if (panes.length === 0) return "nie otwarto żadnego panelu (limit albo nieznany agent)";
+    setNotice(`Rozmowa głosowa: uruchamiam ${panes.length} panel(e)…`);
+    const results = await Promise.all(
+      panes.map(async ({ pane, task }) => {
+        for (let waited = 0; waited < CONTINUE_WAIT_MS; waited += 250) {
+          await new Promise((r) => setTimeout(r, 250));
+          const term = terms.current.get(pane.id);
+          if (!term?.bracketedPaste()) continue;
+          await new Promise((r) => setTimeout(r, PASTE_SETTLE_MS)); // TUI dorysowuje pole wpisywania
+          term.paste(task.prompt);
+          await new Promise((r) => setTimeout(r, SUBMIT_DELAY_MS));
+          terms.current.get(pane.id)?.type("\r");
+          return `${shortId(pane.id)} (${task.agent}, „${task.title}”): zadanie wysłane`;
+        }
+        return `${shortId(pane.id)} (${task.agent}, „${task.title}”): agent nie wystartował w ${CONTINUE_WAIT_MS / 1000} s, zadania nie wysłano`;
+      }),
+    );
+    setNotice(null);
+    return results.join("\n");
+  };
 
   // Kontekst i wywołania narzędzi z plików sesji agentów (Rust czyta tylko koniec pliku).
   // `null` nie kasuje poprzedniego odczytu: plik mógł chwilowo mieć na końcu same wyniki narzędzi.
@@ -1049,6 +1118,7 @@ export function App() {
       )}
       {talk && (
         <VoiceOrb
+          host={voiceHost}
           onClose={() => setTalk(false)}
           onOpenSettings={(tab) => {
             setVoiceTab(tab);
