@@ -2,6 +2,16 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Tła motywów: Mgławica i radar Wieży (2026-10-01, poza planem M5)
+
+- Powód: motywy z makiet A–U miały w kodzie tylko tokeny i CSS, a część makiet to żywa grafika. Zestawienie makieta ↔ `themes.css` pokazało braki w Mgławicy, Biurze, Wieży, Karuzeli, Rtęci oraz układach Rzeka/Metro/Akwarium/Konstelacja.
+- **Mgławica** (`811259b`): `Nebula.tsx` (canvas pod `.grids`, tylko motyw `mglawica`) + `nebula.ts` (czysta symulacja). Tempo cząstek ze stanu `st-*` panelu (`rateFor`), kolor z `--ag`, rdzeń w środku, fala po `st-done`. `backdrop-filter` na panelach. Tryb Oszczędny / `prefers-reduced-motion` = jeden statyczny kadr i bez blura; ukryte okno nie rysuje.
+- **Wieża** (`811259b`): `Radar.tsx` + `radar.ts` – sekcja „Radar” na górze Pulpitu, tylko motyw `wieza`. Odległość znaku = czas od ostatniego wyjścia (pierścienie 1/5/15 min), kąt stały z id panelu, wołanie `CLA1 041` = agent + kontekst %. Dane: `activity.current` z `App.tsx` przez prop `radar` w `Dock`.
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (530 + 4 pominięte), `electron` build. Testowa kopia z osobnym `AGENTS_CONFIG_DIR` i `--user-data-dir` uruchomiona na prośbę użytkownika (wbrew zakazowi z AGENTS.md, bo to użytkownik o to prosił); wygląd **nie** oceniony.
+- **Niesprawdzone:** wygląd i koszt GPU Mgławicy przy wielu panelach, czytelność radaru w Pulpicie 300 px.
+- Pominięte względem makiet: żółte fale „czeka” i bursztynowy znak CZEKA (brak stanu „czeka na odpowiedź” w aplikacji), napis „N zmian · M plików” w rdzeniu, pasek „SEKTOR/QNH”, **paski lotów** Wieży (lista paneli ze wszystkich projektów po pilności – makieta uznaje je za lepsze od samego radaru). Radar pokazuje tylko aktywny projekt.
+- Do zrobienia: **Biuro** (izometryczne SVG z biurkami – ekran powitalny projektu albo widok w Pulpicie, nie tło), reszta tabeli braków. Niezacommitowane zmiany w `electron/src/bot/*`, `main.ts`, `preload.ts`, `src/backend*.ts`, `src/bot*.ts` nie pochodzą z tej pracy.
+
 ## Dyktowanie głosem (2026-10-01, poza planem M5)
 
 - Mikrofon w nagłówku każdego panelu (`Pane.tsx`, `useDictation.ts`): klik = nagrywa, drugi klik = transkrypcja, tekst wchodzi do terminala wklejką **bez Entera**. Rail → „Dyktowanie” (`VoiceDialog.tsx`) wybiera silnik.
