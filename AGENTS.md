@@ -2,12 +2,12 @@
 
 Desktopowa aplikacja (Electron + React + TypeScript, pnpm, tylko Linux), która uruchamia wiele
 agentów CLI (`claude`, `pi`, powłoka) w siatce terminali. Opis projektu: `PLAN.md`.
-**Plan do wykonania, etap po etapie: `docs/plan-m2.md`** (M1: `docs/plan-m1.md`, zrobione). Etapy oznaczone **(C)** robi Claude: gdy pierwszy niezrobiony etap ma (C), nie zaczynaj go – zatrzymaj się i napisz, że następny etap jest dla Claude.
+**Plan do wykonania, etap po etapie: `docs/plan-m5.md`** (M1–M4: `docs/plan-m1.md`…`plan-m4.md`, zrobione). Etapy oznaczone **(C)** robi Claude: gdy pierwszy niezrobiony etap ma (C), nie zaczynaj go – zatrzymaj się i napisz, że następny etap jest dla Claude.
 
 ## Jak pracujesz
 
-1. Na start sesji przeczytaj `docs/plan-m2.md` (sekcje „Kierunek” i „Kto robi”) oraz
-   `HANDOFF.md`. Znajdź pierwszy etap bez `[x]` w „Postępie” w `docs/plan-m2.md`.
+1. Na start sesji przeczytaj `docs/plan-m5.md` (sekcje „Decyzje” i „Kto robi”) oraz
+   `HANDOFF.md`. Znajdź pierwszy etap bez `[x]` w „Postępie” w `docs/plan-m5.md`.
 2. **Jeden etap na sesję.** Nie zaczynaj następnego etapu. Nie rób rzeczy spoza etapu, także
    „przy okazji”. Jeśli coś w etapie jest niejasne albo niemożliwe, zatrzymaj się i napisz,
    co blokuje.
