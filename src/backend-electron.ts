@@ -3,6 +3,7 @@ import type { Backend, ExitInfo, ResizeEdge, SpawnSpec, WindowControls } from ".
 import type { SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
+import { buildChatConfig, parseChat, type ChatEvent, type ChatMeta, type ChatRequest } from "./chat";
 
 /** Most wystawiony przez `electron/src/preload.ts`. */
 type ElectronBridge = {
@@ -11,6 +12,7 @@ type ElectronBridge = {
   onResized(cb: () => void): () => void;
   /** Bez odpowiedzi (kolejne wywołania w kolejności); do zdarzeń co klatkę. */
   send(name: string, ...args: unknown[]): void;
+  chatSend(reqId: string, req: ChatRequest, onEvent: (e: ChatEvent) => void): void;
   /** Krawędzie, które proces główny umie przesunąć (Wayland: tylko te bez przesuwania okna). */
   edges: ResizeEdge[];
 };
@@ -111,5 +113,23 @@ export const electronBackend: Backend = {
   },
 
   notify: (title, body) => call<void>("notify", title, body),
+
+  async chatConfig() {
+    const raw = await call<{ chat: string; pi: string | null }>("chat_config");
+    return buildChatConfig(raw.chat, raw.pi);
+  },
+  chatModels: (p) => call<string[]>("chat_models", p),
+  chatList: () => call<ChatMeta[]>("chat_list"),
+  async chatLoad(id) {
+    const text = await call<string | null>("chat_load", id);
+    return text === null ? null : parseChat(text);
+  },
+  chatSave: (chat) => call<void>("chat_save", JSON.stringify(chat)),
+  chatDelete: (id) => call<void>("chat_delete", id),
+  chatSend(req, onEvent) {
+    const reqId = crypto.randomUUID();
+    bridge().chatSend(reqId, req, (e) => onEvent(e.type === "error" ? { ...e, message: remoteMessage(e.message) } : e));
+    return () => void call("chat_abort", reqId).catch(ignore);
+  },
   window: electronWindow,
 };

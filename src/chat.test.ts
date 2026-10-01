@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyEvent,
+  buildChatConfig,
   chatTitle,
   cliPrompt,
   dayGroup,
@@ -218,4 +219,15 @@ describe("applyEvent", () => {
 it("domain", () => {
   expect(domain("https://www.wikipedia.org/wiki/X")).toBe("wikipedia.org");
   expect(domain("nie url")).toBe("nie url");
+});
+
+describe("buildChatConfig", () => {
+  it("zły chat.json → domyślni + błąd; pi dopisany", () => {
+    const r = buildChatConfig("{", JSON.stringify({ providers: { ft: { baseUrl: "http://127.0.0.1:1919/v1" } } }));
+    expect(r.errors).toHaveLength(1);
+    expect(r.providers.map((p) => p.id)).toEqual([...DEFAULT_PROVIDERS.map((p) => p.id), "ft"]);
+  });
+  it("zepsuty plik pi pomijany", () => {
+    expect(buildChatConfig(JSON.stringify({ providers: DEFAULT_PROVIDERS }), "{").providers).toHaveLength(DEFAULT_PROVIDERS.length);
+  });
 });

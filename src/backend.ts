@@ -4,6 +4,7 @@ import type { AgentDef } from "./agents";
 import type { ContextKind, SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
+import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
 
 export type ExitInfo = { code: number; signal: string | null };
 
@@ -69,6 +70,16 @@ export interface Backend {
   pasteText(): Promise<string | null>;
   /** Powiadomienie na pulpicie, gdy panel bez fokusu skończył pracę. */
   notify(title: string, body: string): Promise<void>;
+  /** Zakładka Czat (M3): dostawcy z `chat.json` + dostawcy pi. */
+  chatConfig(): Promise<ChatConfig>;
+  /** Modele wykryte u dostawcy (`/models`, pamięć podręczna codex); błąd = serwer nie odpowiada. */
+  chatModels(provider: ProviderDef): Promise<string[]>;
+  chatList(): Promise<ChatMeta[]>;
+  chatLoad(id: string): Promise<Chat | null>;
+  chatSave(chat: Chat): Promise<void>;
+  chatDelete(id: string): Promise<void>;
+  /** Odpowiedź modelu strumieniem; ostatnie zdarzenie to `done` albo `error`. Zwraca Stop. */
+  chatSend(req: ChatRequest, onEvent: (e: ChatEvent) => void): () => void;
   /** Własny pasek tytułu; brak = podgląd w przeglądarce, bez okna. */
   window?: WindowControls;
 }

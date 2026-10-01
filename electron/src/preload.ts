@@ -31,6 +31,14 @@ ipcRenderer.on("pty_exit", (_e, id: number, info: ExitInfo) => {
   s.exit(info);
 });
 
+const chatSinks = new Map<string, (e: { type: string }) => void>();
+ipcRenderer.on("chat_event", (_e, reqId: string, ev: { type: string }) => {
+  const sink = chatSinks.get(reqId);
+  if (!sink) return;
+  if (ev.type === "done" || ev.type === "error") chatSinks.delete(reqId);
+  sink(ev);
+});
+
 const resizedListeners = new Set<() => void>();
 ipcRenderer.on("win_resized", () => resizedListeners.forEach((cb) => cb()));
 
@@ -42,6 +50,13 @@ contextBridge.exposeInMainWorld("agentsElectron", {
   invoke: (name: string, ...args: unknown[]) => ipcRenderer.invoke(name, ...args),
   send: (name: string, ...args: unknown[]) => ipcRenderer.send(name, ...args),
   edges: process.argv.includes("--aw-wayland") ? WAYLAND_EDGES : ALL_EDGES,
+  chatSend(reqId: string, req: unknown, onEvent: (e: { type: string }) => void) {
+    chatSinks.set(reqId, onEvent);
+    void ipcRenderer.invoke("chat_send", reqId, req).catch((err: unknown) => {
+      chatSinks.delete(reqId);
+      onEvent({ type: "error", message: String(err) } as { type: string });
+    });
+  },
   async spawnPty(spec: unknown, onData: Sinks["data"], onExit: Sinks["exit"]) {
     const id: number = await ipcRenderer.invoke("pty_spawn", spec);
     const w = early.get(id);

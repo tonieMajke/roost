@@ -10,8 +10,13 @@ import { notify } from "./notify";
 import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
 import { claudeSummary, piSummary } from "./summary";
+import { ChatStore } from "./chat/store";
+import { chatConfigLoad, defaultChatService } from "./chat/service";
+import type { ChatRequest, ProviderDef } from "../../src/chat";
 
 const ptys = new Ptys();
+const chats = new ChatStore(path.join(config.configDir(), "chats"));
+const chat = defaultChatService();
 let win: BrowserWindow | null = null;
 
 /** Każde wywołanie z `backend-electron.ts` to `invoke(name, ...args)`; błąd wraca jako odrzucenie. */
@@ -53,6 +58,20 @@ handle("claude_limits", () => claudeLimits(config.configDir()));
 handle("notify", (title: string, body: string) => notify(title, body));
 handle("copy_text", (text: string) => clipboard.writeText(text));
 handle("paste_text", () => clipboard.readText());
+handle("chat_config", () => chatConfigLoad(config.configDir()));
+handle("chat_models", (p: ProviderDef) => chat.models(p));
+handle("chat_list", () => chats.list());
+handle("chat_load", (id: string) => chats.load(id));
+handle("chat_save", (json: string) => chats.save(json));
+handle("chat_delete", (id: string) => chats.delete(id));
+handle("chat_abort", (reqId: string) => chat.abort(reqId));
+// Odpowiedź płynie zdarzeniami `chat_event` (reqId, ChatEvent); `invoke` wraca od razu.
+ipcMain.handle("chat_send", (event, reqId: string, req: ChatRequest) => {
+  const sender = event.sender;
+  void chat.send(reqId, req, (e) => {
+    if (!sender.isDestroyed()) sender.send("chat_event", reqId, e);
+  });
+});
 handle("pick_dir", async () => {
   const opts: Electron.OpenDialogOptions = { title: "Katalog projektu", properties: ["openDirectory"] };
   const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
@@ -103,7 +122,10 @@ function createWindow() {
   // Przeładowana strona (Ctrl+R, przeładowanie Vite) nie posprzątała po sobie: bez tego jej agenci
   // żyliby niewidoczni obok kopii tych samych rozmów w nowej stronie.
   win.webContents.on("did-start-navigation", (details) => {
-    if (details.isMainFrame && !details.isSameDocument) ptys.killAllAsync();
+    if (details.isMainFrame && !details.isSameDocument) {
+      ptys.killAllAsync();
+      chat.abortAll();
+    }
   });
   const dev = process.env.AGENTS_DEV_URL;
   if (dev) void win.loadURL(dev);
@@ -120,4 +142,7 @@ void app.whenReady().then(createWindow);
 
 // Zamknięte okno, Ctrl+C w terminalu: agenci nigdy nie zostają.
 app.on("window-all-closed", () => app.quit());
-app.on("will-quit", () => ptys.killAll());
+app.on("will-quit", () => {
+  ptys.killAll();
+  chat.abortAll();
+});

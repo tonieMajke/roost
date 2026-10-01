@@ -1,5 +1,6 @@
 import { DEFAULT_AGENTS } from "./agents";
 import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
+import { chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, withDiscovered, type Chat, type ChatEvent, type ChatMeta } from "./chat";
 
 const PROMPT = "$ ";
 const WORKSPACE_KEY = "aw-workspace";
@@ -9,6 +10,51 @@ let nextId = 1;
 let previewClipboard = "";
 const mockReads = new Map<string, number>();
 const MOCK_TITLES = ["Naprawa czarnego paska pod xtermem", "Tytuły sesji w pulpicie", "Refaktor kolejki zapisu do terminala", "Przegląd etapu 10"];
+
+const CHATS_KEY = "aw-chats";
+
+function mockChats(): Record<string, Chat> {
+  try {
+    return JSON.parse(globalThis.localStorage?.getItem(CHATS_KEY) ?? "{}") as Record<string, Chat>;
+  } catch {
+    return {};
+  }
+}
+function saveMockChats(all: Record<string, Chat>) {
+  try {
+    globalThis.localStorage?.setItem(CHATS_KEY, JSON.stringify(all));
+  } catch {
+    // tryb prywatny: podgląd bez zapisu
+  }
+}
+
+/** Odpowiedź podglądu: wszystkie elementy markdownu, które wątek musi umieć narysować. */
+const MOCK_REPLY = `Jasne — oto krótkie porównanie. **SSE** to jednokierunkowy strumień tekstu po HTTP, a *WebSocket* to pełny dupleks [1].
+
+## Kiedy co wybrać
+
+- **SSE**: odpowiedzi modeli, powiadomienia, logi na żywo.
+- **WebSocket**: czat wieloosobowy, gry, edytory współdzielone [2].
+- Zwykłe zapytanie: gdy wynik jest od razu.
+
+| Cecha | SSE | WebSocket |
+|---|---|---|
+| Kierunek | serwer → klient | oba |
+| Wznawianie | wbudowane (\`Last-Event-ID\`) | własne |
+| Proxy | bez problemu | czasem kłopot |
+
+Minimalny klient w TypeScript:
+
+\`\`\`ts
+const res = await fetch("/v1/chat/completions", { method: "POST", body });
+for await (const chunk of res.body!) {
+  process.stdout.write(new TextDecoder().decode(chunk));
+}
+\`\`\`
+
+> Wskazówka: przy SSE serwer powinien co ~15 s wysłać komentarz \`: ping\`, żeby proxy nie zamknęło połączenia.
+
+Daj znać, jeśli mam rozpisać przykład serwera.`;
 
 const enc = (text: string) => new TextEncoder().encode(text);
 
@@ -218,6 +264,61 @@ export const mockBackend: Backend = {
       // odczyt schowka wymaga fokusu karty: używamy previewClipboard
     }
     return previewClipboard === "" ? null : previewClipboard;
+  },
+
+  // Podgląd czatu: dostawcy domyślni + udawany model lokalny, rozmowy w localStorage.
+  async chatConfig() {
+    return { providers: DEFAULT_PROVIDERS, errors: [] };
+  },
+  async chatModels(p) {
+    if (p.kind === "openai") return ["Qwen-3.8-27B (podgląd)"];
+    return p.kind === "codex-cli" ? withDiscovered(p, []).models.map((m) => m.id) : [];
+  },
+  async chatList(): Promise<ChatMeta[]> {
+    return sortChats(Object.values(mockChats()).map(chatMeta));
+  },
+  async chatLoad(id) {
+    const c = mockChats()[id];
+    return c ? parseChat(JSON.stringify(c)) : null;
+  },
+  async chatSave(chat) {
+    saveMockChats({ ...mockChats(), [chat.id]: chat });
+  },
+  async chatDelete(id) {
+    const all = mockChats();
+    delete all[id];
+    saveMockChats(all);
+  },
+  // ~30 słów/s; „fail” w pytaniu = błąd w połowie; z wyszukiwaniem najpierw zapytania i źródła.
+  chatSend(req, onEvent) {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let stopped = false;
+    const at = (ms: number, e: ChatEvent) =>
+      timers.push(
+        setTimeout(() => {
+          if (!stopped) onEvent(e);
+        }, ms),
+      );
+    let t = 300;
+    if (req.search) {
+      at(t, { type: "search", query: "SSE vs WebSocket różnice" });
+      at((t += 700), { type: "source", url: "https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events", title: "Server-sent events – MDN" });
+      at((t += 300), { type: "source", url: "https://www.rfc-editor.org/rfc/rfc6455", title: "RFC 6455: The WebSocket Protocol" });
+      t += 500;
+    }
+    at(t, { type: "thinking", text: "Użytkownik pyta o różnice; dam tabelę i krótki przykład." });
+    const words = MOCK_REPLY.split(/(?<=\s)/);
+    const fail = req.prompt.includes("fail");
+    words.forEach((w, i) => {
+      if (fail && i === 25) at(t + i * 33, { type: "error", message: "serwer 127.0.0.1:8080 zerwał połączenie (podgląd)" });
+      else if (!fail || i < 25) at(t + i * 33, { type: "text", text: w });
+    });
+    if (!fail) at(t + words.length * 33 + 50, { type: "done" });
+    return () => {
+      stopped = true;
+      timers.forEach(clearTimeout);
+      onEvent({ type: "done" });
+    };
   },
 
   // Podgląd nie ma powiadomień pulpitu — zostaje log w konsoli dewelopera.

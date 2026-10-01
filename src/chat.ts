@@ -352,3 +352,24 @@ export function domain(url: string): string {
     return url;
   }
 }
+
+export type ChatConfig = { providers: ProviderDef[]; errors: string[] };
+
+/** Konfiguracja z surowego `chat.json` i `~/.pi/agent/models.json` (może nie być). */
+export function buildChatConfig(chatText: string, piText: string | null): ChatConfig {
+  let parsed: ChatConfig;
+  try {
+    parsed = parseChatConfig(JSON.parse(chatText));
+  } catch (e) {
+    parsed = { providers: DEFAULT_PROVIDERS, errors: [`chat.json: ${String(e)}`] };
+  }
+  let pi: ProviderDef[] = [];
+  if (piText) {
+    try {
+      pi = importPiProviders(JSON.parse(piText));
+    } catch {
+      // zepsuty plik pi to nie nasz błąd: bez importu
+    }
+  }
+  return { providers: mergeProviders(parsed.providers, pi), errors: parsed.errors };
+}
