@@ -112,6 +112,45 @@ Użytkownik zbiera więcej zmian i zleci wdrożenie wszystkich naraz innemu agen
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 11: sprawdzenie w oknie – lista dla użytkownika (2026-10-01)
+
+Przed sprawdzeniem: zamknij aplikację i przebuduj AppImage (`pnpm electron:dist` → `electron/release/Agents-0.0.1.AppImage`) – obecny jest sprzed etapów 9–10. Uwagi zapisuj przy punktach; poprawki wchodzą do commitu `M5 Etap 11: sprawdzenie w oknie`.
+
+**Kreator**
+- [ ] Kreator → „zrób mi bota, który co rano przegląda newsy o Ruście i mówi jak pirat” → najwyżej 3 pytania, potem karta zgody z podglądem bota (nie JSON)
+- [ ] „Zezwól raz” → bot od razu na liście, pod kartą narzędzia „Porozmawiaj z …” otwiera jego powitanie
+- [ ] zadanie od Kreatora jest w karcie bota → Harmonogram, **wyłączone**
+- [ ] „zrób <bota> mniej gadatliwym” → podgląd z wyróżnionym polem „Styl”, po zgodzie zmiana widoczna w karcie bota
+- [ ] „Odrzuć” przy `bot_create` → bot nie powstaje, Kreator pyta, co zmienić
+
+**Rozmowa z narzędziami – każdy rodzaj dostawcy**
+- [ ] claude (subskrypcja): bot czyta plik z folderu bez pytania, `bash` pyta o zgodę
+- [ ] ChatGPT / codex (subskrypcja): to samo
+- [ ] model lokalny (llama-server z `--jinja`): wywołania narzędzi; bez `--jinja` – nagłówek „bez narzędzi”
+- [ ] API (OpenRouter / Anthropic), jeśli masz klucz
+- [ ] zgoda: Enter = „Zezwól raz”, Esc = „Odrzuć”; „Zezwalaj w tej rozmowie” nie pyta drugi raz o to samo polecenie
+- [ ] odmowa: bot nie próbuje obejść jej innym narzędziem, pyta, co dalej
+- [ ] Stop w trakcie czekania na zgodę: karta znika, rozmowa kończy się bez błędu
+
+**Pamięć i skille**
+- [ ] „zapamiętaj, że wolę krótkie odpowiedzi” → w karcie bota → Pamięć widać wpis; w **nowej** rozmowie bot odpowiada krótko
+- [ ] zadanie wymagające wielu kroków → bot zapisuje skill (karta → Skille, autor „bot”); podobne zadanie w nowej rozmowie → bot czyta skill (`skill_view`)
+- [ ] import skilla z `~/.claude/skills` w karcie bota; okno wyboru obrazka awatara i folderu
+
+**Harmonogram**
+- [ ] nowe zadanie „co 5 minut”, polecenie bez zapisu plików → przez godzinę: przebiegi z zegarem na liście rozmów, CPU w spoczynku między przebiegami (`top`), powiadomienie po każdym przebiegu przy oknie bez fokusu, brak przy oknie w fokusie
+- [ ] kliknięcie powiadomienia przywraca okno i otwiera przebieg (KDE: czy powiadomienie ma przycisk/klik „Otwórz”)
+- [ ] zadanie z poleceniem spoza listy zgód (np. „uruchom `ls ~`”) → powiadomienie „Czeka na twoją zgodę” także przy oknie w fokusie; kliknięcie otwiera przebieg z kartą zgody; po zgodzie przebieg kończy się
+- [ ] „Uruchom teraz” na wyłączonym zadaniu działa; włączenie zadania po jego godzinie nie uruchamia go od razu
+- [ ] zamknięcie aplikacji w trakcie przebiegu → po starcie przebieg oznaczony „Przerwane…”; zaległe zadanie dzienne rusza raz po starcie
+- [ ] uśpienie komputera w trakcie zadania „co 5 minut” → po wybudzeniu jeden przebieg, nie seria
+- [ ] Ctrl+R (przeładowanie) przy pracującym przebiegu: przebieg pracuje dalej, jego prośba o zgodę wraca na liście
+
+**Przełączanie zakładek**
+- [ ] Code ↔ Czat ↔ Bot (Ctrl+Alt+C) przy pracujących agentach w panelach i odpowiadającym bocie: nic nie przerywa się, odpowiedź bota dopływa w tle
+- [ ] dwa boty odpowiadają naraz; kropki „pracuje” / „czeka na zgodę” przy właściwych botach
+- [ ] wygląd zakładki Bot i karty bota w kilku motywach (jasny, ciemny, Kreślarnia, Pulpit95)
+
 ## M5 Etap 10: harmonogram w zakładce Bot – 2026-10-01 (Claude, konta)
 
 - Karta bota, zakładka **Harmonogram** (`src/bot/Routines.tsx`): zadanie = przełącznik, nazwa, `scheduleLabel`, „następne: dziś/jutro/pn 5 paź 08:00” (`runWhen`, `routineNext`), ostatni przebieg z pierwszym zdaniem wyniku (z 30 najnowszych plików `runs/`; klik zamyka kartę i otwiera przebieg), „pracuje…” / „czeka na twoją zgodę” z `bot_run`. „Uruchom teraz” (`Scheduler.runNow` – przed terminem i wyłączone, kolejka jak zwykle; drugi raz w trakcie = błąd), edycja: nazwa, polecenie, „Codziennie o…” (godzina + dni, żaden/wszystkie = codziennie) albo „Co N minut” (≥ 5), zgody z góry: pisanie w `work/` i prefiksy poleceń. Zapis od razu.
