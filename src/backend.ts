@@ -101,6 +101,8 @@ export interface Backend {
   openExternal(url: string): Promise<void>;
   /** Odpowiedź modelu strumieniem; ostatnie zdarzenie to `done` albo `error`. Zwraca Stop. */
   chatSend(req: ChatRequest, onEvent: (e: ChatEvent) => void): () => void;
+  /** Wynik narzędzia z `tool_request` (claude/codex CLI w rozmowie głosowej). */
+  chatToolResult(id: string, ok: boolean, text: string): Promise<void>;
   /** Zakładka Bot (M5). Lista tworzy Kreatora przy pierwszym odczycie. */
   botList(): Promise<{ bots: BotDef[]; errors: string[] }>;
   /** Nowy bot; zajęte id = odrzucenie (wolne id: `botId`). */

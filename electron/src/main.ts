@@ -13,6 +13,7 @@ import { resizedBounds, usesWayland } from "./window";
 import { claudeSummary, piSummary } from "./summary";
 import { ChatStore } from "./chat/store";
 import { chatConfigLoad, chatConfigSave, defaultChatService } from "./chat/service";
+import { WindowTools } from "./chat/window-tools";
 import { KeyStore, passwordStore } from "./chat/keys";
 import { sttConfigLoad, sttConfigSave, transcribe } from "./stt";
 import { activeStt, parseSttConfig, sttKeyId, type SttProvider } from "../../src/stt";
@@ -25,7 +26,7 @@ import { BotService } from "./bot/service";
 import { RUN_PREFIX, Scheduler, type RunInfo } from "./bot/scheduler";
 import { ensureFreeToken, freetokenInstance } from "./chat/freetoken";
 import { isSkillName, parseBotChat, runNotice, type ApprovalDecision } from "../../src/bot";
-import { buildChatConfig, type ChatRequest, type ProviderDef } from "../../src/chat";
+import { buildChatConfig, isCli, type ChatEvent, type ChatRequest, type ProviderDef } from "../../src/chat";
 
 // Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
 const store = passwordStore(readOrNull(path.join(app.getPath("home"), ".config", "kwalletrc")), process.env);
@@ -59,8 +60,9 @@ const approvals = new ApprovalBroker((e) => {
   if (win && !win.isDestroyed()) win.webContents.send("bot_approval", e);
 });
 
-// Most MCP dla claude/codex w trybie bota: gniazdo powstaje przy pierwszej takiej rozmowie.
+// Most MCP dla claude/codex w trybie bota i w rozmowie głosowej: gniazdo powstaje przy pierwszej takiej rozmowie.
 let bridge: Promise<ToolBridge> | null = null;
+const windowTools = new WindowTools();
 const botService = new BotService({
   store: bots,
   broker: approvals,
@@ -166,10 +168,31 @@ handle("chat_abort", (reqId: string) => chat.abort(reqId));
 // Odpowiedź płynie zdarzeniami `chat_event` (reqId, ChatEvent); `invoke` wraca od razu.
 ipcMain.handle("chat_send", (event, reqId: string, req: ChatRequest) => {
   const sender = event.sender;
-  void chat.send(reqId, req, (e) => {
+  const emit = (e: ChatEvent) => {
     if (!sender.isDestroyed()) sender.send("chat_event", reqId, e);
-  });
+  };
+  if (!req.tools?.length || !isCli(req.provider)) return void chat.send(reqId, req, emit);
+  // Rozmowa głosowa na claude/codex CLI: narzędzia okna przez serwer MCP `bot` (most z M5).
+  void (async () => {
+    let session: { env: Record<string, string>; dispose(): void };
+    try {
+      session = (await (bridge ??= ToolBridge.start())).register({
+        tools: req.tools!,
+        call: async (name, args) => ({ ...(await windowTools.call(reqId, emit, name, args)), approval: "auto" }),
+      });
+    } catch (e) {
+      return emit({ type: "error", message: `most narzędzi: ${e instanceof Error ? e.message : String(e)}` });
+    }
+    try {
+      const mcp = ToolBridge.serverSpec(process.execPath, path.join(__dirname, "mcp-server.cjs"), session.env);
+      await chat.send(reqId, { ...req, tools: undefined, mcp }, emit);
+    } finally {
+      session.dispose();
+      windowTools.end(reqId);
+    }
+  })();
 });
+handle("chat_tool_result", (id: string, ok: boolean, text: string) => void windowTools.resolve(id, ok, text));
 // Dyktowanie: silnik i język z `stt.json`, klucz z sejfu; do strony wraca sam tekst.
 handle("stt_config", () => sttConfigLoad(config.configDir()));
 handle("stt_config_save", (json: string) => sttConfigSave(config.configDir(), json));

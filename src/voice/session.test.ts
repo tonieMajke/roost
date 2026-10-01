@@ -10,7 +10,7 @@ const flush = async () => {
 };
 
 /** Atrapy z ręcznym sterowaniem: odpowiedź mózgu, synteza i odtwarzanie kończą się na żądanie. */
-function rig(opts: { tts?: boolean; transcript?: string | Error; tool?: VoiceDeps["tool"] } = {}) {
+function rig(opts: { tts?: boolean; transcript?: string | Error; tool?: VoiceDeps["tool"]; toolResult?: VoiceDeps["toolResult"] } = {}) {
   const log: string[] = [];
   const asked: VoiceExchange[][] = [];
   const extras: Turn[][] = [];
@@ -43,6 +43,7 @@ function rig(opts: { tts?: boolean; transcript?: string | Error; tool?: VoiceDep
       }),
     now: () => ++clock,
     ...(opts.tool ? { tool: opts.tool } : {}),
+    ...(opts.toolResult ? { toolResult: opts.toolResult } : {}),
   };
   const states: VoiceState[] = [];
   const s = new VoiceSession(deps, (st) => states.push(st));
@@ -273,5 +274,21 @@ describe("VoiceSession", () => {
       ["Claude skończył pracę.", 0],
       ["pi skończył pracę.", 1],
     ]);
+  });
+
+  it("CLI: `tool_request` wykonuje narzędzie i odsyła wynik, odpowiedź płynie dalej w tym samym kroku", async () => {
+    const results: [string, string][] = [];
+    const r = rig({ tts: false, tool: async () => ({ ok: true, text: "2 panele" }), toolResult: (id, out) => void results.push([id, out.text]) });
+    r.s.start();
+    await r.say();
+    r.send({ type: "text", text: "Sprawdzam." });
+    r.send({ type: "tool_request", id: "q1", name: "overview", args: {} });
+    await flush();
+    expect(results).toEqual([["q1", "2 panele"]]);
+    r.send({ type: "text", text: "Masz dwa panele." });
+    r.send({ type: "done" });
+    await flush();
+    expect(r.asked).toHaveLength(1); // CLI sam prowadzi pętlę: bez drugiego kroku
+    expect(r.s.state.history[0]).toMatchObject({ reply: "Sprawdzam. Masz dwa panele.", tools: [{ label: "sprawdza projekty i panele", ok: true }] });
   });
 });

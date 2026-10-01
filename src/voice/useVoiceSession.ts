@@ -52,8 +52,8 @@ export function useVoiceSession(host?: PaneHost, noteRef?: MutableRefObject<((te
       }
       const ttsP = activeTts(tts.config, voice.config);
       const headphones = voice.config.headphones;
-      // Narzędzia tylko przy dostawcach HTTP: claude/codex CLI w Czacie nie mają serwera z panelami.
-      const tools = hostRef.current !== undefined && (found.provider.kind === "openai" || found.provider.kind === "anthropic");
+      // HTTP: pętla narzędzi tutaj; claude/codex CLI: przez serwer MCP z procesu głównego (`tool_request`).
+      const tools = hostRef.current !== undefined;
 
       const player = new Player();
       cleanup.push(() => player.close());
@@ -77,6 +77,7 @@ export function useVoiceSession(host?: PaneHost, noteRef?: MutableRefObject<((te
                   if (!h) return Promise.resolve({ ok: false, text: "panele niedostępne" });
                   return runVoiceTool(name, args, { ...h, confirm: (card, sig) => session.confirm(card, sig) }, signal);
                 },
+                toolResult: (id: string, r: { ok: boolean; text: string }) => void backend.chatToolResult(id, r.ok, r.text).catch(() => undefined),
               }
             : {}),
           speak: ttsP ? (id, text) => backend.voiceSpeak(id, text) : null,

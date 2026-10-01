@@ -398,6 +398,7 @@ export const mockBackend: Backend = {
     delete all[id];
     saveMockChats(all);
   },
+  async chatToolResult() {},
   // ~30 słów/s; „fail” w pytaniu = błąd w połowie; z wyszukiwaniem najpierw zapytania i źródła.
   chatSend(req, onEvent) {
     const timers: ReturnType<typeof setTimeout>[] = [];

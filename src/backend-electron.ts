@@ -180,6 +180,9 @@ export const electronBackend: Backend = {
     bridge().chatSend(reqId, req, (e) => onEvent(e.type === "error" ? { ...e, message: remoteMessage(e.message) } : e));
     return () => void call("chat_abort", reqId).catch(ignore);
   },
+  chatToolResult(id, ok, text) {
+    return call<void>("chat_tool_result", id, ok, text);
+  },
   botList: () => call<{ bots: BotDef[]; errors: string[] }>("bot_list"),
   botCreate: (bot) => call<BotDef>("bot_create", serializeBot(bot)),
   botSave: (bot) => call<BotDef>("bot_save", serializeBot(bot)),

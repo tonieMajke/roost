@@ -13,6 +13,8 @@ export type VoiceDeps = {
   ask(history: VoiceExchange[], extra: Turn[], onEvent: (e: ChatEvent) => void): () => void;
   /** Narzędzia rozmówcy (etap 5); brak = mózg bez narzędzi (CLI). `signal`: odpowiedź przerwana. */
   tool?: (name: string, args: Record<string, unknown>, signal: AbortSignal) => Promise<VoiceToolResult>;
+  /** claude/codex CLI: wynik narzędzia z `tool_request` wraca do procesu głównego (CLI czeka). */
+  toolResult?: (id: string, r: VoiceToolResult) => void;
   /** `null` = bez silnika mowy: odpowiedź tylko tekstem w transkrypcie. */
   speak: ((id: string, text: string) => Promise<Uint8Array>) | null;
   cancelSpeak(id: string): void;
@@ -252,16 +254,30 @@ export class VoiceSession {
         return finish();
       }
       let text = "";
+      let afterTool = false;
       const calls: ToolCall[] = [];
       r.stop = this.deps.ask(this.state.history, extra, (e) => {
         if (!live()) return;
         if (e.type === "text") {
           // Tekst kolejnego kroku (po narzędziach) to nowe zdanie, nie ciąg poprzedniego.
-          const chunk = text === "" && extra.length > 0 && this.state.history[n]?.reply ? ` ${e.text}` : e.text;
+          const fresh = (text === "" && extra.length > 0) || afterTool;
+          const chunk = fresh && this.state.history[n]?.reply ? ` ${e.text}` : e.text;
+          afterTool = false;
           text += e.text;
           this.emit({ type: "delta", n, text: chunk, at: this.deps.now() });
           buffer += chunk;
           feed(false);
+        } else if (e.type === "tool_request") {
+          // CLI prowadzi pętlę sam: narzędzie tutaj, wynik wraca do niego, odpowiedź płynie dalej.
+          feed(true);
+          afterTool = true;
+          const run = this.deps.tool
+            ? this.deps.tool(e.name, e.args, ac.signal).catch((err: unknown) => ({ ok: false, text: message(err) }))
+            : Promise.resolve({ ok: false, text: "narzędzia niedostępne" });
+          void run.then((out) => {
+            this.deps.toolResult?.(e.id, out);
+            if (live()) this.emit({ type: "tool", n, label: voiceToolLabel(e.name, e.args), ok: out.ok });
+          });
         } else if (e.type === "tool_call") {
           calls.push({ id: e.id, name: e.name, args: e.args, ...(e.bad !== undefined ? { bad: e.bad } : {}) });
         } else if (e.type === "done") {

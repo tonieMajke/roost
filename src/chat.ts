@@ -96,7 +96,9 @@ export type ChatEvent =
   | { type: "error"; message: string }
   | { type: "tool_call"; id: string; name: string; args: Record<string, unknown>; bad?: string } // `bad`: argumenty nie są JSON-em
   | { type: "tool_result"; id: string; text: string; error: boolean; approval: "auto" | "once" | "chat" | "deny" } // text ≤ 4 KB
-  | { type: "tools_unsupported" }; // model albo serwer nie obsługuje narzędzi: dalej bez nich
+  | { type: "tools_unsupported" } // model albo serwer nie obsługuje narzędzi: dalej bez nich
+  // claude/codex CLI wołają narzędzie okna (rozmowa głosowa); odpowiedź przez `chatToolResult`.
+  | { type: "tool_request"; id: string; name: string; args: Record<string, unknown> };
 
 export const DEFAULT_PROVIDERS: ProviderDef[] = [
   {

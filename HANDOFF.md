@@ -33,6 +33,13 @@ Plan: `docs/plan-konta.md` (etapy 1–5 zrobione i zacommitowane, 6 = ten wpis).
 - **Niesprawdzone:** wygląd i koszt GPU Mgławicy przy wielu panelach, czytelność radaru w Pulpicie 300 px.
 - Pominięte względem makiet: żółte fale „czeka” i bursztynowy znak CZEKA (brak stanu „czeka na odpowiedź” w aplikacji), napis „N zmian · M plików” w rdzeniu, pasek „SEKTOR/QNH”, **paski lotów** Wieży (lista paneli ze wszystkich projektów po pilności – makieta uznaje je za lepsze od samego radaru). Radar pokazuje tylko aktywny projekt.
 - Do zrobienia: **Biuro** (izometryczne SVG z biurkami – ekran powitalny projektu albo widok w Pulpicie, nie tło), reszta tabeli braków. Niezacommitowane zmiany w `electron/src/bot/*`, `main.ts`, `preload.ts`, `src/backend*.ts`, `src/bot*.ts` nie pochodzą z tej pracy.
+## Głos: narzędzia także na claude/codex CLI – 2026-10-01 (Claude, gałąź `glos`)
+
+- Zgłoszenie: „głos mówi, że nie ma informacji o niczym”. Przyczyna: mózg rozmowy = `claude` CLI (Haiku), a narzędzia i przegląd były tylko dla dostawców HTTP.
+- Teraz `chat_send` z `req.tools` u claude/codex CLI uruchamia serwer MCP `bot` (most z M5); wywołanie idzie do okna zdarzeniem `tool_request`, okno wykonuje `runVoiceTool` (z kartą) i odsyła `chat_tool_result` (`electron/src/chat/window-tools.ts`). Koniec odpowiedzi/Stop zamyka wiszące prośby.
+- Sprawdzone: typecheck, `pnpm test` (668 + 10 pominiętych), electron build, **na żywo** `AW_LIVE=1 … voice-cli-live.test.ts`: Haiku woła `read_pane` przez MCP i streszcza ekran (6 s).
+- Niesprawdzone w oknie: karta przy CLI (czeka do 6 h, limit MCP z M5), codex.
+
 ## Głos Etap 7: rozmówca steruje aplikacją – 2026-10-01 (Claude, gałąź `glos`)
 
 - Użytkownik przetestował etap 5 w oknie: działa; brakowało działania w całej aplikacji. Wybrał: panele, projekty, konta/modele, boty i Czat, postępy („co wymaga uwagi”). Akcje bez skutków bez karty.
