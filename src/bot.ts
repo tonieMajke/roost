@@ -607,8 +607,9 @@ export type ApprovalContext = {
   bot: BotDef;
   work: string; // realpath katalogu roboczego
   folders: string[]; // realpath folderów bota
-  /** Zgody „w tej rozmowie”: narzędzie + (dla bash) prefiks polecenia. */
-  grants: { tool: ToolName; prefix?: string }[];
+  /** Zgody „w tej rozmowie”: narzędzie + (dla bash) prefiks polecenia albo (dla narzędzi plikowych)
+   *  katalog, w którym zgoda obowiązuje. Zgoda plikowa bez `dir` nie działa (bezpieczniej: pytamy ponownie). */
+  grants: { tool: ToolName; prefix?: string; dir?: string }[];
   /** Przebieg z harmonogramu: zgody z góry zamiast pytania. */
   routine?: Routine["allow"];
 };
@@ -620,20 +621,68 @@ export const isInside = (p: string, dir: string) => p === dir || p.startsWith(di
 /** Polecenie, które da się porównać z prefiksem: bez łączenia poleceń, przekierowań i podstawień. */
 const PLAIN_CMD = /^[^;&|`$<>\n\r\\(){}]*$/;
 
-/** Prefiks do „zezwalaj w tej rozmowie”: program i podpolecenie (`cargo test`, `git pull`). */
+/** Interpretery i launchery: prefiks `python` przepuściłby `python -c ...`, `env`/`xargs`/`find`/`sed`/`awk`
+ *  uruchamiają dowolny kod. Dla nich zgoda „w tej rozmowie” i `routine.allow.bash` dotyczą tylko
+ *  dokładnie tego samego polecenia (nie prefiksu). `sed` i `awk` też: `sed 'e ...'`, `awk 'BEGIN{system()}'`. */
+const NO_PREFIX_PROGRAMS = new Set([
+  "sh", "bash", "zsh", "fish", "dash", "ash", "ksh", "csh", "tcsh", "node", "nodejs", "deno", "bun", "bunx", "npx", "pnpx",
+  "perl", "ruby", "php", "luajit", "tclsh", "rscript", "osascript", "pwsh", "powershell", "env", "xargs", "find", "awk", "gawk",
+  "mawk", "nawk", "sed", "ssh", "scp", "sftp", "rsync", "sudo", "doas", "su", "eval", "exec", "nohup", "time", "timeout", "nice",
+  "ionice", "watch", "busybox", "setsid", "stdbuf", "command", "builtin", "source", ".", "docker", "podman", "vi", "vim", "nvim",
+  "nano", "emacs", "less", "more", "man",
+]);
+const NO_PREFIX_PATTERN = /^(python|pypy|lua)[\d.]*$/;
+/** Menedżery pakietów: `run`/`exec`/`dlx`/nazwa skryptu = dowolny kod, więc prefiks tylko dla znanych podpoleceń. */
+const PM_PROGRAMS = new Set(["npm", "pnpm", "yarn"]);
+const PM_SAFE_SUB = new Set(["install", "i", "ci", "add", "remove", "rm", "uninstall", "update", "up", "list", "ls", "outdated", "audit", "view", "info", "why", "test"]);
+/** Opcje gita uruchamiające dowolne polecenie albo zmieniające konfigurację (`-c core.sshCommand=...`). */
+const GIT_DANGEROUS_LONG = ["--upload-pack", "--receive-pack", "--exec", "--exec-path", "--config", "--config-env", "--template", "--ext-cmd"];
+
+const stripQuotes = (w: string) => w.replace(/['"]/g, "");
+const programName = (w: string) => stripQuotes(w).replace(/^.*\//, "").toLowerCase();
+
+/** Czy opcja gita (po zdjęciu cudzysłowów) jest niebezpieczna; długie opcje także w skrócie (`--upload-p`). */
+function gitDangerousArg(raw: string): boolean {
+  const w = stripQuotes(raw);
+  if (w === "-c" || /^-c./.test(w) || w === "-x") return true;
+  const name = w.split("=")[0];
+  return name.startsWith("--") && name.length >= 3 && GIT_DANGEROUS_LONG.some((d) => d.startsWith(name));
+}
+
+/** Czy dla tego prefiksu zgoda może obejmować kolejne polecenia (a nie tylko dokładnie to samo). */
+function prefixGrantable(prefix: string): boolean {
+  const words = prefix.trim().split(/\s+/);
+  const first = words[0] ?? "";
+  if (!first || first.includes("=") || /['"]/.test(first)) return false; // `FOO=1 cmd`, cytowany program
+  const prog = programName(first);
+  if (NO_PREFIX_PROGRAMS.has(prog) || NO_PREFIX_PATTERN.test(prog)) return false;
+  if (PM_PROGRAMS.has(prog)) return words.length > 1 && PM_SAFE_SUB.has(words[1]);
+  if (prog === "git") return words.length > 1 && /^[a-z][\w-]*$/i.test(words[1]);
+  return true;
+}
+
+/** Prefiks do „zezwalaj w tej rozmowie”: program i podpolecenie (`cargo test`, `git pull`).
+ *  `null` = brak prefiksu (łączenie poleceń, interpreter/launcher): UI nie oferuje zgody w rozmowie. */
 export function commandPrefix(cmd: string): string | null {
   const c = cmd.trim();
   if (!c || !PLAIN_CMD.test(c)) return null;
   const words = c.split(/\s+/);
-  return words.length > 1 && /^[a-z][\w-]*$/i.test(words[1]) ? `${words[0]} ${words[1]}` : words[0];
+  const prefix = words.length > 1 && /^[a-z][\w-]*$/i.test(words[1]) ? `${words[0]} ${words[1]}` : words[0];
+  return prefixGrantable(prefix) ? prefix : null;
 }
 
-/** Polecenie pasuje do prefiksu na granicy słowa i nie dokleja niczego przez `;`, `|`, `$()` itp. */
+/** Polecenie pasuje do prefiksu na granicy słowa i nie dokleja niczego przez `;`, `|`, `$()` itp.
+ *  Prefiks niegrantowalny (interpreter, launcher) pasuje tylko do identycznego polecenia;
+ *  dla `git` argumenty `-c`, `--upload-pack` itd. nie przechodzą. */
 export function matchesPrefix(cmd: string, prefix: string): boolean {
   if (!PLAIN_CMD.test(cmd)) return false; // przed normalizacją: nowa linia też łączy polecenia
   const c = cmd.trim().replace(/[ \t]+/g, " ");
   const p = prefix.trim().replace(/[ \t]+/g, " ");
-  return !!p && (c === p || c.startsWith(`${p} `));
+  if (!p) return false;
+  if (!prefixGrantable(p)) return c === p;
+  if (!(c === p || c.startsWith(`${p} `))) return false;
+  if (programName(p.split(" ")[0]) === "git" && c.slice(p.length).split(" ").some(gitDangerousArg)) return false;
+  return true;
 }
 
 /** Czy wywołanie wymaga zgody. Ścieżki w `args.path` przychodzą już po `realpath`
@@ -643,8 +692,14 @@ export function needsApproval(tool: ToolName, args: Record<string, unknown>, ctx
   if (group === "creator") return ctx.bot.builtin === "creator" ? (ctx.routine ? "deny" : "ask") : "deny";
   if (!ctx.bot.tools[group]) return "deny";
   // Zgoda na narzędzie; dla bash tylko z prefiksem pasującym do polecenia.
-  const granted = (cmd?: string) =>
-    ctx.grants.some((g) => g.tool === tool && (cmd === undefined || (g.prefix !== undefined && matchesPrefix(cmd, g.prefix))));
+  const granted = (cmd?: string, file?: string) =>
+    ctx.grants.some(
+      (g) =>
+        g.tool === tool &&
+        (cmd !== undefined
+          ? g.prefix !== undefined && matchesPrefix(cmd, g.prefix)
+          : file === undefined || (g.dir !== undefined && isInside(file, g.dir))),
+    );
   const path = typeof args.path === "string" ? args.path : null;
   switch (group) {
     case "web":
@@ -654,12 +709,12 @@ export function needsApproval(tool: ToolName, args: Record<string, unknown>, ctx
     case "read": {
       if (path === null) return "ask";
       if (isInside(path, ctx.work) || ctx.folders.some((f) => isInside(path, f))) return "allow";
-      return granted() ? "allow" : "ask";
+      return granted(undefined, path) ? "allow" : "ask";
     }
     case "write": {
       if (path === null) return "ask";
       if (isInside(path, ctx.work)) return !ctx.routine || ctx.routine.writeWork ? "allow" : "ask";
-      return !ctx.routine && granted() ? "allow" : "ask";
+      return !ctx.routine && granted(undefined, path) ? "allow" : "ask";
     }
     case "bash": {
       const cmd = typeof args.command === "string" ? args.command : "";

@@ -376,6 +376,28 @@ describe("prefiksy poleceń", () => {
     expect(commandPrefix("git pull; rm -rf ~")).toBeNull();
     expect(commandPrefix("echo $(whoami)")).toBeNull();
   });
+  it("commandPrefix: interpretery i launchery bez prefiksu", () => {
+    for (const c of ["python foo.py", "python3.12 foo.py", "bash x.sh", "sh -c ls", "node a.js", "env FOO=1 ls", "xargs rm", "find . -name x", "sed -i s/a/b/ f", "awk 1 f", "ssh host ls", "sudo ls", "/usr/bin/python foo.py", "timeout 5 ls", "FOO=1 ls -la", "npm run build", "pnpm exec x", "yarn dlx x", "yarn build", "npx foo", "git -c core.sshCommand=x pull", "git"])
+      expect(commandPrefix(c), c).toBeNull();
+    expect(commandPrefix("npm install left-pad")).toBe("npm install");
+    expect(commandPrefix("git pull --rebase")).toBe("git pull");
+  });
+  it("matchesPrefix: niegrantowalny prefiks pasuje tylko do identycznego polecenia (routine.allow.bash)", () => {
+    expect(matchesPrefix("python foo.py", "python foo.py")).toBe(true);
+    expect(matchesPrefix("python foo.py -c x", "python foo.py")).toBe(false);
+    expect(matchesPrefix("python -c 'import os'", "python")).toBe(false);
+    expect(matchesPrefix("python", "python")).toBe(true);
+    expect(matchesPrefix("npm run build", "npm run")).toBe(false);
+    expect(matchesPrefix("npm run build", "npm run build")).toBe(true);
+    expect(matchesPrefix("git -c core.sshCommand=x pull", "git")).toBe(false);
+  });
+  it("matchesPrefix: git bez -c, --upload-pack, --receive-pack, --exec, --config-env", () => {
+    expect(matchesPrefix("git pull --ff-only", "git pull")).toBe(true);
+    for (const a of ["-c core.sshCommand=x", "-ccore.x=y", "--upload-pack=evil", "--upload-pack evil", "--upload-p=evil", "--receive-pack=x", "--exec=x", "--config-env=a=B", "--config core.sshCommand=x", "'-c' x", '--upload"-pack"=x', "-x cmd", "--template=/tmp/t"])
+      expect(matchesPrefix(`git clone ${a}`, "git clone"), a).toBe(false);
+    expect(matchesPrefix("git pull -c x", "git pull")).toBe(false);
+    expect(matchesPrefix("git log --oneline -n 5", "git log")).toBe(true);
+  });
   it("matchesPrefix na granicy słowa, bez doklejania", () => {
     expect(matchesPrefix("git pull", "git pull")).toBe(true);
     expect(matchesPrefix("git  pull  --rebase", "git pull")).toBe(true);
@@ -422,8 +444,25 @@ describe("needsApproval", () => {
   it("zapis: w work swobodnie, gdzie indziej pytanie, zgoda w rozmowie działa", () => {
     expect(needsApproval("write_file", { path: "/cfg/bots/b/work/notatki.md" }, ctx)).toBe("allow");
     expect(needsApproval("edit_file", { path: "/home/u/kod/a.rs" }, ctx)).toBe("ask");
-    expect(needsApproval("edit_file", { path: "/home/u/kod/a.rs" }, { ...ctx, grants: [{ tool: "edit_file" }] })).toBe("allow");
-    expect(needsApproval("write_file", { path: "/home/u/kod/a.rs" }, { ...ctx, grants: [{ tool: "edit_file" }] })).toBe("ask");
+    expect(needsApproval("edit_file", { path: "/home/u/kod/a.rs" }, { ...ctx, grants: [{ tool: "edit_file", dir: "/home/u/kod" }] })).toBe("allow");
+    expect(needsApproval("write_file", { path: "/home/u/kod/a.rs" }, { ...ctx, grants: [{ tool: "edit_file", dir: "/home/u/kod" }] })).toBe("ask");
+  });
+  it("zgoda plikowa w rozmowie obowiązuje tylko w swoim katalogu", () => {
+    const g = { ...ctx, grants: [{ tool: "read_file" as const, dir: "/etc/app" }, { tool: "write_file" as const, dir: "/srv/x" }] };
+    expect(needsApproval("read_file", { path: "/etc/app/a.conf" }, g)).toBe("allow");
+    expect(needsApproval("read_file", { path: "/etc/app/sub/b" }, g)).toBe("allow");
+    expect(needsApproval("read_file", { path: "/etc/passwd" }, g)).toBe("ask");
+    expect(needsApproval("read_file", { path: "/etc/application/x" }, g)).toBe("ask");
+    // `..` po realpath: /etc/app/../shadow = /etc/shadow
+    expect(needsApproval("read_file", { path: "/etc/shadow" }, g)).toBe("ask");
+    expect(needsApproval("write_file", { path: "/srv/x/n.txt" }, g)).toBe("allow");
+    expect(needsApproval("write_file", { path: "/srv/y/n.txt" }, g)).toBe("ask");
+    expect(needsApproval("write_file", { path: "/etc/app/a.conf" }, g)).toBe("ask");
+  });
+  it("stara zgoda plikowa bez `dir` nie działa (pytamy ponownie)", () => {
+    const g = { ...ctx, grants: [{ tool: "read_file" as const }, { tool: "write_file" as const }] };
+    expect(needsApproval("read_file", { path: "/etc/passwd" }, g)).toBe("ask");
+    expect(needsApproval("write_file", { path: "/tmp/x" }, g)).toBe("ask");
   });
   it("bash: zawsze pytanie, chyba że zgoda z pasującym prefiksem", () => {
     expect(needsApproval("bash", { command: "ls" }, ctx)).toBe("ask");

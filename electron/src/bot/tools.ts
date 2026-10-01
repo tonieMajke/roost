@@ -40,7 +40,22 @@ import { webFetch, webSearch } from "./web";
 
 export type JsonSchema = Record<string, unknown>;
 export type ToolDef = { name: ToolName; description: string; parameters: JsonSchema };
-export type Grant = { tool: ToolName; prefix?: string };
+/** `prefix`: bash; `dir`: narzędzia plikowe (realpath katalogu, poza którym zgoda nie działa). */
+export type Grant = { tool: ToolName; prefix?: string; dir?: string };
+
+/** Katalog zgody „w tej rozmowie” dla narzędzia plikowego (ścieżka po realpath); `null` = nie da się zawęzić
+ *  (np. plik w `/`), wtedy zgoda w rozmowie nie jest oferowana. */
+function grantDir(tool: ToolName, p: string): string | null {
+  let dir = path.dirname(p);
+  if (tool === "list_dir" || tool === "grep") {
+    try {
+      if (fs.statSync(p).isDirectory()) dir = p;
+    } catch {
+      /* nieistniejąca: dirname */
+    }
+  }
+  return dir === path.parse(dir).root ? null : dir;
+}
 
 export type ToolContext = {
   store: BotStore;
@@ -278,14 +293,19 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
   let approval: ToolOutcome["approval"] = "auto";
   if (verdict === "ask") {
     const prefix = tool === "bash" ? commandPrefix(str(args.command) ?? "") : undefined;
+    const dir = pathTools.includes(tool) && str(args.path) !== undefined ? grantDir(tool, str(args.path) as string) : undefined;
     const decision = await ctx.broker.request(
-      { bot: ctx.bot.id, chat: ctx.chat, tool, ...approvalText(tool, args, ctx, plan), canGrant: tool !== "bash" || prefix !== null },
+      { bot: ctx.bot.id, chat: ctx.chat, tool, ...approvalText(tool, args, ctx, plan), canGrant: tool === "bash" ? prefix !== null : dir !== null },
       ctx.signal,
     );
     approval = decision;
     if (decision === "deny")
       return { ok: false, text: "Użytkownik odmówił zgody. Nie próbuj tego obejść innym narzędziem – zapytaj, co dalej.", approval };
-    if (decision === "chat") ctx.grants.push(prefix ? { tool, prefix } : { tool });
+    if (decision === "chat") {
+      if (prefix) ctx.grants.push({ tool, prefix });
+      else if (dir) ctx.grants.push({ tool, dir });
+      else if (!pathTools.includes(tool) && tool !== "bash") ctx.grants.push({ tool });
+    }
   }
   try {
     return { ok: true, text: plan ? applyPlan(plan, ctx) : await exec(tool, args, ctx), approval };

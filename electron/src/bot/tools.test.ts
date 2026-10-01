@@ -97,7 +97,51 @@ describe("pliki", () => {
     expect(asked).toHaveLength(2); // list_dir to osobne narzędzie
     expect((await runTool("read_file", { path: path.join(outside, "sekret.txt") }, c)).approval).toBe("auto");
     expect(asked).toHaveLength(2);
-    expect(grants).toEqual([{ tool: "read_file" }, { tool: "list_dir" }]);
+    expect(grants).toEqual([{ tool: "read_file", dir: outside }, { tool: "list_dir", dir: outside }]);
+  });
+
+  it("zgoda „w tej rozmowie” nie wychodzi poza katalog: inny plik, `..`, dowiązanie", async () => {
+    answer = "chat";
+    const grants: Grant[] = [];
+    const c = ctx({ grants });
+    await runTool("read_file", { path: path.join(outside, "sekret.txt") }, c);
+    expect(asked).toHaveLength(1);
+    const other = fs.mkdtempSync(path.join(dir, "inny-"));
+    fs.writeFileSync(path.join(other, "x.txt"), "x");
+    expect((await runTool("read_file", { path: path.join(other, "x.txt") }, c)).approval).toBe("chat");
+    expect(asked).toHaveLength(2);
+    // `..` z katalogu zgody
+    const third = fs.mkdtempSync(path.join(dir, "trzeci-"));
+    fs.writeFileSync(path.join(third, "x.txt"), "x");
+    expect((await runTool("read_file", { path: path.join(outside, "..", path.basename(third), "x.txt") }, c)).approval).toBe("chat");
+    // dowiązanie z folderu bota do katalogu zgody: cel po realpath leży w katalogu zgody
+    expect((await runTool("read_file", { path: path.join(home, "link", "sekret.txt") }, c)).approval).toBe("auto");
+    // dowiązanie do innego katalogu nie dziedziczy zgody
+    const fourth = fs.mkdtempSync(path.join(dir, "czwarty-"));
+    fs.writeFileSync(path.join(fourth, "x.txt"), "x");
+    fs.symlinkSync(fourth, path.join(home, "link2"));
+    expect((await runTool("read_file", { path: path.join(home, "link2", "x.txt") }, c)).approval).toBe("chat");
+    // zgoda na odczyt nie obejmuje zapisu
+    answer = "once";
+    expect((await runTool("write_file", { path: path.join(outside, "n.txt"), content: "a" }, c)).approval).toBe("once");
+  });
+
+  it("zgoda na zapis dotyczy katalogu pliku", async () => {
+    answer = "chat";
+    const grants: Grant[] = [];
+    const c = ctx({ grants });
+    await runTool("write_file", { path: path.join(outside, "a.txt"), content: "a" }, c);
+    expect(grants).toEqual([{ tool: "write_file", dir: outside }]);
+    expect((await runTool("write_file", { path: path.join(outside, "b.txt"), content: "b" }, c)).approval).toBe("auto");
+    expect((await runTool("write_file", { path: path.join(dir, "b.txt"), content: "b" }, c)).approval).toBe("chat");
+  });
+
+  it("plik w katalogu głównym: zgoda w rozmowie niedostępna", async () => {
+    answer = "chat";
+    const grants: Grant[] = [];
+    await runTool("read_file", { path: "/nieistniejacy-aw-test" }, ctx({ grants }));
+    expect(asked[0].canGrant).toBe(false);
+    expect(grants).toEqual([]);
   });
 
   it("list_dir: domyślnie katalog roboczy, foldery z /", async () => {
@@ -152,6 +196,18 @@ describe("bash", () => {
     expect(r.text).toBe(`${work()}\n\n[kod wyjścia 2]`);
     expect(asked[0].detail).toBe(`pwd; exit 2\n\nw: ${work()}`);
     expect(asked[0].canGrant).toBe(false); // `;` = bez prefiksu
+  });
+
+  it("interpreter: bez zgody w rozmowie (python -c, git -c)", async () => {
+    answer = "chat";
+    const grants: Grant[] = [];
+    await runTool("bash", { command: "echo python foo.py" }, ctx({ grants }));
+    asked.length = 0;
+    await runTool("bash", { command: "python3 --version" }, ctx({ grants }));
+    expect(asked[0].canGrant).toBe(false);
+    await runTool("bash", { command: "git -c core.sshCommand=x --version" }, ctx({ grants }));
+    expect(asked[1].canGrant).toBe(false);
+    expect(grants.filter((g) => g.prefix?.startsWith("python") || g.prefix?.startsWith("git"))).toEqual([]);
   });
 
   it("zgoda w rozmowie na prefiks", async () => {
