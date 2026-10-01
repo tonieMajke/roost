@@ -1,6 +1,6 @@
 //! Most między stroną a procesem głównym: tylko nazwane wywołania, bez dostępu do Node w stronie.
 
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 type ExitInfo = { code: number; signal: string | null };
 type Sinks = { data: (chunk: Uint8Array) => void; exit: (info: ExitInfo) => void };
@@ -61,6 +61,8 @@ contextBridge.exposeInMainWorld("agentsElectron", {
     resizedListeners.add(cb);
     return () => void resizedListeners.delete(cb);
   },
+  /** Ścieżka na dysku upuszczonego pliku (`File.path` już nie istnieje). */
+  pathForFile: (file: File) => webUtils.getPathForFile(file),
   invoke: (name: string, ...args: unknown[]) => ipcRenderer.invoke(name, ...args),
   send: (name: string, ...args: unknown[]) => ipcRenderer.send(name, ...args),
   edges: process.argv.includes("--aw-wayland") ? WAYLAND_EDGES : ALL_EDGES,

@@ -11,6 +11,8 @@ export type PaneActions = {
   swap(a: string, b: string): void;
   /** Wyciąg rozmowy `from` wklejony (bez Entera) do terminala `to` (Shift przy upuszczeniu, M4). */
   handoff(from: string, to: string): void;
+  /** Pliki upuszczone z systemu: ścieżki w cudzysłowie trafiają do terminala panelu (bez Entera). */
+  dropFiles(paneId: string, paths: string[]): void;
   /** Terminal panelu przyjmie wklejenie blokiem (bracketed paste) – warunek celu dla `handoff`. */
   acceptsPaste(paneId: string): boolean;
   /** Otwiera okno „Kontynuuj gdzie indziej”: nowy panel na innym koncie / u innego agenta ze streszczeniem. */
