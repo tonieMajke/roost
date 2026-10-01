@@ -15,8 +15,10 @@ export type ProviderDef = {
   baseUrl?: string; // openai / anthropic
   command?: string; // claude-cli / codex-cli; domyślnie `claude` / `codex`
   key?: boolean; // wymaga klucza API (zapisany w procesie głównym, nie tutaj)
+  keyEnv?: string; // zmienna środowiskowa z kluczem, gdy nie ma zapisanego (np. OPENROUTER_API_KEY)
   models: ChatModel[];
   discover?: boolean; // modele dopisywane z `GET {baseUrl}/models`
+  from?: "pi"; // zaimportowany z ~/.pi/agent/models.json: nie trafia do chat.json
 };
 
 export type ModelRef = { provider: string; model: string };
@@ -168,6 +170,7 @@ export function parseChatConfig(raw: unknown): { providers: ProviderDef[]; error
       ...(typeof p.baseUrl === "string" ? { baseUrl: p.baseUrl.replace(/\/+$/, "") } : {}),
       ...(typeof p.command === "string" ? { command: p.command } : {}),
       ...(p.key === true ? { key: true } : {}),
+      ...(typeof p.keyEnv === "string" && /^[A-Z_][A-Z0-9_]*$/.test(p.keyEnv) ? { keyEnv: p.keyEnv } : {}),
       ...(p.discover === true ? { discover: true } : {}),
       models,
     });
@@ -194,6 +197,7 @@ export function importPiProviders(raw: unknown): ProviderDef[] {
       baseUrl: p.baseUrl.replace(/\/+$/, ""),
       ...(local ? {} : { key: true }),
       models: parseModels(p.models) ?? [],
+      from: "pi",
     });
   }
   return out;
@@ -433,4 +437,52 @@ export function extractSources(m: Message): Message {
   if (sources.length === 0) return m;
   const filled = Array.from(sources, (s) => s ?? { url: "", title: "" });
   return { ...m, text: m.text.slice(0, head.index).trimEnd(), sources: filled };
+}
+
+/** Gotowi dostawcy do dodania w oknie „Dostawcy”. */
+export const PROVIDER_TEMPLATES: ProviderDef[] = [
+  {
+    id: "anthropic",
+    name: "Anthropic API",
+    kind: "anthropic",
+    group: "api",
+    baseUrl: "https://api.anthropic.com/v1",
+    key: true,
+    keyEnv: "ANTHROPIC_API_KEY",
+    models: [
+      { id: "claude-opus-5-5", name: "Opus 5.5" },
+      { id: "claude-sonnet-5-5", name: "Sonnet 5.5" },
+      { id: "claude-haiku-4-5-20251001", name: "Haiku 4.5" },
+    ],
+  },
+  { id: "openai", name: "OpenAI API", kind: "openai", group: "api", baseUrl: "https://api.openai.com/v1", key: true, keyEnv: "OPENAI_API_KEY", models: [], discover: true },
+  { id: "openrouter", name: "OpenRouter", kind: "openai", group: "api", baseUrl: "https://openrouter.ai/api/v1", key: true, keyEnv: "OPENROUTER_API_KEY", models: [], discover: true },
+  { id: "local", name: "Serwer lokalny", kind: "openai", group: "local", baseUrl: "http://127.0.0.1:8080/v1", models: [], discover: true },
+];
+
+/** Id nowego dostawcy: `base`, a gdy zajęte – `base-2`, `base-3`… */
+export function freeId(base: string, taken: string[]): string {
+  if (!taken.includes(base)) return base;
+  let n = 2;
+  while (taken.includes(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
+}
+
+/** `chat.json` do zapisu: tylko własni dostawcy (z pi zostają w pi), bez modeli wykrytych z `/models`. */
+export function configJson(providers: ProviderDef[], discovered: Record<string, string[]>): string {
+  const own = providers
+    .filter((p) => p.from !== "pi")
+    .map((p) => {
+      const found = new Set(discovered[p.id] ?? []);
+      return { ...p, models: p.models.filter((m) => !found.has(m.id) || m.name !== m.id) };
+    });
+  return JSON.stringify({ providers: own }, null, 2);
+}
+
+/** „1 model”, „3 modele”, „5 modeli”, „22 modele”. */
+export function modelsCount(n: number): string {
+  const d = n % 10;
+  const t = n % 100;
+  if (n === 1) return "1 model";
+  return `${n} ${d >= 2 && d <= 4 && (t < 12 || t > 14) ? "modele" : "modeli"}`;
 }

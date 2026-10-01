@@ -9,6 +9,7 @@ import { isAbort } from "./http";
 import { openaiModels, streamOpenAI } from "./openai";
 import { streamClaude } from "./claude";
 import { streamCodex } from "./codex";
+import { anthropicModels, streamAnthropic } from "./anthropic";
 
 const CONFIG_FILE = "chat.json";
 
@@ -83,9 +84,21 @@ export function defaultChatService(cwd: string, key: (p: ProviderDef) => string 
   return new ChatService(
     {
       openai: (req, signal, emit) => streamOpenAI(req, key(req.provider), signal, emit),
+      anthropic: (req, signal, emit) => streamAnthropic(req, key(req.provider), signal, emit),
       "claude-cli": (req, signal, emit) => streamClaude(req, cwd, signal, emit),
       "codex-cli": (req, signal, emit) => streamCodex(req, cwd, signal, emit),
     },
-    { openai: (p) => openaiModels(p.baseUrl ?? "", key(p)) },
+    {
+      openai: (p) => openaiModels(p.baseUrl ?? "", key(p)),
+      anthropic: (p) => anthropicModels(p.baseUrl ?? "", key(p)),
+    },
   );
+}
+
+/** Zapis `chat.json` z okna „Dostawcy”; zły JSON albo brak listy = odrzucenie, plik bez zmian. */
+export function chatConfigSave(dir: string, json: string): void {
+  const parsed = JSON.parse(json) as { providers?: unknown };
+  if (!Array.isArray(parsed.providers)) throw new Error("chat.json: brak tablicy `providers`");
+  fs.mkdirSync(dir, { recursive: true });
+  writeAtomic(path.join(dir, CONFIG_FILE), json);
 }

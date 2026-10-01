@@ -1,5 +1,5 @@
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
-import type { Backend, ExitInfo, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
+import type { Backend, ExitInfo, KeyState, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
 import type { SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
@@ -120,6 +120,9 @@ export const electronBackend: Backend = {
   },
   openExternal: (url) => call<void>("open_external", url),
   chatModels: (p) => call<string[]>("chat_models", p),
+  chatSaveConfig: (json) => call<void>("chat_config_save", json),
+  chatKeyStatus: (ps) => call<Record<string, KeyState>>("chat_key_status", ps),
+  chatSetKey: (id, key) => call<void>("chat_set_key", id, key),
   chatList: () => call<ChatMeta[]>("chat_list"),
   async chatLoad(id) {
     const text = await call<string | null>("chat_load", id);

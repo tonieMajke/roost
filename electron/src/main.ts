@@ -1,7 +1,8 @@
 //! Proces główny: okno z frontendem z `src/` i backend dla `src/backend-electron.ts` przez IPC.
 
+import fs from "node:fs";
 import path from "node:path";
-import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, safeStorage, shell } from "electron";
 import * as config from "./config";
 import { sessionContext } from "./context";
 import { sessionHandoff } from "./handoff";
@@ -11,12 +12,31 @@ import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
 import { claudeSummary, piSummary } from "./summary";
 import { ChatStore } from "./chat/store";
-import { chatConfigLoad, defaultChatService } from "./chat/service";
+import { chatConfigLoad, chatConfigSave, defaultChatService } from "./chat/service";
+import { KeyStore, passwordStore } from "./chat/keys";
 import type { ChatRequest, ProviderDef } from "../../src/chat";
+
+// Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
+const store = passwordStore(readOrNull(path.join(app.getPath("home"), ".config", "kwalletrc")), process.env);
+if (store) app.commandLine.appendSwitch("password-store", store);
+
+function readOrNull(file: string): string | null {
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return null;
+  }
+}
 
 const ptys = new Ptys();
 const chats = new ChatStore(path.join(config.configDir(), "chats"));
-const chat = defaultChatService(path.join(config.configDir(), "chat-cwd"));
+// Sejf systemowy: „basic_text” (brak KWallet/libsecret) to prawie jawny tekst – wtedy nie zapisujemy.
+const keys = new KeyStore(config.configDir(), {
+  available: () => safeStorage.isEncryptionAvailable() && safeStorage.getSelectedStorageBackend() !== "basic_text",
+  encrypt: (s) => safeStorage.encryptString(s),
+  decrypt: (b) => safeStorage.decryptString(b),
+});
+const chat = defaultChatService(path.join(config.configDir(), "chat-cwd"), (p) => keys.get(p.id, p.keyEnv));
 let win: BrowserWindow | null = null;
 
 /** Każde wywołanie z `backend-electron.ts` to `invoke(name, ...args)`; błąd wraca jako odrzucenie. */
@@ -65,6 +85,9 @@ handle("open_external", (url: string) => {
 });
 handle("chat_config", () => chatConfigLoad(config.configDir()));
 handle("chat_models", (p: ProviderDef) => chat.models(p));
+handle("chat_config_save", (json: string) => chatConfigSave(config.configDir(), json));
+handle("chat_key_status", (ps: ProviderDef[]) => keys.status(ps));
+handle("chat_set_key", (id: string, key: string | null) => keys.set(id, key));
 handle("chat_list", () => chats.list());
 handle("chat_load", (id: string) => chats.load(id));
 handle("chat_save", (json: string) => chats.save(json));

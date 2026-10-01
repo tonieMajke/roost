@@ -1,6 +1,6 @@
 import { DEFAULT_AGENTS } from "./agents";
 import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
-import { chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, type Chat, type ChatEvent, type ChatMeta } from "./chat";
+import { buildChatConfig, chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, type Chat, type ChatEvent, type ChatMeta } from "./chat";
 
 const PROMPT = "$ ";
 const WORKSPACE_KEY = "aw-workspace";
@@ -12,6 +12,14 @@ const mockReads = new Map<string, number>();
 const MOCK_TITLES = ["Naprawa czarnego paska pod xtermem", "Tytuły sesji w pulpicie", "Refaktor kolejki zapisu do terminala", "Przegląd etapu 10"];
 
 const CHATS_KEY = "aw-chats";
+
+function mockKeys(): string[] {
+  try {
+    return JSON.parse(globalThis.localStorage?.getItem("aw-chat-keys") ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
 
 function mockChats(): Record<string, Chat> {
   try {
@@ -268,6 +276,12 @@ export const mockBackend: Backend = {
 
   // Podgląd czatu: dostawcy domyślni + udawany model lokalny, rozmowy w localStorage.
   async chatConfig() {
+    try {
+      const saved = globalThis.localStorage?.getItem("aw-chat-config");
+      if (saved) return buildChatConfig(saved, null);
+    } catch {
+      // j.w.
+    }
     return { providers: DEFAULT_PROVIDERS, errors: [] };
   },
   async chatModels(p) {
@@ -276,6 +290,26 @@ export const mockBackend: Backend = {
   },
   async openExternal(url) {
     globalThis.open?.(url, "_blank", "noopener");
+  },
+  // Podgląd: dostawcy i klucze tylko w localStorage (klucz jako „jest/nie ma”, bez treści).
+  async chatSaveConfig(json) {
+    try {
+      globalThis.localStorage?.setItem("aw-chat-config", json);
+    } catch {
+      // j.w.
+    }
+  },
+  async chatKeyStatus(ps) {
+    const keys = mockKeys();
+    return Object.fromEntries(ps.map((p) => [p.id, keys.includes(p.id) ? ("stored" as const) : null]));
+  },
+  async chatSetKey(id, key) {
+    const keys = mockKeys().filter((k) => k !== id);
+    try {
+      globalThis.localStorage?.setItem("aw-chat-keys", JSON.stringify(key ? [...keys, id] : keys));
+    } catch {
+      // j.w.
+    }
   },
   async chatList(): Promise<ChatMeta[]> {
     return sortChats(Object.values(mockChats()).map(chatMeta));

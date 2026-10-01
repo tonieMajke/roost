@@ -16,11 +16,12 @@ type Props = {
   /** Tekst wstawiony z zewnątrz (Edytuj); zmiana `seq` = nowe wstawienie. */
   inject: { text: string; seq: number } | null;
   big?: boolean; // pusty czat: większe pole na środku
+  onProviders(): void;
 };
 
 const GROUPS: ProviderGroup[] = ["sub", "api", "local"];
 
-function ModelMenu({ providers, offline, model, onModel, onClose }: Pick<Props, "providers" | "offline" | "model" | "onModel"> & { onClose(): void }) {
+function ModelMenu({ providers, offline, model, onModel, onProviders, onClose }: Pick<Props, "providers" | "offline" | "model" | "onModel" | "onProviders"> & { onClose(): void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const down = (e: PointerEvent) => {
@@ -76,11 +77,21 @@ function ModelMenu({ providers, offline, model, onModel, onClose }: Pick<Props, 
           </div>
         );
       })}
+      <button
+        type="button"
+        className="chat-menu-item chat-menu-manage"
+        onClick={() => {
+          onClose();
+          onProviders();
+        }}
+      >
+        <span>Dostawcy i klucze API…</span>
+      </button>
     </div>
   );
 }
 
-export function Composer({ providers, offline, model, onModel, search, onSearch, busy, onSend, onStop, inject, big }: Props) {
+export function Composer({ providers, offline, model, onModel, search, onSearch, busy, onSend, onStop, inject, big, onProviders }: Props) {
   const [text, setText] = useState("");
   const [menu, setMenu] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -135,7 +146,7 @@ export function Composer({ providers, offline, model, onModel, search, onSearch,
             <span>{model ? modelLabel(providers, model) : "Wybierz model"}</span>
             <ChevronDown aria-hidden />
           </button>
-          {menu && <ModelMenu providers={providers} offline={offline} model={model} onModel={onModel} onClose={() => setMenu(false)} />}
+          {menu && <ModelMenu providers={providers} offline={offline} model={model} onModel={onModel} onProviders={onProviders} onClose={() => setMenu(false)} />}
         </div>
         <button
           type="button"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { MessageSquarePlus, PanelLeft, Search, SlidersHorizontal, X } from "lucide-react";
+import { MessageSquarePlus, PanelLeft, Plug, Search, SlidersHorizontal, X } from "lucide-react";
 import { backend } from "../backend";
 import {
   applyEvent,
@@ -26,11 +26,13 @@ import {
   type Message,
   type ModelRef,
   type ProviderDef,
+  configJson,
 } from "../chat";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "../confirm";
 import { IconButton } from "../IconButton";
 import { Composer } from "./Composer";
 import { Thread } from "./Thread";
+import { ProvidersDialog } from "./ProvidersDialog";
 import { ModeTabs, type Mode } from "./ModeTabs";
 import "./chat.css";
 
@@ -76,6 +78,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
   const [live, setLive] = useState<Live | null>(null);
   const [inject, setInject] = useState<{ text: string; seq: number } | null>(null);
   const [filter, setFilter] = useState("");
+  const [providersOpen, setProvidersOpen] = useState(false);
   const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
   const [armedId, setArmedId] = useState<string | null>(null);
   const armRef = useRef<Arm>(null);
@@ -87,32 +90,41 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
   const frame = useRef(0);
 
   // Konfiguracja, potem wykrywanie modeli u każdego dostawcy z `discover` (równolegle).
+  // `gen` odrzuca wyniki starszego wczytania (zapis w oknie „Dostawcy” wczytuje od nowa).
+  const gen = useRef(0);
+  const discovered = useRef<Record<string, string[]>>({});
+  const loadConfig = useCallback(async () => {
+    const my = ++gen.current;
+    const cfg = await backend.chatConfig().catch((e: unknown) => ({ providers: [] as ProviderDef[], errors: [String(e)] }));
+    if (my !== gen.current) return;
+    setProviders(cfg.providers);
+    setErrors(cfg.errors);
+    setOffline({});
+    discovered.current = {};
+    for (const p of cfg.providers.filter((p) => p.discover)) {
+      backend
+        .chatModels(p)
+        .then((ids) => {
+          if (my !== gen.current) return;
+          discovered.current[p.id] = ids;
+          setProviders((prev) => prev.map((x) => (x.id === p.id ? withDiscovered(x, ids) : x)));
+        })
+        .catch((e: unknown) => my === gen.current && setOffline((prev) => ({ ...prev, [p.id]: e instanceof Error ? e.message : String(e) })));
+    }
+  }, []);
+
   useEffect(() => {
     let on = true;
-    void (async () => {
-      const cfg = await backend.chatConfig().catch((e: unknown) => ({ providers: [] as ProviderDef[], errors: [String(e)] }));
-      if (!on) return;
-      setProviders(cfg.providers);
-      setErrors(cfg.errors);
-      for (const p of cfg.providers.filter((p) => p.discover)) {
-        backend
-          .chatModels(p)
-          .then((ids) => {
-            if (!on) return;
-            setProviders((prev) => prev.map((x) => (x.id === p.id ? withDiscovered(x, ids) : x)));
-            setOffline(({ [p.id]: _, ...rest }) => rest);
-          })
-          .catch((e: unknown) => on && setOffline((prev) => ({ ...prev, [p.id]: e instanceof Error ? e.message : String(e) })));
-      }
-    })();
+    void loadConfig();
     void backend
       .chatList()
       .then((l) => on && setList(l))
       .catch(() => undefined);
     return () => {
       on = false;
+      gen.current++;
     };
-  }, []);
+  }, [loadConfig]);
 
   // Brak zapamiętanego modelu (pierwszy start) → pierwszy dostępny, gdy lista się zapełni.
   useEffect(() => {
@@ -321,6 +333,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
       onStop={stopLive}
       inject={inject}
       big={empty}
+      onProviders={() => setProvidersOpen(true)}
     />
   );
 
@@ -394,6 +407,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
           {list.length === 0 && <p className="chat-list-empty">Tu pojawią się Twoje rozmowy.</p>}
         </nav>
         <footer className="rail-foot">
+          <IconButton icon={Plug} label="Dostawcy modeli" onClick={() => setProvidersOpen(true)} />
           <IconButton icon={SlidersHorizontal} label="Wygląd" onClick={onOpenAppearance} />
         </footer>
       </aside>
@@ -427,6 +441,17 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
           </>
         )}
       </main>
+      {providersOpen && (
+        <ProvidersDialog
+          providers={providers}
+          offline={offline}
+          onSave={async (next) => {
+            await backend.chatSaveConfig(configJson(next, discovered.current));
+            await loadConfig();
+          }}
+          onClose={() => setProvidersOpen(false)}
+        />
+      )}
     </div>
   );
 }

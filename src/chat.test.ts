@@ -5,6 +5,10 @@ import {
   linkCitations,
   greeting,
   extractSources,
+  configJson,
+  modelsCount,
+  freeId,
+  PROVIDER_TEMPLATES,
   chatTitle,
   cliPrompt,
   dayGroup,
@@ -75,8 +79,8 @@ describe("importPiProviders", () => {
       },
     });
     expect(r).toEqual([
-      { id: "freetoken", name: "freetoken", kind: "openai", group: "local", baseUrl: "http://127.0.0.1:1919/v1", models: [{ id: "M", name: "Em" }] },
-      { id: "remote", name: "remote", kind: "openai", group: "api", baseUrl: "https://api.example.com/v1", key: true, models: [] },
+      { id: "freetoken", name: "freetoken", kind: "openai", group: "local", baseUrl: "http://127.0.0.1:1919/v1", models: [{ id: "M", name: "Em" }], from: "pi" },
+      { id: "remote", name: "remote", kind: "openai", group: "api", baseUrl: "https://api.example.com/v1", key: true, models: [], from: "pi" },
     ]);
   });
 
@@ -284,4 +288,26 @@ describe("extractSources", () => {
     const b = m("zwykły tekst");
     expect(extractSources(b)).toBe(b);
   });
+});
+
+describe("configJson / freeId", () => {
+  it("bez dostawców z pi i bez wykrytych modeli, własne nazwy zostają", () => {
+    const own = { ...DEFAULT_PROVIDERS[2], models: [{ id: "a", name: "a" }, { id: "b", name: "Bee" }, { id: "c", name: "c" }] };
+    const pi = importPiProviders({ providers: { ft: { baseUrl: "http://127.0.0.1:1919/v1" } } });
+    const j = JSON.parse(configJson([own, ...pi], { llama: ["a", "b"] }));
+    expect(j.providers.map((p: { id: string }) => p.id)).toEqual(["llama"]);
+    expect(j.providers[0].models).toEqual([{ id: "b", name: "Bee" }, { id: "c", name: "c" }]);
+    expect(parseChatConfig(j).errors).toEqual([]);
+  });
+  it("freeId", () => {
+    expect(freeId("openai", [])).toBe("openai");
+    expect(freeId("openai", ["openai", "openai-2"])).toBe("openai-3");
+  });
+  it("PROVIDER_TEMPLATES przechodzą parseChatConfig", () => {
+    expect(parseChatConfig({ providers: PROVIDER_TEMPLATES }).errors).toEqual([]);
+  });
+});
+
+it("modelsCount", () => {
+  expect([1, 2, 5, 12, 22, 25].map(modelsCount)).toEqual(["1 model", "2 modele", "5 modeli", "12 modeli", "22 modele", "25 modeli"]);
 });

@@ -6,6 +6,8 @@ import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
 import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
 
+export type KeyState = "stored" | "env" | null;
+
 export type ExitInfo = { code: number; signal: string | null };
 
 export type SpawnSpec = { command: string; args?: string[]; cwd?: string; cols: number; rows: number };
@@ -74,6 +76,12 @@ export interface Backend {
   chatConfig(): Promise<ChatConfig>;
   /** Modele wykryte u dostawcy (`/models`, pamięć podręczna codex); błąd = serwer nie odpowiada. */
   chatModels(provider: ProviderDef): Promise<string[]>;
+  /** Zapis własnych dostawców (`configJson`) do `chat.json`. */
+  chatSaveConfig(json: string): Promise<void>;
+  /** Czy dostawca ma klucz: zapisany w sejfie, ze zmiennej środowiskowej, brak. */
+  chatKeyStatus(providers: ProviderDef[]): Promise<Record<string, KeyState>>;
+  /** Zapis klucza w sejfie systemowym; `null` usuwa. Odrzuca, gdy sejfu nie ma. */
+  chatSetKey(providerId: string, key: string | null): Promise<void>;
   chatList(): Promise<ChatMeta[]>;
   chatLoad(id: string): Promise<Chat | null>;
   chatSave(chat: Chat): Promise<void>;
