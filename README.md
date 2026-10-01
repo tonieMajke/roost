@@ -1,6 +1,6 @@
 # Agents workspace
 
-Desktopowa aplikacja (Tauri 2 + React + TypeScript, tylko Linux) do pracy z wieloma
+Desktopowa aplikacja (Electron + React + TypeScript, tylko Linux) do pracy z wieloma
 agentami CLI naraz. Po lewej szyna z projektami (folderami), po prawej siatka 1–16
 terminali aktywnego projektu. Przełączenie projektu nie zatrzymuje procesów —
 schowane siatki żyją dalej.
@@ -13,21 +13,18 @@ aplikacji wrócić do tych samych rozmów.
 
 ```bash
 pnpm install
-pnpm desktop          # okno Tauri (dev)
-pnpm electron         # okno Electron (build + start; raz wcześniej: cd electron && npm install)
+pnpm desktop          # okno Electron (build + start; raz wcześniej: cd electron && npm install)
 ```
 
-Produktowo: `pnpm tauri build` (binarka w `src-tauri/target/release/bundle/`) albo
-`pnpm electron:dist` (`electron/release/Agents-<wersja>.AppImage`).
+Produktowo: `pnpm electron:dist` (`electron/release/Agents-<wersja>.AppImage`).
+Dawna wersja Tauri leży w `legacy-tauri/` (nieużywana, patrz jej README).
 
-Wersja Electron (`electron/`): ten sam frontend z `src/`, backend w Node (`electron/src/`,
-IPC przez `preload.ts` → `src/backend-electron.ts`), ta sama konfiguracja
-`~/.config/dev.majke.agents/` (`AGENTS_CONFIG_DIR` przestawia ją na inną – nie uruchamiaj
-obu wersji naraz na wspólnym `workspace.json`).
+Backend w Node (`electron/src/`, IPC przez `preload.ts` → `src/backend-electron.ts`),
+konfiguracja w `~/.config/dev.majke.agents/` (`AGENTS_CONFIG_DIR` przestawia ją na inną –
+nie uruchamiaj dwóch kopii naraz na wspólnym `workspace.json`).
 
 Sprawdzenia: `pnpm typecheck`, `pnpm test` (vitest),
-`cargo test --manifest-path src-tauri/Cargo.toml --lib`,
-`cargo build --manifest-path src-tauri/Cargo.toml`.
+`cd electron && npm run typecheck`.
 
 ### Podgląd w przeglądarce (bez procesów)
 
@@ -111,11 +108,12 @@ jednorazowo (`ping`), gdy praca skończyła się w ukrytym projekcie.
 ## Jak to działa
 
 - `src/workspace.ts` — czysty model (reducer, siatka, `parseWorkspace`), testy w `*.test.ts`.
-- `src/backend.ts` — kontrakt wspólny: `backend-tauri.ts` (prawdziwe komendy) i `backend-mock.ts`
-  (podgląd). Komponenty nie importują `@tauri-apps/*` bezpośrednio.
+- `src/backend.ts` — kontrakt wspólny: `backend-electron.ts` (prawdziwe komendy) i `backend-mock.ts`
+  (podgląd). Komponenty nie wołają IPC bezpośrednio.
 - `src/Terminal.tsx` — xterm + PTY; proces żyje dokładnie tak długo jak komponent,
   klucz Reacta to `${pane.id}:${pane.run}`.
-- `src-tauri/src/pty.rs` — `spawn`/`write`/`resize`/`kill`, grupa procesów = pid, więc
-  zabijanie sprząta całe drzewo dziecka. Przy wyjściu aplikacji `kill_all` domyka wszystko.
+- `electron/src/pty.ts` — `spawn`/`write`/`resize`/`kill`, grupa procesów = pid, więc
+  zabijanie sprząta całe drzewo dziecka (SIGHUP, po 1,5 s SIGKILL). Przy wyjściu aplikacji
+  `killAll` domyka wszystko.
 
 Plan etapów: `docs/plan-m1.md`, bieżący stan: `HANDOFF.md`.

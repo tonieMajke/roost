@@ -1,7 +1,7 @@
 node_modules/
 dist/
-src-tauri/target/
-src-tauri/gen/
+legacy-tauri/src-tauri/target/
+legacy-tauri/src-tauri/gen/
 *.log
 .pi/
 .vitest/

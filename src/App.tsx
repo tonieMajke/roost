@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { backend, inElectron, inTauri } from "./backend";
+import { backend, inElectron } from "./backend";
 import type { AgentDef } from "./agents";
 import { ACCENT_HEX, stepFontSize, uiClasses } from "./ui";
 import { IconButton } from "./IconButton";
@@ -342,7 +342,7 @@ export function App() {
   const focusedTitle = focusedId ? titles[focusedId] : undefined;
   const windowTitle = focusedTitle ? `${focusedTitle} — Agents` : "Agents";
   useEffect(() => {
-    document.title = windowTitle; // podgląd w przeglądarce; w Tauri okno ustawia TitleBar
+    document.title = windowTitle; // podgląd w przeglądarce; w oknie tytuł ustawia TitleBar
   }, [windowTitle]);
 
   // Tylko refy i settery: woła to też interwał sprzed wielu renderów.
@@ -793,7 +793,7 @@ export function App() {
             </div>
           </>
         )}
-        {!inTauri && !inElectron && <div className="preview-badge">podgląd – bez prawdziwych procesów</div>}
+        {!inElectron && <div className="preview-badge">podgląd – bez prawdziwych procesów</div>}
       </main>
       {loaded && ws.ui.dock && ws.projects.length > 0 && (
         <Dock

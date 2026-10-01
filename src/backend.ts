@@ -1,5 +1,4 @@
 import { mockBackend } from "./backend-mock";
-import { tauriBackend } from "./backend-tauri";
 import { electronBackend } from "./backend-electron";
 import type { AgentDef } from "./agents";
 import type { ContextKind, SessionContext } from "./context";
@@ -72,9 +71,7 @@ export interface Backend {
   window?: WindowControls;
 }
 
-export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-
 export const inElectron = typeof window !== "undefined" && "agentsElectron" in window;
 
 /** In the browser (`pnpm dev`) the UI runs against the mock, so it is reviewable without a window. */
-export const backend: Backend = inTauri ? tauriBackend : inElectron ? electronBackend : mockBackend;
+export const backend: Backend = inElectron ? electronBackend : mockBackend;

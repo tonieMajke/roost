@@ -1,6 +1,6 @@
 # Agents workspace – zasady pracy
 
-Desktopowa aplikacja (Tauri 2 + React + TypeScript, pnpm, tylko Linux), która uruchamia wiele
+Desktopowa aplikacja (Electron + React + TypeScript, pnpm, tylko Linux), która uruchamia wiele
 agentów CLI (`claude`, `pi`, powłoka) w siatce terminali. Opis projektu: `PLAN.md`.
 **Plan do wykonania, etap po etapie: `docs/plan-m2.md`** (M1: `docs/plan-m1.md`, zrobione). Etapy oznaczone **(C)** robi Claude: gdy pierwszy niezrobiony etap ma (C), nie zaczynaj go – zatrzymaj się i napisz, że następny etap jest dla Claude.
 
@@ -29,21 +29,18 @@ agentów CLI (`claude`, `pi`, powłoka) w siatce terminali. Opis projektu: `PLAN
 ```bash
 pnpm typecheck
 pnpm test                                             # vitest (od etapu 1)
-cargo test --manifest-path src-tauri/Cargo.toml --lib
-cargo build --manifest-path src-tauri/Cargo.toml
+(cd electron && npm run typecheck && npm run build)   # backend Electrona
 ```
 
 ## Zakazy
 
-- Nie uruchamiaj `pnpm desktop` / `tauri dev` – to otwiera okno na pulpicie użytkownika.
+- Nie uruchamiaj `pnpm desktop` / `electron .` – to otwiera okno na pulpicie użytkownika.
   Wygląd sprawdzasz w trybie podglądu w przeglądarce (etap 2): `pnpm dev`, adres
   `http://localhost:5183`.
 - Nie ruszaj `~/.claude/`, `~/.pi/` ani sesji agentów. Czytać nazwy plików wolno, pisać nie.
 - Procesy zabijaj po PID (`ss -ltnp`, `pgrep -a`). Nigdy `pkill -f` ani `killall`.
 - Nie dodawaj zależności spoza tych wymienionych w etapie.
-- Pluginy Tauri przypinaj do wersji z planu. `tauri` (crate) i `@tauri-apps/api` muszą mieć
-  tę samą wersję minor (teraz 2.12), inaczej `tauri build` odmawia.
-- Nie zmieniaj `set_webview_env` w `src-tauri/src/lib.rs` (bez niego okno jest czarne).
+- `legacy-tauri/` to archiwum dawnej wersji Tauri – nie rozwijaj go i nie usuwaj.
 - Nie `git push`, nie `git reset --hard`, nie przepisuj historii.
 
 ## Styl

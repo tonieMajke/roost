@@ -5,13 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "desktop": "tauri dev",
-    "electron": "cd electron && npm start",
+    "desktop": "cd electron && npm start",
     "electron:dist": "cd electron && npm run dist",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "tauri": "tauri"
+    "test": "vitest run"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
