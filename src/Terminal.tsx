@@ -1,35 +1,28 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
-import { Terminal as XTerm } from "@xterm/xterm";
+import { Terminal as XTerm, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { backend, type ExitInfo, type PtyHandle } from "./backend";
 import { commandFor } from "./keys";
 import { ResizeThrottle } from "./resize-throttle";
 import { WriteQueue, peakQueueBytes } from "./write-queue";
+import { DEFAULT_TERM_FONT } from "./themes";
 
 // Ręczny pomiar w oknie (test 16 × 20 MB): w konsoli devtools `awPeakQueueMB()`.
 (globalThis as { awPeakQueueMB?: () => number }).awPeakQueueMB = () =>
   Math.round((peakQueueBytes() / 1048576) * 10) / 10;
 
-const FONT = '"JetBrains Mono Variable", monospace';
+/** Wygląd xtermu z motywu (src/themes.ts): xterm bierze wartości, nie klasy CSS. */
+export type TermLook = { theme: ITheme; font: string };
 
-/** Motyw ze wzoru D: tło/tekst stałe, kursor i chwycony suwak w kolorze akcentu.
- *  Suwak = tokeny `--line-strong` / `--faint` ze styles.css (xterm bierze wartości, nie klasy). */
-const termTheme = (accent: string) => ({
-  background: "#0d0e11",
-  foreground: "#c6ced8",
-  cursor: accent,
-  scrollbarSliderBackground: "rgba(255, 255, 255, 0.15)",
-  scrollbarSliderHoverBackground: "#6f7883",
-  scrollbarSliderActiveBackground: accent,
-});
+const DEFAULT_LOOK: TermLook = { theme: { background: "#0d0e11", foreground: "#c6ced8" }, font: DEFAULT_TERM_FONT };
 
 type Props = {
   command: string;
   args?: string[];
   cwd?: string;
-  /** Kolor akcentu (#rrggbb): kursor xtermu; zmiana nie restartuje procesu. */
-  accent?: string;
+  /** Kolory i font (motyw + akcent); zmiana nie restartuje procesu. */
+  look?: TermLook;
   /** Rozmiar czcionki (px); zmiana przelicza siatkę bez restartu procesu. */
   fontSize?: number;
   focused?: boolean;
@@ -63,7 +56,7 @@ export type TerminalHandle = {
  * One agent process rendered by xterm.js. The process lives exactly as long as the
  * component: the effect has no dependencies, so it restarts only under a new React key.
  */
-export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13, focused, onExit, onStart, onFocus, onOutput, onRedraw, onTitle, apiRef }: Props) {
+export function Terminal({ command, args, cwd, look = DEFAULT_LOOK, fontSize = 13, focused, onExit, onStart, onFocus, onOutput, onRedraw, onTitle, apiRef }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm | undefined>(undefined);
   // Read once at mount; later prop changes must never restart the process.
@@ -101,12 +94,12 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13
     const el = host.current!;
     const spec0 = spec.current;
     const x = new XTerm({
-      fontFamily: FONT,
+      fontFamily: look.font,
       fontSize,
       cursorBlink: true,
       allowProposedApi: true,
       scrollback: 3000, // limit pamięci przy 16 panelach (plan M1, ryzyko „xterm wolny”)
-      theme: termTheme(accent),
+      theme: look.theme,
     });
     term.current = x;
     const fit = new FitAddon();
@@ -138,7 +131,7 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13
 
     (async () => {
       // xterm measures the cell once; the font has to be there first.
-      await document.fonts.load(`${fontSize}px ${FONT}`).catch(() => undefined);
+      await document.fonts.load(`${fontSize}px ${look.font}`).catch(() => undefined);
       if (disposed) return;
       x.open(el);
       fit.fit();
@@ -204,11 +197,29 @@ export function Terminal({ command, args, cwd, accent = "#ff8a4c", fontSize = 13
     // The process depends on the React key only, that is the whole design.
   }, []);
 
-  // Zmiana akcentu (okno „Wygląd”) podmienia motyw xtermu bez restartu procesu.
+  // Zmiana motywu albo akcentu (okno „Wygląd”) podmienia kolory xtermu bez restartu procesu.
   useEffect(() => {
     const x = term.current;
-    if (x) x.options.theme = termTheme(accent);
-  }, [accent]);
+    if (x) x.options.theme = look.theme;
+  }, [look.theme]);
+
+  // Inny font motywu = inna komórka: najpierw doczytać font, potem zmierzyć i dopasować siatkę.
+  useEffect(() => {
+    const x = term.current;
+    if (!x || x.options.fontFamily === look.font) return;
+    let stale = false;
+    document.fonts
+      .load(`${x.options.fontSize ?? fontSize}px ${look.font}`)
+      .catch(() => undefined)
+      .then(() => {
+        if (stale || term.current !== x) return;
+        x.options.fontFamily = look.font;
+        if (x.element && host.current && host.current.clientWidth > 0) fitRef.current?.fit();
+      });
+    return () => {
+      stale = true;
+    };
+  }, [look.font]);
 
   // Ctrl+Alt+= / - / 0: nowa komórka = nowe cols/rows, fit() wysyła je do PTY (onResize).
   useEffect(() => {

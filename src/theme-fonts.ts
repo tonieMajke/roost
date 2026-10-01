@@ -1,0 +1,36 @@
+// Fonty motywów (src/themes.ts, themes.css). @font-face z unicode-range: przeglądarka pobiera
+// plik dopiero, gdy motyw użyje rodziny, więc nieużywane motywy nic nie kosztują przy starcie.
+import "@fontsource/ibm-plex-sans-condensed/400.css";
+import "@fontsource/ibm-plex-sans-condensed/500.css";
+import "@fontsource/ibm-plex-sans-condensed/600.css";
+import "@fontsource/ibm-plex-sans-condensed/700.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource/ibm-plex-mono/600.css";
+import "@fontsource/barlow-condensed/500.css";
+import "@fontsource/barlow-condensed/600.css";
+import "@fontsource/barlow-condensed/700.css";
+import "@fontsource-variable/martian-mono";
+import "@fontsource-variable/red-hat-display";
+import "@fontsource-variable/red-hat-mono";
+import "@fontsource-variable/pixelify-sans";
+import "@fontsource-variable/archivo";
+import "@fontsource/anton";
+import "@fontsource/instrument-serif/400.css";
+import "@fontsource/instrument-serif/400-italic.css";
+import "@fontsource/courier-prime/400.css";
+import "@fontsource/courier-prime/700.css";
+import "@fontsource/share-tech-mono";
+import "@fontsource-variable/oswald";
+import "@fontsource/press-start-2p";
+import "@fontsource/chakra-petch/400.css";
+import "@fontsource/chakra-petch/500.css";
+import "@fontsource/chakra-petch/600.css";
+import "@fontsource/chakra-petch/700.css";
+import "@fontsource/vt323";
+import "@fontsource-variable/caveat";
+import "@fontsource/dela-gothic-one";
+import "@fontsource-variable/syne";
+import "@fontsource-variable/unbounded";
+import "@fontsource-variable/baloo-2";
+import "@fontsource/michroma";

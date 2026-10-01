@@ -47,6 +47,8 @@ export interface Backend {
   sessionHandoff(kind: ContextKind, sessionId: string): Promise<Handoff | null>;
   /** Streszczenie `input` przez jednorazowe `claude -p --model haiku` (`command` = program claude); odrzuca z powodem. */
   claudeSummary(command: string, system: string, input: string): Promise<string>;
+  /** Jak `claudeSummary`, ale streszcza lokalny model przez program pi. */
+  piSummary(command: string, system: string, input: string): Promise<string>;
   /** JSON dla `claude --settings` (linia statusu zapisuje limity); `null` = użytkownik ma własną linię statusu. */
   claudeSettingsArg(): Promise<string | null>;
   /** Ostatnie limity subskrypcji z linii statusu claude; `null` = jeszcze żadnych. */

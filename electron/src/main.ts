@@ -9,7 +9,7 @@ import { claudeLimits, claudeSettingsArg } from "./limits";
 import { notify } from "./notify";
 import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
-import { claudeSummary } from "./summary";
+import { claudeSummary, piSummary } from "./summary";
 
 const ptys = new Ptys();
 let win: BrowserWindow | null = null;
@@ -45,6 +45,7 @@ handle("workspace_backup", (date: string) => config.workspaceBackup(date));
 handle("session_context", (kind: string, id: string) => sessionContext(kind, id));
 handle("session_handoff", (kind: string, id: string) => sessionHandoff(kind, id));
 handle("claude_summary", (command: string, system: string, input: string) => claudeSummary(command, system, input));
+handle("pi_summary", (command: string, system: string, input: string) => piSummary(command, system, input));
 handle("claude_settings_arg", () =>
   claudeSettingsArg(process.execPath, path.join(__dirname, "statusline.cjs"), config.configDir()),
 );

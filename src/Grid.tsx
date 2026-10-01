@@ -7,6 +7,7 @@ import type { PaneState } from "./activity";
 import { contextKind, paneMeter, type SessionContext } from "./context";
 import type { PaneActions, ProjectActions } from "./handlers";
 import { Pane } from "./Pane";
+import type { TermLook } from "./Terminal";
 import { usePaneDrag } from "./usePaneDrag";
 import {
   ENTER_WINDOW_MS,
@@ -25,8 +26,8 @@ type Props = {
   projects: Project[];
   activeId: string | null;
   agents: AgentDef[];
-  /** Kolor akcentu (#rrggbb) do motywu xterm — zmiany akcentu bez restartu procesu. */
-  accent: string;
+  /** Kolory i font xtermu (motyw + akcent) — zmiana bez restartu procesu. */
+  look: TermLook;
   /** Rozmiar czcionki terminali (px, `ui.fontSize`). */
   fontSize: number;
   /** Ustawienie „Ruch” (`ui.motion`): `lite` wyłącza FLIP, wzrost i wjazd. */
@@ -71,7 +72,7 @@ export function Grid({
   projects,
   activeId,
   agents,
-  accent,
+  look,
   fontSize,
   motion,
   state,
@@ -232,7 +233,7 @@ export function Grid({
                       pane={pane}
                       path={project.path}
                       agent={agentById(agents, pane.agentId)}
-                      accent={accent}
+                      look={look}
                       fontSize={fontSize}
                       focused={isActive && pane.id === project.focused}
                       maximized={isMax}

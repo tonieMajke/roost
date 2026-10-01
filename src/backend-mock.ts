@@ -151,6 +151,9 @@ export const mockBackend: Backend = {
     if (input.includes("fail")) throw new Error("kod 1: podgląd");
     return "- naprawiono relativeTime w src/feed.ts (liczył minuty od złej chwili)\n- dodano test w src/feed.test.ts, pnpm test przechodzi\n- otwarte: test na pusty katalog";
   },
+  piSummary(command, system, input) {
+    return this.claudeSummary(command, system, input);
+  },
   // Podgląd: bez linii statusu (procesy są udawane), limity zmyślone względem teraz.
   claudeSettingsArg: async () => null,
   async claudeLimits() {

@@ -93,6 +93,7 @@ export const electronBackend: Backend = {
   sessionContext: (kind, sessionId) => call<SessionContext | null>("session_context", kind, sessionId),
   sessionHandoff: (kind, sessionId) => call<Handoff | null>("session_handoff", kind, sessionId),
   claudeSummary: (command, system, input) => call<string>("claude_summary", command, system, input),
+  piSummary: (command, system, input) => call<string>("pi_summary", command, system, input),
   claudeSettingsArg: () => call<string | null>("claude_settings_arg"),
   claudeLimits: () => call<ClaudeLimits | null>("claude_limits"),
   dirExists: (path) => call<boolean>("dir_exists", path),

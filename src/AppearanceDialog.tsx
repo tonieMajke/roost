@@ -10,8 +10,8 @@ type Props = {
 };
 
 /**
- * Okno „Wygląd” (`.settings` ze wzoru D): wiersze z tabeli ustawień, akcent jako kółka
- * kolorów, reszta jako przyciski segmentowe. Kotwica: lewy dolny róg, naprzeciw stopki szyny.
+ * Okno „Wygląd” (`.settings` ze wzoru D): wiersze z tabeli ustawień, motyw jako kafelki
+ * z próbką (tło, panel, tekst, akcent), akcent jako kółka kolorów, reszta jako przyciski segmentowe. Kotwica: lewy dolny róg, naprzeciw stopki szyny.
  */
 export function AppearanceDialog({ ui, onSet, onClose }: Props) {
   return (
@@ -22,9 +22,28 @@ export function AppearanceDialog({ ui, onSet, onClose }: Props) {
           {UI_ROWS.map((row) => (
             <div className="set-row" key={row.key}>
               <span className="set-label">{row.label}</span>
-              <div className="seg" role="group" aria-label={row.label}>
+              <div className={row.key === "theme" ? "themes" : "seg"} role="group" aria-label={row.label}>
                 {row.choices.map((choice) => {
                   const on = ui[row.key] === choice.value;
+                  if (choice.theme) {
+                    const [bg, pane, text] = choice.theme.colors;
+                    return (
+                      <button
+                        key={choice.value}
+                        type="button"
+                        className={`theme-tile${on ? " is-on" : ""}`}
+                        aria-pressed={on}
+                        title={choice.label}
+                        onClick={() => onSet(uiPatch(row.key, choice.value))}
+                      >
+                        <span className="theme-chip" style={{ background: bg } as CSSProperties} aria-hidden>
+                          <i style={{ background: pane, color: text } as CSSProperties}>Aa</i>
+                          <b style={{ background: choice.theme.accent } as CSSProperties} />
+                        </span>
+                        <span className="theme-name">{choice.label}</span>
+                      </button>
+                    );
+                  }
                   return choice.swatch ? (
                     <button
                       key={choice.value}

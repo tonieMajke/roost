@@ -10,8 +10,10 @@ import {
   stepFontSize,
   uiClasses,
   uiPatch,
+  accentHex,
   type Ui,
 } from "./ui";
+import { THEMES, type ThemeId } from "./themes";
 
 describe("parseUi", () => {
   it("missing key (or missing block) = defaults, no errors", () => {
@@ -37,7 +39,7 @@ describe("parseUi", () => {
   });
 
   it("unknown extra keys are ignored without errors", () => {
-    expect(parseUi({ fontSize2: 12, theme: "light" })).toEqual({ ui: DEFAULT_UI, errors: [] });
+    expect(parseUi({ fontSize2: 12, tone: "light" })).toEqual({ ui: DEFAULT_UI, errors: [] });
   });
 
   it("feed: project wczytuje się, zła wartość = all + błąd", () => {
@@ -69,7 +71,7 @@ describe("parseUi", () => {
 
 describe("uiClasses", () => {
   it("defaults produce the wzor-D class list", () => {
-    expect(uiClasses(DEFAULT_UI)).toBe("acc-orange fh-fill work-glow edge-sharp title-big bg-grid motion-full");
+    expect(uiClasses(DEFAULT_UI)).toBe("acc-theme fh-fill work-glow edge-sharp title-big bg-grid motion-full");
   });
 
   it("grid=off drops bg-grid, other classes follow their values", () => {
@@ -90,6 +92,24 @@ describe("stepFontSize", () => {
     expect(stepFontSize(FONT_MAX, 1)).toBe(FONT_MAX);
     expect(stepFontSize(FONT_MIN, -1)).toBe(FONT_MIN);
     expect(stepFontSize(18, 0)).toBe(DEFAULT_UI.fontSize);
+  });
+});
+
+describe("accentHex", () => {
+  it("„theme” bierze akcent motywu, reszta – ACCENT_HEX", () => {
+    expect(accentHex({ ...DEFAULT_UI, theme: "kreslarnia", accent: "theme" })).toBe(THEMES.kreslarnia.accent);
+    expect(accentHex({ ...DEFAULT_UI, theme: "kreslarnia", accent: "mint" })).toBe(ACCENT_HEX.mint);
+  });
+
+  it("domyślnie wygląd się nie zmienia: wzór D z pomarańczowym akcentem", () => {
+    expect(DEFAULT_UI.theme).toBe("d");
+    expect(accentHex(DEFAULT_UI)).toBe(ACCENT_HEX.orange);
+  });
+
+  it("nieznany motyw w workspace.json = domyślny z błędem", () => {
+    const { ui, errors } = parseUi({ theme: "neon" });
+    expect(ui.theme).toBe("d");
+    expect(errors[0]).toContain("ui.theme");
   });
 });
 
@@ -119,13 +139,29 @@ describe("UI_ROWS (okno „Wygląd”)", () => {
     }
   });
 
-  it("tylko akcent ma kółka koloru, a ich barwy to ACCENT_HEX", () => {
+  it("tylko akcent ma kółka koloru (poza „Z motywu”), a ich barwy to ACCENT_HEX", () => {
     for (const row of UI_ROWS) {
       const swatches = row.choices.filter((c) => c.swatch !== undefined);
-      expect(swatches.length).toBe(row.key === "accent" ? row.choices.length : 0);
+      expect(swatches.length).toBe(row.key === "accent" ? row.choices.length - 1 : 0);
     }
     const accent = UI_ROWS.find((r) => r.key === "accent")!;
-    for (const c of accent.choices) expect(c.swatch).toBe(ACCENT_HEX[c.value as Ui["accent"]]);
+    for (const c of accent.choices) {
+      if (c.value === "theme") expect(c.swatch).toBeUndefined();
+      else expect(c.swatch).toBe(ACCENT_HEX[c.value as Exclude<Ui["accent"], "theme">]);
+    }
+  });
+
+  it("tylko motyw ma próbki, z akcentem motywu", () => {
+    for (const row of UI_ROWS) {
+      const tiles = row.choices.filter((c) => c.theme !== undefined);
+      expect(tiles.length).toBe(row.key === "theme" ? row.choices.length : 0);
+    }
+    const theme = UI_ROWS.find((r) => r.key === "theme")!;
+    for (const c of theme.choices) expect(c.theme?.accent).toBe(THEMES[c.value as ThemeId].accent);
+  });
+
+  it("wybór motywu przywraca akcent motywu", () => {
+    expect(uiPatch("theme", "kreslarnia")).toEqual({ theme: "kreslarnia", accent: "theme" });
   });
 
   it("uiPatch z pary wiersz/wartość daje Partial<Ui> do reduktora", () => {

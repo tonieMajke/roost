@@ -6,12 +6,21 @@ import os from "node:os";
 import { childEnv } from "./env";
 
 const TIMEOUT_MS = 60_000;
+const PI_TIMEOUT_MS = 120_000; // lokalny model bywa wolniejszy niż Haiku
 const MODEL = "haiku";
 
 export function summaryArgs(system: string): string[] {
   return [
     "-p", "--model", MODEL, "--no-session-persistence", "--tools", "", "--strict-mcp-config",
     "--disable-slash-commands", "--setting-sources", "", "--system-prompt", system,
+  ];
+}
+
+/** pi z lokalnym modelem (domyślnym z ustawień pi): bez narzędzi, rozszerzeń i zapisu sesji. */
+export function piSummaryArgs(system: string): string[] {
+  return [
+    "-p", "--no-session", "--no-tools", "--no-extensions", "--no-skills", "--no-prompt-templates",
+    "--no-themes", "--thinking", "off", "--system-prompt", system,
   ];
 }
 
@@ -54,4 +63,9 @@ export function run(program: string, args: string[], input: string, timeoutMs: n
  *  `input`: wyciąg rozmowy. */
 export function claudeSummary(command: string, system: string, input: string): Promise<string> {
   return run(command, summaryArgs(system), input, TIMEOUT_MS);
+}
+
+/** To samo co `claudeSummary`, ale streszcza lokalny model przez program pi. */
+export function piSummary(command: string, system: string, input: string): Promise<string> {
+  return run(command, piSummaryArgs(system), input, PI_TIMEOUT_MS);
 }

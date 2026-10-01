@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { backend, inElectron } from "./backend";
 import type { AgentDef } from "./agents";
-import { ACCENT_HEX, stepFontSize, uiClasses } from "./ui";
+import { accentHex, stepFontSize, uiClasses } from "./ui";
+import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";
+import type { TermLook } from "./Terminal";
 import { IconButton } from "./IconButton";
 import { FolderPlus, Gauge, LayoutGrid, Plus, X } from "lucide-react";
 import { tildify } from "./paths";
@@ -167,8 +169,22 @@ export function App() {
   const active = activeProject(ws);
   const paneCount = active?.panes.length ?? 0;
   const focusedId = active?.focused ?? null;
-  // xterm nie zna klas CSS — kolor akcentu jedzie do terminala jako wartość (etap 1 M2).
-  const accentHex = ACCENT_HEX[ws.ui.accent];
+  // xterm nie zna klas CSS — kolory motywu i akcent jadą do terminala jako wartości (etap 1 M2).
+  const theme = THEMES[ws.ui.theme];
+  const accent = accentHex(ws.ui);
+  const termLook = useMemo<TermLook>(
+    () => ({ theme: termTheme(theme, accent), font: theme.termFont ?? DEFAULT_TERM_FONT }),
+    [theme, accent],
+  );
+  // Motyw na <html>: tokeny themes.css obejmują też body, paski przewijania i pasek tytułu.
+  // Tło terminala z themes.ts (jedno źródło dla xtermu i `.pane-body`), przed malowaniem.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = theme.id;
+    root.dataset.tone = theme.light ? "light" : "dark";
+    root.style.setProperty("--term-bg", theme.term.background);
+    root.style.setProperty("--term-text", theme.term.foreground);
+  }, [theme]);
   // Handlerzy spoza renderu (interwał, callbacki terminala) pytają o fokus przez ref.
   const focusedRef = useRef<string | null>(focusedId);
   focusedRef.current = focusedId;
@@ -392,11 +408,18 @@ export function App() {
         return;
       }
       const source = { agent: src.agent, project: src.project, projectPath: src.path, home: home.current };
-      // Streszcza Haiku przez program claude z agents.json (źródłem może być też pi).
+      // Streszcza agent panelu docelowego: pi → lokalny model, w pozostałych razach Haiku przez claude
+      // (programy z agents.json; źródłem może być każdy z nich).
+      const dstAgent = agents.find((a) => a.id === ws.projects.flatMap((p) => p.panes).find((p) => p.id === to)?.agentId);
+      const local = dstAgent !== undefined && dstAgent.command.split("/").pop() === "pi";
       const claude = agents.find((a) => a.command.split("/").pop() === "claude")?.command ?? "claude";
-      setNotice(`Streszczam rozmowę „${src.agent}” (Haiku)…`);
+      setNotice(`Streszczam rozmowę „${src.agent}” (${local ? "lokalny model" : "Haiku"})…`);
       try {
-        text = summaryText(await backend.claudeSummary(claude, SUMMARY_SYSTEM, digestText(h, source)), source);
+        const input = digestText(h, source);
+        const out = local
+          ? await backend.piSummary(dstAgent.command, SUMMARY_SYSTEM, input)
+          : await backend.claudeSummary(claude, SUMMARY_SYSTEM, input);
+        text = summaryText(out, source);
       } catch (e) {
         failed = e instanceof Error ? e.message : String(e);
         text = handoffText(h, source, FALLBACK_MAX_CHARS);
@@ -778,7 +801,7 @@ export function App() {
                 projects={ws.projects}
                 activeId={ws.active}
                 agents={agents}
-                accent={accentHex}
+                look={termLook}
                 fontSize={ws.ui.fontSize}
                 motion={ws.ui.motion}
                 state={ephemeral}

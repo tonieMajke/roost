@@ -7,7 +7,7 @@ import { withClaudeSettings } from "./limits";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
-import { Terminal, type TerminalHandle } from "./Terminal";
+import { Terminal, type TermLook, type TerminalHandle } from "./Terminal";
 import { IconButton } from "./IconButton";
 import { Maximize2, MessageSquarePlus, Minimize2, RotateCw, X } from "lucide-react";
 
@@ -15,8 +15,8 @@ type Props = {
   pane: PaneModel;
   path: string; // folder of the project: cwd of the process
   agent?: AgentDef;
-  /** Kolor akcentu (#rrggbb) dla motywu xterm. */
-  accent: string;
+  /** Kolory i font xtermu (motyw + akcent). */
+  look: TermLook;
   /** Rozmiar czcionki terminala (px). */
   fontSize: number;
   focused: boolean;
@@ -41,7 +41,7 @@ const claudeSettingsArg = () => (settingsArg ??= backend.claudeSettingsArg().cat
 export const PANE_OUT_MS = 190;
 
 /** Frame around one terminal: header with agent, state and controls. */
-export function Pane({ pane, path, agent, accent, fontSize, focused, maximized, state, meter, title, closing, armed, actions }: Props) {
+export function Pane({ pane, path, agent, look, fontSize, focused, maximized, state, meter, title, closing, armed, actions }: Props) {
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armedClick, setArmedClick] = useState(false);
@@ -157,7 +157,7 @@ export function Pane({ pane, path, agent, accent, fontSize, focused, maximized, 
             command={agent.command}
             args={args}
             cwd={path}
-            accent={accent}
+            look={look}
             fontSize={fontSize}
             focused={focused}
             apiRef={register.current}

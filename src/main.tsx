@@ -3,9 +3,11 @@ import "@fontsource-variable/jetbrains-mono";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 import "@fontsource-variable/bricolage-grotesque";
+import "./theme-fonts";
 // xterm.css przed naszym: styles.css nadpisuje jego reguły przy tej samej specyficzności.
 import "@xterm/xterm/css/xterm.css";
 import "./styles.css";
+import "./themes.css";
 import { App } from "./App";
 
 createRoot(document.getElementById("root")!).render(<App />);

@@ -15,6 +15,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## Motywy: 21 makiet z „Nowych wyglądów” + wzór D w oknie „Wygląd” – 2026-10-01 (Claude, master)
+
+- `ui.theme` (domyślnie `d`, czyli bez zmian dla istniejących `workspace.json`) i nowy akcent `theme` („Z motywu”). Wybór motywu przywraca akcent motywu (`uiPatch`), własny akcent można potem wybrać jeszcze raz.
+- Motyw zmienia tylko wygląd tego samego układu, nie układ. Rzeka, Cisza, Metro, Konstelacja, Wieża, Akwarium i reszta biorą z makiet kolory, fonty, ramki i ozdoby. Oś czasu, radar, akwarium ze stworzeniami czy karuzela 3D nie są zrobione.
+- `src/themes.ts`: lista, akcent, próbka do kafelka, kolory xtermu (jasne motywy mają paletę ANSI na jasne tło) i font terminala. `src/themes.css`: tokeny `:root[data-theme=…]` i ozdoby. App ustawia `data-theme`/`data-tone` na `<html>` i `--term-bg` z themes.ts. Terminal dostaje `look` (ITheme + font) zamiast `accent`; zmiana fontu w locie najpierw doczytuje font, potem robi `fit()`.
+- Fonty z fontsource (`src/theme-fonts.ts`), 22 paczki; przeglądarka pobiera plik dopiero, gdy motyw go użyje.
+- Przy okazji: `.settings` miało `content-box`, przez co padding wypychał wysokie okno „Wygląd” nad krawędź; teraz `border-box`.
+- Sprawdzone zrzutami (Electron offscreen + podgląd z mockiem): wszystkie 22 motywy, okno „Wygląd” w 4 motywach. Przełączenie w locie z D na Cisza zmienia font xtermu, tło i zapisuje się w workspace. Testy 286/286, typecheck czysty.
+- Niesprawdzone w prawdziwym oknie: TUI claude/pi na jasnych terminalach (Kreślarnia, Metro, Konstelacja, Składanka, Zeszyt, Shōnen). Claude ma własny motyw kolorów (`/theme` → light), który może być potrzebny do czytelności.
+
 ## Electron dogania Tauri: pasek tytułu, krawędzie, AppImage – 2026-10-01 (Claude, master)
 
 - Sterowanie oknem przeniesione do backendu: `WindowControls` (`backend.window`) w `src/backend.ts`; Tauri `getCurrentWindow()` w `backend-tauri.ts`, Electron przez IPC `win_*` w `electron/src/main.ts`. `TitleBar`/`ResizeEdges` nie importują `@tauri-apps`, pokazują się przy każdym backendzie z oknem (w podglądzie nadal nie).

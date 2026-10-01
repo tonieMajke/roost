@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { run, summaryArgs } from "./summary";
+import { piSummaryArgs, run, summaryArgs } from "./summary";
 
 const sh = (script: string) => ["-c", script];
 
@@ -12,6 +12,12 @@ describe("summary", () => {
     expect(has("--setting-sources", "")).toBe(true);
     expect(has("--system-prompt", "streść")).toBe(true);
     expect(a).toContain("--no-session-persistence");
+  });
+
+  it("pi: bez narzędzi, rozszerzeń i zapisu sesji, z poleceniem systemowym", () => {
+    const a = piSummaryArgs("streść");
+    for (const f of ["-p", "--no-session", "--no-tools", "--no-extensions"]) expect(a).toContain(f);
+    expect(a[a.indexOf("--system-prompt") + 1]).toBe("streść");
   });
 
   it("stdin wchodzi, przycięte stdout wraca", async () => {
