@@ -17,6 +17,7 @@ import {
   serializeBot,
   USER_LIMIT,
   type BotDef,
+  type Routine,
 } from "../../../src/bot";
 import { writeAtomic } from "../config";
 import { ChatStore } from "../chat/store";
@@ -306,11 +307,24 @@ export class BotStore {
     return readOr(path.join(this.mustExist(id), "routines.json"), '{"routines":[]}');
   }
 
+  /** Zapis harmonogramu. `lastRun` zostaje późniejszy z dysku i z zapisu: karta bota otwarta
+   *  przed przebiegiem nie cofnie terminu (zadanie nie ruszy drugi raz). */
   routinesSave(id: string, json: string): void {
     const dir = this.mustExist(id);
-    const r = parseRoutines(JSON.parse(json));
+    const raw = JSON.parse(json) as { routines?: Record<string, unknown>[] };
+    const r = parseRoutines(raw);
     if (r.errors.length) throw new Error(r.errors.join("; "));
-    writeAtomic(path.join(dir, "routines.json"), json);
+    let disk: Routine[] = [];
+    try {
+      disk = parseRoutines(JSON.parse(this.routines(id))).routines;
+    } catch {
+      // zepsuty plik: nadpisujemy
+    }
+    for (const x of raw.routines ?? []) {
+      const old = disk.find((d) => d.id === x.id)?.lastRun;
+      if (old !== undefined && !(typeof x.lastRun === "number" && x.lastRun >= old)) x.lastRun = old;
+    }
+    writeAtomic(path.join(dir, "routines.json"), `${JSON.stringify(raw, null, 2)}\n`);
   }
 
   /** Rozmowy (`chats`) albo przebiegi z harmonogramu (`runs`) bota. */

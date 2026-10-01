@@ -20,6 +20,7 @@ import {
   type BotChat,
   type BotDef,
   type Routine,
+  type RunInfo,
 } from "./bot";
 import { chatMeta, sortChats, type ChatEvent } from "./chat";
 
@@ -92,6 +93,7 @@ function seed(now: number): Record<string, MockBot> {
   const run: BotChat = {
     ...newBotChat("bbbbbbbb-0001", "rusty", now - 5 * 3_600_000, model, "rano"),
     title: "Poranne newsy o Ruście",
+    state: "done",
     updated: now - 5 * 3_600_000,
     messages: [
       { id: "r1", role: "user", text: "Przejrzyj newsy o Ruście z ostatniej doby.", at: now - 5 * 3_600_000 },
@@ -193,7 +195,50 @@ type BotApi = Pick<
   | "botApprovals"
   | "botApprove"
   | "onBotApproval"
+  | "botRuns"
+  | "onBotRun"
+  | "botRunNow"
+  | "onBotOpenRun"
 >;
+
+// Przebiegi w podglądzie: jak `Scheduler`, bez zegara – tylko „Uruchom teraz”.
+const runs = new Map<string, RunInfo>();
+const runListeners = new Set<(r: RunInfo) => void>();
+const runChanged = (r: RunInfo) => {
+  if (r.state === "done" || r.state === "error") runs.delete(`${r.bot}/${r.routine}`);
+  else runs.set(`${r.bot}/${r.routine}`, r);
+  runListeners.forEach((cb) => cb({ ...r }));
+};
+
+async function mockRun(botId: string, routine: Routine) {
+  const now = Date.now();
+  const def = get(load(), botId).def;
+  const model = def.model ?? { provider: "claude", model: "haiku" };
+  const chat: BotChat = {
+    ...newBotChat(crypto.randomUUID(), botId, now, model, routine.id),
+    title: routine.name,
+    state: "running",
+    messages: [
+      { id: crypto.randomUUID(), role: "user", text: routine.prompt, at: now },
+      { id: crypto.randomUUID(), role: "assistant", text: "", at: now, model },
+    ],
+  };
+  const put = (c: BotChat) => {
+    const all = load();
+    get(all, botId).runs[c.id] = c;
+    const r = get(all, botId).routines.find((x) => x.id === routine.id);
+    if (r) r.lastRun = now;
+    save(all);
+  };
+  const info: RunInfo = { bot: botId, routine: routine.id, chat: chat.id, state: "running", started: now };
+  put(chat);
+  runChanged(info);
+  await new Promise((r) => setTimeout(r, 2500));
+  const text = "(podgląd) Przebieg zakończony: spokojna doba, dwa nowe wydania tokio. Prawdziwy wynik da model w oknie aplikacji.";
+  const done: BotChat = { ...chat, state: "done", updated: Date.now(), messages: [chat.messages[0], { ...chat.messages[1], text, ms: 2500 }] };
+  put(done);
+  runChanged({ ...info, state: "done" });
+}
 
 // Zgody w podglądzie: jak `ApprovalBroker`, bez procesu głównego.
 const pending = new Map<string, { req: ApprovalRequest; resolve: (d: ApprovalDecision) => void }>();
@@ -463,5 +508,21 @@ export const mockBotBackend: BotApi = {
   onBotApproval(cb) {
     approvalListeners.add(cb);
     return () => void approvalListeners.delete(cb);
+  },
+  async botRuns() {
+    return [...runs.values()];
+  },
+  onBotRun(cb) {
+    runListeners.add(cb);
+    return () => void runListeners.delete(cb);
+  },
+  async botRunNow(id, routineId) {
+    if (runs.has(`${id}/${routineId}`)) throw new Error("to zadanie właśnie pracuje");
+    const r = get(load(), id).routines.find((x) => x.id === routineId);
+    if (!r) throw new Error(`nie ma zadania „${routineId}”`);
+    void mockRun(id, r);
+  },
+  onBotOpenRun() {
+    return () => undefined; // w podglądzie nie ma powiadomień
   },
 };

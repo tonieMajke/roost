@@ -76,6 +76,8 @@ export type Routine = {
   enabled: boolean;
   created: number;
   lastRun?: number;
+  /** Ostatnie włączenie: termin liczy się od niego, gdy jest późniejszy niż ostatni przebieg. */
+  enabledAt?: number;
 };
 
 export type ApprovalDecision = "once" | "chat" | "deny";
@@ -120,6 +122,8 @@ export type ToolCallRecord = {
 /** Stan przebiegu z harmonogramu. `waiting_approval`: narzędzie czeka na decyzję użytkownika. */
 export type RunState = "running" | "done" | "error" | "waiting_approval";
 export const RUN_STATES: RunState[] = ["running", "done", "error", "waiting_approval"];
+/** Trwający przebieg (zdarzenie `bot_run` z procesu głównego). */
+export type RunInfo = { bot: string; routine: string; chat: string; state: RunState; started: number };
 
 /** Rozmowa bota albo przebieg z harmonogramu (`routine` = id zadania, `state` = stan przebiegu). */
 export type BotChat = Chat & { bot: string; calls: ToolCallRecord[]; routine?: string; state?: RunState; toolsUnsupported?: boolean };
@@ -280,6 +284,7 @@ export function parseRoutines(raw: unknown): { routines: Routine[]; errors: stri
       enabled: r.enabled !== false,
       created: typeof r.created === "number" ? r.created : 0,
       ...(typeof r.lastRun === "number" ? { lastRun: r.lastRun } : {}),
+      ...(typeof r.enabledAt === "number" ? { enabledAt: r.enabledAt } : {}),
     });
   });
   return { routines, errors };
@@ -299,10 +304,28 @@ export function nextRun(s: Schedule, after: number): number {
   return Number.POSITIVE_INFINITY; // nieosiągalne przy poprawnym `days`
 }
 
-/** Termin następnego przebiegu: od ostatniego (albo od utworzenia zadania). Ostatni przebieg
- *  „z przyszłości” (cofnięty zegar) liczy się jak teraz, żeby zadanie nie utknęło. */
+/** Termin następnego przebiegu: od ostatniego (albo od utworzenia zadania), a po ponownym
+ *  włączeniu od włączenia – zadanie włączone o 10:00 z terminem 8:00 rusza jutro, nie od razu.
+ *  Ostatni przebieg „z przyszłości” (cofnięty zegar) liczy się jak teraz, żeby zadanie nie utknęło. */
 export function routineNext(r: Routine, now: number): number {
-  return nextRun(r.schedule, Math.min(r.lastRun ?? r.created, now));
+  return nextRun(r.schedule, Math.min(Math.max(r.lastRun ?? r.created, r.enabledAt ?? 0), now));
+}
+
+/** Nowe zadanie z karty bota: codziennie o 8:00, włączone (użytkownik tworzy je sam). */
+export function newRoutine(id: string, now: number): Routine {
+  return { id, name: "", prompt: "", schedule: { kind: "daily", at: "08:00" }, allow: { writeWork: false, bash: [] }, enabled: true, created: now, enabledAt: now };
+}
+
+/** Wolne id zadania: `r1`, `r2`… */
+export function freeRoutineId(list: Routine[]): string {
+  let n = 1;
+  while (list.some((r) => r.id === `r${n}`)) n++;
+  return `r${n}`;
+}
+
+/** Przełącznik „włączone”: włączenie zapisuje chwilę, od której liczy się termin. */
+export function toggleRoutine(r: Routine, enabled: boolean, now: number): Routine {
+  return enabled === r.enabled ? r : { ...r, enabled, ...(enabled ? { enabledAt: now } : {}) };
 }
 
 /** Czy włączone zadanie powinno ruszyć teraz. Zaległe terminy (aplikacja zamknięta, uśpienie)
@@ -322,6 +345,21 @@ export function runModel(bot: BotDef, providers: ProviderDef[]): { provider: Pro
 }
 
 const DAY_NAMES = ["nd", "pn", "wt", "śr", "cz", "pt", "sb"];
+
+const MONTHS = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
+
+/** Termin w harmonogramie: „dziś 08:00”, „jutro 08:00”, „wczoraj 08:00”, „pt 3 paź 08:00”. */
+export function runWhen(at: number, now: number): string {
+  const d = new Date(at);
+  const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const day = (t: number) => {
+    const x = new Date(t);
+    return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  };
+  const diff = Math.round((day(at) - day(now)) / 86_400_000);
+  const name = diff === 0 ? "dziś" : diff === 1 ? "jutro" : diff === -1 ? "wczoraj" : `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  return `${name} ${hm}`;
+}
 
 /** „co 15 min”, „codziennie 08:00”, „pn–pt 08:00”, „pn, śr 08:00”. */
 export function scheduleLabel(s: Schedule): string {
@@ -516,12 +554,35 @@ export function botSystemPrompt(bot: BotDef, ctx: PromptContext): string {
   return parts.join("\n\n");
 }
 
+/** Pierwsze zdanie tekstu (powitanie, powiadomienie). */
+export function firstSentence(text: string): string {
+  const t = text.trim();
+  const m = /^.*?[.!?…](?=\s|$)/s.exec(t);
+  return (m ? m[0] : t).trim();
+}
+
 /** Pierwsze zdanie opisu bota (powitanie bez wywołania modelu). */
 export function botGreeting(bot: BotDef): string {
   const p = bot.persona.trim();
-  if (!p) return `Cześć, tu ${bot.name}.`;
-  const m = /^.*?[.!?…](?=\s|$)/s.exec(p);
-  return (m ? m[0] : p).trim();
+  return p ? firstSentence(p) : `Cześć, tu ${bot.name}.`;
+}
+
+/** Powiadomienie po przebiegu: pierwsze zdanie wyniku (bez markdownu), błąd albo prośba o zgodę. */
+export function runNotice(botName: string, run: BotChat): { title: string; body: string } | null {
+  const title = `${botName}: ${run.title || "zadanie z harmonogramu"}`;
+  const reply = [...run.messages].reverse().find((m) => m.role === "assistant");
+  if (run.state === "waiting_approval") return { title, body: "Czeka na twoją zgodę." };
+  if (run.state === "error") return { title, body: `Nie udało się: ${reply?.error ?? "błąd"}` };
+  if (run.state !== "done") return null;
+  const plain = (reply?.text ?? "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/^#+\s*/gm, "")
+    .replace(/^\s*([-*+]|\d+\.)\s+/gm, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`>]/g, "")
+    .replace(/\s+/g, " ");
+  const first = firstSentence(plain);
+  return { title, body: first.length > 200 ? `${first.slice(0, 199)}…` : first || "Gotowe (bez tekstu)." };
 }
 
 export type ApprovalContext = {

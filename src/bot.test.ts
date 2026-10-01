@@ -19,7 +19,12 @@ import {
   newBot,
   newBotChat,
   nextRun,
+  freeRoutineId,
+  newRoutine,
   routineDue,
+  runNotice,
+  runWhen,
+  toggleRoutine,
   routineNext,
   runModel,
   parseBot,
@@ -164,6 +169,66 @@ describe("routineDue", () => {
     expect(routineDue(every, 1_000_000 + 29 * 60_000)).toBe(false);
     expect(routineDue(every, 1_000_000 + 30 * 60_000)).toBe(true);
     expect(routineNext({ ...every, lastRun: 9e12 }, 2_000_000)).toBe(2_000_000 + 30 * 60_000);
+  });
+});
+
+describe("włączanie zadań", () => {
+  const base: Routine = {
+    id: "r1",
+    name: "Rano",
+    prompt: "x",
+    schedule: { kind: "daily", at: "08:00" },
+    allow: { writeWork: false, bash: [] },
+    enabled: false,
+    created: local(2026, 9, 1, 12),
+  };
+  it("włączone po terminie rusza w następnym terminie, nie od razu", () => {
+    const on = toggleRoutine(base, true, local(2026, 10, 2, 10));
+    expect(on).toMatchObject({ enabled: true, enabledAt: local(2026, 10, 2, 10) });
+    expect(routineDue(on, local(2026, 10, 2, 10, 1))).toBe(false);
+    expect(routineNext(on, local(2026, 10, 2, 10, 1))).toBe(local(2026, 10, 3, 8));
+    expect(toggleRoutine(on, true, 5)).toBe(on);
+    expect(toggleRoutine(on, false, 5)).toMatchObject({ enabled: false, enabledAt: local(2026, 10, 2, 10) });
+  });
+  it("enabledAt przechodzi przez parseRoutines; nowe zadanie jest poprawne po wypełnieniu", () => {
+    const r = { ...newRoutine("r2", 7), name: "a", prompt: "b" };
+    expect(parseRoutines({ routines: [r] })).toEqual({ routines: [r], errors: [] });
+    expect(freeRoutineId([r, { ...r, id: "r1" }])).toBe("r3");
+    expect(freeRoutineId([])).toBe("r1");
+  });
+});
+
+describe("runWhen", () => {
+  it("dziś, jutro, wczoraj, dalej z datą", () => {
+    const now = local(2026, 10, 2, 13);
+    expect(runWhen(local(2026, 10, 2, 8, 5), now)).toBe("dziś 08:05");
+    expect(runWhen(local(2026, 10, 3, 8), now)).toBe("jutro 08:00");
+    expect(runWhen(local(2026, 10, 1, 23, 59), now)).toBe("wczoraj 23:59");
+    expect(runWhen(local(2026, 10, 5, 8), now)).toBe("pn 5 paź 08:00");
+  });
+});
+
+describe("runNotice", () => {
+  const run = (patch: Partial<BotChat>, text = "", error?: string): BotChat => ({
+    ...newBotChat("c", "rusty", 1, { provider: "claude", model: "haiku" }, "r1"),
+    title: "Poranne newsy",
+    messages: [
+      { id: "u", role: "user", text: "x", at: 1 },
+      { id: "a", role: "assistant", text, at: 2, ...(error ? { error } : {}) },
+    ],
+    ...patch,
+  });
+  it("pierwsze zdanie wyniku bez markdownu", () => {
+    expect(runNotice("Rusty", run({ state: "done" }, "## Raport\n\n**Spokojna** doba: dwa wydania [tokio](https://x). Reszta później."))).toEqual({
+      title: "Rusty: Poranne newsy",
+      body: "Raport Spokojna doba: dwa wydania tokio.",
+    });
+    expect(runNotice("Rusty", run({ state: "done" }, "- pierwszy punkt\n- drugi"))?.body).toBe("pierwszy punkt drugi");
+  });
+  it("błąd, zgoda, w trakcie", () => {
+    expect(runNotice("Rusty", run({ state: "error" }, "", "limit"))?.body).toBe("Nie udało się: limit");
+    expect(runNotice("Rusty", run({ state: "waiting_approval" }))?.body).toBe("Czeka na twoją zgodę.");
+    expect(runNotice("Rusty", run({ state: "running" }))).toBeNull();
   });
 });
 

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { MessageSquarePlus, PanelLeft, Plug, Plus, Settings2, SlidersHorizontal, Wand2, X } from "lucide-react";
-import { backend } from "../backend";
+import { Clock, MessageSquarePlus, PanelLeft, Plug, Plus, Settings2, ShieldAlert, SlidersHorizontal, Wand2, X } from "lucide-react";
+import { backend, type BotChatKind } from "../backend";
 import {
   applyBotEvent,
   botGreeting,
@@ -14,6 +14,7 @@ import {
   type ApprovalRequest,
   type BotChat,
   type BotDef,
+  type RunInfo,
 } from "../bot";
 import {
   applyEvent,
@@ -50,6 +51,9 @@ import "./bot.css";
 const SELECTED_KEY = "aw-bot-selected";
 
 type Live = { chat: BotChat; msgId: string; stop: () => void; started: number };
+/** Rozmowa albo przebieg z harmonogramu na liście pod botem. */
+type Entry = ChatMeta & { kind: BotChatKind };
+const kindOf = (c: BotChat): BotChatKind => (c.routine ? "runs" : "chats");
 
 type Props = {
   mode: Mode;
@@ -60,9 +64,11 @@ type Props = {
   railOpen: boolean;
   onToggleRail(): void;
   onOpenAppearance(): void;
+  /** Kliknięte powiadomienie o przebiegu (`seq` – kolejne kliknięcie tego samego też działa). */
+  openRun?: { bot: string; chat: string; seq: number } | null;
 };
 
-export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail, onOpenAppearance }: Props) {
+export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail, onOpenAppearance, openRun }: Props) {
   const { providers, offline, errors, setErrors, discovered, reload } = useProviders();
   const [bots, setBots] = useState<BotDef[]>([]);
   const [selected, setSelected] = useState<string | null>(() => {
@@ -72,7 +78,9 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
       return null;
     }
   });
-  const [list, setList] = useState<ChatMeta[]>([]);
+  const [list, setList] = useState<Entry[]>([]);
+  // Przebiegi harmonogramu w toku (proces główny): kropka przy bocie i na liście.
+  const [runs, setRuns] = useState<RunInfo[]>([]);
   const [chat, setChat] = useState<BotChat | null>(null);
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [providersOpen, setProvidersOpen] = useState(false);
@@ -105,10 +113,20 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
   useEffect(() => {
     loadBots();
     void backend.botApprovals().then(setApprovals).catch(() => undefined);
+    void backend.botRuns().then(setRuns).catch(() => undefined);
     return backend.onBotApproval((e) =>
       setApprovals((prev) => (e.type === "request" ? [...prev, e.req] : prev.filter((a) => a.id !== e.id))),
     );
   }, [setErrors]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadList = (id: string, alive: () => boolean = () => true) =>
+    void Promise.all([backend.botChatList(id, "chats"), backend.botChatList(id, "runs")])
+      .then(([chats, runList]) => {
+        if (!alive()) return;
+        const all: Entry[] = [...chats.map((c) => ({ ...c, kind: "chats" as const })), ...runList.map((c) => ({ ...c, kind: "runs" as const }))];
+        setList(all.sort((a, b) => b.updated - a.updated));
+      })
+      .catch(() => undefined);
 
   useEffect(() => {
     if (!bot) return;
@@ -118,14 +136,23 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
       // tryb prywatny
     }
     let on = true;
-    void backend
-      .botChatList(bot.id, "chats")
-      .then((l) => on && setList(l))
-      .catch(() => undefined);
+    loadList(bot.id, () => on);
     return () => {
       on = false;
     };
   }, [bot?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Przebieg z harmonogramu zmienił stan: lista z dysku, otwarty przebieg też (pisze go proces główny).
+  useEffect(
+    () =>
+      backend.onBotRun((r) => {
+        setRuns((prev) => [...prev.filter((x) => x.chat !== r.chat), ...(r.state === "done" || r.state === "error" ? [] : [r])]);
+        if (shownBot.current === r.bot) loadList(r.bot);
+        if (chatRef.current?.id === r.chat && !lives.current.has(r.chat))
+          void backend.botChatLoad(r.bot, "runs", r.chat).then((c) => c && chatRef.current?.id === c.id && setChat(c), () => undefined);
+      }),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   useEffect(() => {
     onTitle(bot ? (chat ? `${bot.name}: ${displayTitle(chat)}` : bot.name) : "Boty");
@@ -150,7 +177,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
   const shownBot = useRef<string | null>(null);
   shownBot.current = bot?.id ?? null;
   const save = (c: BotChat) => {
-    if (shownBot.current === c.bot) setList((prev) => sortChats([...prev.filter((x) => x.id !== c.id), chatMeta(c)]));
+    if (shownBot.current === c.bot) setList((prev) => sortChats([...prev.filter((x) => x.id !== c.id), { ...chatMeta(c), kind: kindOf(c) }]));
     void backend.botChatSave(c).catch((e: unknown) => setErrors((prev) => [...prev, `zapis rozmowy: ${String(e)}`]));
   };
 
@@ -288,22 +315,30 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
     setInject({ text, seq: Date.now() });
   };
 
-  const open = async (id: string) => {
-    if (!bot || chat?.id === id) return;
+  const open = async (id: string, kind: BotChatKind, botId = bot?.id) => {
+    if (!botId || chat?.id === id) return;
     const l = lives.current.get(id);
     if (l) return setChat(l.chat);
-    const c = await backend.botChatLoad(bot.id, "chats", id).catch(() => null);
+    const c = await backend.botChatLoad(botId, kind, id).catch(() => null);
     if (!c) return setErrors((prev) => [...prev, "nie udało się otworzyć rozmowy"]);
     setChat(c);
     stick.current = true;
   };
+
+  // Kliknięte powiadomienie: bot i jego przebieg (karta zgody na dole wątku, przewinięta do niej).
+  useEffect(() => {
+    if (!openRun) return;
+    setCard(null);
+    pickBot(openRun.bot);
+    void open(openRun.chat, "runs", openRun.bot);
+  }, [openRun?.seq]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const newConversation = () => {
     setChat(null);
     setInject({ text: "", seq: Date.now() });
   };
 
-  const remove = (id: string) => {
+  const remove = (id: string, kind: BotChatKind) => {
     if (!bot) return;
     const r = confirmClick(armRef.current, `b:${id}`, Date.now());
     armRef.current = r.arm;
@@ -312,7 +347,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
     lives.current.get(id)?.stop();
     if (chat?.id === id) setChat(null);
     setList((prev) => prev.filter((c) => c.id !== id));
-    void backend.botChatDelete(bot.id, "chats", id).catch(() => undefined);
+    void backend.botChatDelete(bot.id, kind, id).catch(() => undefined);
   };
 
   const addBot = () => {
@@ -332,7 +367,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
     void backend.botApprove(id, d).catch((e: unknown) => setErrors((prev) => [...prev, `zgoda: ${String(e)}`]));
   };
 
-  const working = (id: string) => [...lives.current.values()].some((l) => l.chat.bot === id);
+  const working = (id: string) => [...lives.current.values()].some((l) => l.chat.bot === id) || runs.some((r) => r.bot === id && r.state === "running");
   const waiting = (id: string) => approvals.some((a) => a.bot === id);
 
   const renderBody: RenderBody = (m, isLive) => {
@@ -411,25 +446,35 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
                     <MessageSquarePlus aria-hidden />
                     <span>Nowa rozmowa</span>
                   </button>
-                  {list.map((c) => (
-                    <div key={c.id} className={`chat-item${c.id === chat?.id ? " is-active" : ""}${lives.current.has(c.id) ? " is-live" : ""}`} onClick={() => void open(c.id)}>
+                  {list.map((c) => {
+                    const run = runs.find((r) => r.chat === c.id);
+                    const waitingRun = run?.state === "waiting_approval";
+                    return (
+                    <div
+                      key={c.id}
+                      className={`chat-item${c.id === chat?.id ? " is-active" : ""}${lives.current.has(c.id) || run ? " is-live" : ""}${c.kind === "runs" ? " is-run" : ""}`}
+                      onClick={() => void open(c.id, c.kind)}
+                    >
+                      {c.kind === "runs" &&
+                        (waitingRun ? <ShieldAlert className="bot-run-icon is-approval" aria-label="czeka na zgodę" /> : <Clock className="bot-run-icon" aria-label="z harmonogramu" />)}
                       <span className="chat-item-title" title={displayTitle(c)}>
                         {displayTitle(c)}
                       </span>
-                      <IconButton
+                      {!run && <IconButton
                         icon={X}
                         label={`Usuń rozmowę ${displayTitle(c)}`}
                         className={`proj-close${armedId === c.id ? " is-confirm" : ""}`}
                         title={armedId === c.id ? "Kliknij ponownie, aby usunąć" : "Usuń rozmowę"}
                         onClick={(e) => {
                           e.stopPropagation();
-                          remove(c.id);
+                          remove(c.id, c.kind);
                         }}
                       >
                         {armedId === c.id ? "Na pewno?" : undefined}
-                      </IconButton>
+                      </IconButton>}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -511,6 +556,10 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
           offline={offline}
           tab={card}
           onSaved={(b) => setBots((prev) => prev.map((x) => (x.id === b.id ? b : x)))}
+          onOpenRun={(id) => {
+            setCard(null);
+            void open(id, "runs");
+          }}
           onDeleted={(id) => {
             for (const l of lives.current.values()) if (l.chat.bot === id) l.stop();
             setCard(null);

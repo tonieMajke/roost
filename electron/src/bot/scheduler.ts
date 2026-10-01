@@ -14,8 +14,11 @@ import {
   runModel,
   type BotChat,
   type Routine,
+  type RunInfo,
   type RunState,
 } from "../../../src/bot";
+
+export type { RunInfo };
 import { applyEvent, extractSources, modelKey, type ChatEvent, type ChatRequest, type Message, type ProviderDef } from "../../../src/chat";
 import type { ApprovalChange } from "./approvals";
 import type { BotService } from "./service";
@@ -29,7 +32,6 @@ export const RUN_PREFIX = "run:";
 const RECOVER_LAST = 20;
 export const INTERRUPTED = "Przerwane: aplikacja została zamknięta w trakcie przebiegu.";
 
-export type RunInfo = { bot: string; routine: string; chat: string; state: RunState; started: number };
 
 export type SchedulerDeps = {
   store: BotStore;
@@ -44,7 +46,7 @@ export type SchedulerDeps = {
   parallel?: number;
 };
 
-type Job = { bot: string; routine: string };
+type Job = { bot: string; routine: string; /** „Uruchom teraz”: także wyłączone */ manual?: boolean };
 type Active = { info: RunInfo; reqId: string; chat: BotChat; waiting: Set<string> };
 
 const keyOf = (j: Job) => `${j.bot}/${j.routine}`;
@@ -106,6 +108,17 @@ export class Scheduler {
         if (routineDue(last ? { ...r, lastRun: last } : r, now)) this.queue.push({ bot: bot.id, routine: r.id });
       }
     }
+    this.pump();
+  }
+
+  /** „Uruchom teraz” z karty bota: przed terminem, także wyłączone zadanie. Kolejka jak zwykle. */
+  runNow(bot: string, routine: string): void {
+    if (this.stopped) throw new Error("harmonogram zatrzymany");
+    const key = keyOf({ bot, routine });
+    if (this.active.has(key)) throw new Error("to zadanie właśnie pracuje");
+    if (this.queue.some((j) => keyOf(j) === key)) throw new Error("to zadanie czeka już w kolejce");
+    if (!this.routinesOf(bot).some((r) => r.id === routine)) throw new Error(`nie ma zadania „${routine}”`);
+    this.queue.push({ bot, routine, manual: true });
     this.pump();
   }
 
@@ -174,7 +187,7 @@ export class Scheduler {
     const key = keyOf(job);
     const bot = store.load(job.bot);
     const routine = this.routinesOf(job.bot).find((r) => r.id === job.routine);
-    if (!bot || !routine?.enabled) return;
+    if (!bot || !routine || (!routine.enabled && !job.manual)) return;
     const now = this.now();
     this.started.set(key, now);
     this.markLastRun(bot.id, routine.id, now);

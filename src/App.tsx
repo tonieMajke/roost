@@ -424,6 +424,16 @@ export function App() {
     if (mode === "bot") setBotMounted(true);
   }, [mode]);
   const setMode = (m: Mode) => dispatch({ type: "setUi", patch: { mode: m } });
+  // Kliknięte powiadomienie o przebiegu bota: zakładka Bot z tym przebiegiem.
+  const [openRun, setOpenRun] = useState<{ bot: string; chat: string; seq: number } | null>(null);
+  useEffect(
+    () =>
+      backend.onBotOpenRun((r) => {
+        setMode("bot");
+        setOpenRun({ ...r, seq: Date.now() });
+      }),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const windowTitle =
     mode === "chat"
       ? `${chatTitle || "Czat"} — Agents`
@@ -857,6 +867,7 @@ export function App() {
           mode={mode}
           onMode={setMode}
           active={mode === "bot"}
+          openRun={openRun}
           onTitle={setBotTitle}
           railOpen={ws.ui.rail === "open"}
           onToggleRail={() => dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } })}

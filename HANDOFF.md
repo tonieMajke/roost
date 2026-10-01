@@ -112,6 +112,16 @@ Użytkownik zbiera więcej zmian i zleci wdrożenie wszystkich naraz innemu agen
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 10: harmonogram w zakładce Bot – 2026-10-01 (Claude, konta)
+
+- Karta bota, zakładka **Harmonogram** (`src/bot/Routines.tsx`): zadanie = przełącznik, nazwa, `scheduleLabel`, „następne: dziś/jutro/pn 5 paź 08:00” (`runWhen`, `routineNext`), ostatni przebieg z pierwszym zdaniem wyniku (z 30 najnowszych plików `runs/`; klik zamyka kartę i otwiera przebieg), „pracuje…” / „czeka na twoją zgodę” z `bot_run`. „Uruchom teraz” (`Scheduler.runNow` – przed terminem i wyłączone, kolejka jak zwykle; drugi raz w trakcie = błąd), edycja: nazwa, polecenie, „Codziennie o…” (godzina + dni, żaden/wszystkie = codziennie) albo „Co N minut” (≥ 5), zgody z góry: pisanie w `work/` i prefiksy poleceń. Zapis od razu.
+- Włączenie zadania zapisuje `Routine.enabledAt`; termin liczy się od niego, gdy późniejszy niż ostatni przebieg (włączone o 10:00 z terminem 8:00 rusza jutro). `BotStore.routinesSave` bierze późniejszy `lastRun` z dysku i z zapisu – karta otwarta przed przebiegiem nie cofnie terminu.
+- Lista rozmów bota: rozmowy i przebiegi razem po dacie, przebieg z ikoną zegara (tarcza z wykrzyknikiem przy „czeka na zgodę”), kropka „pracuje” przy bocie także dla przebiegu; przebiegu w toku nie da się usunąć. Otwarty przebieg odświeża się z dysku po każdym `bot_run`.
+- Powiadomienia (`main.ts` → `runNotify`, `runNotice` w `src/bot.ts`): po `done`/`error` tylko gdy okno nie ma fokusu (pierwsze zdanie wyniku bez markdownu albo „Nie udało się: …”), przy `waiting_approval` zawsze. `notify-send -A default=Otwórz` – kliknięcie przywraca okno i wysyła `bot_open_run`; `App.tsx` przełącza na Bot, `BotView` wybiera bota i otwiera przebieg (karta zgody na dole wątku). IPC/preload: `bot_runs`, `bot_run_now`, `bot_run`, `bot_open_run`. Mock: „Uruchom teraz” robi przebieg w 2,5 s.
+- Zrzuty (Electron offscreen, mock) w motywach D i Kreślarnia: lista z przebiegami, harmonogram, edycja z dniami, „pracuje…”, po przebiegu, otwarty przebieg. 0 błędów konsoli.
+- Sprawdzenia: `pnpm typecheck`, `pnpm test` (59 plików, 644 testy + 9 pominiętych), `electron` typecheck + build – przechodzą.
+- Niesprawdzone: prawdziwe powiadomienie i kliknięcie w nie na KDE (`-A` wymaga demona z akcjami), przebieg czekający na zgodę otwarty z powiadomienia (w mocku przebiegi nie proszą o zgodę) – etap 11.
+
 ## M5 Etap 9: harmonogram – 2026-10-01 (Claude zamiast lokalnego modelu, za zgodą użytkownika; konta)
 
 - `electron/src/bot/scheduler.ts` (`Scheduler`): zegar co 30 s (`TICK_MS`) + tyknięcie po `powerMonitor` „resume”; każde tyknięcie czyta `routines.json` wszystkich botów i porównuje czas ścienny (`routineDue`/`routineNext` w `src/bot.ts` – od `lastRun`, bez niego od `created`; `lastRun` z przyszłości liczy się jak teraz). Zaległe terminy = jeden przebieg, bo `lastRun` zapisuje się w `routines.json` przy starcie przebiegu (i w pamięci, gdy pliku nie da się zapisać).

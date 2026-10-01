@@ -171,6 +171,24 @@ describe("Scheduler", () => {
     });
   });
 
+  it("Uruchom teraz: przed terminem i wyłączone; drugi raz w trakcie = błąd; czeka na wolne miejsce", () => {
+    addBot("rusty", [routine({ enabled: false }), routine({ id: "wieczor" })]);
+    scheduler.start();
+    expect(sent).toHaveLength(0);
+    scheduler.runNow("rusty", "rano");
+    expect(sent.map((s) => s.routine?.id)).toEqual(["rano"]);
+    expect(() => scheduler.runNow("rusty", "rano")).toThrow("pracuje");
+    expect(() => scheduler.runNow("rusty", "nie-ma")).toThrow("nie ma zadania");
+    expect(routinesOf("rusty")[0].enabled).toBe(false);
+    addBot("b", [routine()]);
+    scheduler.runNow("b", "rano");
+    scheduler.runNow("rusty", "wieczor"); // trzeci: kolejka
+    expect(() => scheduler.runNow("rusty", "wieczor")).toThrow("kolejce");
+    expect(sent).toHaveLength(2);
+    sent[0].end();
+    expect(sent.map((s) => s.routine?.id)).toEqual(["rano", "rano", "wieczor"]);
+  });
+
   it("wyłączone zadanie i zepsuty routines.json pomijane; brak dostawcy = przebieg z błędem bez wywołania", () => {
     addBot("off", [routine({ enabled: false, lastRun: 0 })]);
     addBot("lost", [routine({ lastRun: local(2026, 10, 1, 8, 0) })], { provider: "nie-ma", model: "x" });

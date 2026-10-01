@@ -4,3 +4,7 @@ import { notifyArgs } from "./notify";
 it("argumenty mają nazwę aplikacji przed tytułem i treścią", () => {
   expect(notifyArgs("Agents: Claude", "skończył pracę w projekt")).toEqual(["-a", "Agents", "Agents: Claude", "skończył pracę w projekt"]);
 });
+
+it("z kliknięciem: akcja `default` przed tytułem", () => {
+  expect(notifyArgs("Rusty: Newsy", "Spokojna doba.", true)).toEqual(["-a", "Agents", "-A", "default=Otwórz", "Rusty: Newsy", "Spokojna doba."]);
+});

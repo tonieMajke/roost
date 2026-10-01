@@ -48,6 +48,10 @@ ipcRenderer.on("bot_event", (_e, reqId: string, ev: { type: string }) => {
 });
 const approvalListeners = new Set<(e: unknown) => void>();
 ipcRenderer.on("bot_approval", (_e, ev: unknown) => approvalListeners.forEach((cb) => cb(ev)));
+const runListeners = new Set<(e: unknown) => void>();
+ipcRenderer.on("bot_run", (_e, ev: unknown) => runListeners.forEach((cb) => cb(ev)));
+const openRunListeners = new Set<(e: unknown) => void>();
+ipcRenderer.on("bot_open_run", (_e, ev: unknown) => openRunListeners.forEach((cb) => cb(ev)));
 
 const resizedListeners = new Set<() => void>();
 ipcRenderer.on("win_resized", () => resizedListeners.forEach((cb) => cb()));
@@ -77,6 +81,14 @@ contextBridge.exposeInMainWorld("agentsElectron", {
   onBotApproval(cb: (e: unknown) => void) {
     approvalListeners.add(cb);
     return () => void approvalListeners.delete(cb);
+  },
+  onBotRun(cb: (e: unknown) => void) {
+    runListeners.add(cb);
+    return () => void runListeners.delete(cb);
+  },
+  onBotOpenRun(cb: (e: unknown) => void) {
+    openRunListeners.add(cb);
+    return () => void openRunListeners.delete(cb);
   },
   async spawnPty(spec: unknown, onData: Sinks["data"], onExit: Sinks["exit"]) {
     const id: number = await ipcRenderer.invoke("pty_spawn", spec);

@@ -17,12 +17,14 @@ import { Dialog } from "../Dialog";
 import { ModelMenu } from "../chat/Composer";
 import { Markdown } from "../chat/Markdown";
 import { Avatar, forgetAvatar } from "./Avatar";
+import { Routines } from "./Routines";
 
-export type CardTab = "persona" | "memory" | "skills" | "settings";
+export type CardTab = "persona" | "memory" | "skills" | "routines" | "settings";
 const TABS: { id: CardTab; label: string }[] = [
   { id: "persona", label: "Osobowość" },
   { id: "memory", label: "Pamięć" },
   { id: "skills", label: "Skille" },
+  { id: "routines", label: "Harmonogram" },
   { id: "settings", label: "Ustawienia" },
 ];
 
@@ -55,6 +57,8 @@ type Props = {
   onSaved(bot: BotDef): void;
   onDeleted(id: string): void;
   onProviders(): void;
+  /** Przebieg z zakładki Harmonogram: karta się zamyka, przebieg otwiera w rozmowie. */
+  onOpenRun(chat: string): void;
   onClose(): void;
 };
 
@@ -411,9 +415,9 @@ function Settings({
   );
 }
 
-/** Karta bota: osobowość, pamięć, skille i ustawienia. Osobowość i ustawienia zapisuje „Zapisz”,
- *  pamięć i skille zapisują się od razu (osobne pliki). */
-export function BotCard({ bot, providers, offline, tab: initial, onSaved, onDeleted, onProviders, onClose }: Props) {
+/** Karta bota: osobowość, pamięć, skille, harmonogram i ustawienia. Osobowość i ustawienia zapisuje
+ *  „Zapisz”, pamięć, skille i harmonogram zapisują się od razu (osobne pliki). */
+export function BotCard({ bot, providers, offline, tab: initial, onSaved, onDeleted, onProviders, onOpenRun, onClose }: Props) {
   const [tab, setTab] = useState<CardTab>(initial);
   const [draft, setDraft] = useState<BotDef>(bot);
   const [error, setError] = useState<string | null>(null);
@@ -461,6 +465,7 @@ export function BotCard({ bot, providers, offline, tab: initial, onSaved, onDele
             {tab === "persona" && <Persona draft={draft} set={set} onError={setError} />}
             {tab === "memory" && <Memory bot={bot} onError={setError} />}
             {tab === "skills" && <Skills bot={bot} onError={setError} />}
+            {tab === "routines" && <Routines bot={bot} onError={setError} onOpenRun={onOpenRun} />}
             {tab === "settings" && (
               <Settings
                 draft={draft}

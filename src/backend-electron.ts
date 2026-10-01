@@ -7,7 +7,7 @@ import type { Handoff } from "./handoff";
 import { buildChatConfig, parseChat, type ChatEvent, type ChatMeta, type ChatRequest } from "./chat";
 import { parseSttConfig, sttConfigJson, sttKeyId } from "./stt";
 import { parseTtsConfig, parseVoiceConfig, ttsConfigJson, ttsKeyId, voiceConfigJson } from "./voice/voice";
-import { parseBotChat, parseRoutines, serializeBot, type ApprovalRequest, type BotDef } from "./bot";
+import { parseBotChat, parseRoutines, serializeBot, type ApprovalRequest, type BotDef, type RunInfo } from "./bot";
 
 /** Most wystawiony przez `electron/src/preload.ts`. */
 type ElectronBridge = {
@@ -19,6 +19,8 @@ type ElectronBridge = {
   chatSend(reqId: string, req: ChatRequest, onEvent: (e: ChatEvent) => void): void;
   botSend(reqId: string, chatJson: string, req: ChatRequest, onEvent: (e: ChatEvent) => void): void;
   onBotApproval(cb: (e: BotApprovalChange) => void): () => void;
+  onBotRun(cb: (r: RunInfo) => void): () => void;
+  onBotOpenRun(cb: (r: { bot: string; chat: string }) => void): () => void;
   /** Krawędzie, które proces główny umie przesunąć (Wayland: tylko te bez przesuwania okna). */
   edges: ResizeEdge[];
 };
@@ -211,5 +213,9 @@ export const electronBackend: Backend = {
   botApprovals: () => call<ApprovalRequest[]>("bot_approvals"),
   botApprove: (id, decision) => call<void>("bot_approve", id, decision).then(ignore),
   onBotApproval: (cb) => bridge().onBotApproval(cb),
+  botRuns: () => call<RunInfo[]>("bot_runs"),
+  onBotRun: (cb) => bridge().onBotRun(cb),
+  botRunNow: (id, routine) => call<void>("bot_run_now", id, routine).then(ignore),
+  onBotOpenRun: (cb) => bridge().onBotOpenRun(cb),
   window: electronWindow,
 };

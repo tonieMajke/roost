@@ -114,7 +114,7 @@ Nowe zależności dozwolone tylko w etapie, który je wymienia.
 - [x] Etap 7 (C) – karta bota: osobowość, pamięć, skille, ustawienia
 - [x] Etap 8 (C) – Kreator: bot z opisu
 - [x] Etap 9 (L) – harmonogram w procesie głównym
-- [ ] Etap 10 (C) – harmonogram w UI, przebiegi, powiadomienia
+- [x] Etap 10 (C) – harmonogram w UI, przebiegi, powiadomienia
 - [ ] Etap 11 (C + użytkownik) – sprawdzenie w oknie
 
 ---

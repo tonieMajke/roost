@@ -6,7 +6,7 @@ import type { ClaudeLimits } from "./limits";
 import type { Accounts } from "./accounts";
 import type { Handoff } from "./handoff";
 import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
-import type { ApprovalDecision, ApprovalRequest, BotChat, BotDef, Routine } from "./bot";
+import type { ApprovalDecision, ApprovalRequest, BotChat, BotDef, Routine, RunInfo } from "./bot";
 import type { SttConfig, SttProvider } from "./stt";
 import type { TtsConfig, TtsProvider, VoiceConfig } from "./voice/voice";
 
@@ -142,6 +142,13 @@ export interface Backend {
   botApprove(id: string, decision: ApprovalDecision): Promise<void>;
   /** Nowa prośba o zgodę albo rozstrzygnięta; zwraca wyrejestrowanie. */
   onBotApproval(cb: (e: BotApprovalChange) => void): () => void;
+  /** Przebiegi harmonogramu w toku (po przeładowaniu strony) i ich zmiany stanu. */
+  botRuns(): Promise<RunInfo[]>;
+  onBotRun(cb: (r: RunInfo) => void): () => void;
+  /** „Uruchom teraz” – także wyłączone zadanie; odrzuca, gdy już pracuje albo czeka w kolejce. */
+  botRunNow(id: string, routine: string): Promise<void>;
+  /** Kliknięte powiadomienie o przebiegu: pokaż go w zakładce Bot. */
+  onBotOpenRun(cb: (r: { bot: string; chat: string }) => void): () => void;
   /** Dyktowanie (mikrofon w panelu): silniki transkrypcji z `stt.json`. Błędy pliku w `errors`. */
   sttConfig(): Promise<{ config: SttConfig; errors: string[] }>;
   sttSaveConfig(config: SttConfig): Promise<void>;

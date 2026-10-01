@@ -22,9 +22,9 @@ import { BotStore, type ChatKind, type MemoryTarget } from "./bot/store";
 import { ApprovalBroker } from "./bot/approvals";
 import { ToolBridge } from "./bot/bridge";
 import { BotService } from "./bot/service";
-import { RUN_PREFIX, Scheduler } from "./bot/scheduler";
+import { RUN_PREFIX, Scheduler, type RunInfo } from "./bot/scheduler";
 import { ensureFreeToken, freetokenInstance } from "./chat/freetoken";
-import { isSkillName, parseBotChat, type ApprovalDecision } from "../../src/bot";
+import { isSkillName, parseBotChat, runNotice, type ApprovalDecision } from "../../src/bot";
 import { buildChatConfig, type ChatRequest, type ProviderDef } from "../../src/chat";
 
 // Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
@@ -75,7 +75,7 @@ const botService = new BotService({
 });
 
 // Harmonogram botów: działa przy otwartej aplikacji, przebiegi w `runs/`. Zmiana stanu idzie do okna
-// (`bot_run`; widok i powiadomienia w etapie 10).
+// (`bot_run`) i do powiadomienia.
 const scheduler = new Scheduler({
   store: bots,
   service: botService,
@@ -85,8 +85,27 @@ const scheduler = new Scheduler({
   },
   onRun: (r) => {
     if (win && !win.isDestroyed()) win.webContents.send("bot_run", r);
+    runNotify(r);
   },
 });
+
+/** Po przebiegu, gdy okno nie ma fokusu; prośba o zgodę zawsze (nikt inny jej nie rozstrzygnie).
+ *  Kliknięcie otwiera przebieg w zakładce Bot. */
+function runNotify(r: RunInfo) {
+  if (r.state === "running") return;
+  if (r.state !== "waiting_approval" && win && !win.isDestroyed() && win.isFocused()) return;
+  const bot = bots.load(r.bot);
+  const run = bot ? parseBotChat(bots.chats(r.bot, "runs").load(r.chat) ?? "") : null;
+  const n = bot && run ? runNotice(bot.name, run) : null;
+  if (!n) return;
+  notify(n.title, n.body, () => {
+    if (!win || win.isDestroyed()) return;
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+    win.webContents.send("bot_open_run", { bot: r.bot, chat: r.chat });
+  });
+}
 
 /** Każde wywołanie z `backend-electron.ts` to `invoke(name, ...args)`; błąd wraca jako odrzucenie. */
 function handle(name: string, fn: (...args: never[]) => unknown) {
@@ -190,6 +209,8 @@ handle("bot_chat_list", (id: string, kind: ChatKind) => bots.chats(id, kind).lis
 handle("bot_chat_load", (id: string, kind: ChatKind, chatId: string) => bots.chats(id, kind).load(chatId));
 handle("bot_chat_save", (json: string) => bots.chatSave(json));
 handle("bot_approvals", () => approvals.list());
+handle("bot_runs", () => scheduler.runs());
+handle("bot_run_now", (id: string, routine: string) => scheduler.runNow(id, routine));
 handle("bot_approve", (id: string, decision: ApprovalDecision) => approvals.decide(id, decision));
 // Import skilli z claude: tylko odczyt `~/.claude/skills`, kopia do folderu bota.
 const claudeSkills = () => path.join(app.getPath("home"), ".claude", "skills");

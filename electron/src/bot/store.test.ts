@@ -117,9 +117,18 @@ describe("BotStore: harmonogram i rozmowy", () => {
     expect(JSON.parse(store.routines("rust"))).toEqual({ routines: [] });
     const ok = JSON.stringify({ routines: [{ id: "r1", prompt: "Newsy", schedule: { kind: "daily", at: "08:00" } }] });
     store.routinesSave("rust", ok);
-    expect(store.routines("rust")).toBe(ok);
+    expect(JSON.parse(store.routines("rust"))).toEqual(JSON.parse(ok));
     expect(() => store.routinesSave("rust", JSON.stringify({ routines: [{ id: "r2", prompt: "x", schedule: { kind: "every", minutes: 1 } }] }))).toThrow("minutes");
-    expect(store.routines("rust")).toBe(ok);
+    expect(JSON.parse(store.routines("rust"))).toEqual(JSON.parse(ok));
+  });
+
+  it("routines: zapis z karty nie cofa lastRun zapisanego przez harmonogram", () => {
+    const r = (lastRun?: number) => ({ id: "r1", prompt: "Newsy", schedule: { kind: "daily", at: "08:00" }, ...(lastRun ? { lastRun } : {}) });
+    store.routinesSave("rust", JSON.stringify({ routines: [r(500)] }));
+    store.routinesSave("rust", JSON.stringify({ routines: [{ ...r(), name: "Rano" }, { ...r(), id: "r2" }] }));
+    expect(JSON.parse(store.routines("rust")).routines).toEqual([{ ...r(500), name: "Rano" }, { ...r(), id: "r2" }]);
+    store.routinesSave("rust", JSON.stringify({ routines: [r(900)] }));
+    expect(JSON.parse(store.routines("rust")).routines[0].lastRun).toBe(900);
   });
 
   it("rozmowa i przebieg trafiają do różnych katalogów", () => {

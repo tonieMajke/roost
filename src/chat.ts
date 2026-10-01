@@ -283,7 +283,7 @@ export function parseChat(text: string): Chat | null {
 
 export const chatMeta = (c: Chat): ChatMeta => ({ id: c.id, title: c.title, updated: c.updated });
 
-export const sortChats = (list: ChatMeta[]) => [...list].sort((a, b) => b.updated - a.updated);
+export const sortChats = <T extends ChatMeta>(list: T[]) => [...list].sort((a, b) => b.updated - a.updated);
 
 export type DayGroup = "Dziś" | "Wczoraj" | "Ostatnie 7 dni" | "Ostatnie 30 dni" | "Starsze";
 
