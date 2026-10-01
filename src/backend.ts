@@ -78,6 +78,8 @@ export interface Backend {
   chatLoad(id: string): Promise<Chat | null>;
   chatSave(chat: Chat): Promise<void>;
   chatDelete(id: string): Promise<void>;
+  /** Link z odpowiedzi w przeglądarce systemowej (tylko http/https). */
+  openExternal(url: string): Promise<void>;
   /** Odpowiedź modelu strumieniem; ostatnie zdarzenie to `done` albo `error`. Zwraca Stop. */
   chatSend(req: ChatRequest, onEvent: (e: ChatEvent) => void): () => void;
   /** Własny pasek tytułu; brak = podgląd w przeglądarce, bez okna. */

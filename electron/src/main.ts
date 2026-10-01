@@ -1,7 +1,7 @@
 //! Proces główny: okno z frontendem z `src/` i backend dla `src/backend-electron.ts` przez IPC.
 
 import path from "node:path";
-import { app, BrowserWindow, clipboard, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
 import * as config from "./config";
 import { sessionContext } from "./context";
 import { sessionHandoff } from "./handoff";
@@ -58,6 +58,11 @@ handle("claude_limits", () => claudeLimits(config.configDir()));
 handle("notify", (title: string, body: string) => notify(title, body));
 handle("copy_text", (text: string) => clipboard.writeText(text));
 handle("paste_text", () => clipboard.readText());
+// Linki z odpowiedzi modeli: tylko http(s), nic, co uruchomiłoby program albo plik.
+handle("open_external", (url: string) => {
+  if (!/^https?:\/\//i.test(url)) throw new Error("tylko adresy http(s)");
+  return shell.openExternal(url);
+});
 handle("chat_config", () => chatConfigLoad(config.configDir()));
 handle("chat_models", (p: ProviderDef) => chat.models(p));
 handle("chat_list", () => chats.list());
@@ -119,6 +124,11 @@ function createWindow() {
     },
   });
   win.setMenu(null);
+  // Link z odpowiedzi czatu nie otwiera nowego okna aplikacji: tylko przeglądarka systemowa.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
+    return { action: "deny" };
+  });
   // Przeładowana strona (Ctrl+R, przeładowanie Vite) nie posprzątała po sobie: bez tego jej agenci
   // żyliby niewidoczni obok kopii tych samych rozmów w nowej stronie.
   win.webContents.on("did-start-navigation", (details) => {

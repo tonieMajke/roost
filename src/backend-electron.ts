@@ -118,6 +118,7 @@ export const electronBackend: Backend = {
     const raw = await call<{ chat: string; pi: string | null }>("chat_config");
     return buildChatConfig(raw.chat, raw.pi);
   },
+  openExternal: (url) => call<void>("open_external", url),
   chatModels: (p) => call<string[]>("chat_models", p),
   chatList: () => call<ChatMeta[]>("chat_list"),
   async chatLoad(id) {

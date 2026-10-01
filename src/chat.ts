@@ -373,3 +373,35 @@ export function buildChatConfig(chatText: string, piText: string | null): ChatCo
   }
   return { providers: mergeProviders(parsed.providers, pi), errors: parsed.errors };
 }
+
+/** Przypisy `[1]` → linki markdown do źródeł (tytuł w `title`). Bloki kodu i istniejące
+ *  linki (`[1](…)`) bez zmian; numer spoza listy źródeł zostaje tekstem. */
+export function linkCitations(text: string, sources: Source[] | undefined): string {
+  if (!sources?.length) return text;
+  return text
+    .split(/(```[\s\S]*?(?:```|$))/)
+    .map((part, i) =>
+      i % 2 === 1
+        ? part
+        : part.replace(/\[(\d{1,2})\](?![(:])/g, (whole, n: string) => {
+            const s = sources[Number(n) - 1];
+            if (!s || !/^https?:\/\//.test(s.url)) return whole;
+            const title = s.title.replace(/["\\]/g, "");
+            return `[\\[${n}\\]](${s.url.replace(/[()\s]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`)} "${title}")`;
+          }),
+    )
+    .join("");
+}
+
+/** Czy dostawca umie „Szukaj w sieci” (CLI natywnie, HTTP przez pi – etap 7b). */
+export const supportsSearch = (p: ProviderDef | undefined) => p?.kind === "claude-cli" || p?.kind === "codex-cli";
+
+export const GROUP_LABELS: Record<ProviderGroup, string> = { sub: "Subskrypcje", api: "API", local: "Lokalne" };
+
+/** Powitanie pustego czatu według pory dnia. */
+export function greeting(hour: number): string {
+  if (hour >= 5 && hour < 12) return "Dzień dobry";
+  if (hour >= 12 && hour < 18) return "Miłego popołudnia";
+  if (hour >= 18 && hour < 23) return "Dobry wieczór";
+  return "Nocna zmiana?";
+}

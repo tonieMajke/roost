@@ -14,6 +14,7 @@ export type Command =
   | { type: "newProject" }
   | { type: "toggleRail" }
   | { type: "toggleDock" }
+  | { type: "toggleChat" } // M3: zakładka Code ↔ Czat
   | { type: "fontSize"; step: 1 | -1 | 0 }; // terminal font: bigger, smaller, default
 
 const ARROWS: Partial<Record<string, Dir>> = { arrowleft: "left", arrowright: "right", arrowup: "up", arrowdown: "down" };
@@ -65,6 +66,8 @@ export function commandFor(e: KeyLike): Command | null {
       return { type: "toggleRail" };
     case "d":
       return { type: "toggleDock" };
+    case "c":
+      return { type: "toggleChat" };
     case "=":
     case "+": // numpad plus
       return { type: "fontSize", step: 1 };

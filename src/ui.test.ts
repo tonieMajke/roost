@@ -42,6 +42,11 @@ describe("parseUi", () => {
     expect(parseUi({ fontSize2: 12, tone: "light" })).toEqual({ ui: DEFAULT_UI, errors: [] });
   });
 
+  it("mode: chat wczytuje się, zła wartość = code + błąd", () => {
+    expect(parseUi({ mode: "chat" }).ui.mode).toBe("chat");
+    expect(parseUi({ mode: "x" }).errors).toEqual(["ui.mode: `x` is not one of code, chat, using `code`"]);
+  });
+
   it("feed: project wczytuje się, zła wartość = all + błąd", () => {
     expect(parseUi({ feed: "project" }).ui.feed).toBe("project");
     expect(parseUi({ feed: "mine" })).toEqual({

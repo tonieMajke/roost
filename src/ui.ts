@@ -16,6 +16,7 @@ export type Ui = {
   rail: "open" | "closed"; // left rail: full width or 56 px of keys and dots
   feed: "all" | "project"; // dock „Na żywo”: every project or only the active one
   fontSize: number; // terminal font px, FONT_MIN..FONT_MAX (Ctrl+Alt+= / - / 0)
+  mode: "code" | "chat"; // zakładka: siatka terminali albo Czat (M3), Ctrl+Alt+C
 };
 
 export const FONT_MIN = 10;
@@ -34,10 +35,11 @@ export const DEFAULT_UI: Ui = {
   rail: "open",
   feed: "all",
   fontSize: 13,
+  mode: "code",
 };
 
 /** Keys with a fixed list of values (the „Wygląd” window); the rest have their own controls. */
-type ChoiceKey = Exclude<keyof Ui, "dock" | "fontSize" | "feed">;
+type ChoiceKey = Exclude<keyof Ui, "dock" | "fontSize" | "feed" | "mode">;
 
 /** Choice lists, in the table order of the plan (the „Wygląd” window renders them). */
 export const UI_CHOICES = {
@@ -156,6 +158,10 @@ export function parseUi(raw: unknown): { ui: Ui; errors: string[] } {
   if (r.feed !== undefined) {
     if (r.feed === "all" || r.feed === "project") ui.feed = r.feed;
     else errors.push(`ui.feed: \`${String(r.feed)}\` is not one of all, project, using \`${DEFAULT_UI.feed}\``);
+  }
+  if (r.mode !== undefined) {
+    if (r.mode === "code" || r.mode === "chat") ui.mode = r.mode;
+    else errors.push(`ui.mode: \`${String(r.mode)}\` is not one of code, chat, using \`${DEFAULT_UI.mode}\``);
   }
   if (r.dock !== undefined) {
     if (typeof r.dock === "boolean") ui.dock = r.dock;

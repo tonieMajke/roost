@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   applyEvent,
   buildChatConfig,
+  linkCitations,
+  greeting,
   chatTitle,
   cliPrompt,
   dayGroup,
@@ -230,4 +232,29 @@ describe("buildChatConfig", () => {
   it("zepsuty plik pi pomijany", () => {
     expect(buildChatConfig(JSON.stringify({ providers: DEFAULT_PROVIDERS }), "{").providers).toHaveLength(DEFAULT_PROVIDERS.length);
   });
+});
+
+describe("linkCitations", () => {
+  const src = [
+    { url: "https://a.pl/x", title: 'A "cytat"' },
+    { url: "https://b.pl/(y)", title: "B" },
+  ];
+  it("przypisy na linki, poza kodem i istniejącymi linkami", () => {
+    const t = linkCitations("Fakt [1] i [2], [3] nie ma. [1](https://x) zostaje.\n```\narr[1]\n```", src);
+    expect(t).toContain('[\\[1\\]](https://a.pl/x "A cytat")');
+    expect(t).toContain("[\\[2\\]](https://b.pl/%28y%29 \"B\")");
+    expect(t).toContain("[3] nie ma");
+    expect(t).toContain("[1](https://x) zostaje");
+    expect(t).toContain("arr[1]");
+  });
+  it("bez źródeł bez zmian", () => {
+    expect(linkCitations("a [1]", undefined)).toBe("a [1]");
+  });
+});
+
+it("greeting", () => {
+  expect(greeting(8)).toBe("Dzień dobry");
+  expect(greeting(14)).toBe("Miłego popołudnia");
+  expect(greeting(20)).toBe("Dobry wieczór");
+  expect(greeting(2)).toBe("Nocna zmiana?");
 });

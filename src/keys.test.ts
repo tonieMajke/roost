@@ -84,3 +84,8 @@ describe("commandFor (skróty etapu 8)", () => {
     expect(commandFor(k("Escape", { ctrlKey: true, altKey: true }))).toBeNull();
   });
 });
+
+it("Ctrl+Alt+C przełącza zakładkę Czat, Ctrl+Shift+C nadal kopiuje", () => {
+  expect(commandFor(ca("c"))).toEqual({ type: "toggleChat" });
+  expect(commandFor(k("C", { ctrlKey: true, shiftKey: true }))).toEqual({ type: "copy" });
+});

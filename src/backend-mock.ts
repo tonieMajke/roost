@@ -274,6 +274,9 @@ export const mockBackend: Backend = {
     if (p.kind === "openai") return ["Qwen-3.8-27B (podgląd)"];
     return p.kind === "codex-cli" ? withDiscovered(p, []).models.map((m) => m.id) : [];
   },
+  async openExternal(url) {
+    globalThis.open?.(url, "_blank", "noopener");
+  },
   async chatList(): Promise<ChatMeta[]> {
     return sortChats(Object.values(mockChats()).map(chatMeta));
   },

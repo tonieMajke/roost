@@ -24,6 +24,8 @@ import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
+import { ChatView } from "./chat/ChatView";
+import type { Mode } from "./chat/ModeTabs";
 import { CONTEXT_POLL_MS, cleanTermTitle, contextKind, contextTargets, paneTitles, sessionTitles, type SessionContext } from "./context";
 import { FALLBACK_MAX_CHARS, SUMMARY_SYSTEM, digestText, handoffText, summaryText } from "./handoff";
 import { FINISHED_TEXT, STARTED_TEXT, exitedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
@@ -356,7 +358,16 @@ export function App() {
   );
   // Okno (pasek zadań, przełącznik okien) nosi temat panelu w fokusie, jak zwykła konsola z claude.
   const focusedTitle = focusedId ? titles[focusedId] : undefined;
-  const windowTitle = focusedTitle ? `${focusedTitle} — Agents` : "Agents";
+  const [chatTitle, setChatTitle] = useState("");
+  // Czat montowany przy pierwszym wejściu i potem zostaje (trwająca odpowiedź płynie w tle).
+  const [chatMounted, setChatMounted] = useState(false);
+  const mode = ws.ui.mode;
+  useEffect(() => {
+    if (mode === "chat") setChatMounted(true);
+  }, [mode]);
+  const setMode = (m: Mode) => dispatch({ type: "setUi", patch: { mode: m } });
+  const windowTitle =
+    mode === "chat" ? `${chatTitle || "Czat"} — Agents` : focusedTitle ? `${focusedTitle} — Agents` : "Agents";
   useEffect(() => {
     document.title = windowTitle; // podgląd w przeglądarce; w oknie tytuł ustawia TitleBar
   }, [windowTitle]);
@@ -671,6 +682,9 @@ export function App() {
       case "toggleDock":
         dispatch({ type: "setUi", patch: { dock: !ws.ui.dock } });
         break;
+      case "toggleChat":
+        setMode(mode === "chat" ? "code" : "chat");
+        break;
       case "fontSize": {
         const size = stepFontSize(ws.ui.fontSize, cmd.step);
         dispatch({ type: "setUi", patch: { fontSize: size } });
@@ -714,6 +728,8 @@ export function App() {
   onKey.current = (e: KeyboardEvent) => {
     const cmd = commandFor(e);
     if (cmd === null) return;
+    // W Czacie skróty siatki nie działają: Ctrl+Shift+C/V zostają dla pola tekstowego.
+    if (mode === "chat" && cmd.type !== "toggleChat" && cmd.type !== "toggleRail") return;
     e.preventDefault();
     runCommand(cmd);
   };
@@ -727,8 +743,20 @@ export function App() {
     <div className={`shell${winMax ? " is-max" : ""}`}>
     {backend.window && <TitleBar win={backend.window} title={windowTitle} onMaximized={setWinMax} />}
     {backend.window && !winMax && <ResizeEdges win={backend.window} />}
-    <div className={`app ${uiClasses(ws.ui)}`}>
+    <div className={`app ${uiClasses(ws.ui)} mode-${mode}`}>
+      {chatMounted && (
+        <ChatView
+          mode={mode}
+          onMode={setMode}
+          onTitle={setChatTitle}
+          railOpen={ws.ui.rail === "open"}
+          onToggleRail={() => dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } })}
+          onOpenAppearance={() => setAppearance(true)}
+        />
+      )}
       <Rail
+        mode={mode}
+        onMode={setMode}
         ws={ws}
         agents={agents}
         state={ephemeral}

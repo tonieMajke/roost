@@ -5,8 +5,11 @@ import { IconButton } from "./IconButton";
 import { FolderPlus, PanelLeft, SlidersHorizontal, X } from "lucide-react";
 import { paneStatus, projectState, type PaneState } from "./activity";
 import type { Workspace } from "./workspace";
+import { ModeTabs, type Mode } from "./chat/ModeTabs";
 
 type Props = {
+  mode: Mode;
+  onMode(m: Mode): void;
   ws: Workspace;
   agents: AgentDef[];
   state: Record<string, PaneState>;
@@ -30,6 +33,8 @@ const projDotTitle = (cls: string) =>
 
 /** Left rail (wzór D): marka, projekty z ich panelami, stopka z akcjami. */
 export function Rail({
+  mode,
+  onMode,
   ws,
   agents,
   state,
@@ -67,10 +72,7 @@ export function Rail({
   return (
     <aside className="rail">
       <header className="rail-head">
-        <span className="brand">
-          <span className="brand-mark" />
-          Agents
-        </span>
+        <ModeTabs mode={mode} onMode={onMode} />
         <IconButton
           icon={PanelLeft}
           label={ws.ui.rail === "closed" ? "Rozwiń szynę" : "Zwiń szynę"}
