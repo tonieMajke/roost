@@ -1,9 +1,11 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { Terminal as XTerm, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { SearchAddon } from "@xterm/addon-search";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { backend, type ExitInfo, type PtyHandle } from "./backend";
 import { commandFor } from "./keys";
+import { searchAction } from "./term-search";
 import { ResizeThrottle } from "./resize-throttle";
 import { WriteQueue, peakQueueBytes } from "./write-queue";
 import { DEFAULT_TERM_FONT } from "./themes";
@@ -85,6 +87,14 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
   const fitRef = useRef<FitAddon | undefined>(undefined);
   // Przewinięty w górę: pokazuje przycisk „na dół” (scrollback do 3000 wierszy to długa droga).
   const [scrolledUp, setScrolledUp] = useState(false);
+  // Pole szukania (Ctrl+F). Ref obok stanu: handler klawiszy xtermu żyje w efekcie z pustymi zależnościami.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [noMatch, setNoMatch] = useState(false);
+  const searchOpenRef = useRef(false);
+  searchOpenRef.current = searchOpen;
+  const searchRef = useRef<SearchAddon | undefined>(undefined);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const query = useRef("");
 
   useImperativeHandle(
     apiRef,
@@ -126,7 +136,21 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
     x.loadAddon(new Unicode11Addon());
     x.unicode.activeVersion = "11";
     // Nasze skróty obsługuje App na oknie; xterm nie może ich połknąć (ani wysłać do procesu).
-    x.attachCustomKeyEventHandler((e) => commandFor(e) === null);
+    const search = new SearchAddon();
+    searchRef.current = search;
+    x.loadAddon(search);
+    // Ctrl+F nie może trafić do PTY; samo pole jest poza xtermem, więc reszta skrótów działa w nim.
+    x.attachCustomKeyEventHandler((e) => {
+      if (commandFor(e) !== null) return false;
+      const act = searchAction(e, searchOpenRef.current);
+      // Enter/Esc zostają dla programu, nawet gdy pole jest otwarte, a fokus wrócił do terminala.
+      if (act === null || act === "close" || (act !== "open" && e.key.toLowerCase() !== "g")) return true;
+      if (e.type === "keydown") {
+        if (act === "open") openSearch();
+        else runSearch(act);
+      }
+      return false;
+    });
 
     let pty: PtyHandle | undefined;
     let disposed = false;
@@ -211,6 +235,7 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
       x.dispose();
       term.current = undefined;
       fitRef.current = undefined;
+      searchRef.current = undefined;
     };
     // The process depends on the React key only, that is the whole design.
   }, []);
@@ -252,8 +277,66 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
     if (focused) term.current?.focus();
   }, [focused]);
 
+  function openSearch() {
+    setSearchOpen(true);
+    // przy pierwszym otwarciu pole powstaje po renderze (autoFocus); przy kolejnych tylko zaznaczamy tekst
+    searchInput.current?.focus();
+    searchInput.current?.select();
+  }
+
+  function runSearch(dir: "next" | "prev", incremental = false) {
+    const q = query.current;
+    const s = searchRef.current;
+    if (!s) return;
+    if (!q) {
+      s.clearDecorations();
+      setNoMatch(false);
+      return;
+    }
+    const ok = dir === "next" ? s.findNext(q, { incremental }) : s.findPrevious(q);
+    setNoMatch(!ok);
+  }
+
+  function closeSearch() {
+    searchRef.current?.clearDecorations();
+    setSearchOpen(false);
+    setNoMatch(false);
+    term.current?.focus();
+  }
+
   return (
     <div className="terminal-wrap">
+      {searchOpen && (
+        <div className={`term-search${noMatch ? " no-match" : ""}`} role="search">
+          <input
+            ref={searchInput}
+            autoFocus
+            type="text"
+            defaultValue={query.current}
+            spellCheck={false}
+            placeholder="Szukaj w terminalu"
+            aria-label="Szukaj w terminalu"
+            aria-invalid={noMatch}
+            onChange={(e) => {
+              query.current = e.target.value;
+              runSearch("next", true);
+            }}
+            onKeyDown={(e) => {
+              const act = searchAction(e.nativeEvent, true);
+              if (act === null) return;
+              e.preventDefault();
+              e.stopPropagation();
+              if (act === "close") closeSearch();
+              else if (act === "open") searchInput.current?.select();
+              else runSearch(act);
+            }}
+          />
+          <span className="term-search-state" aria-live="polite">{noMatch ? "Brak trafień" : ""}</span>
+          <button type="button" title="Poprzednie (Ctrl+Shift+G)" aria-label="Poprzednie trafienie" onClick={() => runSearch("prev")}>↑</button>
+          <button type="button" title="Następne (Ctrl+G)" aria-label="Następne trafienie" onClick={() => runSearch("next")}>↓</button>
+          <button type="button" title="Zamknij (Esc)" aria-label="Zamknij szukanie" onClick={closeSearch}>✕</button>
+        </div>
+      )}
       <div className="terminal" ref={host} />
       {scrolledUp && (
         <button

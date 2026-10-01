@@ -301,6 +301,25 @@ kbd {
   border: 1px solid var(--line-strong); border-radius: var(--r-ctl);
   background: var(--badge-bg); color: var(--muted); cursor: pointer;
 }
+/* pole szukania w terminalu (Ctrl+F): tylko tokeny motywu */
+.term-search {
+  position: absolute; top: 8px; right: 18px; z-index: 6; display: flex; align-items: center; gap: 4px;
+  padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--r-ctl);
+  background: var(--badge-bg); box-shadow: var(--focus-shadow);
+}
+.term-search input {
+  width: 200px; padding: 4px 8px; border: 1px solid var(--line); border-radius: var(--r-ctl);
+  background: var(--term-bg); color: var(--term-text); font: 12px var(--mono); outline: none;
+}
+.term-search input:focus { border-color: var(--accent); }
+.term-search.no-match input { border-color: var(--warn-text); }
+.term-search-state { font-size: 11px; color: var(--warn-text); white-space: nowrap; }
+.term-search-state:empty { display: none; }
+.term-search button {
+  width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 0;
+  border-radius: var(--r-ctl); background: none; color: var(--muted); cursor: pointer; font-size: 13px;
+}
+.term-search button:hover { color: var(--accent); background: var(--hover); }
 .to-bottom:hover { color: var(--accent); border-color: var(--accent); }
 /* xterm.css daje viewportowi #000; wiersze nie wypełniają panelu co do piksela (reszta z dzielenia
    przez wysokość wiersza), więc pod ostatnim wierszem był czarny pasek */
