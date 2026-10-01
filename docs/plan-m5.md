@@ -104,7 +104,7 @@ Nowe zależności dozwolone tylko w etapie, który je wymienia.
 
 ## Postęp
 
-- [ ] Etap 1 (L) – model bota bez UI
+- [x] Etap 1 (L) – model bota bez UI
 - [ ] Etap 2 (L) – magazyn botów, pamięć i skille na dysku
 - [ ] Etap 3 (C) – rejestr narzędzi i potwierdzenia
 - [ ] Etap 4 (C) – pętla tool-calling dla dostawców HTTP
@@ -126,7 +126,8 @@ Nowy `src/bot.ts` (czyste funkcje, testy w `src/bot.test.ts`):
 type BotDef = { version: 1; id: string; name: string; avatar: { emoji?: string; image?: string };
                 color: string; persona: string; style: string; avoid: string;
                 tone: "serious" | "balanced" | "playful"; model: ModelRef;
-                folders: string[]; tools: Record<ToolName, boolean>; builtin?: "creator" };
+                folders: string[]; tools: Record<ToolGroup, boolean>; builtin?: "creator" };
+// ToolGroup: web, read, write, bash, memory, skills (przełączniki w ustawieniach bota)
 type Routine = { id: string; name: string; prompt: string; schedule: Schedule;
                  allow: { writeWork: boolean; bash: string[] }; enabled: boolean;
                  lastRun?: number };

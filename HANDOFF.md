@@ -15,6 +15,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 1: model bota – 2026-10-01 (Claude, master)
+
+- `src/bot.ts` (czyste funkcje): `BotDef` z osobowością (imię, awatar, kolor, persona, styl, czego unika, ton), modelem, folderami i przełącznikami **grup** narzędzi (`web`, `read`, `write`, `bash`, `memory`, `skills`; zamiast przełącznika na każde narzędzie, plan poprawiony). Kreator jako `creatorBot()` (`builtin: "creator"`).
+- `parseBot`, `parseRoutines` (`every` ≥ 5 min, `daily` GG:MM z dniami), `nextRun` (czas lokalny; 02:30 przy zmianie na letni → 03:30, przy zmianie na zimowy uruchamia się raz), `scheduleLabel`.
+- `parseSkill` / `skillMarkdown` (frontmatter Agent Skills), `memoryEdit` (wpisy rozdzielone `§`, wskazanie fragmentem, limit z całą pamięcią w błędzie), `botSystemPrompt` (stała kolejność, data bez godziny – ten sam tekst przez cały dzień), `botGreeting`.
+- `needsApproval`: reguły zgód z planu. Prefiksy bash (`commandPrefix`, `matchesPrefix`) odrzucają `;`, `&`, `|`, `$`, `` ` ``, przekierowania i nową linię – zgoda na `git pull` nie przepuści `git pull; rm …`. Ścieżki mają przychodzić po `realpath` (to robi etap 3).
+- `vitest.config.ts`: `env.TZ = Europe/Warsaw`, żeby testy zmiany czasu nie zależały od strefy maszyny.
+- Sprawdzenia: typecheck (frontend i electron), vitest 404/404 (nowe 42), build electron – OK.
+
 ## M3: zakładka Czat (etapy 1–7b) – 2026-10-01 (Claude, master)
 
 - Przełącznik **Code | Czat** na górze lewej kolumny (`src/chat/ModeTabs.tsx`), skrót Ctrl+Alt+C, `ui.mode` w workspace.json. Siatka zostaje zamontowana pod czatem (`display:none`, terminale robią `fit()` po powrocie). W Czacie skróty siatki są wyłączone (Ctrl+Shift+C/V zostają dla pola tekstowego).
