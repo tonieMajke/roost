@@ -1,5 +1,5 @@
 /** Motywy okna „Wygląd” (`ui.theme`). Pure: no React, no DOM.
- *  Wzory: makiety A–U z „Nowych wyglądów” (2026-10-01) + obecny wzór D. Każdy motyw zmienia
+ *  Wzory: makiety A–U z „Nowych wyglądów” i V–Ż z „Motywów V–Ż” (2026-10-01) + obecny wzór D. Każdy motyw zmienia
  *  tylko wygląd tego samego układu (tokeny i ozdoby w themes.css), nie układ ani zachowanie.
  *  Tu siedzi to, czego CSS nie dosięgnie: kolory i font xtermu oraz próbki do wyboru. */
 
@@ -28,6 +28,13 @@ export const THEME_IDS = [
   "mglawica",
   "biuro",
   "rtec",
+  "ciemnia",
+  "partytura",
+  "ryzograf",
+  "laka",
+  "poziomice",
+  "epapier",
+  "bauhaus",
 ] as const;
 
 export type ThemeId = (typeof THEME_IDS)[number];
@@ -125,6 +132,66 @@ const CGA_ANSI: Partial<ITheme> = {
   brightMagenta: "#ff55ff",
   brightCyan: "#55ffff",
   brightWhite: "#ffffff",
+};
+
+/** Ciemnia: wszystko w czerwieni lampy; kolory ANSI różnią się jasnością, nie barwą. */
+const DARKROOM_ANSI: Partial<ITheme> = {
+  black: "#2a0a06",
+  red: "#ff3b2f",
+  green: "#ffb07a",
+  yellow: "#ff8a5a",
+  blue: "#ff7a8a",
+  magenta: "#ff6a8a",
+  cyan: "#ffc4b0",
+  white: "#f0a493",
+  brightBlack: "#8a4136",
+  brightRed: "#ff6a52",
+  brightGreen: "#ffd0b0",
+  brightYellow: "#ffb08a",
+  brightBlue: "#ffa0aa",
+  brightMagenta: "#ff9ab0",
+  brightCyan: "#ffe0d4",
+  brightWhite: "#ffd6cc",
+};
+
+/** Laka: ciepłe barwy na czarnej lace. */
+const LACQUER_ANSI: Partial<ITheme> = {
+  black: "#1a0c0b",
+  red: "#e0533a",
+  green: "#9fbf8f",
+  yellow: "#d4a64a",
+  blue: "#8fa8c8",
+  magenta: "#c88aa0",
+  cyan: "#8fbfb8",
+  white: "#e9d9c4",
+  brightBlack: "#7d6650",
+  brightRed: "#f07a5e",
+  brightGreen: "#bcd8ac",
+  brightYellow: "#e8c470",
+  brightBlue: "#b0c4de",
+  brightMagenta: "#deaabe",
+  brightCyan: "#b0dcd4",
+  brightWhite: "#f6ecdc",
+};
+
+/** E-papier: bez barwy, odcienie szarości (plusy i minusy w diffach zostają, kolor nie). */
+const EPAPER_ANSI: Partial<ITheme> = {
+  black: "#151515",
+  red: "#151515",
+  green: "#151515",
+  yellow: "#3a3a3a",
+  blue: "#2a2a2a",
+  magenta: "#3a3a3a",
+  cyan: "#2a2a2a",
+  white: "#6c6c68",
+  brightBlack: "#6c6c68",
+  brightRed: "#2a2a2a",
+  brightGreen: "#2a2a2a",
+  brightYellow: "#454545",
+  brightBlue: "#3a3a3a",
+  brightMagenta: "#454545",
+  brightCyan: "#3a3a3a",
+  brightWhite: "#454545",
 };
 
 const light = (background: string, foreground: string, selection: string) => ({
@@ -249,6 +316,48 @@ export const THEMES: Record<ThemeId, Theme> = {
     id: "rtec", label: "Rtęć", light: false, accent: "#c9ced6",
     swatch: ["#1d2026", "#08090b", "#c9ced6"],
     term: { background: "#0e1013", foreground: "#d8dce2", selection: "rgba(201, 206, 214, 0.25)" },
+  },
+  ciemnia: {
+    id: "ciemnia", label: "Ciemnia", light: false, accent: "#ff4b33",
+    swatch: ["#0d0505", "#140707", "#ff4b33"],
+    term: { background: "#080202", foreground: "#f0a493", selection: "rgba(255, 75, 51, 0.3)", ansi: DARKROOM_ANSI },
+    termFont: '"Overpass Mono Variable", monospace',
+  },
+  partytura: {
+    id: "partytura", label: "Partytura", light: true, accent: "#c8102e",
+    swatch: ["#f4f3ee", "#fbfaf6", "#111111"],
+    term: light("#fbfaf6", "#1b1b1b", "rgba(200, 16, 46, 0.16)"),
+    termFont: '"Courier Prime", monospace',
+  },
+  ryzograf: {
+    id: "ryzograf", label: "Ryzograf", light: true, accent: "#ff4fa3",
+    swatch: ["#f1ede9", "#2b3f95", "#ff4fa3"],
+    term: light("#f8f5f2", "#2b3f95", "rgba(255, 79, 163, 0.25)"),
+    termFont: '"DM Mono", monospace',
+  },
+  laka: {
+    id: "laka", label: "Laka", light: false, accent: "#d4a64a",
+    swatch: ["#120808", "#1a0c0b", "#d4a64a"],
+    term: { background: "#100605", foreground: "#e9d9c4", selection: "rgba(212, 166, 74, 0.28)", ansi: LACQUER_ANSI },
+    termFont: '"Azeret Mono Variable", monospace',
+  },
+  poziomice: {
+    id: "poziomice", label: "Poziomice", light: true, accent: "#1f6fb2",
+    swatch: ["#e8ebdc", "#7a5c30", "#1f6fb2"],
+    term: light("#fbfbf6", "#2b3326", "rgba(31, 111, 178, 0.2)"),
+    termFont: '"Cousine", monospace',
+  },
+  epapier: {
+    id: "epapier", label: "E-papier", light: true, accent: "#151515",
+    swatch: ["#e6e6e1", "#f2f2ee", "#151515"],
+    term: { background: "#f2f2ee", foreground: "#151515", selection: "rgba(0, 0, 0, 0.16)", ansi: EPAPER_ANSI },
+    termFont: '"Atkinson Hyperlegible Mono Variable", monospace',
+  },
+  bauhaus: {
+    id: "bauhaus", label: "Bauhaus", light: true, accent: "#e1251b",
+    swatch: ["#f5f3ee", "#f6c200", "#1d4fa3"],
+    term: light("#ffffff", "#111111", "rgba(246, 194, 0, 0.35)"),
+    termFont: '"Spline Sans Mono Variable", monospace',
   },
 };
 

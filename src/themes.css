@@ -794,3 +794,408 @@
 [data-theme="wieza"] .r-blip:hover rect, [data-theme="wieza"] .r-blip:focus-visible rect { stroke: #fff; stroke-width: 2.5; }
 [data-theme="wieza"] .motion-lite .r-sweep { animation: none; }
 @media (prefers-reduced-motion: reduce) { [data-theme="wieza"] .r-sweep { animation: none; } }
+
+/* =====================================================================
+   Motywy V–Ż (makiety „Motywy V–Ż”, 2026-10-01). Kolory agentów (--ag) z makiety: motyw
+   nadpisuje kolor ustawiony przy agencie (`!important`, bo Pane/Rail/Dock dają --ag inline),
+   a `data-ag` (id agenta) pozwala rozróżnić agentów też kształtem.
+   Pominięte względem makiet (potrzebują logiki, nie CSS): takt nut w pulpicie Partytury,
+   złoty szew po restarcie w Lace (licznik restartów), podziałka i strzałka północy Poziomic,
+   mignięcie przy włączeniu E-papieru.
+   ===================================================================== */
+
+/* ======================= V · CIEMNIA (czerwona lampa) ======================= */
+:root[data-theme="ciemnia"] {
+  --stage: #050202; --bg: #0d0505; --rail: #0a0303; --pane: #140707; --dialog: #180909;
+  --line: rgba(255, 70, 50, 0.13); --line-strong: rgba(255, 70, 50, 0.3); --hover: rgba(255, 70, 50, 0.06); --active: rgba(255, 70, 50, 0.1);
+  --text: #ffb4a3; --muted: #c2685a; --faint: #a04a3e;
+  --accent: #ff4b33; --on-accent: #1a0402; --on-ag: #1a0402; --ok: #ffb07a;
+  --warn-bg: #2a0a06; --warn-text: #ff8a6a; --scrim: rgba(5, 1, 1, 0.75); --badge-bg: rgba(20, 7, 7, 0.95);
+  --grid-line: transparent; --shadow: 0 0 0 1px rgba(255, 70, 50, 0.2), 0 24px 60px rgba(0, 0, 0, 0.8); --focus-shadow: none;
+  --r-win: 6px; --r-ctl: 2px; --r-pane: 4px; --r-dialog: 4px; --badge-r: 2px; --mark-r: 50%;
+  --gap: 10px;
+  --ui: "Big Shoulders Text Variable", sans-serif; --mono: "Overpass Mono Variable", monospace; --display: "Big Shoulders Display Variable", sans-serif;
+  --title-weight: 800; --title-ls: 0.02em; --brand-ls: 0.2em;
+}
+[data-theme="ciemnia"] [data-ag] { --ag: #ff7a5c !important; }
+[data-theme="ciemnia"] [data-ag="claude"] { --ag: #ff5a3c !important; }
+[data-theme="ciemnia"] [data-ag="pi"] { --ag: #ff9c7a !important; }
+[data-theme="ciemnia"] [data-ag="codex"] { --ag: #ffd0b8 !important; }
+[data-theme="ciemnia"] body { font-size: 14px; }
+[data-theme="ciemnia"] .titlebar { background: #080202; }
+[data-theme="ciemnia"] .titlebar-mark { border-radius: 50%; box-shadow: 0 0 8px 2px rgba(255, 60, 40, 0.7); }
+[data-theme="ciemnia"] :is(.brand, .area-name, .pane-name, .dock-title) { text-transform: uppercase; }
+[data-theme="ciemnia"] .pane-name { font-family: var(--ui); font-size: 13px; letter-spacing: 0.14em; font-weight: 700; }
+[data-theme="ciemnia"] .area { background: radial-gradient(ellipse 80% 55% at 50% -12%, rgba(255, 40, 20, 0.2), transparent 70%), var(--bg); }
+/* terminal = kuweta: wpuszczony, z płynem odbijającym lampę */
+[data-theme="ciemnia"] .pane-body {
+  margin: 0 6px 6px; border-radius: 7px;
+  box-shadow: inset 0 0 0 1px rgba(255, 70, 50, 0.16), inset 0 10px 16px rgba(0, 0, 0, 0.7);
+}
+[data-theme="ciemnia"] .pane-head { border-bottom: 0; position: relative; }
+[data-theme="ciemnia"] .pane.is-focused { box-shadow: inset 0 0 0 1px var(--line-strong), 0 0 24px -6px rgba(255, 40, 20, 0.45); }
+[data-theme="ciemnia"] .fh-fill .pane.is-focused .pane-head { background: transparent; color: var(--text); }
+[data-theme="ciemnia"] .fh-fill .pane.is-focused :is(.pane-name, .pane-title, .icon) { color: var(--text); }
+[data-theme="ciemnia"] .fh-fill .pane.is-focused .ag-badge { background: var(--ag); color: var(--on-ag); }
+[data-theme="ciemnia"] .fh-fill .pane.is-focused :is(.pane-state, .ctx) { color: var(--muted); opacity: 1; }
+[data-theme="ciemnia"] .fh-fill .pane.is-focused .ctx-bar { background: var(--line-strong); }
+[data-theme="ciemnia"] .fh-fill .pane.is-focused .ctx-bar span { background: var(--ag); }
+/* gotowe = pieczątka „utrwalone” */
+[data-theme="ciemnia"] .pane.st-done .pane-state {
+  color: var(--ok); border: 1px solid currentColor; padding: 1px 4px; transform: rotate(-4deg); font-weight: 700;
+}
+/* „Na żywo” = pasek negatywu z perforacją */
+[data-theme="ciemnia"] .feed {
+  position: relative; background: #050101; padding: 8px 16px; margin: 0 -10px; gap: 6px;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 3px, #3a0f0a 3px 8px, transparent 8px 10px),
+    repeating-linear-gradient(to bottom, transparent 0 3px, #3a0f0a 3px 8px, transparent 8px 10px);
+  background-size: 6px 100%, 6px 100%; background-repeat: no-repeat; background-position: 3px 0, calc(100% - 3px) 0;
+}
+[data-theme="ciemnia"] .feed-item { border-bottom: 1px solid #2a0a06; padding-bottom: 5px; }
+[data-theme="ciemnia"] .bar span { background: linear-gradient(90deg, #7a1408, var(--accent)); }
+[data-theme="ciemnia"] .brand-mark { box-shadow: 0 0 10px 2px rgba(255, 60, 40, 0.6); }
+
+/* ======================= W · PARTYTURA (głosy na pięciolinii) ======================= */
+:root[data-theme="partytura"] {
+  --stage: #dcdcd6; --bg: #f4f3ee; --rail: #f4f3ee; --pane: #fbfaf6; --dialog: #fbfaf6;
+  --line: rgba(17, 17, 17, 0.16); --line-strong: #111111; --hover: rgba(17, 17, 17, 0.04); --active: rgba(17, 17, 17, 0.06);
+  --text: #111111; --muted: #4b4b4b; --faint: #6e6e6a;
+  --accent: #c8102e; --on-accent: #ffffff; --on-ag: #ffffff; --ok: #111111;
+  --warn-bg: #f7dede; --warn-text: #9a0c24; --scrim: rgba(244, 243, 238, 0.7); --badge-bg: #fbfaf6;
+  --grid-line: transparent; --shadow: 0 16px 40px rgba(17, 17, 17, 0.16); --focus-shadow: none;
+  --r-win: 2px; --r-ctl: 0; --r-pane: 0; --r-dialog: 0; --badge-r: 0; --mark-r: 0;
+  --gap: 12px;
+  --ui: "Libre Caslon Text", Georgia, serif; --mono: "Courier Prime", monospace; --display: "Libre Caslon Display", Georgia, serif;
+  --title-size: 34px; --title-weight: 400; --title-ls: 0; --brand-ls: 0.2em; --proj-weight: 700; --dialog-title: 28px;
+  color-scheme: light;
+}
+[data-theme="partytura"] [data-ag] { --ag: #3a3a3a !important; }
+[data-theme="partytura"] [data-ag="claude"] { --ag: #8a2a1d !important; }
+[data-theme="partytura"] [data-ag="pi"] { --ag: #3c3a78 !important; }
+[data-theme="partytura"] [data-ag="codex"] { --ag: #2d5e3a !important; }
+[data-theme="partytura"] .titlebar { border-bottom-color: var(--line-strong); }
+[data-theme="partytura"] .titlebar-mark, [data-theme="partytura"] .brand-mark {
+  background: none; box-shadow: none; width: auto; height: auto; color: var(--text); font: 16px/1 "Noto Music", serif;
+}
+[data-theme="partytura"] .titlebar-mark::before, [data-theme="partytura"] .brand-mark::before { content: "𝄞"; }
+[data-theme="partytura"] .brand { font-family: var(--display); font-weight: 400; }
+[data-theme="partytura"] .area-head { border-bottom: 3px double var(--line-strong); position: relative; }
+/* oznaczenie tempa nad tytułem */
+[data-theme="partytura"] .area-head::before { content: "Allegro moderato"; position: absolute; left: 18px; top: 6px; font: italic 700 11px var(--ui); color: var(--muted); }
+[data-theme="partytura"] .rail { border-right-color: var(--line-strong); }
+[data-theme="partytura"] .dock { border-left-color: var(--line-strong); }
+/* nagłówek panelu leży na pięciolinii */
+[data-theme="partytura"] .pane-head {
+  border-bottom: 0;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 3px, rgba(17, 17, 17, 0.28) 3px 4px);
+  background-size: 100% 20px; background-repeat: no-repeat; background-position: 0 calc(50% + 1px);
+}
+[data-theme="partytura"] :is(.pane-name, .pane-title, .pane-state, .ctx) { background: var(--pane); padding: 0 4px; }
+[data-theme="partytura"] .pane-name { font-family: var(--ui); text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 700; }
+[data-theme="partytura"] .pane-state { font: italic 12px var(--ui); text-transform: none; letter-spacing: 0; }
+/* klucz zamiast litery */
+[data-theme="partytura"] .ag-badge { background: transparent; color: transparent; width: 18px; height: 26px; overflow: visible; position: relative; }
+[data-theme="partytura"] .ag-badge::before { content: "𝄞"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--text); font: 22px/1 "Noto Music", serif; }
+[data-theme="partytura"] [data-ag="pi"] .ag-badge::before { content: "𝄢"; font-size: 18px; }
+[data-theme="partytura"] [data-ag="codex"] .ag-badge::before { content: "𝄡"; font-size: 18px; }
+[data-theme="partytura"] :is(.ctx-row, .feed-item) .ag-badge { height: 18px; }
+[data-theme="partytura"] :is(.ctx-row, .feed-item) .ag-badge::before { font-size: 16px; }
+[data-theme="partytura"] .pane.st-working .pane-state { color: var(--text); animation: none; }
+/* cresc. = rozwierające się widełki */
+[data-theme="partytura"] .pane.st-working .pane-state::after {
+  content: ""; display: inline-block; width: 22px; height: 7px; margin-left: 5px; vertical-align: -1px;
+  background: linear-gradient(to top right, transparent calc(50% - 0.6px), var(--text) 50%, transparent calc(50% + 0.6px)) top / 100% 50% no-repeat,
+    linear-gradient(to bottom right, transparent calc(50% - 0.6px), var(--text) 50%, transparent calc(50% + 0.6px)) bottom / 100% 50% no-repeat;
+}
+[data-theme="partytura"] .pane.st-unread .pane-state { color: var(--accent); font-weight: 700; }
+[data-theme="partytura"] .pane.st-unread .pane-state::after { content: " 𝄐"; font: 13px "Noto Music", serif; }
+[data-theme="partytura"] .pane.st-done .pane-state::after { content: " 𝄂"; font: 13px "Noto Music", serif; }
+/* czerwony ołówek dyrygenta zakreśla to, co czeka */
+[data-theme="partytura"] .pane.st-unread .pane-body { box-shadow: inset 0 0 0 1.5px var(--accent); }
+[data-theme="partytura"] .fh-fill .pane.is-focused .pane-head { background-color: var(--pane); color: var(--text); }
+[data-theme="partytura"] .fh-fill .pane.is-focused :is(.pane-name, .pane-title, .icon) { color: var(--text); }
+[data-theme="partytura"] .fh-fill .pane.is-focused .ag-badge { background: transparent; color: transparent; }
+[data-theme="partytura"] .fh-fill .pane.is-focused :is(.pane-state, .ctx) { color: var(--muted); opacity: 1; }
+[data-theme="partytura"] .fh-fill .pane.is-focused .ctx-bar { background: var(--line); }
+[data-theme="partytura"] .fh-fill .pane.is-focused .ctx-bar span { background: var(--text); }
+/* klamra systemu przy panelu w fokusie */
+[data-theme="partytura"] .pane-cell { overflow: visible; }
+[data-theme="partytura"] .pane.is-focused { overflow: visible; box-shadow: -7px 0 0 -4px var(--text); border-color: var(--line); }
+[data-theme="partytura"] .ctx-bar span, [data-theme="partytura"] .bar span, [data-theme="partytura"] .ctx-row .bar span { background: var(--text); }
+[data-theme="partytura"] :is(.area-name, .dock-title) { font-style: italic; }
+[data-theme="partytura"] .rail-label, [data-theme="partytura"] .dock-sec h3 { font-family: var(--ui); font-style: italic; text-transform: none; letter-spacing: 0; font-size: 12.5px; color: var(--accent); }
+
+/* ======================= X · RYZOGRAF (dwie farby z przesunięciem) ======================= */
+:root[data-theme="ryzograf"] {
+  --stage: #d9d4d0; --bg: #f1ede9; --rail: #f1ede9; --pane: #f8f5f2; --dialog: #f8f5f2;
+  --line: rgba(43, 63, 149, 0.3); --line-strong: #2b3f95; --hover: rgba(43, 63, 149, 0.05); --active: rgba(43, 63, 149, 0.08);
+  --text: #2b3f95; --muted: #4f5da3; --faint: #6f78b0;
+  --accent: #ff4fa3; --on-accent: #2b3f95; --on-ag: #2b3f95; --ok: #7b3a9c;
+  --warn-bg: #ffe0ef; --warn-text: #b0175f; --scrim: rgba(241, 237, 233, 0.7); --badge-bg: #f8f5f2;
+  --grid-line: transparent; --shadow: 4px 3px 0 rgba(255, 79, 163, 0.55), 0 0 0 1.5px #2b3f95; --focus-shadow: none;
+  --r-win: 4px; --r-ctl: 0; --r-pane: 0; --r-dialog: 0; --badge-r: 50%; --mark-r: 50%;
+  --gap: 12px; --pane-bw: 1.5px;
+  --ui: "DM Sans Variable", sans-serif; --mono: "DM Mono", monospace; --display: "Syne Variable", sans-serif;
+  --title-size: 26px; --title-weight: 800; --title-ls: -0.01em;
+  color-scheme: light;
+}
+[data-theme="ryzograf"] [data-ag] { --ag: #7b3a9c !important; }
+[data-theme="ryzograf"] [data-ag="claude"] { --ag: #ff4fa3 !important; }
+[data-theme="ryzograf"] [data-ag="pi"] { --ag: #2b3f95 !important; }
+/* ziarno papieru: tylko pod panelami (nic nie leży nad terminalem) */
+[data-theme="ryzograf"] .app {
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .3 0 0 0 0 .35 0 0 0 .18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+[data-theme="ryzograf"] :is(.rail, .dock) { background: transparent; }
+[data-theme="ryzograf"] .rail { border-right: 1.5px solid var(--line-strong); }
+[data-theme="ryzograf"] .dock { border-left: 1.5px solid var(--line-strong); }
+[data-theme="ryzograf"] .area-head { border-bottom: 1.5px solid var(--line-strong); }
+[data-theme="ryzograf"] .area-name { text-shadow: 2px 1.5px 0 rgba(255, 79, 163, 0.75); }
+[data-theme="ryzograf"] .brand, [data-theme="ryzograf"] .dock-title { text-shadow: 1.5px 1px 0 rgba(255, 79, 163, 0.75); }
+[data-theme="ryzograf"] .pane { border-color: var(--line-strong); box-shadow: 3px 2px 0 rgba(255, 79, 163, 0.55); }
+[data-theme="ryzograf"] .pane-cell { overflow: visible; }
+/* nagłówek w rastrze różu */
+[data-theme="ryzograf"] .pane-head { border-bottom: 1.5px solid var(--line-strong); background: radial-gradient(rgba(255, 79, 163, 0.55) 1px, transparent 1.4px) 0 0 / 4px 4px; }
+[data-theme="ryzograf"] .ag-badge { color: #f8f5f2; background: var(--ag); }
+[data-theme="ryzograf"] .fh-fill .pane.is-focused .pane-head { background: rgba(255, 79, 163, 0.9); color: var(--text); }
+[data-theme="ryzograf"] .fh-fill .pane.is-focused :is(.pane-name, .pane-title, .icon) { color: var(--text); }
+[data-theme="ryzograf"] .fh-fill .pane.is-focused .ag-badge { background: var(--text); color: #ff9ccc; }
+[data-theme="ryzograf"] .fh-fill .pane.is-focused :is(.pane-state, .ctx) { color: var(--text); }
+[data-theme="ryzograf"] .fh-fill .pane.is-focused .ctx-bar { background: rgba(43, 63, 149, 0.3); }
+[data-theme="ryzograf"] .fh-fill .pane.is-focused .ctx-bar span { background: var(--text); }
+/* pracuje = farba jeszcze schnie: narastający raster w prawym końcu nagłówka */
+[data-theme="ryzograf"] .pane.st-working .pane-head::after {
+  content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 40%; pointer-events: none;
+  background: radial-gradient(rgba(43, 63, 149, 0.55) 1.1px, transparent 1.5px) 0 0 / 5px 5px;
+  -webkit-mask: linear-gradient(90deg, transparent, #000); mask: linear-gradient(90deg, transparent, #000);
+}
+[data-theme="ryzograf"] .pane-head { position: relative; }
+[data-theme="ryzograf"] .pane.st-working .pane-state { color: var(--text); }
+[data-theme="ryzograf"] .pane.st-unread { box-shadow: 3px 2px 0 rgba(255, 79, 163, 0.55), inset 0 0 0 2px var(--accent); }
+[data-theme="ryzograf"] :is(.bar, .ctx-bar) { background: radial-gradient(rgba(43, 63, 149, 0.45) 0.9px, transparent 1.3px) 0 0 / 3px 3px; border-radius: 0; }
+[data-theme="ryzograf"] .bar { height: 7px; }
+[data-theme="ryzograf"] .bar span { background: var(--accent); mix-blend-mode: multiply; }
+[data-theme="ryzograf"] .proj.is-active .proj-row { background: rgba(255, 79, 163, 0.22); box-shadow: none; }
+[data-theme="ryzograf"] .btn.primary { box-shadow: 2px 2px 0 var(--line-strong); }
+
+/* ======================= Y · LAKA (czerń, cynober, złoto) ======================= */
+:root[data-theme="laka"] {
+  --stage: #070303; --bg: #120808; --rail: #0d0505; --pane: #1a0c0b; --dialog: #1e0f0d;
+  --line: rgba(212, 166, 74, 0.15); --line-strong: rgba(212, 166, 74, 0.38); --hover: rgba(212, 166, 74, 0.05); --active: rgba(212, 166, 74, 0.08);
+  --text: #f0e2cc; --muted: #b49a7a; --faint: #8f7760;
+  --accent: #d4a64a; --on-accent: #1a0c0b; --on-ag: #1a0c0b; --ok: #d4a64a;
+  --warn-bg: #2e0d08; --warn-text: #f0866e; --scrim: rgba(7, 3, 3, 0.72); --badge-bg: rgba(26, 12, 11, 0.95);
+  --grid-line: transparent; --shadow: 0 0 0 1px rgba(212, 166, 74, 0.22), 0 24px 60px rgba(0, 0, 0, 0.7); --focus-shadow: none;
+  --r-win: 10px; --r-ctl: 3px; --r-pane: 6px; --r-dialog: 8px; --badge-r: 50%; --mark-r: 50%;
+  --gap: 12px; --pane-bw: 0px;
+  --ui: "Figtree Variable", sans-serif; --mono: "Azeret Mono Variable", monospace; --display: "Cormorant Garamond Variable", Georgia, serif;
+  --title-size: 36px; --title-weight: 600; --title-ls: 0; --dialog-title: 28px;
+}
+[data-theme="laka"] [data-ag] { --ag: #c88aa0 !important; }
+[data-theme="laka"] [data-ag="claude"] { --ag: #d23b22 !important; }
+[data-theme="laka"] [data-ag="pi"] { --ag: #d4a64a !important; }
+[data-theme="laka"] [data-ag="codex"] { --ag: #8fae8a !important; }
+/* ensō zamiast kwadratu */
+[data-theme="laka"] :is(.titlebar-mark, .brand-mark) {
+  background: none; border: 1.5px solid var(--accent); border-right-color: transparent; border-radius: 50%; transform: rotate(30deg); box-shadow: none; box-sizing: border-box;
+}
+[data-theme="laka"] .area-name { font-style: italic; }
+[data-theme="laka"] .dock-title { font-style: italic; font-weight: 600; font-size: 22px; }
+/* fale seigaiha złotem, bardzo słabo */
+[data-theme="laka"] .area {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 50% 100%, transparent 9px, rgba(212, 166, 74, 0.09) 9px 10px, transparent 10px 14px, rgba(212, 166, 74, 0.07) 14px 15px, transparent 15px 19px, rgba(212, 166, 74, 0.05) 19px 20px, transparent 20px),
+    radial-gradient(circle at 50% 100%, transparent 9px, rgba(212, 166, 74, 0.09) 9px 10px, transparent 10px 14px, rgba(212, 166, 74, 0.07) 14px 15px, transparent 15px 19px, rgba(212, 166, 74, 0.05) 19px 20px, transparent 20px);
+  background-size: 40px 20px; background-position: 0 0, 20px 10px;
+}
+/* połysk laki i złota krawędź */
+[data-theme="laka"] .pane {
+  background: linear-gradient(160deg, rgba(255, 236, 210, 0.06), transparent 32%), var(--pane);
+  box-shadow: inset 0 0 0 1px rgba(212, 166, 74, 0.22), 0 12px 24px -12px #000;
+}
+[data-theme="laka"] .pane-head { border-bottom: 1px solid rgba(212, 166, 74, 0.18); }
+[data-theme="laka"] .pane-body { margin: 0 4px 4px; border-radius: 4px; }
+[data-theme="laka"] .pane-name { font-family: var(--ui); text-transform: none; letter-spacing: 0.02em; font-size: 12.5px; }
+[data-theme="laka"] .ag-badge { font: italic 600 14px var(--display); }
+[data-theme="laka"] .fh-fill .pane.is-focused .pane-head { background: linear-gradient(90deg, rgba(210, 59, 34, 0.9), rgba(210, 59, 34, 0.55)); color: #f6e7cf; }
+[data-theme="laka"] .fh-fill .pane.is-focused :is(.pane-name, .pane-title, .icon) { color: #f6e7cf; }
+[data-theme="laka"] .fh-fill .pane.is-focused .ag-badge { background: #f6e7cf; color: #a32a17; }
+[data-theme="laka"] .fh-fill .pane.is-focused :is(.pane-state, .ctx) { color: #f6e7cf; }
+[data-theme="laka"] .fh-fill .pane.is-focused .ctx-bar span { background: var(--accent); }
+[data-theme="laka"] .pane.is-focused { box-shadow: inset 0 0 0 1px var(--accent), 0 12px 24px -12px #000; }
+/* pracuje = pieczęć cynobru, gotowe = złota kropka */
+[data-theme="laka"] .pane.st-working .pane-state { color: #e8735e; animation: none; }
+[data-theme="laka"] .pane.st-working .pane-state::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; vertical-align: 0;
+  border-radius: 1px; background: #d23b22; transform: rotate(4deg); box-shadow: inset 0 0 0 1.5px rgba(255, 220, 200, 0.35);
+}
+[data-theme="laka"] .pane.st-done .pane-state::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; vertical-align: 1px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 6px var(--accent);
+}
+[data-theme="laka"] .pane.st-unread { box-shadow: inset 0 0 0 1px var(--accent), 0 0 18px -6px rgba(212, 166, 74, 0.6); }
+[data-theme="laka"] .bar span { background: linear-gradient(90deg, #8a6a2a, var(--accent)); }
+[data-theme="laka"] .proj.is-active .proj-row { box-shadow: inset 2px 0 0 var(--accent); }
+[data-theme="laka"] .rail-label, [data-theme="laka"] .dock-sec h3 { color: var(--accent); letter-spacing: 0.18em; }
+
+/* ======================= Z · POZIOMICE (mapa topograficzna) ======================= */
+:root[data-theme="poziomice"] {
+  --stage: #d5d9c8; --bg: #e8ebdc; --rail: #f2f3ea; --pane: #f8f9f2; --dialog: #f8f9f2;
+  --line: rgba(122, 92, 48, 0.28); --line-strong: #7a5c30; --hover: rgba(31, 111, 178, 0.06); --active: rgba(31, 111, 178, 0.1);
+  --text: #26301f; --muted: #535a49; --faint: #747a66;
+  --accent: #1f6fb2; --on-accent: #ffffff; --on-ag: #ffffff; --ok: #2f7d3a;
+  --warn-bg: #f8e2d6; --warn-text: #a33a20; --scrim: rgba(232, 235, 220, 0.7); --badge-bg: #f8f9f2;
+  --grid-line: transparent; --shadow: 0 0 0 1px #7a5c30, 0 16px 40px rgba(60, 50, 20, 0.2); --focus-shadow: none;
+  --r-win: 4px; --r-ctl: 2px; --r-pane: 0; --r-dialog: 2px; --badge-r: 2px; --mark-r: 0;
+  --gap: 14px;
+  --ui: "Saira Semi Condensed", sans-serif; --mono: "Cousine", monospace; --display: "Saira Semi Condensed", sans-serif;
+  --title-size: 26px; --title-weight: 700; --title-ls: 0.1em; --proj-weight: 600;
+  color-scheme: light;
+}
+[data-theme="poziomice"] [data-ag] { --ag: #7a4a8a !important; }
+[data-theme="poziomice"] [data-ag="claude"] { --ag: #c8452a !important; }
+[data-theme="poziomice"] [data-ag="pi"] { --ag: #1f6fb2 !important; }
+[data-theme="poziomice"] [data-ag="codex"] { --ag: #2f7d3a !important; }
+/* warstwice w tle obszaru */
+[data-theme="poziomice"] .area {
+  background-color: var(--bg);
+  background-image:
+    repeating-radial-gradient(ellipse 120% 80% at 28% 72%, transparent 0 11px, rgba(122, 92, 48, 0.2) 11px 12px),
+    repeating-radial-gradient(ellipse 90% 120% at 86% 14%, transparent 0 13px, rgba(122, 92, 48, 0.14) 13px 14px);
+}
+[data-theme="poziomice"] .area-head { background: var(--rail); border-bottom: 1.5px solid var(--line-strong); }
+[data-theme="poziomice"] .area-name { text-transform: uppercase; }
+[data-theme="poziomice"] .rail { border-right: 1.5px solid var(--line-strong); }
+[data-theme="poziomice"] .dock { border-left: 1.5px solid var(--line-strong); }
+/* arkusz mapy: ramka z marginesem */
+[data-theme="poziomice"] .pane { border-color: var(--line-strong); box-shadow: 0 0 0 3px var(--pane), 0 0 0 4px rgba(122, 92, 48, 0.5); }
+[data-theme="poziomice"] .pane-cell { overflow: visible; padding: 4px; }
+[data-theme="poziomice"] .pane-name { font-family: var(--ui); letter-spacing: 0.1em; font-size: 12px; }
+[data-theme="poziomice"] .ag-badge { color: #fff; background: var(--ag); }
+[data-theme="poziomice"] .fh-fill .pane.is-focused .pane-head { background: var(--text); color: var(--pane); }
+[data-theme="poziomice"] .fh-fill .pane.is-focused :is(.pane-name, .pane-title, .icon, .pane-state, .ctx) { color: var(--pane); }
+[data-theme="poziomice"] .fh-fill .pane.is-focused .ag-badge { background: var(--ag); color: #fff; }
+[data-theme="poziomice"] .fh-fill .pane.is-focused .ctx-bar { background: rgba(255, 255, 255, 0.25); }
+[data-theme="poziomice"] .fh-fill .pane.is-focused .ctx-bar span { background: var(--pane); }
+/* znaki legendy zamiast kropek: ▲ podchodzi, ⚑ postój, ◉ szczyt */
+[data-theme="poziomice"] .pane-state { font-family: var(--ui); letter-spacing: 0.06em; }
+[data-theme="poziomice"] .pane.st-working .pane-state { animation: none; }
+[data-theme="poziomice"] .pane:is(.st-working, .st-unread, .st-done) .pane-state::before { margin-right: 4px; font-size: 10px; }
+[data-theme="poziomice"] .pane.st-working .pane-state::before { content: "▲"; color: var(--ag); }
+[data-theme="poziomice"] .pane.st-unread .pane-state::before { content: "⚑"; }
+[data-theme="poziomice"] .pane.st-done .pane-state::before { content: "◉"; }
+[data-theme="poziomice"] .fh-fill .pane.is-focused .pane-state::before { color: inherit; }
+[data-theme="poziomice"] .pane-row .ag-dot { width: auto; height: auto; background: none; border-radius: 0; font-size: 9px; line-height: 1; color: var(--ag); animation: none; }
+[data-theme="poziomice"] .pane-row .ag-dot::before { content: "●"; }
+[data-theme="poziomice"] .pane-row.st-working .ag-dot::before { content: "▲"; }
+[data-theme="poziomice"] .pane-row.st-unread .ag-dot::before { content: "⚑"; color: var(--accent); }
+[data-theme="poziomice"] .pane-row.st-done .ag-dot::before { content: "◉"; }
+[data-theme="poziomice"] .bar span { background: #2f7d3a; }
+[data-theme="poziomice"] :is(.rail-label, .dock-sec h3) { font-family: var(--ui); letter-spacing: 0.16em; color: var(--line-strong); }
+[data-theme="poziomice"] .proj.is-active .proj-row { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* ======================= Ź · E-PAPIER (szarość, zero ruchu) ======================= */
+:root[data-theme="epapier"] {
+  --stage: #cfcfca; --bg: #e6e6e1; --rail: #e6e6e1; --pane: #f2f2ee; --dialog: #f2f2ee;
+  --line: #a3a39e; --line-strong: #151515; --hover: rgba(0, 0, 0, 0.05); --active: rgba(0, 0, 0, 0.07);
+  --text: #151515; --muted: #454545; --faint: #5e5e5a;
+  --accent: #151515; --on-accent: #f2f2ee; --on-ag: #f2f2ee; --ok: #151515;
+  --warn-bg: #151515; --warn-text: #f2f2ee; --scrim: rgba(230, 230, 225, 0.75); --badge-bg: #f2f2ee;
+  --grid-line: transparent; --shadow: 0 0 0 1.5px #151515; --focus-shadow: none;
+  --r-win: 0; --r-ctl: 0; --r-pane: 0; --r-dialog: 0; --badge-r: 0; --mark-r: 0;
+  --gap: 10px;
+  --ui: "Atkinson Hyperlegible Next Variable", sans-serif; --mono: "Atkinson Hyperlegible Mono Variable", monospace; --display: "Atkinson Hyperlegible Next Variable", sans-serif;
+  --title-weight: 700; --title-ls: -0.01em;
+  color-scheme: light;
+}
+[data-theme="epapier"] [data-ag] { --ag: #151515 !important; }
+/* e-papier nie animuje: żadnego ruchu ani przejść */
+[data-theme="epapier"] *, [data-theme="epapier"] *::before, [data-theme="epapier"] *::after { animation: none !important; transition: none !important; }
+[data-theme="epapier"] body { font-size: 14px; }
+[data-theme="epapier"] .brand-mark { box-shadow: none; }
+[data-theme="epapier"] .pane { border-color: var(--line-strong); }
+[data-theme="epapier"] .pane-name { font-family: var(--ui); text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 700; }
+[data-theme="epapier"] .pane-state { font-family: var(--ui); text-transform: none; letter-spacing: 0; font-size: 12px; }
+/* agenci różnią się fakturą (pełne / paski / kropki), więc działa też przy daltonizmie */
+[data-theme="epapier"] .app :is(.pane, .ctx-row, .feed-item) .ag-badge { color: transparent; border: 1.5px solid var(--text); background: var(--text); box-sizing: border-box; }
+[data-theme="epapier"] .ag-dot { border: 1px solid var(--text); width: 9px; height: 9px; border-radius: 0; background: var(--text); box-sizing: border-box; }
+[data-theme="epapier"] .app [data-ag="pi"] :is(.ag-badge, .ag-dot) { background: repeating-linear-gradient(45deg, var(--text) 0 2px, transparent 2px 4px); }
+[data-theme="epapier"] .app [data-ag="codex"] :is(.ag-badge, .ag-dot) { background: radial-gradient(var(--text) 1px, transparent 1.3px) 0 0 / 4px 4px; }
+[data-theme="epapier"] .app [data-ag="shell"] :is(.ag-badge, .ag-dot) { background: transparent; }
+[data-theme="epapier"] .fh-fill .pane.is-focused .pane-head { background: var(--pane); color: var(--text); border-bottom: 2px solid var(--text); }
+[data-theme="epapier"] .fh-fill .pane.is-focused :is(.pane-name, .pane-title, .icon) { color: var(--text); }
+[data-theme="epapier"] .fh-fill .pane.is-focused :is(.pane-state, .ctx) { color: var(--muted); opacity: 1; }
+[data-theme="epapier"] .fh-fill .pane.is-focused .ctx-bar { background: var(--line); }
+[data-theme="epapier"] .fh-fill .pane.is-focused .ctx-bar span { background: var(--text); }
+[data-theme="epapier"] .pane.is-focused { border-width: 2px; }
+[data-theme="epapier"] .pane.st-working { border-style: dashed; }
+[data-theme="epapier"] .pane.st-working .glow { box-shadow: none; }
+/* jedyna głośna rzecz: panel, który czeka na ciebie */
+[data-theme="epapier"] .app .pane.st-unread .pane-head { background: var(--text); color: var(--pane); }
+[data-theme="epapier"] .app .pane.st-unread :is(.pane-name, .pane-title, .icon, .ctx) { color: var(--pane); }
+[data-theme="epapier"] .app .pane.st-unread .pane-state { color: var(--pane); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 1; }
+[data-theme="epapier"] .app .pane.st-unread .ag-badge { border-color: var(--pane); }
+[data-theme="epapier"] .app .pane.st-unread .ctx-bar { background: rgba(255, 255, 255, 0.3); }
+[data-theme="epapier"] .app .pane.st-unread .ctx-bar span { background: var(--pane); }
+[data-theme="epapier"] :is(.ctx-bar span, .bar span, .ctx-row .bar span) { background: var(--text); }
+[data-theme="epapier"] .feed-item b, [data-theme="epapier"] .pane-row.st-unread .pane-row-state { color: var(--text); font-weight: 700; }
+[data-theme="epapier"] .rail-label, [data-theme="epapier"] .dock-sec h3 { color: var(--text); }
+
+/* ======================= Ż · BAUHAUS (koło, trójkąt, kwadrat) ======================= */
+:root[data-theme="bauhaus"] {
+  --stage: #d8d6d0; --bg: #f5f3ee; --rail: #f5f3ee; --pane: #ffffff; --dialog: #ffffff;
+  --line: #111111; --line-strong: #111111; --hover: rgba(17, 17, 17, 0.05); --active: rgba(17, 17, 17, 0.07);
+  --text: #111111; --muted: #3d3d3d; --faint: #636363;
+  --accent: #e1251b; --on-accent: #ffffff; --on-ag: #111111; --ok: #1d4fa3;
+  --warn-bg: #f6c200; --warn-text: #111111; --scrim: rgba(245, 243, 238, 0.7); --badge-bg: #ffffff;
+  --grid-line: transparent; --shadow: 6px 6px 0 #111111; --focus-shadow: none;
+  --r-win: 0; --r-ctl: 0; --r-pane: 0; --r-dialog: 0; --badge-r: 0; --mark-r: 50%;
+  --gap: 12px; --pane-bw: 2px;
+  --ui: "Jost Variable", sans-serif; --mono: "Spline Sans Mono Variable", monospace; --display: "Jost Variable", sans-serif;
+  --title-size: 30px; --title-weight: 700; --title-ls: -0.02em; --proj-weight: 600;
+  color-scheme: light;
+}
+[data-theme="bauhaus"] [data-ag] { --ag: #111111 !important; }
+[data-theme="bauhaus"] [data-ag="claude"] { --ag: #e1251b !important; }
+[data-theme="bauhaus"] [data-ag="pi"] { --ag: #f6c200 !important; }
+[data-theme="bauhaus"] [data-ag="codex"] { --ag: #1d4fa3 !important; }
+[data-theme="bauhaus"] .titlebar { background: #111; border: 0; }
+[data-theme="bauhaus"] .titlebar-title, [data-theme="bauhaus"] .titlebar .icon { color: #f5f3ee; }
+[data-theme="bauhaus"] .titlebar-mark { background: #e1251b; border-radius: 50%; }
+[data-theme="bauhaus"] .rail { border-right: 4px solid #111; }
+[data-theme="bauhaus"] .dock { border-left: 4px solid #111; }
+/* kompozycja z figur w nagłówku obszaru */
+/* figury po prawej, przyciski odsunięte, żeby nic ich nie zasłaniało */
+[data-theme="bauhaus"] .area-head { border-bottom: 4px solid #111; position: relative; overflow: hidden; padding-right: 150px; }
+[data-theme="bauhaus"] .area-head::before { content: ""; position: absolute; right: 44px; top: -40px; width: 88px; height: 88px; border-radius: 50%; background: #f6c200; }
+[data-theme="bauhaus"] .area-head::after { content: ""; position: absolute; right: 18px; top: 0; width: 14px; height: 100%; background: #1d4fa3; }
+[data-theme="bauhaus"] :is(.area-name, .pane-name, .dock-title) { text-transform: lowercase; }
+[data-theme="bauhaus"] .brand-mark { background: #e1251b; box-shadow: none; }
+[data-theme="bauhaus"] .pane-name { font-family: var(--ui); font-weight: 700; letter-spacing: 0.04em; font-size: 12.5px; }
+[data-theme="bauhaus"] .pane-head { border-bottom: 2px solid #111; }
+/* agent = figura: claude koło, pi trójkąt, codex kwadrat */
+[data-theme="bauhaus"] .app :is(.ag-badge, .ag-dot) { color: transparent; background: #111; border-radius: 0; }
+[data-theme="bauhaus"] .app [data-ag="claude"] :is(.ag-badge), [data-theme="bauhaus"] .pane-row[data-ag="claude"] .ag-dot { border-radius: 50%; background: conic-gradient(#e1251b 0 75%, #111 0); }
+[data-theme="bauhaus"] .app [data-ag="pi"] :is(.ag-badge), [data-theme="bauhaus"] .pane-row[data-ag="pi"] .ag-dot { clip-path: polygon(50% 4%, 100% 96%, 0 96%); background: #f6c200; }
+[data-theme="bauhaus"] .app [data-ag="codex"] :is(.ag-badge), [data-theme="bauhaus"] .pane-row[data-ag="codex"] .ag-dot { background: #1d4fa3; transform: scale(0.8); }
+[data-theme="bauhaus"] .pane-row .ag-dot { width: 9px; height: 9px; }
+/* pracuje = figura się obraca (mała powierzchnia), czeka = rośnie, nagłówek żółty */
+[data-theme="bauhaus"] .pane.st-working .ag-badge, [data-theme="bauhaus"] .pane-row.st-working .ag-dot { animation: bhSpin 3s linear infinite; }
+@keyframes bhSpin { to { transform: rotate(360deg); } }
+.motion-lite .pane.st-working .ag-badge, .motion-lite .pane-row.st-working .ag-dot { animation: none; }
+@media (prefers-reduced-motion: reduce) { [data-theme="bauhaus"] :is(.ag-badge, .ag-dot) { animation: none !important; } }
+[data-theme="bauhaus"] .pane.st-working .pane-state { animation: none; }
+[data-theme="bauhaus"] .app .pane.st-unread .pane-head { background: #f6c200; color: #111; }
+[data-theme="bauhaus"] .app .pane.st-unread :is(.pane-name, .pane-title, .pane-state, .icon, .ctx) { color: #111; opacity: 1; }
+[data-theme="bauhaus"] .pane.st-unread .ag-badge { transform: scale(1.3); }
+[data-theme="bauhaus"] .fh-fill .pane.is-focused .pane-head { background: #111; color: #f5f3ee; }
+[data-theme="bauhaus"] .fh-fill .pane.is-focused :is(.pane-name, .pane-title, .icon, .pane-state, .ctx) { color: #f5f3ee; }
+[data-theme="bauhaus"] .fh-fill .pane.is-focused .ctx-bar { background: rgba(255, 255, 255, 0.25); }
+[data-theme="bauhaus"] .fh-fill .pane.is-focused .ctx-bar span { background: var(--ag); }
+[data-theme="bauhaus"] .ctx-bar { height: 5px; border-radius: 0; }
+[data-theme="bauhaus"] .bar { height: 8px; background: #e7e4dc; border-radius: 0; }
+[data-theme="bauhaus"] .proj.is-active .proj-row { box-shadow: inset 6px 0 0 #e1251b; }
+[data-theme="bauhaus"] .btn { border: 2px solid #111; font-weight: 600; }
+[data-theme="bauhaus"] .rail-label, [data-theme="bauhaus"] .dock-sec h3 { color: #111; font-weight: 700; letter-spacing: 0.12em; }

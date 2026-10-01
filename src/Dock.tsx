@@ -125,6 +125,7 @@ export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPi
               type="button"
               key={pane.id}
               className={`ctx-row${meter.warn ? " is-warn" : ""}`}
+              data-ag={pane.agentId}
               style={{ "--ag": agentColor(agent) } as CSSProperties}
               title={[titles[pane.id], name, model].filter(Boolean).join(" · ")}
               onClick={() => onPickPane(pane.id)}
@@ -183,6 +184,7 @@ export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPi
                 type="button"
                 key={item.id}
                 className="feed-item"
+                data-ag={item.agentId}
                 style={{ "--ag": agentColor(agent) } as CSSProperties}
                 title={[titles[item.paneId], `${name}: ${item.text}`].filter(Boolean).join("\n")}
                 onClick={() => onPickFeed(item)}

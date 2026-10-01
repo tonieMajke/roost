@@ -369,3 +369,111 @@
 :root[data-theme="rtec"] :is(.chat-title, .bot-head-name, .chat-hello, .bot-hello-name) { font-family: var(--display); font-weight: 400; }
 :root[data-theme="rtec"] .chat-title { font-size: 12px; }
 :root[data-theme="rtec"] .chat-hello { font-size: clamp(22px, 2.6vw, 30px); letter-spacing: 0.08em; }
+
+/* ======================= V · CIEMNIA ======================= */
+:root[data-theme="ciemnia"] .chat-main { background: radial-gradient(ellipse 80% 55% at 50% -12%, rgba(255, 40, 20, 0.16), transparent 70%); }
+:root[data-theme="ciemnia"] :is(.chat-title, .bot-head-name, .chat-hello, .bot-hello-name) { text-transform: uppercase; letter-spacing: 0.06em; }
+:root[data-theme="ciemnia"] .chat-composer { background: #080202; box-shadow: inset 0 0 0 1px rgba(255, 70, 50, 0.16), inset 0 10px 16px rgba(0, 0, 0, 0.7); border-color: transparent; }
+:root[data-theme="ciemnia"] .chat-composer:focus-within { box-shadow: inset 0 0 0 1px var(--line-strong), 0 0 24px -6px rgba(255, 40, 20, 0.45); }
+:root[data-theme="ciemnia"] .chat-send:not(:disabled) { box-shadow: 0 0 10px rgba(255, 60, 40, 0.6); }
+:root[data-theme="ciemnia"] :is(.chat-code, .bot-tool-body pre) { background: #080202; }
+:root[data-theme="ciemnia"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { box-shadow: inset 2px 0 0 var(--accent); }
+
+/* ======================= W · PARTYTURA ======================= */
+:root[data-theme="partytura"] :is(.chat-side) { border-right-color: var(--line-strong); }
+:root[data-theme="partytura"] .bot-head { border-bottom: 3px double var(--line-strong); }
+:root[data-theme="partytura"] :is(.chat-hello, .bot-hello-name, .chat-title) { font-style: italic; font-weight: 400; }
+:root[data-theme="partytura"] .chat-hello .brand-mark { font-size: 34px; }
+:root[data-theme="partytura"] .chat-title { font-size: 20px; color: var(--text); }
+:root[data-theme="partytura"] .chat-md { font-size: 16px; }
+:root[data-theme="partytura"] .chat-md :is(h1, h2, h3) { font-family: var(--display); font-weight: 400; }
+/* odpowiedź na pięciolinii: cienkie linie nad wątkiem */
+:root[data-theme="partytura"] .chat-composer { border-color: var(--line-strong); box-shadow: none; }
+:root[data-theme="partytura"] .chat-composer:focus-within { border-color: var(--line-strong); box-shadow: -7px 0 0 -4px var(--text); }
+:root[data-theme="partytura"] .chat-bubble { background: transparent; border: 0; border-left: 3px double var(--line-strong); border-radius: 0; font-style: italic; }
+:root[data-theme="partytura"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: transparent; color: var(--accent); font-style: italic; }
+:root[data-theme="partytura"] .bot-approval { border: 1.5px solid var(--accent); background: var(--pane); }
+
+/* ======================= X · RYZOGRAF ======================= */
+:root[data-theme="ryzograf"] { --card-shadow: 3px 2px 0 rgba(255, 79, 163, 0.55); }
+:root[data-theme="ryzograf"] .chat-side { background: transparent; border-right: 1.5px solid var(--line-strong); }
+:root[data-theme="ryzograf"] .bot-head { border-bottom: 1.5px solid var(--line-strong); }
+:root[data-theme="ryzograf"] :is(.chat-composer, .bot-approval, .bot-tool, .chat-code, .chat-table, .chat-source) { border: 1.5px solid var(--line-strong); }
+:root[data-theme="ryzograf"] .chat-composer:focus-within { border-color: var(--line-strong); box-shadow: 3px 2px 0 var(--accent); }
+:root[data-theme="ryzograf"] :is(.chat-hello, .bot-hello-name, .chat-title) { text-shadow: 2px 1.5px 0 rgba(255, 79, 163, 0.75); }
+:root[data-theme="ryzograf"] .chat-title { color: var(--text); font-family: var(--display); font-weight: 800; }
+:root[data-theme="ryzograf"] .chat-bubble { background: radial-gradient(rgba(255, 79, 163, 0.35) 1px, transparent 1.4px) 0 0 / 4px 4px, var(--pane); border: 1.5px solid var(--line-strong); }
+:root[data-theme="ryzograf"] .chat-code-head { background: radial-gradient(rgba(255, 79, 163, 0.4) 1px, transparent 1.4px) 0 0 / 4px 4px; }
+:root[data-theme="ryzograf"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: rgba(255, 79, 163, 0.22); }
+
+/* ======================= Y · LAKA ======================= */
+:root[data-theme="laka"] { --card-shadow: inset 0 0 0 1px rgba(212, 166, 74, 0.22), 0 12px 24px -12px #000; }
+:root[data-theme="laka"] .chat-main {
+  background-image:
+    radial-gradient(circle at 50% 100%, transparent 9px, rgba(212, 166, 74, 0.07) 9px 10px, transparent 10px 14px, rgba(212, 166, 74, 0.05) 14px 15px, transparent 15px 19px, rgba(212, 166, 74, 0.04) 19px 20px, transparent 20px),
+    radial-gradient(circle at 50% 100%, transparent 9px, rgba(212, 166, 74, 0.07) 9px 10px, transparent 10px 14px, rgba(212, 166, 74, 0.05) 14px 15px, transparent 15px 19px, rgba(212, 166, 74, 0.04) 19px 20px, transparent 20px);
+  background-size: 40px 20px; background-position: 0 0, 20px 10px;
+}
+:root[data-theme="laka"] :is(.chat-composer, .bot-approval, .bot-tool, .chat-code, .chat-table, .chat-source) {
+  border: 0; background: linear-gradient(160deg, rgba(255, 236, 210, 0.06), transparent 32%), var(--pane); box-shadow: var(--card-shadow);
+}
+:root[data-theme="laka"] .chat-composer:focus-within { box-shadow: inset 0 0 0 1px var(--accent), 0 12px 24px -12px #000; }
+:root[data-theme="laka"] :is(.chat-hello, .bot-hello-name, .chat-title) { font-style: italic; font-weight: 600; }
+:root[data-theme="laka"] .chat-hello { font-size: clamp(36px, 4.2vw, 50px); }
+:root[data-theme="laka"] .chat-title { font-size: 22px; color: var(--accent); }
+:root[data-theme="laka"] .chat-md :is(h1, h2, h3) { font-style: italic; font-weight: 600; font-size: 1.45em; color: var(--accent); }
+:root[data-theme="laka"] .chat-bubble { background: linear-gradient(90deg, rgba(210, 59, 34, 0.32), rgba(210, 59, 34, 0.16)); border-color: rgba(212, 166, 74, 0.25); }
+:root[data-theme="laka"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { box-shadow: inset 2px 0 0 var(--accent); }
+:root[data-theme="laka"] .chat-hello .brand-mark { border: 2px solid var(--accent); border-right-color: transparent; background: none; box-shadow: none; }
+
+/* ======================= Z · POZIOMICE ======================= */
+:root[data-theme="poziomice"] .chat-main {
+  background-image:
+    repeating-radial-gradient(ellipse 120% 80% at 28% 72%, transparent 0 11px, rgba(122, 92, 48, 0.16) 11px 12px),
+    repeating-radial-gradient(ellipse 90% 120% at 86% 14%, transparent 0 13px, rgba(122, 92, 48, 0.11) 13px 14px);
+}
+:root[data-theme="poziomice"] .chat-side { border-right: 1.5px solid var(--line-strong); }
+:root[data-theme="poziomice"] .bot-head { background: var(--rail); border-bottom: 1.5px solid var(--line-strong); }
+:root[data-theme="poziomice"] :is(.chat-title, .bot-head-name, .chat-hello, .bot-hello-name) { text-transform: uppercase; letter-spacing: 0.1em; }
+/* wątek = arkusz mapy z ramką */
+:root[data-theme="poziomice"] .chat-column { background: var(--pane); border: 1px solid var(--line-strong); box-shadow: 0 0 0 3px var(--pane), 0 0 0 4px rgba(122, 92, 48, 0.5); margin-top: 18px; margin-bottom: 18px; }
+:root[data-theme="poziomice"] .chat-title { border-bottom: 1.5px solid var(--line-strong); padding-bottom: 10px; color: var(--text); }
+:root[data-theme="poziomice"] :is(.chat-composer, .bot-approval) { border-color: var(--line-strong); box-shadow: 0 0 0 3px var(--pane), 0 0 0 4px rgba(122, 92, 48, 0.5); }
+:root[data-theme="poziomice"] .chat-composer:focus-within { border-color: var(--accent); }
+:root[data-theme="poziomice"] .chat-bubble { background: rgba(31, 111, 178, 0.08); border-color: rgba(31, 111, 178, 0.35); }
+:root[data-theme="poziomice"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* ======================= Ź · E-PAPIER ======================= */
+:root[data-theme="epapier"] { --card-shadow: none; }
+:root[data-theme="epapier"] :is(.chat-composer, .bot-approval) { border: 1.5px solid var(--line-strong); }
+:root[data-theme="epapier"] .chat-composer:focus-within { border-width: 2px; border-color: var(--line-strong); }
+:root[data-theme="epapier"] :is(.bot-tool, .chat-code, .chat-table, .chat-source) { border-color: var(--line-strong); }
+:root[data-theme="epapier"] .chat-md { font-size: 16.5px; line-height: 1.75; }
+:root[data-theme="epapier"] .chat-bubble { background: var(--pane); border-color: var(--line-strong); }
+/* zgoda to jedyna głośna rzecz, jak panel czekający na ciebie */
+:root[data-theme="epapier"] .bot-approval-head { background: var(--text); color: var(--pane); margin: -14px -16px 0; padding: 8px 16px; }
+:root[data-theme="epapier"] .bot-approval-head svg { color: var(--pane); }
+:root[data-theme="epapier"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: var(--text); color: var(--pane); }
+:root[data-theme="epapier"] :is(.chat-item, .bot-item, .bot-side-btn).is-active :is(svg, .proj-close) { color: var(--pane); }
+:root[data-theme="epapier"] .chat-hello .brand-mark { box-shadow: none; }
+
+/* ======================= Ż · BAUHAUS ======================= */
+:root[data-theme="bauhaus"] { --card-shadow: 6px 6px 0 #111111; }
+:root[data-theme="bauhaus"] .chat-side { border-right: 4px solid #111; }
+:root[data-theme="bauhaus"] .bot-head { border-bottom: 4px solid #111; position: relative; overflow: hidden; }
+:root[data-theme="bauhaus"] .bot-head > * { position: relative; z-index: 1; }
+:root[data-theme="bauhaus"] .bot-head::before { content: ""; position: absolute; left: 52%; top: -30px; width: 64px; height: 64px; border-radius: 50%; background: #f6c200; }
+:root[data-theme="bauhaus"] .bot-head::after { content: ""; position: absolute; left: calc(52% + 76px); top: 0; width: 10px; height: 100%; background: #1d4fa3; }
+:root[data-theme="bauhaus"] :is(.chat-composer, .bot-approval) { border: 2px solid #111; }
+:root[data-theme="bauhaus"] .chat-composer:focus-within { border-color: #111; box-shadow: 6px 6px 0 #e1251b; }
+:root[data-theme="bauhaus"] :is(.bot-tool, .chat-code, .chat-table, .chat-source) { border: 2px solid #111; }
+:root[data-theme="bauhaus"] :is(.chat-hello, .bot-hello-name, .chat-title, .bot-head-name) { text-transform: lowercase; font-weight: 700; }
+:root[data-theme="bauhaus"] .chat-hello { font-size: clamp(36px, 4.4vw, 54px); }
+:root[data-theme="bauhaus"] .chat-hello .brand-mark { border-radius: 50%; background: #e1251b; box-shadow: none; width: 30px; height: 30px; }
+:root[data-theme="bauhaus"] .chat-title { color: var(--text); font-size: 22px; }
+:root[data-theme="bauhaus"] .chat-bubble { background: #f6c200; border: 0; color: #111; }
+:root[data-theme="bauhaus"] .chat-send { border-radius: 50%; }
+:root[data-theme="bauhaus"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: transparent; box-shadow: inset 6px 0 0 #e1251b; font-weight: 700; color: var(--text); }
+:root[data-theme="bauhaus"] .chat-new { border: 2px solid #111; }
+/* Ciemnia: podświetlenie kodu też w czerwieni lampy (różnice jasnością, nie barwą) */
+:root[data-theme="ciemnia"] .chat-code-body { filter: sepia(1) saturate(4) hue-rotate(-28deg); }

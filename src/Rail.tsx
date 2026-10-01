@@ -167,6 +167,7 @@ export function Rail({
                       <div
                         key={pane.id}
                         className={`pane-row ${r.cls}${pane.id === project.focused ? " is-focused" : ""}`}
+                        data-ag={pane.agentId}
                         // kropka wiersza w kolorze agenta (--ag stemplowany przez Rail)
                         style={{ "--ag": agentColor(agents.find((a) => a.id === pane.agentId)) } as CSSProperties}
                         onClick={() => onFocusPane(pane.id)}

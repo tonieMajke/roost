@@ -126,6 +126,7 @@ export function Pane({ pane, path, agent, account, showAccount, limitHit, canCon
   return (
     <section
       className={`pane ${status.cls}${focused ? " is-focused" : ""}${closing ? " is-closing" : ""}`}
+      data-ag={pane.agentId} // motywy rozróżniają agentów też kształtem (Bauhaus, E-papier)
       // Kolor agenta dla CSS (--ag): poświata, ramka, nagłówek (wzór D).
       style={{ "--ag": agentColor(agent) } as CSSProperties}
       onPointerDown={() => actions.focus(pane.id)}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { THEME_IDS, THEMES, isLight, termTheme } from "./themes";
 import css from "./themes.css?raw";
+import chatCss from "./themes-chat.css?raw";
 
 const HEX = /^#[0-9a-f]{6}$/;
 
@@ -31,9 +32,15 @@ describe("THEMES", () => {
     }
   });
 
-  it("themes.css nie zna motywów spoza listy", () => {
-    const used = new Set([...css.matchAll(/data-theme="([a-z0-9]+)"/g)].map((m) => m[1]));
-    for (const id of used) expect(THEME_IDS as readonly string[]).toContain(id);
+  it("themes.css i themes-chat.css nie znają motywów spoza listy", () => {
+    for (const file of [css, chatCss]) {
+      const used = new Set([...file.matchAll(/data-theme="([a-z0-9]+)"/g)].map((m) => m[1]));
+      for (const id of used) expect(THEME_IDS as readonly string[]).toContain(id);
+    }
+  });
+
+  it("każdy motyw poza wzorem D ma coś w Czacie i Bocie (themes-chat.css)", () => {
+    for (const id of THEME_IDS) if (id !== "d") expect(chatCss, id).toContain(`[data-theme="${id}"]`);
   });
 
   it("tekst terminala odcina się od tła (jasny na ciemnym albo odwrotnie)", () => {

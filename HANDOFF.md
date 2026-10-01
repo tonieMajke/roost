@@ -24,6 +24,18 @@ Plan: `docs/plan-konta.md` (etapy 1–5 zrobione i zacommitowane, 6 = ten wpis).
 - [ ] okno „Konta”, rząd „Konto” w „Nowy panel”, pasek limitu i bloki w Pulpicie wyglądają dobrze w jasnym i ciemnym motywie (wizualnie nieoglądane)
 - [ ] własna linia statusu w `settings.json` konta wyłącza limity tego konta (bez błędu)
 
+## Motywy V–Ż: Ciemnia, Partytura, Ryzograf, Laka, Poziomice, E-papier, Bauhaus (2026-10-01, poza planem M5)
+
+- Źródło: artefakt „Motywy V–Ż” (claude.ai). Przeniesione tylko motywy; „Zmiany w UI” z tego artefaktu (motyw dla projektu, plan dnia, kolejka Ctrl+Alt+J itd.) nie są zrobione.
+- `themes.ts`: 7 wpisów (akcent, próbka, terminal i font terminala). Własne palety ANSI mają Ciemnia (sama czerwień, różnice jasnością), Laka i E-papier (szarości: diffy bez koloru). Jasne motywy mają `LIGHT_ANSI`.
+- `themes.css`: tokeny i ozdoby z makiet. Ciemnia: terminal w kuwecie, „Na żywo” jako negatyw. Partytura: pięciolinia w nagłówku, klucze zamiast liter, cresc./fermata/fine. Ryzograf: raster, przesunięcie różu, ziarno tylko pod panelami. Laka: seigaiha, pieczęć cynobru. Poziomice: warstwice, ▲⚑◉. E-papier: faktury agentów, zero animacji i przejść. Bauhaus: koło, trójkąt i kwadrat, figura kręci się przy pracy.
+- `data-ag` (id agenta) na panelu, wierszu szyny, wierszu kontekstu i „Na żywo”. Motywy V–Ż nadpisują kolor agenta (`--ag … !important`, bo kolor jest inline), żeby trzymać paletę makiety. Agent spoza claude/pi/codex dostaje kolor zapasowy motywu.
+- `themes-chat.css`: wszystkie 7 motywów także w Czacie i Bocie.
+- 17 paczek fontów (`@fontsource…`, ładowane leniwie jak poprzednie); dwie paczki Big Shoulders bez typów mają deklarację w `vite-env.d.ts`. `vitest.config.ts` czyta też `themes-chat.css` jako tekst. Nowy test: każdy motyw ma wpis w `themes-chat.css`.
+- Pominięte (wymagają logiki, nie CSS): takt nut w pulpicie Partytury, złoty szew po restarcie (Laka), podziałka i strzałka północy (Poziomice), mignięcie przy włączeniu E-papieru.
+- Sprawdzone: zrzuty Code (projekt z 3 panelami), Czat i Bot w 7 motywach, 0 błędów konsoli; `pnpm typecheck`, `pnpm test` (676 + 10 pominiętych), `pnpm build`.
+- Niesprawdzone: prawdziwe TUI claude/pi w terminalu Ciemni i E-papieru (kolory ANSI bez barwy), panel w stanie „gotowe” i „czeka” (podgląd pokazuje tylko „pracuje”).
+
 ## Motywy w Czacie i Bocie (2026-10-01, poza planem M5)
 
 - Prośba: „motywy trzeba poprawić/doszlifować, mają też wchodzić na okno czat i bot”. Wcześniej Czat i Bot brały z motywu tylko kolory i fonty. Zaokrąglenia były na sztywno (18/14/10/8 px), tło środka zasłaniało tło okna, a ozdoby z `themes.css` działały tylko w Code.
