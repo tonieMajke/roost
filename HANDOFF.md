@@ -24,6 +24,22 @@ Plan: `docs/plan-konta.md` (etapy 1–5 zrobione i zacommitowane, 6 = ten wpis).
 - [ ] okno „Konta”, rząd „Konto” w „Nowy panel”, pasek limitu i bloki w Pulpicie wyglądają dobrze w jasnym i ciemnym motywie (wizualnie nieoglądane)
 - [ ] własna linia statusu w `settings.json` konta wyłącza limity tego konta (bez błędu)
 
+## Motywy w Czacie i Bocie (2026-10-01, poza planem M5)
+
+- Prośba: „motywy trzeba poprawić/doszlifować, mają też wchodzić na okno czat i bot”. Wcześniej Czat i Bot brały z motywu tylko kolory i fonty. Zaokrąglenia były na sztywno (18/14/10/8 px), tło środka zasłaniało tło okna, a ozdoby z `themes.css` działały tylko w Code.
+- `chat.css`/`bot.css`: zaokrąglenia z tokenów `--chat-r`, `--chat-r-md`, `--chat-r-sm`, `--chat-r-xs`, liczonych z `--r-dialog`. Motyw z kanciastymi oknami ma kanciasty czat; wzór D bez zmian. Cień kart to `--card-shadow`. `.chat-main` i `.bot-head` są przezroczyste, więc widać tło `.app` (kratka, kropki, mgławica…).
+- Nowy `src/themes-chat.css` (ładowany w `main.tsx` po App): dla każdego z 21 motywów odpowiedniki ozdób z Code. `.rail` → `.chat-side`, `.area` → `.chat-main`, `.area-head` → `.bot-head`, `.pane` → pole wpisywania, karty narzędzi, zgoda, kod, tabela, źródła; do tego aktywna rozmowa i bot.
+- Przykłady:
+  - Pulpit 95: wątek jako okno z fazą, pole wpisywania jak w Win95;
+  - Składanka: wątek jako wydruk z perforacją, z papierowymi tokenami;
+  - Metro: lista rozmów jako linia ze stacjami;
+  - Kuchnia: aktywna rozmowa jako bon;
+  - Shōnen: odpowiedź w kadrze, pytanie w dymku;
+  - Telegazeta: większe rozmiary pod VT323.
+- Poprawione błędy kontrastu: Pulpit 95 (`--active` to granat, więc czarny tekst na granacie w aktywnej rozmowie, dymku, `code` i przełączniku Code/Czat/Bot) oraz Składanka (białe karty z jasnym tekstem, biały przycisk w przełączniku). Przełącznik poprawiony też w Code.
+- Sprawdzone zrzutami (Electron offscreen, podgląd z mockiem): Czat (rozmowa z tabelą/kodem i powitanie) i Bot (rozmowa z narzędziami) we wszystkich 22 motywach, 0 błędów konsoli. `pnpm typecheck`, `pnpm test` (675 + 10 pominiętych).
+- Niesprawdzone: karta bota, zgoda Kreatora z podglądem i menu modeli w każdym motywie (dostają tokeny, ale bez osobnych ozdób); wygląd w prawdziwym oknie.
+
 ## Tła motywów: Mgławica i radar Wieży (2026-10-01, poza planem M5)
 
 - Powód: motywy z makiet A–U miały w kodzie tylko tokeny i CSS, a część makiet to żywa grafika. Zestawienie makieta ↔ `themes.css` pokazało braki w Mgławicy, Biurze, Wieży, Karuzeli, Rtęci oraz układach Rzeka/Metro/Akwarium/Konstelacja.

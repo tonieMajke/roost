@@ -1,0 +1,371 @@
+/* Motywy w zakładkach Czat i Bot. themes.css ubiera Code (szyna, panele, pulpit); tu te same
+   ozdoby na odpowiednikach z chat.css i bot.css:
+     .rail        → .chat-side (lista rozmów i botów)
+     .area        → .chat-main (środek; tło okna .app prześwituje, bo .chat-main jest przezroczysty)
+     .area-head   → .bot-head
+     .pane        → karty: pole wpisywania, narzędzia, zgoda, kod, tabela, źródła
+     .proj.is-active .proj-row → aktywna rozmowa / bot
+   Selektory z `:root`, żeby wygrywały z chat.css i bot.css niezależnie od kolejności ładowania.
+   Ładowany w main.tsx po App (po chat.css i bot.css). */
+
+/* przełącznik Code | Czat | Bot jest też w szynie Code: poprawki kontrastu dotyczą obu */
+
+/* ======================= A · KREŚLARNIA ======================= */
+:root[data-theme="kreslarnia"] .chat-side { border-right: 1.5px solid var(--accent); }
+:root[data-theme="kreslarnia"] .bot-head { background: var(--rail); border-bottom: 1.5px solid var(--accent); }
+:root[data-theme="kreslarnia"] :is(.chat-composer, .bot-tool, .bot-approval, .chat-code, .chat-table, .chat-source) { border-color: var(--line-strong); }
+:root[data-theme="kreslarnia"] .chat-composer { box-shadow: 4px 4px 0 rgba(28, 58, 158, 0.14); }
+:root[data-theme="kreslarnia"] .chat-composer:focus-within { outline: 1px solid var(--accent); outline-offset: 3px; }
+:root[data-theme="kreslarnia"] .chat-bubble { background: var(--pane); border-color: var(--line-strong); }
+:root[data-theme="kreslarnia"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { box-shadow: inset 2px 0 0 var(--accent); }
+:root[data-theme="kreslarnia"] :is(.chat-title, .bot-head-name) { text-transform: uppercase; letter-spacing: 0.04em; }
+/* odpowiedź w toku = kreskowanie jak przekrój */
+:root[data-theme="kreslarnia"] .chat-item.is-live { background: repeating-linear-gradient(45deg, rgba(28, 58, 158, 0.08) 0 1px, transparent 1px 6px); }
+
+/* ======================= B · ROZDZIELNIA ======================= */
+:root[data-theme="rozdzielnia"] .chat-side { --chat-r-xs: 3px; --chat-r-sm: 3px; }
+:root[data-theme="rozdzielnia"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: #34312c; box-shadow: inset 0 0 0 1px var(--accent); }
+:root[data-theme="rozdzielnia"] :is(.chat-composer, .bot-approval, .bot-tool) {
+  border: 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 0 #0f0e0c; position: relative;
+}
+:root[data-theme="rozdzielnia"] .chat { --chat-r: 4px; --chat-r-md: 4px; }
+/* śrubki w rogach pola wpisywania */
+:root[data-theme="rozdzielnia"] .chat-composer::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  --screw: radial-gradient(circle, #6b665b 0 1.6px, #2b2924 2.4px, transparent 3px);
+  background: var(--screw) 5px 5px / 6px 6px no-repeat, var(--screw) calc(100% - 5px) 5px / 6px 6px no-repeat,
+    var(--screw) 5px calc(100% - 5px) / 6px 6px no-repeat, var(--screw) calc(100% - 5px) calc(100% - 5px) / 6px 6px no-repeat;
+}
+:root[data-theme="rozdzielnia"] .chat-composer textarea { background: #1b1a17; border-radius: 3px; padding: 8px 10px; box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8); }
+:root[data-theme="rozdzielnia"] .chat-send:not(:disabled) { box-shadow: 0 0 8px var(--accent); }
+:root[data-theme="rozdzielnia"] .chat-bubble { background: var(--pane); border: 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 0 #0f0e0c; }
+:root[data-theme="rozdzielnia"] :is(.chat-title, .bot-head-name, .bot-tool-caption) { text-transform: uppercase; letter-spacing: 0.14em; }
+:root[data-theme="rozdzielnia"] .bot-dot.is-working { box-shadow: 0 0 6px var(--accent); }
+
+/* ======================= C · RZEKA ======================= */
+:root[data-theme="rzeka"] .bot-head { background: linear-gradient(0deg, rgba(143, 211, 255, 0.04), transparent 70%); }
+:root[data-theme="rzeka"] .chat-list-group { border-left: 1px dashed var(--line-strong); margin-left: 8px; padding-left: 6px; }
+:root[data-theme="rzeka"] .chat-thread { gap: 32px; }
+
+/* ======================= D · CISZA ======================= */
+:root[data-theme="cisza"] :is(.chat-side, .bot-head, .chat-bubble, .bot-tool, .chat-table, .chat-code, .chat-source, .chat-fold-head, .bot-head-card) { border-color: transparent; }
+:root[data-theme="cisza"] .chat-composer { border-color: transparent; box-shadow: none; }
+:root[data-theme="cisza"] .chat-composer:focus-within { border-color: transparent; box-shadow: inset 0 2px 0 var(--accent); }
+:root[data-theme="cisza"] .chat-new { border-color: transparent; font-weight: 400; }
+:root[data-theme="cisza"] :is(.mode-tabs button, .bot-item, .bot-side-btn, .chat-title, .bot-head-name, .chat-hello, .bot-hello-name) { font-weight: 400; }
+:root[data-theme="cisza"] .chat-md { font-size: 14px; }
+:root[data-theme="cisza"] .chat-md strong { font-weight: 600; }
+:root[data-theme="cisza"] .chat-actions { opacity: 0; }
+
+/* ======================= E · METRO ======================= */
+:root[data-theme="metro"] { --card-shadow: 6px 6px 0 #121417; }
+:root[data-theme="metro"] .chat-side { border-right: 3px solid var(--line); }
+:root[data-theme="metro"] .bot-head { background: var(--rail); border-bottom: 3px solid var(--line); }
+:root[data-theme="metro"] :is(.chat-composer, .bot-approval) { border: 2px solid #121417; }
+:root[data-theme="metro"] :is(.bot-tool, .chat-code, .chat-table, .chat-bubble, .chat-source, .chat-new) { border: 2px solid #121417; }
+:root[data-theme="metro"] .chat-composer:focus-within { border-color: #121417; box-shadow: 6px 6px 0 var(--accent); }
+:root[data-theme="metro"] .chat-bubble { background: #fff; }
+:root[data-theme="metro"] .chat-hello, :root[data-theme="metro"] .bot-hello-name { font-weight: 800; }
+/* lista rozmów = linia metra, rozmowy = stacje */
+:root[data-theme="metro"] .chat-list-group { position: relative; }
+:root[data-theme="metro"] .chat-side .chat-list-group > .chat-item,
+:root[data-theme="metro"] .chat-side .bot-chats > .chat-item { position: relative; margin-left: 18px; }
+:root[data-theme="metro"] .chat-side .chat-list-group > .chat-item::before,
+:root[data-theme="metro"] .chat-side .bot-chats > .chat-item::before {
+  content: ""; position: absolute; left: -15px; top: 50%; width: 9px; height: 9px; margin-top: -5px; border-radius: 50%;
+  border: 2px solid var(--accent); background: #fff; box-sizing: border-box; z-index: 1;
+}
+:root[data-theme="metro"] .chat-side .chat-list-group > .chat-item::after,
+:root[data-theme="metro"] .chat-side .bot-chats > .chat-item::after {
+  content: ""; position: absolute; left: -12px; top: 0; bottom: 0; width: 4px; background: var(--accent);
+}
+:root[data-theme="metro"] .chat-side .chat-item.is-active::before { background: var(--accent); }
+:root[data-theme="metro"] .bot-chats { border-left: 0; margin-left: 12px; padding-left: 0; }
+
+/* ======================= F · PULPIT 95 ======================= */
+:root[data-theme="pulpit95"] { --card-shadow: var(--bevel), 2px 2px 0 rgba(0, 0, 0, 0.35); }
+:root[data-theme="pulpit95"] .chat-side { box-shadow: var(--bevel); border: 0; }
+:root[data-theme="pulpit95"] .bot-head { background: #c3c3c3; box-shadow: var(--bevel); border: 0; }
+/* --active w tym motywie to granat zaznaczenia: tam, gdzie był tłem pod czarnym tekstem, szarość */
+:root[data-theme="pulpit95"] .mode-tabs { background: #c3c3c3; box-shadow: var(--bevel-in); padding: 3px; }
+:root[data-theme="pulpit95"] .mode-tabs button { color: var(--text); }
+:root[data-theme="pulpit95"] .mode-tabs button.is-on { background: #c3c3c3; box-shadow: var(--bevel); color: var(--text); }
+:root[data-theme="pulpit95"] .mode-tabs button.is-on svg { color: #0b1f8f; }
+:root[data-theme="pulpit95"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: #0b1f8f; color: #fff; }
+:root[data-theme="pulpit95"] :is(.chat-item, .bot-item, .bot-side-btn).is-active :is(svg, .proj-close) { color: #fff; }
+:root[data-theme="pulpit95"] .chat-new { background: #c3c3c3; border: 0; box-shadow: var(--bevel); }
+:root[data-theme="pulpit95"] .chat-new:active { box-shadow: var(--bevel-in); }
+:root[data-theme="pulpit95"] .chat-filter { background: #fff; box-shadow: var(--bevel-in); }
+/* wątek = okno na pulpicie */
+:root[data-theme="pulpit95"] .chat-column { background: #c3c3c3; box-shadow: var(--bevel), 2px 2px 0 rgba(0, 0, 0, 0.35); margin-top: 16px; margin-bottom: 16px; }
+:root[data-theme="pulpit95"] .chat-title { margin: -28px -24px 18px; padding: 3px 8px; background: linear-gradient(90deg, #0b1f8f, #1084d0); color: #fff; text-align: left; font-size: 14px; }
+:root[data-theme="pulpit95"] .chat-bubble { background: #fff; border: 0; box-shadow: var(--bevel-in); }
+:root[data-theme="pulpit95"] :is(.chat-md :not(pre) > code, .bot-tool-label code, .bot-approval-title code, .bot-preview-row code) { background: #fff; border: 0; color: var(--text); }
+:root[data-theme="pulpit95"] .chat-code { background: #fff; border: 0; box-shadow: var(--bevel-in); }
+:root[data-theme="pulpit95"] .chat-code-head { background: #c3c3c3; }
+:root[data-theme="pulpit95"] .chat-table { border: 0; box-shadow: var(--bevel-in); background: #fff; }
+:root[data-theme="pulpit95"] :is(.bot-tool, .chat-source, .chat-fold-head) { background: #c3c3c3; border: 0; box-shadow: var(--bevel); }
+:root[data-theme="pulpit95"] .bot-tool-body pre, :root[data-theme="pulpit95"] .bot-approval-detail { background: #fff; box-shadow: var(--bevel-in); }
+:root[data-theme="pulpit95"] :is(.chat-composer, .bot-approval) { background: #c3c3c3; border: 0; }
+:root[data-theme="pulpit95"] .chat-composer textarea { background: #fff; box-shadow: var(--bevel-in); padding: 6px 8px; }
+:root[data-theme="pulpit95"] :is(.chat-send, .bot-btn, .bot-head-card, .chat-model-btn, .chat-search-btn) { background: #c3c3c3; color: var(--text); border: 0; box-shadow: var(--bevel); }
+:root[data-theme="pulpit95"] :is(.chat-send, .bot-btn, .bot-head-card, .chat-model-btn, .chat-search-btn):active:not(:disabled),
+:root[data-theme="pulpit95"] .chat-search-btn.is-on { box-shadow: var(--bevel-in); background: #d4d4d4; color: var(--text); }
+:root[data-theme="pulpit95"] .bot-btn.is-primary { outline: 1px dotted #0a0a0a; outline-offset: -5px; }
+:root[data-theme="pulpit95"] .chat-send:disabled { color: #7b7b7b; opacity: 1; }
+:root[data-theme="pulpit95"] :is(.chat-hint, .chat-hello, .bot-hello, .bot-hello-text, .chat-meta, .chat-copy) { color: #fff; }
+:root[data-theme="pulpit95"] .chat-column :is(.chat-meta, .chat-copy) { color: var(--muted); }
+:root[data-theme="pulpit95"] .chat-hello { text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35); }
+:root[data-theme="pulpit95"] .chat-menu { box-shadow: var(--bevel), 2px 2px 0 rgba(0, 0, 0, 0.35); border: 0; }
+:root[data-theme="pulpit95"] .chat-menu-item:hover { background: #0b1f8f; color: #fff; }
+
+/* ======================= G · PLAKAT ======================= */
+:root[data-theme="plakat"] { --card-shadow: 8px 8px 0 #0b0b0b; }
+:root[data-theme="plakat"] .chat-side { border-right: 4px solid #0b0b0b; }
+:root[data-theme="plakat"] .bot-head { border-bottom: 4px solid #0b0b0b; }
+:root[data-theme="plakat"] :is(.chat-composer, .bot-approval) { border: 4px solid #0b0b0b; }
+:root[data-theme="plakat"] .chat-composer:focus-within { border-color: #0b0b0b; box-shadow: 8px 8px 0 #ff3b1f; }
+:root[data-theme="plakat"] :is(.bot-tool, .chat-code, .chat-table, .chat-source, .chat-fold-head) { border: 3px solid #0b0b0b; }
+:root[data-theme="plakat"] .chat-code { background: #0b0b0b; }
+:root[data-theme="plakat"] .chat-code-head { background: #0b0b0b; color: #ffe100; border-bottom-color: #ffe100; }
+:root[data-theme="plakat"] .chat-code-head .chat-copy { color: #ffe100; }
+:root[data-theme="plakat"] .chat-code-body { color: #fffdf0; }
+:root[data-theme="plakat"] .chat-code-body .shiki span { color: var(--shiki-dark); }
+:root[data-theme="plakat"] .chat-bubble { background: #0b0b0b; color: #ffe100; border: 0; font-weight: 700; }
+:root[data-theme="plakat"] :is(.chat-hello, .bot-hello-name, .chat-title, .bot-head-name) { font-family: var(--display); font-weight: 400; text-transform: uppercase; letter-spacing: 0.02em; }
+:root[data-theme="plakat"] .chat-hello { font-size: clamp(40px, 5vw, 64px); }
+:root[data-theme="plakat"] .chat-title { color: var(--text); font-size: 22px; }
+:root[data-theme="plakat"] .chat-md :is(h1, h2, h3) { font-weight: 400; text-transform: uppercase; }
+:root[data-theme="plakat"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: transparent; box-shadow: inset 6px 0 0 #ff3b1f; font-weight: 800; }
+:root[data-theme="plakat"] :is(.chat-new, .bot-btn, .bot-head-card) { border: 3px solid #0b0b0b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.06em; }
+:root[data-theme="plakat"] .chat-send { border: 3px solid #0b0b0b; color: #fffdf0; }
+:root[data-theme="plakat"] .bot-btn.is-primary { border-color: #0b0b0b; color: #fffdf0; }
+:root[data-theme="plakat"] .mode-tabs { background: transparent; box-shadow: inset 0 0 0 2px #0b0b0b; }
+:root[data-theme="plakat"] .mode-tabs button.is-on { background: #0b0b0b; color: #ffe100; box-shadow: none; }
+
+/* ======================= H · KONSTELACJA ======================= */
+:root[data-theme="konstelacja"] { --card-shadow: 0 1px 0 #d9d5cb, 0 10px 30px rgba(40, 30, 10, 0.1); }
+:root[data-theme="konstelacja"] .chat-side { background: rgba(246, 245, 241, 0.9); }
+:root[data-theme="konstelacja"] .bot-head { border-bottom: 0; }
+:root[data-theme="konstelacja"] :is(.chat-composer, .bot-tool, .bot-approval, .chat-code, .chat-table, .chat-source) { border: 1.5px solid transparent; background: #fff; box-shadow: var(--card-shadow); }
+:root[data-theme="konstelacja"] .chat-composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent), var(--card-shadow); }
+:root[data-theme="konstelacja"] .chat-code-head { background: #faf9f5; }
+:root[data-theme="konstelacja"] .chat-bubble { background: #fff; border-color: transparent; box-shadow: 0 1px 0 #d9d5cb, 0 6px 16px rgba(40, 30, 10, 0.08); }
+:root[data-theme="konstelacja"] :is(.chat-hello, .bot-hello-name, .chat-title) { font-style: italic; font-weight: 400; }
+:root[data-theme="konstelacja"] .chat-hello { font-size: clamp(36px, 4.4vw, 52px); }
+:root[data-theme="konstelacja"] .chat-title { font-size: 22px; color: var(--text); }
+:root[data-theme="konstelacja"] .chat-md :is(h1, h2, h3) { font-weight: 400; font-size: 1.5em; }
+:root[data-theme="konstelacja"] :is(.chat-new, .chat-send, .bot-btn, .bot-head-card) { border-radius: 999px; }
+:root[data-theme="konstelacja"] .chat-new { background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05); }
+
+/* ======================= I · AKWARIUM ======================= */
+:root[data-theme="akwarium"] .chat-main { background: linear-gradient(180deg, #0d1117 0%, #0f1a26 40%, #13304a 100%); }
+:root[data-theme="akwarium"] .chat-main::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 6px; pointer-events: none;
+  background: repeating-linear-gradient(90deg, #c9a86a 0 6px, #b8955a 6px 10px);
+}
+:root[data-theme="akwarium"] .bot-head { border-bottom: 2px solid rgba(140, 200, 255, 0.35); }
+:root[data-theme="akwarium"] .chat-composer { background: rgba(19, 25, 34, 0.85); }
+:root[data-theme="akwarium"] .chat-side .chat-list-group:last-of-type, :root[data-theme="akwarium"] .bot-side-actions { box-shadow: 0 -6px 0 -4px #c9a86a inset; }
+/* bąbelek przy rozmowie, która właśnie odpowiada */
+:root[data-theme="akwarium"] .chat-item.is-live .chat-item-title::after { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); width: 8px; height: 8px; }
+
+/* ======================= J · SKŁADANKA ======================= */
+/* wątek i pole wpisywania to wydruk na biurku: papierowe tokeny jak w .pane z themes.css */
+:root[data-theme="skladanka"] :is(.chat-column, .chat-composer, .chat-menu, .mode-tabs button.is-on) {
+  --text: #222222; --muted: #5d5d58; --faint: #6d6d68; --line: #c7c7bd; --line-strong: #a9a99e; --hover: rgba(0, 0, 0, 0.04); --active: rgba(0, 0, 0, 0.07);
+  --accent: #b8471a; --on-accent: #fbfbf5;
+  color: var(--text);
+}
+:root[data-theme="skladanka"] .chat-column {
+  background-color: var(--pane); margin-top: 18px; margin-bottom: 18px; padding: 28px 46px 24px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 14px 30px rgba(0, 0, 0, 0.35);
+  /* dziurki perforacji po bokach wydruku */
+  background-image: radial-gradient(circle, #3a3f3a 4px, transparent 4.5px), radial-gradient(circle, #3a3f3a 4px, transparent 4.5px);
+  background-size: 22px 20px, 22px 20px; background-repeat: repeat-y, repeat-y;
+  background-position: 0 6px, right 0 top 6px;
+}
+:root[data-theme="skladanka"] .chat-title { border-bottom: 2px dashed #b9b9ae; padding-bottom: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text); }
+:root[data-theme="skladanka"] .chat-composer { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 14px 30px rgba(0, 0, 0, 0.35); border: 0; }
+:root[data-theme="skladanka"] .chat-composer:focus-within { box-shadow: 0 0 0 2px var(--accent), 0 14px 30px rgba(0, 0, 0, 0.35); }
+:root[data-theme="skladanka"] .chat-bubble { background: #dcefdc; border-color: #b9cdb9; }
+:root[data-theme="skladanka"] .chat-code { background: #f1f1e8; }
+:root[data-theme="skladanka"] .chat-code-body .shiki span { color: var(--shiki-light); }
+:root[data-theme="skladanka"] .mode-tabs button.is-on { color: var(--text); }
+:root[data-theme="skladanka"] .acc-theme .chat-side { --accent: #f0915c; --on-accent: #2a1408; }
+:root[data-theme="skladanka"] :is(.chat-hello, .bot-hello-name) { text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+
+/* ======================= K · WIEŻA ======================= */
+:root[data-theme="wieza"] :is(.chat-title, .bot-head-name, .chat-hello, .bot-hello-name) { text-transform: uppercase; color: var(--accent); letter-spacing: 0.06em; }
+:root[data-theme="wieza"] .chat-title { font-weight: 400; }
+/* aktywna rozmowa = pasek lotu */
+:root[data-theme="wieza"] :is(.chat-item, .bot-item).is-active { background: #f6e27a; color: #1d1a12; border-left: 6px solid var(--accent); border-radius: 0; }
+:root[data-theme="wieza"] :is(.chat-item, .bot-item).is-active .proj-close { color: #1d1a12; }
+:root[data-theme="wieza"] .chat-composer { border-color: var(--line-strong); box-shadow: 0 0 0 1px #0a1d18, 0 0 24px rgba(73, 242, 168, 0.08); }
+:root[data-theme="wieza"] .chat-composer:focus-within { border-color: var(--accent); box-shadow: 0 0 18px rgba(73, 242, 168, 0.25); }
+:root[data-theme="wieza"] .chat-bubble { background: #0b1714; border-color: var(--line-strong); }
+:root[data-theme="wieza"] .chat-md strong { color: var(--accent); font-weight: 400; }
+:root[data-theme="wieza"] .bot-head { background: #0b1714; }
+
+/* ======================= L · KUCHNIA ======================= */
+:root[data-theme="kuchnia"] :is(.chat-title, .bot-head-name, .chat-hello, .bot-hello-name, .bot-tool-caption) { text-transform: uppercase; font-family: var(--display); letter-spacing: 0.08em; }
+:root[data-theme="kuchnia"] :is(.chat-new, .bot-btn, .bot-head-card) { text-transform: uppercase; font-family: var(--display); letter-spacing: 0.1em; font-weight: 500; }
+:root[data-theme="kuchnia"] .chat-side .chat-list::before {
+  content: ""; display: block; height: 8px; margin: 2px 6px 8px; border-radius: 4px;
+  background: linear-gradient(180deg, #c9ced3, #9aa1a8 60%, #6f757b);
+}
+/* aktywna rozmowa = bon */
+:root[data-theme="kuchnia"] :is(.chat-item, .bot-item).is-active {
+  background: #fffdf6; color: #1d1d1b; font-family: "Courier Prime", monospace; border-radius: 0; box-shadow: inset 0 3px 0 var(--accent);
+  clip-path: polygon(0 0, 100% 0, 100% 84%, 93% 100%, 86% 84%, 79% 100%, 72% 84%, 65% 100%, 58% 84%, 51% 100%, 44% 84%, 37% 100%, 30% 84%, 23% 100%, 16% 84%, 9% 100%, 0 84%);
+  padding-bottom: 4px;
+}
+:root[data-theme="kuchnia"] :is(.chat-item, .bot-item).is-active .proj-close { color: #1d1d1b; }
+/* pytanie na papierze z bonu */
+:root[data-theme="kuchnia"] .chat-bubble { background: #fffdf6; color: #1d1d1b; border: 0; border-radius: 0; font-family: "Courier Prime", monospace; }
+:root[data-theme="kuchnia"] .chat-composer { background: #121416; border-color: #44494f; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 24px rgba(0, 0, 0, 0.35); }
+
+/* ======================= M · DRUŻYNA ======================= */
+:root[data-theme="druzyna"] { --card-shadow: 0 0 0 3px #11163d, inset 0 0 0 2px #11163d; }
+:root[data-theme="druzyna"] .chat-side {
+  background: linear-gradient(180deg, #2238a8, #0e1660); border: 3px solid #e8ecff; border-radius: 6px; margin: 8px;
+  box-shadow: 0 0 0 3px #11163d, inset 0 0 0 2px #11163d; height: auto;
+}
+:root[data-theme="druzyna"] :is(.chat-composer, .bot-approval, .chat-bubble) { background: linear-gradient(180deg, #2238a8, #0e1660); border: 3px solid #e8ecff; box-shadow: var(--card-shadow); }
+:root[data-theme="druzyna"] .chat-composer:focus-within { border-color: var(--accent); }
+:root[data-theme="druzyna"] :is(.bot-tool, .chat-code, .chat-table, .chat-source) { border: 2px solid #4a56a8; background: #0e1660; }
+:root[data-theme="druzyna"] .bot-head { border-bottom: 0; }
+:root[data-theme="druzyna"] :is(.chat-hello, .bot-hello-name) { font-family: var(--display); font-size: 22px; font-weight: 400; letter-spacing: 0; }
+:root[data-theme="druzyna"] :is(.chat-title, .bot-head-name, .chat-md h1, .chat-md h2, .chat-md h3) { font-family: var(--display); font-size: 12px; font-weight: 400; line-height: 1.6; color: var(--accent); }
+:root[data-theme="druzyna"] :is(.chat-item, .bot-item).is-active::before { content: "▶"; color: var(--accent); font-size: 10px; margin-right: 2px; }
+:root[data-theme="druzyna"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: transparent; color: #fff; }
+:root[data-theme="druzyna"] .chat-new { border-color: #e8ecff; }
+
+/* ======================= N · OIOM ======================= */
+:root[data-theme="oiom"] .bot-head { background: #050806; }
+:root[data-theme="oiom"] :is(.chat-title, .bot-head-name, .chat-meta) { letter-spacing: 0.08em; text-transform: uppercase; }
+:root[data-theme="oiom"] .chat-title { color: var(--accent); }
+:root[data-theme="oiom"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { box-shadow: inset 3px 0 0 var(--accent); }
+:root[data-theme="oiom"] .chat-composer { background: #050806; box-shadow: none; }
+:root[data-theme="oiom"] .chat-composer:focus-within { border-color: var(--accent); }
+:root[data-theme="oiom"] .chat-bubble { background: #050806; }
+:root[data-theme="oiom"] .chat-wait span { border-radius: 0; height: 2px; width: 14px; box-shadow: 0 0 4px var(--accent); }
+:root[data-theme="oiom"] .bot-approval { border-color: #ff3b3b; background: #140404; }
+:root[data-theme="oiom"] .bot-approval-head { color: #ff3b3b; }
+
+/* ======================= O · TELEGAZETA ======================= */
+:root[data-theme="telegazeta"] { --card-shadow: none; }
+:root[data-theme="telegazeta"] .chat-side { border-right: 4px solid #0000ff; }
+:root[data-theme="telegazeta"] .bot-head { border-bottom: 4px solid #0000ff; }
+:root[data-theme="telegazeta"] :is(.chat-composer, .bot-approval, .bot-tool, .chat-code, .chat-table, .chat-source) { border: 2px solid #0000ff; }
+:root[data-theme="telegazeta"] .chat-composer:focus-within { border-color: #ffff00; }
+:root[data-theme="telegazeta"] .chat-bubble { background: #0000ff; color: #fff; border: 0; }
+:root[data-theme="telegazeta"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: #ffff00; color: #000; }
+:root[data-theme="telegazeta"] :is(.chat-item, .bot-item, .bot-side-btn).is-active :is(svg, .proj-close) { color: #000; }
+:root[data-theme="telegazeta"] :is(.chat-hello, .bot-hello-name) { color: #ffff00; text-shadow: 3px 3px 0 #0000ff; font-weight: 400; }
+:root[data-theme="telegazeta"] .chat-title { color: #00ffff; font-size: 22px; font-weight: 400; }
+:root[data-theme="telegazeta"] .chat-md :is(h1, h2, h3, h4) { color: #ffff00; font-weight: 400; }
+:root[data-theme="telegazeta"] .chat-md strong { color: #00ffff; font-weight: 400; }
+/* VT323 jest drobny: podnosimy rozmiary czatu o ~4 px jak w Code */
+:root[data-theme="telegazeta"] .chat-md, :root[data-theme="telegazeta"] .chat-bubble, :root[data-theme="telegazeta"] .chat-composer textarea { font-size: 20px; line-height: 1.4; }
+:root[data-theme="telegazeta"] :is(.chat-item, .bot-item, .bot-side-btn, .chat-new, .chat-filter input, .mode-tabs button, .bot-head-name) { font-size: 17px; font-weight: 400; }
+:root[data-theme="telegazeta"] :is(.chat-model-btn, .chat-search-btn, .chat-copy, .chat-meta, .chat-hint, .bot-tool-head, .bot-head-title, .bot-head-card, .chat-fold-head, .chat-list-empty) { font-size: 16px; }
+:root[data-theme="telegazeta"] :is(.chat-table table, .chat-code-body, .chat-code-body pre, .bot-tool-body pre) { font-size: 17px; }
+
+/* ======================= P · ZESZYT ======================= */
+:root[data-theme="zeszyt"] {
+  --chat-r: 22px 10px 26px 8px / 10px 24px 8px 22px; --chat-r-md: 14px 6px 16px 5px; --chat-r-sm: 8px 4px 9px 5px; --chat-r-xs: 6px 3px 7px 4px;
+  --card-shadow: 4px 6px 0 rgba(58, 58, 64, 0.15);
+}
+:root[data-theme="zeszyt"] .chat-side { background: transparent; border-right: 2px solid #e86a6a; position: relative; padding-left: 22px; }
+:root[data-theme="zeszyt"] .chat-side::before {
+  content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 14px; pointer-events: none;
+  background: radial-gradient(circle, #e4e3dc 5px, transparent 5.5px) 0 40px / 14px 120px repeat-y;
+}
+:root[data-theme="zeszyt"] .bot-head { border-bottom: 0; }
+:root[data-theme="zeszyt"] :is(.chat-composer, .bot-approval) { border: 2.5px solid #3a3a40; background: rgba(253, 253, 248, 0.92); }
+:root[data-theme="zeszyt"] :is(.bot-tool, .chat-code, .chat-table, .chat-source) { border: 2px solid #3a3a40; background: rgba(253, 253, 248, 0.92); }
+:root[data-theme="zeszyt"] .chat-composer:focus-within { border-color: var(--accent); }
+/* pytanie zaznaczone markerem */
+:root[data-theme="zeszyt"] .chat-bubble { border: 0; background: linear-gradient(100deg, transparent 1%, rgba(255, 236, 90, 0.7) 3%, rgba(255, 236, 90, 0.7) 97%, transparent 99%); }
+:root[data-theme="zeszyt"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: linear-gradient(100deg, transparent 2%, rgba(255, 236, 90, 0.7) 4%, rgba(255, 236, 90, 0.7) 96%, transparent 98%); }
+:root[data-theme="zeszyt"] :is(.chat-hello, .bot-hello-name) { font-size: clamp(40px, 5vw, 56px); font-weight: 700; color: var(--accent); }
+:root[data-theme="zeszyt"] :is(.chat-title, .bot-head-name) { font: 700 24px var(--display); color: var(--accent); }
+:root[data-theme="zeszyt"] .chat-md :is(h1, h2, h3) { font-family: var(--display); font-size: 1.7em; font-weight: 700; color: #d8322a; }
+:root[data-theme="zeszyt"] .chat-list-group .rail-label, :root[data-theme="zeszyt"] .bot-list .rail-label { font: 700 19px var(--display); color: #d8322a; }
+:root[data-theme="zeszyt"] .chat-new { border-width: 2px; border-color: #3a3a40; }
+
+/* ======================= Q · SHŌNEN ======================= */
+:root[data-theme="shonen"] { --card-shadow: 6px 6px 0 #111111; }
+:root[data-theme="shonen"] .chat-main {
+  background:
+    radial-gradient(rgba(17, 17, 17, 0.14) 1.4px, transparent 1.6px) 0 0 / 9px 9px,
+    repeating-conic-gradient(from 0deg at 50% 45%, rgba(17, 17, 17, 0.07) 0deg 1.2deg, transparent 1.2deg 6deg),
+    var(--bg);
+}
+:root[data-theme="shonen"] .chat-side { border-right: 4px solid #111; }
+:root[data-theme="shonen"] .bot-head { background: #111; color: #fff; border: 0; }
+:root[data-theme="shonen"] .bot-head .bot-head-title { color: #ffd400; }
+:root[data-theme="shonen"] .bot-head .bot-head-card { color: #fff; border-color: #fff; }
+:root[data-theme="shonen"] :is(.chat-composer, .bot-approval) { border: 4px solid #111; background: #fff; }
+:root[data-theme="shonen"] .chat-composer:focus-within { border-color: #111; box-shadow: 6px 6px 0 var(--accent); }
+:root[data-theme="shonen"] :is(.bot-tool, .chat-code, .chat-table, .chat-source) { border: 3px solid #111; background: #fff; }
+/* odpowiedź na białym kadrze, pytanie w dymku */
+:root[data-theme="shonen"] .chat-msg.is-assistant { background: #fff; border: 3px solid #111; padding: 14px 18px; box-shadow: 5px 5px 0 #111; }
+:root[data-theme="shonen"] .chat-bubble { background: #fff; border: 3px solid #111; border-radius: 50% / 40%; padding: 14px 26px; font-weight: 700; }
+:root[data-theme="shonen"] :is(.chat-hello, .bot-hello-name) { font-weight: 400; color: #ffd400; -webkit-text-stroke: 1.5px #111; paint-order: stroke fill; }
+:root[data-theme="shonen"] .chat-title { font-family: var(--display); font-weight: 400; color: #fff; background: #111; display: inline-block; padding: 4px 18px 4px 10px; clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%); }
+:root[data-theme="shonen"] .chat-column > .chat-title { display: table; margin-left: auto; margin-right: auto; }
+:root[data-theme="shonen"] .chat-md :is(h1, h2, h3) { font-weight: 400; }
+:root[data-theme="shonen"] :is(.chat-item, .bot-item, .bot-side-btn).is-active { background: #111; color: #fff; }
+:root[data-theme="shonen"] :is(.chat-item, .bot-item, .bot-side-btn).is-active :is(svg, .proj-close) { color: #ffd400; }
+:root[data-theme="shonen"] :is(.chat-new, .bot-btn) { border: 3px solid #111; font-family: var(--display); font-weight: 400; }
+:root[data-theme="shonen"] .chat-send { border: 3px solid #111; transform: skewX(-8deg); }
+
+/* ======================= R · KARUZELA ======================= */
+:root[data-theme="karuzela"] { --card-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 0 40px -6px var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+:root[data-theme="karuzela"] :is(.chat-composer, .bot-approval) { border-color: rgba(150, 230, 255, 0.35); background: rgba(20, 34, 40, 0.75); }
+:root[data-theme="karuzela"] .chat-composer:focus-within { box-shadow: 0 0 0 1px var(--accent), 0 0 60px -4px var(--accent); }
+:root[data-theme="karuzela"] :is(.bot-tool, .chat-code, .chat-table, .chat-source, .chat-bubble) { border-color: rgba(150, 230, 255, 0.22); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+:root[data-theme="karuzela"] .chat-side { border-color: rgba(150, 230, 255, 0.16); }
+:root[data-theme="karuzela"] .chat-send { box-shadow: 0 0 16px -2px var(--accent); }
+:root[data-theme="karuzela"] :is(.chat-title, .bot-head-name) { font-family: var(--display); font-weight: 700; }
+
+/* ======================= S · MGŁAWICA ======================= */
+:root[data-theme="mglawica"] { --card-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
+:root[data-theme="mglawica"] :is(.chat-composer, .bot-approval) {
+  position: relative; border-color: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+}
+/* tęczowy brzeg jak na panelach */
+:root[data-theme="mglawica"] .chat-composer::after {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(140deg, var(--accent), transparent 40%, transparent 70%, rgba(255, 122, 61, 0.6));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+:root[data-theme="mglawica"] .chat-bubble { background: rgba(179, 155, 255, 0.12); border-color: rgba(179, 155, 255, 0.25); }
+:root[data-theme="mglawica"] :is(.bot-tool, .chat-code, .chat-table, .chat-source) { background: rgba(14, 16, 26, 0.72); }
+:root[data-theme="mglawica"] :is(.chat-hello, .bot-hello-name) { font-weight: 300; }
+:root[data-theme="mglawica"] :is(.chat-title, .bot-head-name) { font-family: var(--display); font-weight: 400; }
+.motion-lite :is(.chat-composer, .bot-approval) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ======================= T · BIURO ======================= */
+:root[data-theme="biuro"] { --card-shadow: 0 10px 0 rgba(0, 0, 0, 0.25); }
+:root[data-theme="biuro"] :is(.chat-composer, .bot-approval) { border: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); }
+:root[data-theme="biuro"] .chat-composer:focus-within { border-color: var(--accent); }
+:root[data-theme="biuro"] :is(.bot-tool, .chat-code, .chat-table, .chat-source) { border-width: 2px; }
+:root[data-theme="biuro"] .chat-bubble { background: color-mix(in srgb, var(--accent) 16%, #13121c); border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+:root[data-theme="biuro"] :is(.chat-new, .chat-send, .bot-btn, .bot-head-card, .chat-model-btn, .chat-search-btn) { border-radius: 999px; }
+:root[data-theme="biuro"] .chat-hello, :root[data-theme="biuro"] .bot-hello-name { font-weight: 800; }
+
+/* ======================= U · RTĘĆ ======================= */
+:root[data-theme="rtec"] :is(.chat-composer, .bot-approval, .bot-tool, .chat-code, .chat-table, .chat-source) {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)); border-color: rgba(255, 255, 255, 0.1);
+}
+:root[data-theme="rtec"] .chat-composer { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 20px 50px rgba(0, 0, 0, 0.5); }
+:root[data-theme="rtec"] .chat-send:not(.is-stop) { background: radial-gradient(circle at 34% 30%, #fff 0 6%, #c9ced6 18%, #6b7380 50%, #1d2128 90%); color: #0b0c0e; box-shadow: 0 0 12px rgba(201, 206, 214, 0.35); }
+:root[data-theme="rtec"] :is(.chat-title, .bot-head-name, .chat-list-group .rail-label, .bot-list .rail-label) { text-transform: uppercase; letter-spacing: 0.14em; }
+:root[data-theme="rtec"] :is(.chat-title, .bot-head-name, .chat-hello, .bot-hello-name) { font-family: var(--display); font-weight: 400; }
+:root[data-theme="rtec"] .chat-title { font-size: 12px; }
+:root[data-theme="rtec"] .chat-hello { font-size: clamp(22px, 2.6vw, 30px); letter-spacing: 0.08em; }
