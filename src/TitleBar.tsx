@@ -56,7 +56,7 @@ type Edge = "North" | "South" | "East" | "West" | "NorthEast" | "NorthWest" | "S
 const EDGES: Edge[] = ["North", "South", "East", "West", "NorthWest", "NorthEast", "SouthWest", "SouthEast"];
 
 /** Uchwyty zmiany rozmiaru przy krawędziach okna bez ramki: Tauri łapie tylko 5 px, a róg
- *  to 5×5 px – za mało. Tu krawędzie 7 px, rogi dolne 18 px (górne mniejsze: przyciski paska). */
+ *  to 5×5 px – za mało. Tu krawędzie 10 px (góra 6), rogi dolne 24 px (górne 12: przyciski paska). */
 export function ResizeEdges() {
   const win = getCurrentWindow();
   return (
