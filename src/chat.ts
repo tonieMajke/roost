@@ -57,6 +57,16 @@ export type ChatMeta = { id: string; title: string; updated: number };
 /** Wiadomość w formacie API (OpenAI / Anthropic). */
 export type WireMessage = { role: "user" | "assistant"; content: string };
 
+/** Wywołanie narzędzia przez model; `bad` = argumenty, które nie są obiektem JSON (surowy tekst). */
+export type ToolCall = { id: string; name: string; args: Record<string, unknown>; bad?: string };
+/** Narzędzie wystawione modelowi (schemat JSON argumentów). */
+export type ToolSpec = { name: string; description: string; parameters: Record<string, unknown> };
+/** Rozmowa z wywołaniami narzędzi (pętla bota, dostawcy HTTP). */
+export type Turn =
+  | { role: "user"; content: string }
+  | { role: "assistant"; content: string; calls?: ToolCall[] }
+  | { role: "tool"; id: string; content: string; error?: boolean };
+
 export type ChatRequest = {
   provider: ProviderDef;
   model: string;
@@ -68,6 +78,9 @@ export type ChatRequest = {
   /** Sesja CLI: `resume` = istniejąca, inaczej nowa o tym id (claude) albo nowa bez id (codex). */
   session?: { id: string; resume: boolean };
   search: boolean;
+  /** Pętla bota: rozmowa z wywołaniami zamiast `messages` i narzędzia dla modelu. */
+  turns?: Turn[];
+  tools?: ToolSpec[];
 };
 
 export type ChatEvent =
@@ -78,7 +91,10 @@ export type ChatEvent =
   | { type: "found"; url: string; title: string } // strona z wyników wyszukiwania
   | { type: "session"; id: string }
   | { type: "done" }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "tool_call"; id: string; name: string; args: Record<string, unknown> }
+  | { type: "tool_result"; id: string; text: string; error: boolean; approval: "auto" | "once" | "chat" | "deny" } // text ≤ 4 KB
+  | { type: "tools_unsupported" }; // model albo serwer nie obsługuje narzędzi: dalej bez nich
 
 export const DEFAULT_PROVIDERS: ProviderDef[] = [
   {

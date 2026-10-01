@@ -1,7 +1,7 @@
 /** Zakładka Bot (M5): model botów, pamięci, skilli i harmonogramu. Czyste funkcje,
  *  bez Reacta i IPC. Wspólne z `electron/src/bot/`. */
 
-import { freeId, parseChat, type Chat, type ModelRef } from "./chat";
+import { applyEvent, freeId, parseChat, type Chat, type ChatEvent, type ModelRef, type Turn } from "./chat";
 
 /** Grupy narzędzi, które użytkownik włącza w ustawieniach bota. */
 export type ToolGroup = "web" | "read" | "write" | "bash" | "memory" | "skills";
@@ -88,6 +88,7 @@ export type ToolCallRecord = {
   result?: string; // skrócony do 4 KB
   error?: string;
   approval?: "auto" | ApprovalDecision;
+  at?: number; // długość tekstu odpowiedzi w chwili wywołania (kolejność tekstu i kroków w historii)
 };
 
 /** Rozmowa bota albo przebieg z harmonogramu (`routine`). */
@@ -521,6 +522,70 @@ export function parseBotChat(text: string): BotChat | null {
 }
 
 export const RESULT_LIMIT = 4096;
+const STOPPED_RESULT = "przerwane (Stop)";
+
+/** Historia rozmowy bota dla pętli narzędzi: odpowiedź z wywołaniami rozpada się na kroki
+ *  (tekst do chwili wywołania + wywołania, wyniki, dalszy tekst). Odpowiedzi z błędem wypadają
+ *  razem z wywołaniami, jak w `wireHistory`; wywołanie bez wyniku dostaje „przerwane”. */
+export function botTurns(chat: BotChat): Turn[] {
+  const out: Turn[] = [];
+  const push = (t: Turn) => {
+    const last = out[out.length - 1];
+    if (t.role !== "tool" && last?.role === t.role && !(last.role === "assistant" && last.calls?.length)) {
+      last.content = [last.content, t.content].filter(Boolean).join("\n\n");
+      if (t.role === "assistant" && t.calls?.length && last.role === "assistant") last.calls = t.calls;
+    } else out.push(t);
+  };
+  for (const m of chat.messages) {
+    if (m.role === "user") {
+      push({ role: "user", content: m.text });
+      continue;
+    }
+    if (m.error) continue;
+    const steps = new Map<number, ToolCallRecord[]>();
+    for (const c of chat.calls) {
+      if (c.message !== m.id) continue;
+      const at = Math.min(c.at ?? 0, m.text.length);
+      steps.set(at, [...(steps.get(at) ?? []), c]);
+    }
+    let pos = 0;
+    for (const at of [...steps.keys()].sort((a, b) => a - b)) {
+      const calls = steps.get(at)!;
+      push({ role: "assistant", content: m.text.slice(pos, at).trim(), calls: calls.map((c) => ({ id: c.id, name: c.name, args: c.args })) });
+      for (const c of calls)
+        out.push({ role: "tool", id: c.id, content: c.error ?? c.result ?? STOPPED_RESULT, ...(c.error !== undefined || c.result === undefined ? { error: true } : {}) });
+      pos = at;
+    }
+    const rest = m.text.slice(pos).trim();
+    if (rest) push({ role: "assistant", content: rest });
+  }
+  return out;
+}
+
+/** Zdarzenie strumienia dopisane do rozmowy bota: tekst do odpowiedzi `messageId`,
+ *  wywołania i wyniki do `calls`, brak obsługi narzędzi do flagi. */
+export function applyBotEvent(chat: BotChat, messageId: string, e: ChatEvent): BotChat {
+  const msg = chat.messages.find((m) => m.id === messageId);
+  if (!msg) return chat;
+  switch (e.type) {
+    case "tool_call":
+      return { ...chat, calls: [...chat.calls, { id: e.id, message: messageId, name: e.name, args: e.args, at: msg.text.length }] };
+    case "tool_result": {
+      // Od końca: id od serwerów lokalnych potrafią się powtarzać między odpowiedziami.
+      let i = chat.calls.length - 1;
+      while (i >= 0 && !(chat.calls[i].id === e.id && chat.calls[i].message === messageId)) i--;
+      if (i < 0) return chat;
+      const rec: ToolCallRecord = { ...chat.calls[i], approval: e.approval };
+      if (e.error) rec.error = e.text;
+      else rec.result = e.text;
+      return { ...chat, calls: chat.calls.map((c, j) => (j === i ? rec : c)) };
+    }
+    case "tools_unsupported":
+      return { ...chat, toolsUnsupported: true };
+    default:
+      return { ...chat, messages: chat.messages.map((m) => (m === msg ? applyEvent(m, e) : m)) };
+  }
+}
 
 /** Wynik narzędzia do zapisu w rozmowie: ≤ 4 KB, z informacją o ucięciu. */
 export function clipResult(text: string, limit = RESULT_LIMIT): string {

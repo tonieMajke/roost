@@ -108,7 +108,7 @@ Nowe zależności dozwolone tylko w etapie, który je wymienia.
 - [x] Etap 1 (L) – model bota bez UI
 - [x] Etap 2 (L) – magazyn botów, pamięć i skille na dysku
 - [x] Etap 3 (C) – rejestr narzędzi i potwierdzenia
-- [ ] Etap 4 (C) – pętla tool-calling dla dostawców HTTP
+- [x] Etap 4 (C) – pętla tool-calling dla dostawców HTTP
 - [ ] Etap 5 (C) – serwer MCP `bot` dla claude i codex
 - [ ] Etap 6 (C) – zakładka Bot: lista, rozmowa, karty narzędzi i zgody
 - [ ] Etap 7 (C) – karta bota: osobowość, pamięć, skille, ustawienia

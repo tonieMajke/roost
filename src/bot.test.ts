@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyBotEvent,
   botGreeting,
   botId,
   botSystemPrompt,
+  botTurns,
   clipResult,
   commandPrefix,
   creatorBot,
@@ -23,6 +25,7 @@ import {
   serializeBot,
   skillMarkdown,
   type ApprovalContext,
+  type BotChat,
   type BotDef,
   type PromptContext,
 } from "./bot";
@@ -325,5 +328,75 @@ describe("clipResult", () => {
   it("ucina z informacją", () => {
     expect(clipResult("abc", 5)).toBe("abc");
     expect(clipResult("abcdefgh", 5)).toBe("abcde\n… [ucięte, 3 znaków więcej]");
+  });
+});
+
+describe("applyBotEvent i botTurns", () => {
+  const ref = { provider: "llama", model: "qwen" };
+  const start = (): BotChat => {
+    const c = newBotChat("c1", "rust", 1, ref);
+    c.messages = [
+      { id: "u1", role: "user", text: "Co jest w src?", at: 1 },
+      { id: "a1", role: "assistant", text: "", at: 2 },
+    ];
+    return c;
+  };
+  const play = (c: BotChat, events: Parameters<typeof applyBotEvent>[2][]) => events.reduce((acc, e) => applyBotEvent(acc, "a1", e), c);
+
+  it("wywołania z pozycją w tekście, wyniki, flaga; historia rozpada się na kroki", () => {
+    const c = play(start(), [
+      { type: "text", text: "Sprawdzę." },
+      { type: "tool_call", id: "t1", name: "list_dir", args: { path: "src" } },
+      { type: "tool_call", id: "t2", name: "read_file", args: { path: "x" } },
+      { type: "tool_result", id: "t1", text: "main.rs", error: false, approval: "auto" },
+      { type: "tool_result", id: "t2", text: "nie ma pliku", error: true, approval: "once" },
+      { type: "text", text: "\n\n" },
+      { type: "text", text: "Jest main.rs." },
+      { type: "tools_unsupported" },
+    ]);
+    expect(c.messages[1].text).toBe("Sprawdzę.\n\nJest main.rs.");
+    expect(c.calls).toEqual([
+      { id: "t1", message: "a1", name: "list_dir", args: { path: "src" }, at: 9, result: "main.rs", approval: "auto" },
+      { id: "t2", message: "a1", name: "read_file", args: { path: "x" }, at: 9, error: "nie ma pliku", approval: "once" },
+    ]);
+    expect(c.toolsUnsupported).toBe(true);
+    expect(botTurns(c)).toEqual([
+      { role: "user", content: "Co jest w src?" },
+      { role: "assistant", content: "Sprawdzę.", calls: [{ id: "t1", name: "list_dir", args: { path: "src" } }, { id: "t2", name: "read_file", args: { path: "x" } }] },
+      { role: "tool", id: "t1", content: "main.rs" },
+      { role: "tool", id: "t2", content: "nie ma pliku", error: true },
+      { role: "assistant", content: "Jest main.rs." },
+    ]);
+  });
+
+  it("wynik trafia do ostatniego wywołania o tym id w tej odpowiedzi; nieznana odpowiedź = bez zmian", () => {
+    let c = start();
+    c.calls = [{ id: "call_1", message: "stara", name: "bash", args: {} }];
+    c = play(c, [
+      { type: "tool_call", id: "call_1", name: "list_dir", args: {} },
+      { type: "tool_result", id: "call_1", text: "ok", error: false, approval: "auto" },
+    ]);
+    expect(c.calls[0].result).toBeUndefined();
+    expect(c.calls[1].result).toBe("ok");
+    expect(applyBotEvent(c, "nie-ma", { type: "text", text: "x" })).toBe(c);
+  });
+
+  it("wywołanie bez wyniku (Stop) = „przerwane”, odpowiedź z błędem wypada razem z wywołaniami", () => {
+    const c = start();
+    c.messages.push(
+      { id: "u2", role: "user", text: "A teraz?", at: 3 },
+      { id: "a2", role: "assistant", text: "Psuje się", at: 4, error: "błąd serwera 500" },
+      { id: "u3", role: "user", text: "Jeszcze raz", at: 5 },
+    );
+    c.calls = [
+      { id: "s1", message: "a1", name: "bash", args: { command: "ls" }, at: 0 },
+      { id: "e1", message: "a2", name: "bash", args: { command: "x" }, at: 0, result: "?" },
+    ];
+    expect(botTurns(c)).toEqual([
+      { role: "user", content: "Co jest w src?" },
+      { role: "assistant", content: "", calls: [{ id: "s1", name: "bash", args: { command: "ls" } }] },
+      { role: "tool", id: "s1", content: "przerwane (Stop)", error: true },
+      { role: "user", content: "A teraz?\n\nJeszcze raz" },
+    ]);
   });
 });

@@ -15,6 +15,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 4: pętla narzędzi – 2026-10-01 (Claude, master)
+
+- `electron/src/bot/loop.ts`: `runBotTurn(req, tools, step, run, signal, emit)` – model → wywołania → `runTool` po kolei → model, najwyżej 25 kroków, potem tekst „Przerwałem po 25 krokach”. Zamiast `broker` z planu dostaje `run` (runTool z kontekstem, zgoda jest w nim). Tekst kolejnego kroku od nowego akapitu.
+- `openaiBody`/`anthropicBody` biorą `req.tools` i `req.turns` (nowe pola `ChatRequest`); `streamOpenAI`/`streamAnthropic` zwracają wywołania złożone z kawałków (`CallParts` w `http.ts`, zły JSON = `bad` → błąd do modelu bez uruchamiania). `httpError` niesie `status`; `Adapter` w `service.ts` zwraca `Promise<unknown>`.
+- Brak obsługi narzędzi: 400/422/500/501 na pierwszym kroku z `tools` = ten sam krok bez narzędzi i zdarzenie `tools_unsupported`; tak samo szablon `<tool_call>` wypisany tekstem. 401/404/429 i błąd po udanym kroku z narzędziami idą dalej jako błąd.
+- `src/bot.ts`: `applyBotEvent` (tekst do odpowiedzi, `tool_call`/`tool_result` do `calls` z pozycją `at` w tekście, flaga `toolsUnsupported`) i `botTurns` (historia: odpowiedź rozpada się na kroki, wyniki ≤ 4 KB z zapisu, wywołanie bez wyniku = „przerwane (Stop)”). Model w trakcie tury dostaje pełne wyniki, zdarzenie skrót 4 KB.
+- Fixtures: `openai-tools-{1,2}.sse` nagrane na żywo z llama-server (Qwen, `--jinja`, oba kroki działają); `anthropic-tools.sse` napisane ręcznie wg formatu API (bez klucza nie nagrane).
+- Sprawdzenia: `pnpm typecheck`, `pnpm test` (48 plików, 499 testów), `electron` typecheck + build – przechodzą. Ostrzeżenie Node o `localStorage` (`--localstorage-file`) w `pnpm test` było wcześniej, nie z tego etapu.
+- Niesprawdzone: Anthropic API na żywo; pętla nie jest jeszcze podpięta pod IPC (etap 6 – tam też FreeToken z `service.ts` i kreator żądania z `botTurns`). Zdarzenie `approval` idzie przez `ApprovalBroker.onChange`, nie przez `ChatEvent`.
+
 ## M5 Etap 3: narzędzia bota i zgody – 2026-10-01 (Claude, master)
 
 - `electron/src/bot/tools.ts`: rejestr 15 narzędzi (`toolDefs(bot)` = włączone grupy, Kreator dodatkowo `bot_create`/`bot_update`) i `runTool(name, args, ctx)`, który nigdy nie rzuca – błąd i odmowa wracają do modelu jako `ok: false`. Ścieżki: względne od `work/`, `~` rozwinięte, zawsze `realpath` (też dla nieistniejącego pliku przez najbliższego przodka) przed `needsApproval`, więc dowiązanie z folderu bota na zewnątrz pyta o zgodę.

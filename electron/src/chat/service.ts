@@ -14,7 +14,8 @@ import { streamPi } from "./pi";
 
 const CONFIG_FILE = "chat.json";
 
-export type Adapter = (req: ChatRequest, signal: AbortSignal, emit: (e: ChatEvent) => void) => Promise<void>;
+/** Wynik adaptera (np. wywołania narzędzi z `streamOpenAI`) Czat pomija. */
+export type Adapter = (req: ChatRequest, signal: AbortSignal, emit: (e: ChatEvent) => void) => Promise<unknown>;
 type AdapterKey = ProviderDef["kind"] | "pi";
 
 /** Surowy `chat.json` (brak = powstaje z domyślnymi) i `~/.pi/agent/models.json` (tylko odczyt). */
