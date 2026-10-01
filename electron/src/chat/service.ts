@@ -11,7 +11,7 @@ import { streamClaude } from "./claude";
 import { streamCodex } from "./codex";
 import { anthropicModels, streamAnthropic } from "./anthropic";
 import { streamPi } from "./pi";
-import { ensureFreeToken, freetokenInstance } from "./freetoken";
+import { ensureFreeToken, freeGpuForRouter, freetokenInstance, isRouter } from "./freetoken";
 
 const CONFIG_FILE = "chat.json";
 
@@ -95,9 +95,12 @@ export function defaultChatService(cwd: string, piDir: string, key: (p: Provider
     {
       pi: (req, signal, emit) => streamPi(req, key(req.provider), piDir, cwd, signal, emit),
       openai: async (req, signal, emit) => {
-        // FreeToken sam wstaje na żądanie (jedna instancja na dwóch kartach, port 1919)
+        // FreeToken sam wstaje na żądanie (jedna instancja na dwóch kartach, port 1919); router
+        // llama.cpp ładuje model sam, ale najpierw trzeba mu oddać karty zajęte przez FreeToken
         const ft = freetokenInstance(req.provider.baseUrl, req.model);
-        if (ft) await ensureFreeToken(req.model, ft, signal, (text) => emit({ type: "thinking", text: `${text}\n` }));
+        const status = (text: string) => emit({ type: "thinking", text: `${text}\n` });
+        if (ft) await ensureFreeToken(req.model, ft, signal, status);
+        else if (isRouter(req.provider.baseUrl)) await freeGpuForRouter(signal, status);
         return streamOpenAI(req, key(req.provider), signal, emit);
       },
       anthropic: (req, signal, emit) => streamAnthropic(req, key(req.provider), signal, emit),

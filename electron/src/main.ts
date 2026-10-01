@@ -24,7 +24,7 @@ import { ApprovalBroker } from "./bot/approvals";
 import { ToolBridge } from "./bot/bridge";
 import { BotService } from "./bot/service";
 import { RUN_PREFIX, Scheduler, type RunInfo } from "./bot/scheduler";
-import { ensureFreeToken, freetokenInstance } from "./chat/freetoken";
+import { ensureFreeToken, freeGpuForRouter, freetokenInstance, isRouter } from "./chat/freetoken";
 import { isSkillName, parseBotChat, runNotice, type ApprovalDecision } from "../../src/bot";
 import { buildChatConfig, isCli, type ChatEvent, type ChatRequest, type ProviderDef } from "../../src/chat";
 
@@ -72,7 +72,9 @@ const botService = new BotService({
   key: (p) => keys.get(p.id, p.keyEnv),
   beforeOpenAI: async (req, signal, emit) => {
     const ft = freetokenInstance(req.provider.baseUrl, req.model);
-    if (ft) await ensureFreeToken(req.model, ft, signal, (text) => emit({ type: "thinking", text: `${text}\n` }));
+    const status = (text: string) => emit({ type: "thinking", text: `${text}\n` });
+    if (ft) await ensureFreeToken(req.model, ft, signal, status);
+    else if (isRouter(req.provider.baseUrl)) await freeGpuForRouter(signal, status);
   },
 });
 

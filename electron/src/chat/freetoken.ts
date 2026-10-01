@@ -13,7 +13,8 @@ export const FT_INSTANCES: Record<string, string> = {
   "Swift-Flash-Next-NVFP4": "swift-flash-next",
 };
 const FT_HOST = "127.0.0.1:1919";
-const ROUTER_URL = "http://127.0.0.1:8080";
+const ROUTER_HOST = "127.0.0.1:8080";
+const ROUTER_URL = `http://${ROUTER_HOST}`;
 const READY_TIMEOUT_MS = 6 * 60_000;
 /** VRAM zajęty na karcie przed startem (pulpit trzyma ~2,5 GB na GPU0) */
 const VRAM_BUSY_MIB = 6_000;
@@ -36,6 +37,16 @@ export function freetokenInstance(baseUrl: string | undefined, model: string): s
     return null;
   }
   return FT_INSTANCES[model] ?? null;
+}
+
+/** Czy to router llama.cpp, który ładuje modele sam, ale tylko przy wolnych kartach. */
+export function isRouter(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false;
+  try {
+    return new URL(baseUrl).host === ROUTER_HOST;
+  } catch {
+    return false;
+  }
 }
 
 export interface Env {
@@ -188,4 +199,23 @@ export function ensureFreeToken(
   })().finally(() => inflight.delete(model));
   inflight.set(model, p);
   return p;
+}
+
+/**
+ * Przed zapytaniem do routera llama.cpp: działający FreeToken trzyma obie karty, więc router nie
+ * załaduje modelu. Zatrzymuje FreeToken (jak pi), chyba że używa go teraz sesja pi.
+ */
+export async function freeGpuForRouter(signal: AbortSignal, status: (msg: string) => void, env: Env = realEnv): Promise<void> {
+  const active: string[] = [];
+  for (const inst of new Set(Object.values(FT_INSTANCES))) if (await env.unitActive(inst)) active.push(inst);
+  if (active.length === 0) return;
+  // FreeToken właśnie wstaje dla innego zapytania z aplikacji: nie zabijać go w połowie
+  if (inflight.size > 0) throw new Error("FreeToken właśnie się uruchamia dla innej rozmowy: poczekaj, aż skończy, albo wybierz jego model");
+  const b = env.blocker("llama");
+  if (b) throw new Error(`GPU używa ${b}: poczekaj, aż skończy, albo przełącz ją na model z routera`);
+  signal.throwIfAborted();
+  status("Zatrzymuję FreeToken, zwalniam GPU dla routera…");
+  for (const inst of active) {
+    if ((await env.systemctl("stop", `freetoken@${inst}.service`)) !== 0) throw new Error(`nie udało się zatrzymać freetoken@${inst}.service`);
+  }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ensureFreeToken, freetokenInstance, type Env } from "./freetoken";
+import { ensureFreeToken, freeGpuForRouter, freetokenInstance, isRouter, type Env } from "./freetoken";
 
 const M = "Swift-Flash-Next-NVFP4";
 
@@ -52,5 +52,30 @@ describe("ensureFreeToken", () => {
   it("router, który nie oddaje GPU: błąd", async () => {
     const { env } = fakeEnv({ freeRouter: async () => ["qwen"] });
     await expect(ensureFreeToken(M, "swift-flash-next", sig(), () => {}, env)).rejects.toThrow(/qwen/);
+  });
+});
+
+describe("freeGpuForRouter", () => {
+  it("isRouter: tylko 127.0.0.1:8080", () => {
+    expect(isRouter("http://127.0.0.1:8080/v1")).toBe(true);
+    expect(isRouter("http://127.0.0.1:1919/v1")).toBe(false);
+    expect(isRouter(undefined)).toBe(false);
+  });
+  it("FreeToken nie działa: nic nie robi", async () => {
+    const { env, calls } = fakeEnv({ unitActive: async () => false });
+    await freeGpuForRouter(sig(), () => {}, env);
+    expect(calls).toEqual([]);
+  });
+  it("działający FreeToken: zatrzymuje go", async () => {
+    const { env, calls } = fakeEnv({ unitActive: async (i) => i === "flash-next" });
+    const msgs: string[] = [];
+    await freeGpuForRouter(sig(), (m) => msgs.push(m), env);
+    expect(calls).toEqual(["stop flash-next"]);
+    expect(msgs.length).toBe(1);
+  });
+  it("FreeToken używany przez sesję pi: błąd bez zatrzymania", async () => {
+    const { env, calls } = fakeEnv({ unitActive: async () => true, blocker: () => "sesja pi (pid 1)" });
+    await expect(freeGpuForRouter(sig(), () => {}, env)).rejects.toThrow(/sesja pi/);
+    expect(calls).toEqual([]);
   });
 });
