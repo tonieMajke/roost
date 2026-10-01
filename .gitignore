@@ -8,3 +8,5 @@ legacy-tauri/src-tauri/gen/
 electron/out/
 electron/dist-web/
 electron/release/
+.claude/
+__pycache__/
