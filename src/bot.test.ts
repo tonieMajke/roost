@@ -3,6 +3,7 @@ import {
   applyBotEvent,
   botGreeting,
   botId,
+  createdBot,
   botSystemPrompt,
   botTurns,
   clipResult,
@@ -30,6 +31,7 @@ import {
   type BotChat,
   type BotDef,
   type PromptContext,
+  type ToolCallRecord,
 } from "./bot";
 
 // Harmonogram liczy w czasie lokalnym; strefa Europe/Warsaw ustawiona w vitest.config.ts.
@@ -219,6 +221,28 @@ describe("botSystemPrompt", () => {
     expect(p).not.toContain("# Pamięć");
     expect(p).toContain("# Zadanie z harmonogramu: Poranne newsy");
     expect(botSystemPrompt(creatorBot(0), ctx)).toContain("bot_create");
+  });
+  it("Kreator: zasady i lista botów (bez siebie, po id, ta sama niezależnie od kolejności)", () => {
+    const ola = newBot("ola", 0, { name: "Ola", persona: "Hej, tu Ola. Rozmawiam nocą." });
+    const all = [creatorBot(0), ola, bot];
+    const p = botSystemPrompt(creatorBot(0), { ...ctx, bots: all });
+    expect(p).toContain("najwyżej 3 pytania");
+    expect(p).toContain("# Istniejące boty\n- ola: Ola – Hej, tu Ola.\n- rust: Rusty – Pomagam w Ruście.");
+    expect(p).not.toContain("- kreator:");
+    expect(p).toBe(botSystemPrompt(creatorBot(0), { ...ctx, bots: [...all].reverse() }));
+    expect(p.indexOf("# Narzędzia")).toBeLessThan(p.indexOf("# Jak budujesz boty"));
+    expect(botSystemPrompt(creatorBot(0), ctx)).toContain("# Istniejące boty\n(jeszcze żadnych)");
+    expect(botSystemPrompt(bot, { ...ctx, bots: all })).not.toContain("Istniejące boty");
+  });
+});
+
+describe("createdBot", () => {
+  const call = (patch: Partial<ToolCallRecord>): ToolCallRecord => ({ id: "c", message: "m", name: "bot_create", args: {}, ...patch });
+  it("id i imię z wyniku udanego bot_create", () => {
+    expect(createdBot(call({ result: "utworzono bota „Rusty” (id: rusty-2), 1 skill(e)" }))).toEqual({ id: "rusty-2", name: "Rusty" });
+    expect(createdBot(call({ result: "utworzono bota „Rusty” (id: rusty)", error: "x" }))).toBeNull();
+    expect(createdBot(call({ name: "bot_update", result: "zmieniono bota „Rusty” (style)" }))).toBeNull();
+    expect(createdBot(call({}))).toBeNull();
   });
 });
 

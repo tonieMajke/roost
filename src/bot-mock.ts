@@ -3,6 +3,7 @@
 
 import type { Backend, BotApprovalChange, BotChatKind, BotSkillMeta } from "./backend";
 import {
+  botId,
   creatorBot,
   MEMORY_LIMIT,
   MEMORY_SEP,
@@ -226,6 +227,7 @@ async function mockTurn(bot: BotDef, chat: BotChat, signal: AbortSignal, emit: (
       emit({ type: "text", text: w });
     }
   };
+  if (bot.builtin === "creator") return creatorTurn(bot, chat, signal, emit, wait, words);
   if (!bot.tools.read && !bot.tools.bash) {
     await wait(400);
     return words(`(podgląd) ${bot.name} odpowiada bez narzędzi. Prawdziwą odpowiedź da model w oknie aplikacji.`);
@@ -252,6 +254,72 @@ async function mockTurn(bot: BotDef, chat: BotChat, signal: AbortSignal, emit: (
   emit({ type: "tool_result", id: run, text: "running 12 tests\n............\ntest result: ok. 12 passed; 0 failed", error: false, approval: d });
   emit({ type: "text", text: "\n\n" });
   await words("Testy przechodzą: **12/12**. `main.rs` wypisuje tylko powitanie, więc jest gdzie rosnąć.");
+}
+
+/** Kreator w podglądzie: najpierw dopytuje, w drugiej odpowiedzi proponuje bota z podglądem karty. */
+async function creatorTurn(
+  creator: BotDef,
+  chat: BotChat,
+  signal: AbortSignal,
+  emit: (e: ChatEvent) => void,
+  wait: (ms: number) => Promise<void>,
+  words: (t: string) => Promise<void>,
+) {
+  await wait(300);
+  if (chat.messages.filter((m) => m.role === "user").length < 2)
+    return words(
+      "Dobry pomysł. Dwa pytania, zanim go zbuduję:\n\n1. O jakiej porze i w które dni ma przeglądać newsy?\n2. Pirat na serio czy z przymrużeniem oka?",
+    );
+  const all = load();
+  const id = botId("Bosman", Object.keys(all));
+  const now = Date.now();
+  const def = newBot(id, now, {
+    name: "Bosman",
+    avatar: { emoji: "🏴‍☠️" },
+    color: "#3fb4d0",
+    persona: "Ahoj, tu Bosman! Co rano przeczesuję sieć w poszukiwaniu nowości o Ruście i zdaję ci raport. Pytaj też o crate'y i wydania.",
+    style: "Mówi jak pirat, ale konkretnie; krótkie punkty z linkami.",
+    avoid: "Plotek bez źródła i długich wstępów.",
+    tone: "playful",
+    model: chat.model,
+    tools: { web: true, read: false, write: false, bash: false, memory: true, skills: true },
+  });
+  const skill = { name: "rust-news", description: "Przegląd nowości o Ruście z ostatniej doby.", body: "1. `web_search`: This Week in Rust, blog Rusta.\n2. ≤ 5 punktów z linkami.\n" };
+  const routine: Routine = {
+    id: "r1",
+    name: "Poranne newsy",
+    prompt: "Przejrzyj newsy o Ruście z ostatniej doby i zdaj raport.",
+    schedule: { kind: "daily", at: "08:00", days: [1, 2, 3, 4, 5] },
+    allow: { writeWork: false, bash: [] },
+    enabled: false,
+    created: now,
+  };
+  await words("Mam wszystko. Proponuję takiego bota:");
+  const call = crypto.randomUUID();
+  const args = { name: def.name, emoji: "🏴‍☠️", persona: def.persona, tools: ["web", "memory", "skills"], skills: [skill], routines: [{ name: routine.name, prompt: routine.prompt, schedule: routine.schedule }] };
+  emit({ type: "tool_call", id: call, name: "bot_create", args });
+  const d = await ask(
+    {
+      bot: creator.id,
+      chat: chat.id,
+      tool: "bot_create",
+      title: `Utworzyć bota „${def.name}”?`,
+      preview: { bot: def, skills: [{ name: skill.name, description: skill.description }], routines: [{ name: routine.name, schedule: routine.schedule }] },
+      canGrant: true,
+    },
+    signal,
+  );
+  if (d === "deny") {
+    emit({ type: "tool_result", id: call, text: "Użytkownik odmówił zgody.", error: true, approval: d });
+    emit({ type: "text", text: "\n\n" });
+    return words("Jasne. Co mam zmienić?");
+  }
+  const fresh = load();
+  fresh[id] = { def, memory: "", user: "", skills: { [skill.name]: { md: skillMarkdown(skill), updated: now, by: "bot" } }, routines: [routine], chats: {}, runs: {} };
+  save(fresh);
+  emit({ type: "tool_result", id: call, text: `utworzono bota „${def.name}” (id: ${id}), 1 skill(e), 1 zadanie(a) w harmonogramie – wyłączone, użytkownik włącza je sam`, error: false, approval: d });
+  emit({ type: "text", text: "\n\n" });
+  await words("Gotowe! Bosman przegląda newsy o Ruście i pamięta, co już ci pokazał. Poranne zadanie (pn–pt 8:00) włączysz w jego karcie.");
 }
 
 const chatsOf = (b: MockBot, kind: BotChatKind) => (kind === "runs" ? b.runs : b.chats);

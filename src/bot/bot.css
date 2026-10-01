@@ -113,6 +113,33 @@
 .bot-approval-detail { color: var(--text); }
 .bot-approval-detail .is-add { color: var(--ok); }
 .bot-approval-detail .is-del { color: var(--warn-text); }
+/* podgląd bota w zgodzie Kreatora */
+.bot-preview {
+  display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--bot, var(--accent)) 6%, var(--bg));
+}
+.bot-preview-head { display: flex; align-items: center; gap: 12px; border-radius: 10px; }
+.bot-preview-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bot-preview-who b { font-family: var(--display); font-size: 17px; font-weight: 600; color: var(--text); }
+.bot-preview-who span { font-size: 13px; color: var(--muted); font-style: italic; }
+.bot-preview-rows { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.bot-preview-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 2px 6px; margin: 0 -6px; border-radius: 6px; font-size: 13px; line-height: 1.5; }
+.bot-preview-row dt { color: var(--faint); font-size: 12px; padding-top: 1px; }
+.bot-preview-row dd { margin: 0; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.bot-preview-row code { font-family: var(--mono); font-size: 0.9em; padding: 1px 5px; border-radius: 5px; background: var(--active); }
+.bot-preview-row small { color: var(--faint); font-size: 11.5px; }
+.bot-preview-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.bot-preview-chips span {
+  padding: 1px 8px; border-radius: 999px; font-size: 12px;
+  border: 1px solid color-mix(in srgb, var(--bot, var(--accent)) 45%, var(--line)); color: var(--text);
+}
+.bot-preview-chips em { color: var(--muted); }
+.bot-preview-list { display: flex; flex-direction: column; gap: 3px; }
+.bot-preview .is-changed { background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
+.bot-preview-head.is-changed { padding: 4px 6px; margin: -4px -6px; }
+.bot-tool-foot { padding: 8px 10px; border-top: 1px solid var(--line); }
+.bot-tool-foot .bot-btn svg { width: 15px; height: 15px; }
+
 .bot-approval-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .bot-btn {
   display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px;

@@ -26,7 +26,7 @@ const TABS: { id: CardTab; label: string }[] = [
   { id: "settings", label: "Ustawienia" },
 ];
 
-const TONES: { id: Tone; label: string }[] = [
+export const TONES: { id: Tone; label: string }[] = [
   { id: "serious", label: "Poważnie" },
   { id: "balanced", label: "Pośrodku" },
   { id: "playful", label: "Na luzie" },
@@ -34,7 +34,7 @@ const TONES: { id: Tone; label: string }[] = [
 const COLORS = ["#7c8cff", "#e2704a", "#e0a050", "#4fc38a", "#3fb4d0", "#9b7cf0", "#e05f95", "#9aa0a6"];
 const EMOJI = ["🤖", "🦀", "🌙", "🧭", "📚", "🛠️", "🧪", "🎨", "🐙", "🦉"];
 
-const GROUPS: Record<ToolGroup, { label: string; hint: string }> = {
+export const GROUPS: Record<ToolGroup, { label: string; hint: string }> = {
   web: { label: "Sieć", hint: "wyszukiwanie i czytanie stron" },
   read: { label: "Czytanie plików", hint: "foldery poniżej bez pytania, reszta za zgodą" },
   write: { label: "Zapis plików", hint: "w katalogu roboczym swobodnie, poza nim za zgodą" },

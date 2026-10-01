@@ -82,6 +82,7 @@ export class BotService {
       skills: store.skills(bot.id).filter((s) => !s.error),
       now: (this.deps.now ?? Date.now)(),
       work: store.work(bot.id),
+      ...(bot.builtin === "creator" ? { bots: store.list().bots } : {}),
     });
     this.prompts.set(chat.id, prompt);
     return prompt;
@@ -95,7 +96,8 @@ export class BotService {
     fs.mkdirSync(work, { recursive: true });
     let grants = this.grants.get(chat.id);
     if (!grants) this.grants.set(chat.id, (grants = []));
-    const ctx: ToolContext = { store, bot, chat: chat.id, broker, grants, signal, web: this.deps.web, now: this.deps.now };
+    const model = { provider: req.provider.id, model: req.model };
+    const ctx: ToolContext = { store, bot, chat: chat.id, broker, grants, signal, model, web: this.deps.web, now: this.deps.now };
     const run: RunTool = (name, args) => runTool(name, args, ctx);
     const tools: ToolSpec[] = chat.toolsUnsupported ? [] : toolDefs(bot);
     const base: ChatRequest = { ...req, system: this.system(chat), search: false };

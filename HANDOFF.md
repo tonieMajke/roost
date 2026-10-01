@@ -33,6 +33,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 8: Kreator botów – 2026-10-01 (Claude, konta)
+
+- Prompt Kreatora (`botSystemPrompt`, sekcja „Jak budujesz boty” + „Istniejące boty” z `PromptContext.bots`): najwyżej 3 pytania, potem `bot_create` z pełną definicją, startowymi skillami i zadaniami (wyłączonymi); foldery tylko podane przez użytkownika; `model` pominięty = model rozmowy z Kreatorem (`ToolContext.model` z `service.ts`).
+- `tools.ts`: `planCreate`/`planUpdate` sprawdzają definicję **przed** prośbą o zgodę (zła definicja wraca do modelu, użytkownik jej nie widzi; też nieznana grupa narzędzi i dwa skille o tej samej nazwie), `applyPlan` zapisuje po zgodzie. `bot_update` liczy zmienione pola, „nic się nie zmienia” = błąd.
+- Karta zgody: `ApprovalRequest.preview` (`BotPreview`) zamiast JSON-a – `src/bot/BotPreview.tsx` (awatar, powitanie, charakter, styl, ton, model, narzędzia, foldery, skille, harmonogram; przy `bot_update` zmienione pola wyróżnione). Po `tool_result` z `bot_create`/`bot_update` lista botów wczytuje się od nowa; pod kartą udanego `bot_create` przycisk „Porozmawiaj z <imię>” (`createdBot`). Mock: Kreator dopytuje, potem proponuje bota „Bosman”.
+- Zrzuty (Electron offscreen, mock) w motywach D i Kreślarnia: pytania, zgoda z podglądem, po Enter bot na liście i przycisk, powitanie nowego bota. 0 błędów konsoli.
+- Na żywo (`AW_LIVE=1 pnpm vitest run electron/src/bot/creator-live.test.ts`, claude haiku przez most MCP): bot newsowy z harmonogramem (zadanie wyłączone, sieć), bot do przeglądu kodu z folderem projektu, bot-postać bez narzędzi, `bot_update` „Rusty mniej gadatliwy” – 4/4. Za pierwszym razem przy przeglądzie kodu pierwsze `bot_create` wróciło z błędem walidacji, model poprawił się sam (treść błędu niezapisana; test teraz ją wypisuje).
+- Sprawdzenia: `pnpm typecheck`, `pnpm test` (53 pliki, 541 testów + 8 na żywo pominiętych), `electron` typecheck + build – przechodzą.
+- Niesprawdzone: Kreator na dostawcach HTTP (pętla) i codex; podgląd `bot_update` tylko w teście, bez zrzutu; otwarta karta bota nie odświeża się po `bot_update` Kreatora.
+
 ## M5 Etap 7: karta bota – 2026-10-01 (Claude, master)
 
 - `src/bot/BotCard.tsx`: przycisk „Karta bota” w nagłówku (nagłówek widać teraz też przy pustej rozmowie; „Nowy bot” otwiera kartę od razu). Zakładki: **Osobowość** (imię, emoji z listy albo własne, obrazek, kolor, charakter, styl, czego unika, suwak tonu 3 poziomy, podgląd „Tak się przedstawi” z `botGreeting`), **Pamięć** (dwa pola z licznikiem / limitem, zapis każdego osobno), **Skille** (nazwa, opis, kto utworzył, data; podgląd treści w markdownie; usuń z potwierdzeniem; import z `~/.claude/skills`), **Ustawienia** (menu modeli z Czatu – `ModelMenu` wyeksportowane, Esc zamyka samo menu; foldery z okna wyboru; przełączniki 6 grup narzędzi; „Usuń bota” z potwierdzeniem, nie dla Kreatora). Osobowość i ustawienia zapisuje „Zapisz” w stopce.

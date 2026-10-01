@@ -249,6 +249,13 @@ describe("Kreator", () => {
     );
     expect(r).toMatchObject({ ok: true, approval: "once" });
     expect(asked[0].title).toBe("Utworzyć bota „Żeglarz”?");
+    expect(asked[0].detail).toBeUndefined();
+    expect(asked[0].preview).toMatchObject({
+      bot: { id: "zeglarz", name: "Żeglarz", avatar: { emoji: "⛵" } },
+      skills: [{ name: "pogoda", description: "Prognoza" }],
+      routines: [{ name: "Rano", schedule: { kind: "daily", at: "07:00" } }],
+    });
+    expect(r.text).toMatch(/^utworzono bota „Żeglarz” \(id: zeglarz\)/);
     const b = store.load("zeglarz")!;
     expect(b).toMatchObject({ name: "Żeglarz", avatar: { emoji: "⛵" }, tone: "playful", tools: { web: true, memory: true, bash: false } });
     expect(store.skills("zeglarz").map((s) => s.name)).toEqual(["pogoda"]);
@@ -263,11 +270,28 @@ describe("Kreator", () => {
     expect((await runTool("bot_create", { name: "Y", persona: "y", color: "czerwony" }, ctx(creator()))).text).toContain("color");
     expect((await runTool("bot_create", { name: "Z", persona: "z", routines: [{ name: "a", prompt: "b", schedule: { kind: "every", minutes: 1 } }] }, ctx(creator()))).text).toContain("minutes");
     expect(store.load("z")).toBeNull();
+    expect((await runTool("bot_create", { name: "W", persona: "w", tools: ["web", "teleport"] }, ctx(creator()))).text).toContain("tools");
+    const twice = [{ name: "a", description: "a", body: "a" }, { name: "a", description: "b", body: "b" }];
+    expect((await runTool("bot_create", { name: "V", persona: "v", skills: twice }, ctx(creator()))).text).toContain("tej samej nazwie");
+    // Zła definicja nie trafia do użytkownika: tylko pierwsze `X` pytało o zgodę.
+    expect(asked).toHaveLength(1);
+  });
+
+  it("bot_create bez `model` dostaje model rozmowy Kreatora", async () => {
+    const model = { provider: "claude", model: "haiku" };
+    await runTool("bot_create", { name: "M", persona: "m" }, ctx({ ...creator(), model }));
+    expect(store.load("m")?.model).toEqual(model);
+    await runTool("bot_create", { name: "N", persona: "n", model: { provider: "codex", model: "gpt" } }, ctx({ ...creator(), model }));
+    expect(store.load("n")?.model).toEqual({ provider: "codex", model: "gpt" });
   });
 
   it("bot_update zmienia tylko podane pola; zwykły bot nie ma tych narzędzi", async () => {
     expect(await runTool("bot_update", { id: "rust", style: "Krócej." }, ctx(creator()))).toMatchObject({ ok: true });
     expect(store.load("rust")).toMatchObject({ style: "Krócej.", name: "Rust", folders: [home] });
+    expect(asked[0]).toMatchObject({ title: "Zmienić bota „Rust”?", preview: { bot: { id: "rust", style: "Krócej." }, changed: ["style"] } });
+    expect((await runTool("bot_update", { id: "rust", style: "Krócej." }, ctx(creator()))).text).toContain("nic się nie zmienia");
+    expect((await runTool("bot_update", { id: "nikt", style: "x" }, ctx(creator()))).text).toContain("nie ma bota");
+    expect(asked).toHaveLength(1);
     expect((await runTool("bot_update", { id: "rust", style: "x" }, ctx())).text).toContain("wyłączone");
   });
 });

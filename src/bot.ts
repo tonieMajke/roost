@@ -92,7 +92,18 @@ export type ApprovalRequest = {
   detail?: string;
   /** Czy „Zezwalaj w tej rozmowie” ma sens (bash bez prostego prefiksu: nie). */
   canGrant: boolean;
+  /** `bot_create` / `bot_update`: karta zgody pokazuje podgląd bota zamiast JSON-a. */
+  preview?: BotPreview;
   at: number;
+};
+
+/** Bot po zmianie Kreatora, do podglądu w karcie zgody. */
+export type BotPreview = {
+  bot: BotDef;
+  skills?: { name: string; description: string }[];
+  routines?: { name: string; schedule: Schedule }[];
+  /** `bot_update`: zmienione pola `BotDef`. */
+  changed?: string[];
 };
 
 export type ToolCallRecord = {
@@ -407,7 +418,29 @@ export type PromptContext = {
   now: number;
   work: string; // katalog roboczy bota
   routine?: string; // nazwa zadania, gdy to przebieg z harmonogramu
+  bots?: BotDef[]; // Kreator: istniejące boty (do `bot_update`)
 };
+
+const CREATOR_RULES = [
+  "# Jak budujesz boty",
+  "Każdy bot ma jedno zadanie. Z opisu użytkownika wyciągnij trzy rzeczy: do czego bot służy, jaki ma charakter " +
+    "i czy ma coś robić cyklicznie. Czego brakuje i nie da się rozsądnie założyć, o to dopytaj: najwyżej 3 pytania " +
+    "w całej rozmowie, najlepiej w jednej wiadomości. Potem decyduj sam i wołaj `bot_create` – nie pokazuj definicji tekstem, " +
+    "użytkownik zobaczy podgląd karty bota przy prośbie o zgodę.",
+  "Pola `bot_create`:",
+  "- `name`, `emoji`, `color` (#rrggbb pasujący do charakteru), `tone`.",
+  "- `persona`: 2–4 zdania w pierwszej osobie. Pierwsze zdanie to powitanie, które użytkownik zobaczy w pustej rozmowie.",
+  "- `style` (jak mówi) i `avoid` (czego unika): po jednym, dwóch zdaniach.",
+  "- `tools`: tylko grupy potrzebne do zadania (web, read, write, bash, memory, skills). Bot-postać do rozmowy: najwyżej `memory`.",
+  "- `folders`: tylko ścieżki bezwzględne podane przez użytkownika. Nie zgaduj ich.",
+  "- `skills`: startowe przepisy, gdy zadanie ma stałą procedurę (np. jak przeglądać newsy, jak oceniać kod). Krótkie, konkretne kroki.",
+  "- `routines`: gdy użytkownik chce czegoś regularnie. `prompt` pisz jako polecenie dla nowego bota. Zadania powstają wyłączone, " +
+    "użytkownik włącza je w karcie bota.",
+  "- `model`: pomiń, chyba że użytkownik wskaże model. Bot dostanie ten, na którym teraz rozmawiasz.",
+  "Po odmowie zapytaj, co zmienić. Po utworzeniu powiedz jednym, dwoma zdaniami, co bot umie, i przypomnij o włączeniu " +
+    "harmonogramu, jeśli go ma.",
+  "Zmiana istniejącego bota („zrób go mniej gadatliwym”): `bot_update` z `id` i tylko zmienianymi polami.",
+].join("\n");
 
 /** Prompt systemowy bota. Stała kolejność sekcji, data bez godziny: ten sam stan w ciągu dnia
  *  daje ten sam tekst co do bajtu (prefiks się nie zmienia, cache dostawcy działa). */
@@ -426,6 +459,12 @@ export function botSystemPrompt(bot: BotDef, ctx: PromptContext): string {
   if (bot.folders.length) tools.push(`Foldery użytkownika: ${bot.folders.join(", ")}`);
   tools.push("Gdy użytkownik odmówi zgody, nie próbuj obejść odmowy innym narzędziem – zapytaj, co dalej.");
   parts.push(tools.join("\n"));
+
+  if (bot.builtin === "creator") {
+    parts.push(CREATOR_RULES);
+    const others = (ctx.bots ?? []).filter((b) => !b.builtin).sort((a, b) => a.id.localeCompare(b.id));
+    parts.push(["# Istniejące boty", ...(others.length ? others.map((b) => `- ${b.id}: ${b.name} – ${botGreeting(b)}`) : ["(jeszcze żadnych)"])].join("\n"));
+  }
 
   if (bot.tools.memory) {
     const block = (title: string, text: string, limit: number) => {
@@ -667,6 +706,13 @@ export function toolLabel(name: string, args: Record<string, unknown>): string {
     default:
       return `Używa ${name}`;
   }
+}
+
+/** Bot utworzony tym wywołaniem `bot_create` (id z wyniku narzędzia), do przycisku „Porozmawiaj z …”. */
+export function createdBot(call: ToolCallRecord): { id: string; name: string } | null {
+  if (call.name !== "bot_create" || call.error !== undefined || !call.result) return null;
+  const m = /^utworzono bota „(.*)” \(id: ([a-z0-9-]+)\)/.exec(call.result);
+  return m ? { id: m[2], name: m[1] } : null;
 }
 
 export type Segment = { kind: "text"; text: string } | { kind: "calls"; calls: ToolCallRecord[] };

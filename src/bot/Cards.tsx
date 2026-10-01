@@ -9,6 +9,7 @@ import {
   FolderOpen,
   Globe,
   LoaderCircle,
+  MessageSquare,
   Search,
   ShieldAlert,
   SquareTerminal,
@@ -16,6 +17,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { BotPreviewCard } from "./BotPreview";
 import { TOOL_GROUP, type ApprovalDecision, type ApprovalRequest, type ToolCallRecord, type ToolName, toolLabel } from "../bot";
 
 const ICONS: Partial<Record<ToolName, LucideIcon>> = {
@@ -49,8 +51,9 @@ export function Ticks({ text }: { text: string }) {
 
 const APPROVAL_TEXT: Record<ApprovalDecision, string> = { once: "zezwolono raz", chat: "zezwolono w rozmowie", deny: "odmowa" };
 
-/** Wywołanie narzędzia: zwinięte jednym wierszem, rozwinięte z argumentami i wynikiem. */
-export function ToolCard({ call, live }: { call: ToolCallRecord; live: boolean }) {
+/** Wywołanie narzędzia: zwinięte jednym wierszem, rozwinięte z argumentami i wynikiem.
+ *  `talk`: bot utworzony przez Kreatora – przycisk pod kartą przełącza na niego. */
+export function ToolCard({ call, live, talk }: { call: ToolCallRecord; live: boolean; talk?: { name: string; onClick(): void } }) {
   const [open, setOpen] = useState(false);
   const Icon = ICONS[call.name as ToolName] ?? Wand2;
   const running = call.result === undefined && call.error === undefined;
@@ -79,6 +82,14 @@ export function ToolCard({ call, live }: { call: ToolCallRecord; live: boolean }
             <div className="bot-tool-caption">{call.error !== undefined ? "Błąd" : "Wynik"}</div>
             <pre className={call.error !== undefined ? "is-error" : ""}>{call.error ?? call.result ?? (live ? "…" : "przerwane")}</pre>
           </div>
+        </div>
+      )}
+      {talk && (
+        <div className="bot-tool-foot">
+          <button type="button" className="bot-btn is-primary" onClick={talk.onClick}>
+            <MessageSquare aria-hidden />
+            Porozmawiaj z {talk.name}
+          </button>
         </div>
       )}
     </div>
@@ -132,7 +143,7 @@ export function ApprovalCard({ req, botName, active, onDecide }: { req: Approval
       <div className="bot-approval-title">
         <Ticks text={req.title} />
       </div>
-      {req.detail && <Detail tool={req.tool} text={req.detail} />}
+      {req.preview ? <BotPreviewCard preview={req.preview} /> : req.detail && <Detail tool={req.tool} text={req.detail} />}
       <div className="bot-approval-actions">
         <button type="button" className="bot-btn is-primary" onClick={() => onDecide("once")}>
           Zezwól raz <kbd>Enter</kbd>

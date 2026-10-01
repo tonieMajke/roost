@@ -112,7 +112,7 @@ Nowe zależności dozwolone tylko w etapie, który je wymienia.
 - [x] Etap 5 (C) – serwer MCP `bot` dla claude i codex
 - [x] Etap 6 (C) – zakładka Bot: lista, rozmowa, karty narzędzi i zgody
 - [x] Etap 7 (C) – karta bota: osobowość, pamięć, skille, ustawienia
-- [ ] Etap 8 (C) – Kreator: bot z opisu
+- [x] Etap 8 (C) – Kreator: bot z opisu
 - [ ] Etap 9 (L) – harmonogram w procesie głównym
 - [ ] Etap 10 (C) – harmonogram w UI, przebiegi, powiadomienia
 - [ ] Etap 11 (C + użytkownik) – sprawdzenie w oknie

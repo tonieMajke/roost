@@ -24,11 +24,13 @@ import {
   USER_LIMIT,
   type ApprovalDecision,
   type BotDef,
+  type BotPreview,
   type MemoryOp,
   type Routine,
   type ToolGroup,
   type ToolName,
 } from "../../../src/bot";
+import type { ModelRef } from "../../../src/chat";
 import { expand } from "../env";
 import type { ApprovalBroker } from "./approvals";
 import { runProc } from "./proc";
@@ -49,6 +51,8 @@ export type ToolContext = {
   /** Przebieg z harmonogramu: zgody z góry. */
   routine?: Routine["allow"];
   signal: AbortSignal;
+  /** Model rozmowy: bot z `bot_create` bez `model` dostaje ten sam. */
+  model?: ModelRef;
   web?: { search(q: string, signal: AbortSignal): Promise<string>; fetch(url: string, signal: AbortSignal): Promise<string> };
   now?: () => number;
 };
@@ -208,7 +212,7 @@ const need = (args: Record<string, unknown>, key: string): string => {
 };
 
 /** Opis prośby o zgodę (karta w UI). */
-function approvalText(tool: ToolName, a: Record<string, unknown>, ctx: ToolContext): { title: string; detail?: string } {
+function approvalText(tool: ToolName, a: Record<string, unknown>, ctx: ToolContext, plan?: CreatorPlan): { title: string; detail?: string; preview?: BotPreview } {
   const p = str(a.path) ?? "";
   switch (tool) {
     case "read_file":
@@ -226,9 +230,13 @@ function approvalText(tool: ToolName, a: Record<string, unknown>, ctx: ToolConte
     case "bash":
       return { title: "Uruchomić polecenie?", detail: `${str(a.command) ?? ""}\n\nw: ${str(a.cwd) ?? ctx.store.work(ctx.bot.id)}` };
     case "bot_create":
-      return { title: `Utworzyć bota „${str(a.name) ?? "?"}”?`, detail: clip(JSON.stringify(a, null, 2)) };
-    case "bot_update":
-      return { title: `Zmienić bota „${str(a.id) ?? "?"}”?`, detail: clip(JSON.stringify(a, null, 2)) };
+    case "bot_update": {
+      if (!plan) return { title: `Użyć narzędzia ${tool}?` };
+      const name = plan.bot.name;
+      if (plan.kind === "update") return { title: `Zmienić bota „${name}”?`, preview: { bot: plan.bot, changed: plan.changed } };
+      const skills = plan.skills.map((md) => parseSkill(md)).flatMap((p) => ("error" in p ? [] : [{ name: p.name, description: p.description }]));
+      return { title: `Utworzyć bota „${name}”?`, preview: { bot: plan.bot, skills, routines: plan.routines.map((r) => ({ name: r.name, schedule: r.schedule })) } };
+    }
     default:
       return { title: `Użyć narzędzia ${tool}?` };
   }
@@ -257,11 +265,20 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
   const cwd = str(args.cwd);
   if (tool === "bash" && ctx.routine && verdict === "allow" && cwd && !isInside(cwd, workReal) && !folders.some((f) => isInside(cwd, f))) verdict = "ask";
   if (verdict === "deny") return { ok: false, text: `narzędzie ${tool} jest wyłączone dla tego bota`, approval: "auto" };
+  // Kreator: błędy w definicji wracają do modelu, zanim użytkownik zobaczy kartę zgody.
+  let plan: CreatorPlan | undefined;
+  if (tool === "bot_create" || tool === "bot_update") {
+    try {
+      plan = tool === "bot_create" ? planCreate(args, ctx) : planUpdate(args, ctx);
+    } catch (e) {
+      return { ok: false, text: e instanceof Error ? e.message : String(e), approval: "auto" };
+    }
+  }
   let approval: ToolOutcome["approval"] = "auto";
   if (verdict === "ask") {
     const prefix = tool === "bash" ? commandPrefix(str(args.command) ?? "") : undefined;
     const decision = await ctx.broker.request(
-      { bot: ctx.bot.id, chat: ctx.chat, tool, ...approvalText(tool, args, ctx), canGrant: tool !== "bash" || prefix !== null },
+      { bot: ctx.bot.id, chat: ctx.chat, tool, ...approvalText(tool, args, ctx, plan), canGrant: tool !== "bash" || prefix !== null },
       ctx.signal,
     );
     approval = decision;
@@ -270,7 +287,7 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
     if (decision === "chat") ctx.grants.push(prefix ? { tool, prefix } : { tool });
   }
   try {
-    return { ok: true, text: await exec(tool, args, ctx), approval };
+    return { ok: true, text: plan ? applyPlan(plan, ctx) : await exec(tool, args, ctx), approval };
   } catch (e) {
     if (ctx.signal.aborted) return { ok: false, text: "przerwane (Stop)", approval };
     const msg = e instanceof ToolError ? e.message : e instanceof Error ? e.message.replace(/^(\w+): /, "") : String(e);
@@ -340,9 +357,8 @@ async function exec(tool: ToolName, a: Record<string, unknown>, ctx: ToolContext
       return `poprawiono skill „${name}”`;
     }
     case "bot_create":
-      return botCreate(a, ctx);
     case "bot_update":
-      return botUpdate(a, ctx);
+      return fail("brak planu Kreatora"); // obsłużone w runTool
   }
 }
 
@@ -471,33 +487,54 @@ function botFromArgs(a: Record<string, unknown>, base: BotDef): BotDef {
   return r.bot;
 }
 
-function botCreate(a: Record<string, unknown>, ctx: ToolContext): string {
+type CreatorPlan =
+  | { kind: "create"; bot: BotDef; skills: string[]; routines: Routine[] }
+  | { kind: "update"; bot: BotDef; changed: string[] };
+
+function planCreate(a: Record<string, unknown>, ctx: ToolContext): CreatorPlan {
   const now = (ctx.now ?? Date.now)();
   const taken = ctx.store.list().bots.map((b) => b.id);
-  const bot = botFromArgs(a, newBot(botId(need(a, "name"), taken), now));
-  const skills = Array.isArray(a.skills) ? a.skills : [];
-  const mds = skills.map((x: Record<string, unknown>) => {
+  const base = newBot(botId(need(a, "name"), taken), now, { model: ctx.model ?? null });
+  const bot = botFromArgs(a, base);
+  if (Array.isArray(a.tools) && a.tools.some((g) => !TOOL_GROUPS.includes(g as ToolGroup))) fail(`\`tools\`: tylko ${TOOL_GROUPS.join(", ")}`);
+  const skills = (Array.isArray(a.skills) ? a.skills : []).map((x: Record<string, unknown>) => {
     const md = skillMarkdown({ name: String(x?.name ?? ""), description: String(x?.description ?? ""), body: String(x?.body ?? "") });
     const p = parseSkill(md);
     if ("error" in p) fail(`skill „${String(x?.name)}”: ${p.error}`);
     return md;
   });
+  const names = skills.map((md) => (parseSkill(md) as { name: string }).name);
+  if (new Set(names).size !== names.length) fail("dwa skille o tej samej nazwie");
   const rawRoutines = Array.isArray(a.routines) ? a.routines : [];
   const r = parseRoutines({
     routines: rawRoutines.map((x: Record<string, unknown>, i) => ({ ...x, id: `r${i + 1}`, enabled: false, created: now, allow: { writeWork: false, bash: [] } })),
   });
   if (r.errors.length) fail(r.errors.join("; "));
-  ctx.store.create(serializeBot(bot));
-  for (const md of mds) ctx.store.skillSave(bot.id, md, "bot");
-  if (r.routines.length) ctx.store.routinesSave(bot.id, JSON.stringify({ routines: r.routines }, null, 2));
-  const extra = [mds.length ? `${mds.length} skill(e)` : "", r.routines.length ? `${r.routines.length} zadanie(a) w harmonogramie – wyłączone, użytkownik włącza je sam` : ""].filter(Boolean);
-  return `utworzono bota „${bot.name}” (id: ${bot.id})${extra.length ? `, ${extra.join(", ")}` : ""}`;
+  return { kind: "create", bot, skills, routines: r.routines };
 }
 
-function botUpdate(a: Record<string, unknown>, ctx: ToolContext): string {
+function planUpdate(a: Record<string, unknown>, ctx: ToolContext): CreatorPlan {
   const id = need(a, "id");
-  const old = ctx.store.load(id) ?? fail(`nie ma bota „${id}”`);
+  const old = ctx.store.load(id) ?? fail(`nie ma bota „${id}”. Są: ${ctx.store.list().bots.map((b) => b.id).join(", ")}`);
   const bot = botFromArgs(a, old as BotDef);
-  ctx.store.save(serializeBot(bot));
-  return `zmieniono bota „${bot.name}”`;
+  const keys = Object.keys(bot) as (keyof BotDef)[];
+  const changed = keys.filter((k) => JSON.stringify(bot[k]) !== JSON.stringify((old as BotDef)[k]));
+  if (changed.length === 0) fail("nic się nie zmienia – podaj pola z nowymi wartościami");
+  return { kind: "update", bot, changed };
+}
+
+function applyPlan(plan: CreatorPlan, ctx: ToolContext): string {
+  const { bot } = plan;
+  if (plan.kind === "update") {
+    ctx.store.save(serializeBot(bot));
+    return `zmieniono bota „${bot.name}” (${plan.changed.join(", ")})`;
+  }
+  ctx.store.create(serializeBot(bot));
+  for (const md of plan.skills) ctx.store.skillSave(bot.id, md, "bot");
+  if (plan.routines.length) ctx.store.routinesSave(bot.id, JSON.stringify({ routines: plan.routines }, null, 2));
+  const extra = [
+    plan.skills.length ? `${plan.skills.length} skill(e)` : "",
+    plan.routines.length ? `${plan.routines.length} zadanie(a) w harmonogramie – wyłączone, użytkownik włącza je sam` : "",
+  ].filter(Boolean);
+  return `utworzono bota „${bot.name}” (id: ${bot.id})${extra.length ? `, ${extra.join(", ")}` : ""}`;
 }

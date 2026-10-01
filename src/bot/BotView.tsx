@@ -5,6 +5,7 @@ import {
   applyBotEvent,
   botGreeting,
   botId,
+  createdBot,
   CREATOR_ID,
   messageSegments,
   newBot,
@@ -92,7 +93,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
   const bot = bots.find((b) => b.id === selected) ?? bots[0] ?? null;
   const model: ModelRef | null = bot?.model && findModel(providers, bot.model) ? bot.model : firstModel(providers);
 
-  useEffect(() => {
+  const loadBots = () =>
     void backend
       .botList()
       .then((r) => {
@@ -100,11 +101,14 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
         if (r.errors.length) setErrors((prev) => [...prev, ...r.errors]);
       })
       .catch((e: unknown) => setErrors((prev) => [...prev, `boty: ${String(e)}`]));
+
+  useEffect(() => {
+    loadBots();
     void backend.botApprovals().then(setApprovals).catch(() => undefined);
     return backend.onBotApproval((e) =>
       setApprovals((prev) => (e.type === "request" ? [...prev, e.req] : prev.filter((a) => a.id !== e.id))),
     );
-  }, [setErrors]);
+  }, [setErrors]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!bot) return;
@@ -229,6 +233,11 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
         } else {
           update((c) => applyBotEvent(c, reply.id, e));
           frame.current ||= requestAnimationFrame(flush);
+          // Kreator utworzył albo zmienił bota: lista od razu z dysku.
+          if (e.type === "tool_result" && !e.error) {
+            const name = lives.current.get(current.id)?.chat.calls.find((c) => c.id === e.id)?.name;
+            if (name === "bot_create" || name === "bot_update") loadBots();
+          }
         }
       },
     );
@@ -338,9 +347,11 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
             </div>
           ) : (
             <div key={i} className="bot-tools">
-              {s.calls.map((c) => (
-                <ToolCard key={c.id} call={c} live={isLive} />
-              ))}
+              {s.calls.map((c) => {
+                const made = createdBot(c);
+                const target = made && bots.find((b) => b.id === made.id);
+                return <ToolCard key={c.id} call={c} live={isLive} talk={target ? { name: target.name, onClick: () => pickBot(target.id) } : undefined} />;
+              })}
             </div>
           ),
         )}
