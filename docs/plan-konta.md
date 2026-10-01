@@ -52,7 +52,7 @@ więc funkcja jest opcjonalna: bez dodanych kont aplikacja zachowuje się jak do
   dok i `limits.ts` z kontem.
 - [x] **Etap 5 – Kontynuuj.** Pasek przy limicie + pozycja w menu panelu; nowy panel z kontem/agentem
   docelowym i streszczeniem. Dopasować `sessionHandoff` do katalogu konta.
-- [ ] **Etap 6 – README i sprawdzenie na żywo.** Opis kont w README (po angielsku dla GitHuba),
+- [x] **Etap 6 (opis i lista gotowe, sprawdzenie na żywo czeka na użytkownika) – README i sprawdzenie na żywo.** Opis kont w README (po polsku, jak reszta README),
   próba z drugim kontem Claude i `CODEX_HOME`, lista do odhaczenia w `HANDOFF.md`.
 
 ## Do sprawdzenia na żywo przed Etapem 3

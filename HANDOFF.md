@@ -15,6 +15,28 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## Konta agentów (gałąź `konta-etapy`, worktree `.claude/worktrees/konta`) – 2026-10-01 (Claude)
+
+Plan: `docs/plan-konta.md` (etapy 1–5 zrobione i zacommitowane, 6 = ten wpis). Praca poszła w osobnym worktree, bo w głównym katalogu równolegle szło M5 – przed scaleniem do `master` trzeba rozwiązać konflikty w `App.tsx`, `Pane.tsx`, `Grid.tsx`, `backend*.ts`, `main.ts`, `handlers.ts`, `styles.css` (obie strony je dotykają).
+
+- `src/accounts.ts`: `AccountDef {id, name, kind, dir}`, `parseAccounts`, `resolveAccount`, `pickAccountId`, `accountEnv`; `accounts.json` przez `accounts_load/save` (pliku nie tworzymy bez konta). Okno „Konta” (`AccountsDialog`).
+- Konto w panelu: `Pane.account` (zapis w `workspace.json`), wybór w „Nowy panel”, `SpawnSpec.env`, plakietka w nagłówku. `claudeSessionExists`, `sessionContext`, `sessionHandoff` biorą folder konta.
+- Limity per konto: `claude-limits.<id>.json`, `--settings` ze statusline per konto, bloki w Pulpicie (`limitBlocks`).
+- „Kontynuuj gdzie indziej”: `src/continue.ts` (cele), `ContinueDialog`, pasek `limitHit` w panelu. Nowy panel → czekanie na bracketed paste (do 20 s) → istniejące `sendContext`.
+- Sprawdzone: testy 486/486, typecheck frontendu i electronu. Sprawdzone na pustych folderach: pusty `CLAUDE_CONFIG_DIR` daje ekran logowania, `CODEX_HOME` czyta własny `config.toml`.
+- Luki: Codex jako źródło kontynuacji (brak czytnika sesji), limity tylko dla Claude, streszczenie zawsze przez domyślne konto Claude.
+
+### Do sprawdzenia przez użytkownika (okno aplikacji, drugie konto potrzebne)
+
+- [ ] „Konta” → dodaj konto Claude (`~/.claude-test`) → „Zaloguj” → w panelu ekran logowania, po zalogowaniu panel działa
+- [ ] „Nowy panel” pokazuje rząd „Konto”; panel na koncie ma plakietkę; restart aplikacji wznawia rozmowę na właściwym koncie
+- [ ] statusline na koncie: po odpowiedzi claude w panelu konta pojawia się blok w „Pulpicie” z nazwą konta (i znika `Brak danych`)
+- [ ] pasek limitu: wymuś (np. podmień `claude-limits.<id>.json` na `pct: 100`, `resetsAt` w przyszłości) → pasek w panelu, „Poczekam” go chowa
+- [ ] „Kontynuuj gdzie indziej” (ikona ⇄): panel na innym koncie startuje, streszczenie wkleja się bez Entera, stary panel zostaje
+- [ ] cel Codex: `CODEX_HOME` z własnym kontem, panel działa; MCP bota (M5 Etap 5) nie jest przez to gubiony
+- [ ] okno „Konta”, rząd „Konto” w „Nowy panel”, pasek limitu i bloki w Pulpicie wyglądają dobrze w jasnym i ciemnym motywie (wizualnie nieoglądane)
+- [ ] własna linia statusu w `settings.json` konta wyłącza limity tego konta (bez błędu)
+
 ## M5 Etap 3: narzędzia bota i zgody – 2026-10-01 (Claude, master)
 
 - `electron/src/bot/tools.ts`: rejestr 15 narzędzi (`toolDefs(bot)` = włączone grupy, Kreator dodatkowo `bot_create`/`bot_update`) i `runTool(name, args, ctx)`, który nigdy nie rzuca – błąd i odmowa wracają do modelu jako `ok: false`. Ścieżki: względne od `work/`, `~` rozwinięte, zawsze `realpath` (też dla nieistniejącego pliku przez najbliższego przodka) przed `needsApproval`, więc dowiązanie z folderu bota na zewnątrz pyta o zgodę.

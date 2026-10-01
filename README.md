@@ -42,6 +42,8 @@ W `~/.config/dev.majke.agents/`:
 
 - `agents.json` — lista agentów (tworzona z domyślnymi wpisami przy pierwszym starcie).
   Uszkodzonego pliku aplikacja nie nadpisuje, tylko pokazuje błąd w pasku.
+- `accounts.json` — konta agentów (opcjonalny; powstaje, gdy dodasz pierwsze konto w oknie „Konta”).
+- `claude-limits.json`, `claude-limits.<id konta>.json` — ostatnie limity subskrypcji Claude z linii statusu.
 - `workspace.json` — układ (projekty, panele, UUID sesji, presety). Zapisywany przy
   każdej zmianie. Ścieżki bywają skracane do `~/…` (rozwijane przy starcie procesu).
 - `workspace.<RRRR-MM-DD>.bak` — kopia przed pierwszym zapisem, gdy plik był
@@ -82,6 +84,31 @@ Wybrany preset dopisuje panele na koniec aktywnego projektu, do limitu 16 — o
 pominiętych panelach i agentach spoza `agents.json` mówi komunikat nad siatką.
 Własne presety są w `workspace.json` (`presets`), wbudowane w kodzie (`src/presets.ts`).
 W projekcie bez paneli presety wbudowane stoją obok „+ Panel”.
+
+## Konta i kontynuacja na innym koncie
+
+Kilka subskrypcji (np. praca i prywatne) albo limit, który właśnie się skończył? **Konto** to
+osobny folder logowania agenta: dla Claude `CLAUDE_CONFIG_DIR`, dla Codexa `CODEX_HOME`.
+Aplikacja zna tylko ścieżkę folderu i ustawia zmienną dla procesu panelu. Tokenów nie czyta,
+nie kopiuje ani nie zapisuje; logowanie robi sam agent.
+
+- **Dodawanie:** przycisk `Konta` w nagłówku. Podajesz agenta, nazwę i folder (np. `~/.claude-praca`).
+  `Zaloguj` otwiera panel agenta na tym koncie, a on sam pokazuje ekran logowania. Folder tworzy agent.
+  „Domyślne konto” to zwykły folder agenta (`~/.claude`, `~/.codex`), bez zmiennej; ● oznacza
+  konto, które dostają nowe panele.
+- **Wybór w panelu:** „Nowy panel” ma rząd „Konto” przy Claude i Codexie. Konto zapisuje się w panelu
+  na stałe, więc zmiana domyślnego nie przesuwa działających paneli (sesje leżą w folderze konta).
+  W nagłówku panelu jest plakietka z nazwą konta.
+- **Limity:** każde konto Claude ma własny plik limitów i własny blok w „Pulpicie”.
+- **Przy limicie:** gdy okno limitu konta dojdzie do 100 %, panel pokazuje pasek z resetem i
+  opcjami „Kontynuuj gdzie indziej” albo „Poczekam”. To samo jest zawsze pod ikoną ⇄ w nagłówku
+  panelu. Kontynuacja otwiera **nowy** panel (inne konto tego samego agenta albo inny agent, np. Codex)
+  i wkleja do niego streszczenie rozmowy, bez Entera. Wznowienie tej samej sesji na innym koncie
+  nie jest możliwe, bo sesje są per konto.
+
+Ograniczenia: wyciąg rozmowy umie czytać tylko Claude i pi, więc „Kontynuuj” nie ma w panelach
+Codexa; limity wykrywamy tylko dla Claude; streszczenie robi Haiku na domyślnym koncie Claude
+(gdy jest wyczerpane, wkleja się skrócony wyciąg).
 
 ## Skróty klawiszowe
 
