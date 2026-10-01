@@ -703,3 +703,8 @@ button.feed-item {
 .motion-lite .settings, .motion-lite .bar span, .motion-lite .feed-item { animation: none !important; }
 .motion-lite .pane.st-working .pane-state { animation: none; }
 .motion-lite .pane.st-done .glow { animation: none; }
+
+/* Okno „Konta” */
+.acc-group { margin-bottom: 8px; }
+.acc-title { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 10px 0 4px; }
+.acc-kind { flex: none; width: 90px; }

@@ -71,6 +71,8 @@ handle("pty_resize", (id: number, cols: number, rows: number) => ptys.resize(id,
 handle("pty_kill", (id: number) => ptys.kill(id));
 
 handle("agents_load", () => config.agentsLoad());
+handle("accounts_load", () => config.accountsLoad());
+handle("accounts_save", (json: string) => config.accountsSave(json));
 handle("claude_session_exists", (id: string) => config.claudeSessionExists(id));
 handle("dir_exists", (p: string) => config.dirExists(p));
 handle("home_dir", () => app.getPath("home"));

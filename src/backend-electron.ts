@@ -1,3 +1,4 @@
+import { NO_ACCOUNTS, parseAccounts } from "./accounts";
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
 import type { Backend, BotSkillMeta, ExitInfo, KeyState, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
 import type { SessionContext } from "./context";
@@ -91,6 +92,16 @@ export const electronBackend: Backend = {
       return { agents: DEFAULT_AGENTS, errors: [`agents.json: ${String(e)}`] };
     }
   },
+
+  async loadAccounts() {
+    try {
+      const raw = await call<string | null>("accounts_load");
+      return parseAccounts(raw === null ? {} : JSON.parse(raw));
+    } catch (e) {
+      return { value: NO_ACCOUNTS, errors: [`accounts.json: ${String(e)}`] };
+    }
+  },
+  saveAccounts: (value) => call<void>("accounts_save", JSON.stringify(value, null, 2)),
 
   claudeSessionExists: (id) => call<boolean>("claude_session_exists", id),
   sessionContext: (kind, sessionId) => call<SessionContext | null>("session_context", kind, sessionId),

@@ -5,7 +5,7 @@ import { accentHex, stepFontSize, uiClasses } from "./ui";
 import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";
 import type { TermLook } from "./Terminal";
 import { IconButton } from "./IconButton";
-import { FolderPlus, Gauge, LayoutGrid, Plus, X } from "lucide-react";
+import { FolderPlus, Gauge, LayoutGrid, Plus, UserRound, X } from "lucide-react";
 import { tildify } from "./paths";
 import {
   MAX_PANES,
@@ -22,6 +22,8 @@ import { Grid } from "./Grid";
 import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
+import { AccountsDialog } from "./AccountsDialog";
+import { NO_ACCOUNTS, type Accounts } from "./accounts";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
 import { ChatView } from "./chat/ChatView";
@@ -52,6 +54,8 @@ import type { PaneActions, ProjectActions } from "./handlers";
 export function App() {
   const [ws, dispatch] = useReducer(reduce, emptyWorkspace);
   const [agents, setAgents] = useState<AgentDef[]>([]);
+  const [accounts, setAccounts] = useState<Accounts>(NO_ACCOUNTS);
+  const [accountsDialog, setAccountsDialog] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   // Ephemeral only: never written to disk (exit + aktywność z src/activity.ts).
   const [ephemeral, setEphemeral] = useState<Record<string, PaneState>>({});
@@ -116,6 +120,11 @@ export function App() {
         if (!live) return;
         setAgents(r.agents);
         setErrors(r.errors);
+        void backend.loadAccounts().then((acc) => {
+          if (!live) return;
+          setAccounts(acc.value);
+          if (acc.errors.length > 0) setErrors((prev) => [...prev, ...acc.errors]);
+        });
         const raw = await backend.loadWorkspace();
         if (!live || raw === null) return; // pierwszy start: zostaje emptyWorkspace
         let parsed: ReturnType<typeof parseWorkspace>;
@@ -811,6 +820,9 @@ export function App() {
               >
                 <Gauge strokeWidth={1.75} aria-hidden /> Pulpit
               </button>
+              <button type="button" className="btn" title="Konta agentów" onClick={() => setAccountsDialog(true)}>
+                <UserRound strokeWidth={1.75} aria-hidden /> Konta
+              </button>
               <button type="button" className="btn" onClick={() => setPresetMenu(true)} disabled={active === null}>
                 <LayoutGrid strokeWidth={1.75} aria-hidden /> Presety
               </button>
@@ -878,6 +890,17 @@ export function App() {
           ui={ws.ui}
           onSet={(patch) => dispatch({ type: "setUi", patch })}
           onClose={() => setAppearance(false)}
+        />
+      )}
+      {accountsDialog && (
+        <AccountsDialog
+          value={accounts}
+          pickDir={() => backend.pickDir()}
+          onChange={(next) => {
+            setAccounts(next);
+            void backend.saveAccounts(next).catch((e) => setErrors((prev) => [...prev, `accounts.json: ${String(e)}`]));
+          }}
+          onClose={() => setAccountsDialog(false)}
         />
       )}
       {presetMenu && active && (

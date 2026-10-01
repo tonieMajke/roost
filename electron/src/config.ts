@@ -8,6 +8,7 @@ import { validId } from "./context";
 
 const AGENTS_FILE = "agents.json";
 const WORKSPACE_FILE = "workspace.json";
+const ACCOUNTS_FILE = "accounts.json";
 
 /** `AGENTS_CONFIG_DIR` pozwala uruchomić drugą kopię obok, bez wspólnego workspace.json. */
 export function configDir(): string {
@@ -114,4 +115,20 @@ export function workspaceBackup(date: string, dir = configDir()): void {
   const dst = path.join(dir, `workspace.${date}.bak`);
   if (!isFile(src) || fs.existsSync(dst)) return;
   fs.copyFileSync(src, dst);
+}
+
+/** Treść `accounts.json`; `null`, gdy użytkownik nie dodał żadnego konta (pliku nie tworzymy sami). */
+export function accountsLoad(dir = configDir()): string | null {
+  const file = path.join(dir, ACCOUNTS_FILE);
+  try {
+    return fs.readFileSync(file, "utf8");
+  } catch (e) {
+    if (isMissing(e)) return null;
+    throw new Error(`${file}: ${String(e)}`);
+  }
+}
+
+export function accountsSave(json: string, dir = configDir()): void {
+  fs.mkdirSync(dir, { recursive: true });
+  writeAtomic(path.join(dir, ACCOUNTS_FILE), json);
 }

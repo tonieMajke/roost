@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { DEFAULT_AGENTS, parseAgents } from "../../src/agents";
-import { agentsLoad, defaultAgentsJson, sessionExistsIn, workspaceBackup, workspaceLoad, workspaceSave, writeAtomic } from "./config";
+import { accountsLoad, accountsSave, agentsLoad, defaultAgentsJson, sessionExistsIn, workspaceBackup, workspaceLoad, workspaceSave, writeAtomic } from "./config";
 
 const dirs: string[] = [];
 const tempDir = () => {
@@ -60,6 +60,14 @@ describe("config", () => {
     expect(workspaceLoad(dir)).toBeNull();
     workspaceSave('{"a":1}', dir);
     expect(workspaceLoad(dir)).toBe('{"a":1}');
+  });
+
+  it("accounts.json: brak pliku = null i nie powstaje, potem zapisana treść", () => {
+    const dir = tempDir();
+    expect(accountsLoad(dir)).toBeNull();
+    expect(fs.existsSync(path.join(dir, "accounts.json"))).toBe(false);
+    accountsSave('{"accounts":[]}', dir);
+    expect(accountsLoad(dir)).toBe('{"accounts":[]}');
   });
 
   it("agents.json: brak → domyślne zapisane, zepsuty plik zwracany bez nadpisania", () => {

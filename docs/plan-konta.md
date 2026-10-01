@@ -41,7 +41,7 @@ więc funkcja jest opcjonalna: bez dodanych kont aplikacja zachowuje się jak do
 - [x] **Etap 1 – model (TS, czysty, testy).** `src/accounts.ts`: `AccountDef {id, name, agent, dir}`,
   `parseAccounts`, `accountEnv(agent, account) -> [k, v][]`, wybór konta (panel > projekt > domyślne),
   test na walidację i na to, że domyślne konto nie ustawia zmiennej.
-- [ ] **Etap 2 – dysk i IPC.** `electron/src/accounts.ts` (`accounts.json`), `accounts_load/save`,
+- [x] **Etap 2 – dysk i IPC.** `electron/src/accounts.ts` (`accounts.json`), `accounts_load/save`, (przycisk „Zaloguj” przeniesiony do Etapu 3: to nowy panel agenta na koncie.)
   `backend*.ts` + mock. Okno „Konta” (lista, dodaj, usuń) i przycisk „Zaloguj”.
 - [ ] **Etap 3 – konto w panelu.** Pole `account` w zapisie panelu (`workspace.json`, wstecznie
   zgodne), wybór w „Nowy panel”, `env` przy `pty_spawn`, plakietka w nagłówku.

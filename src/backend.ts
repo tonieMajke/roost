@@ -3,6 +3,7 @@ import { electronBackend } from "./backend-electron";
 import type { AgentDef } from "./agents";
 import type { ContextKind, SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
+import type { Accounts } from "./accounts";
 import type { Handoff } from "./handoff";
 import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
 import type { BotChat, BotDef, Routine } from "./bot";
@@ -44,6 +45,9 @@ export type PtyHandle = {
 export interface Backend {
   spawnPty(spec: SpawnSpec, onData: (bytes: Uint8Array) => void, onExit: (info: ExitInfo) => void): Promise<PtyHandle>;
   loadAgents(): Promise<{ agents: AgentDef[]; errors: string[] }>;
+  /** Konta agentów z `accounts.json`; pusta lista, gdy pliku nie ma albo jest zepsuty (błędy w `errors`). */
+  loadAccounts(): Promise<{ value: Accounts; errors: string[] }>;
+  saveAccounts(value: Accounts): Promise<void>;
   claudeSessionExists(id: string): Promise<boolean>;
   /** Rozmiar kontekstu z pliku sesji agenta (tylko odczyt); `null` = brak pliku albo danych. */
   sessionContext(kind: ContextKind, sessionId: string): Promise<SessionContext | null>;
