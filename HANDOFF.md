@@ -15,6 +15,17 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M3: zakładka Czat (etapy 1–7b) – 2026-10-01 (Claude, master)
+
+- Przełącznik **Code | Czat** na górze lewej kolumny (`src/chat/ModeTabs.tsx`), skrót Ctrl+Alt+C, `ui.mode` w workspace.json. Siatka zostaje zamontowana pod czatem (`display:none`, terminale robią `fit()` po powrocie). W Czacie skróty siatki są wyłączone (Ctrl+Shift+C/V zostają dla pola tekstowego).
+- Czat (`src/chat/`): lista rozmów z grupami dni i szukaniem, powitanie, kolumna 740 px, dymki pytań, markdown + tabele + shiki (dwa motywy wg `data-tone`, ładowany leniwie), Stop, Ponów, Edytuj ostatnie pytanie, przypisy `[n]` jako znaczki, karty źródeł, zwijane „Przemyślenia” i „Przeszukano N stron”. Rozmowy w `~/.config/dev.majke.agents/chats/` (+ `index.json`).
+- Dostawcy (`electron/src/chat/`): `openai.ts` (SSE, llama-server/FreeToken/OpenRouter/OpenAI), `anthropic.ts` (Messages API), `claude.ts` (`claude -p` stream-json, `--session-id`/`--resume`, katalog `chat-cwd`), `codex.ts` (`codex exec --json`, `exec resume`), `pi.ts` (wyszukiwanie dla lokalnych i API: `pi -p --mode json` z samym pi-web-access, własny `pi-agent/`, klucz przez `$AW_CHAT_API_KEY`). Dostawcy z `~/.pi/agent/models.json` dochodzą automatycznie (tylko odczyt).
+- Klucze API: `chat-keys.json` zaszyfrowany `safeStorage`. Na tej maszynie KWallet jest wyłączony (`kwalletrc: Enabled=false`), a Electron i tak go wybierał (szyfrowanie niedostępne) – `passwordStore()` przełącza wtedy na `gnome-libsecret` (gnome-keyring działa, sprawdzone).
+- Sprawdzone na żywo (poza UI, przez `ChatService`): Haiku z wyszukiwaniem (2 zapytania, 9 stron, źródło z przypisem), wznowienie sesji claude, codex Luna + wznowienie wątku („Figa”→„Figa”), lokalny Qwen z wyszukiwaniem Exa przez pi w 3,8 s (z historią jako tłem). Podgląd UI zrzutami (mock): powitanie, strumień, menu modeli, źródła, okno Dostawcy, jasny motyw.
+- Zauważone: `codex exec` nie strumieniuje tekstu (odpowiedź w całości po ~5 s); `gpt-5.5` zwraca 404 w tej subskrypcji – na liście tylko GPT-5.6 Luna i Terra. Haiku przez `claude -p` nie pokazuje treści myślenia (tylko podpis), więc „Przemyślenia” są puste.
+- Sprawdzenia: typecheck (frontend i electron), vitest 362/362, build electron – OK.
+- Niesprawdzone w prawdziwym oknie (etap 8): całość w `pnpm desktop`, zapis klucza przez okno Dostawcy (libsecret w działającej aplikacji), przełączanie Code↔Czat z pracującymi agentami, długie odpowiedzi i CPU, wygląd w jasnych motywach na żywych danych.
+
 ## Motywy: 21 makiet z „Nowych wyglądów” + wzór D w oknie „Wygląd” – 2026-10-01 (Claude, master)
 
 - `ui.theme` (domyślnie `d`, czyli bez zmian dla istniejących `workspace.json`) i nowy akcent `theme` („Z motywu”). Wybór motywu przywraca akcent motywu (`uiPatch`), własny akcent można potem wybrać jeszcze raz.

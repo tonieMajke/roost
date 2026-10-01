@@ -222,8 +222,11 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
           setLive(null);
           if (chatRef.current?.id === final.id) setChat(final);
           save(final);
-          // Sesja CLI, która się nie udała, nie może być wznawiana (`--resume` nieistniejącej).
-          if (e.type === "error" && newSession && final.messages[final.messages.length - 1]?.text === "") {
+          // Sesja CLI, która nie powstała (błąd na starcie, Stop przed zapisem przez claude)
+          // albo zniknęła, nie może być wznawiana: następne pytanie zacznie nową z historią jako tłem.
+          const lost = e.type === "error" && /No conversation found|no rollout found|thread not found/i.test(e.message);
+          const last = final.messages[final.messages.length - 1];
+          if (lost || (newSession && last?.text === "" && (e.type === "error" || last.stopped))) {
             const { [key]: _, ...rest } = final.cli;
             const fixed = { ...final, cli: rest };
             if (chatRef.current?.id === final.id) setChat(fixed);
