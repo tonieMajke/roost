@@ -3,6 +3,7 @@
 // zna panele i terminale. Akcje, które coś uruchamiają, wysyłają albo zamykają, idą przez kartę.
 
 import type { ToolSpec } from "../chat";
+import { t, tp } from "../i18n";
 
 /** Panel widziany przez rozmówcę; `id` = krótki prefiks id panelu (`shortId`). */
 export type VoicePane = {
@@ -264,12 +265,10 @@ const noProject = (q: string): VoiceToolResult => ({
   text: q ? `nie ma projektu „${q}” – sprawdź overview` : "nie ma aktywnego projektu – podaj projekt albo poproś użytkownika o dodanie",
 });
 
-const CONTROL: Record<PaneControl, { head: string; action: string }> = {
-  stop: { head: "Przerwać agenta?", action: "Przerwij" },
-  restart: { head: "Uruchomić panel od nowa?", action: "Restart" },
-  new_conversation: { head: "Zacząć nową rozmowę w panelu?", action: "Nowa rozmowa" },
-  close: { head: "Zamknąć panel?", action: "Zamknij" },
-};
+const CONTROLS: readonly PaneControl[] = ["stop", "restart", "new_conversation", "close"];
+/** Nagłówek i przycisk karty dla akcji na panelu; `undefined` dla nieznanej akcji. */
+const control = (a: string): { head: string; action: string } | undefined =>
+  (CONTROLS as readonly string[]).includes(a) ? { head: t(`voice.card.${a as PaneControl}.head`), action: t(`voice.card.${a as PaneControl}.action`) } : undefined;
 
 const row = (p: VoicePane, prompt = ""): DeployTask => ({ agent: p.agent, title: p.title || p.id, prompt, ...(p.account ? { account: p.account } : {}) });
 
@@ -352,7 +351,7 @@ export async function runVoiceTool(name: string, args: Record<string, unknown>, 
         tasks.push(task);
       }
       const n = tasks.length;
-      const d = await host.confirm({ head: `Otworzyć ${n === 1 ? "panel" : `${n} panele`} w „${pr.name}”?`, action: "Uruchom", tasks }, signal);
+      const d = await host.confirm({ head: tp("voice.card.open", n, { project: pr.name }), action: t("voice.card.run"), tasks }, signal);
       if (d.kind !== "run") return refused(d);
       return { ok: true, text: await host.open(pr.id, tasks) };
     }
@@ -362,7 +361,7 @@ export async function runVoiceTool(name: string, args: Record<string, unknown>, 
       const text = str(args.text);
       if (!f) return noPane(str(args.id));
       if (!text) return { ok: false, text: "pusta wiadomość" };
-      const d = await host.confirm({ head: "Wysłać do panelu?", action: "Wyślij", tasks: [row(f.pane, text)] }, signal);
+      const d = await host.confirm({ head: t("voice.card.sendHead"), action: t("voice.card.send"), tasks: [row(f.pane, text)] }, signal);
       if (d.kind !== "run") return refused(d);
       const err = host.send(f.pane.id, text);
       return err ? { ok: false, text: err } : { ok: true, text: `wysłano do ${f.pane.id} (${f.pane.agent})` };
@@ -372,7 +371,7 @@ export async function runVoiceTool(name: string, args: Record<string, unknown>, 
       const f = findPane(projects, str(args.id));
       if (!f) return noPane(str(args.id));
       const action = str(args.action) as PaneControl;
-      const c = CONTROL[action];
+      const c = control(action);
       if (!c) return { ok: false, text: "`action` to stop, restart, new_conversation albo close" };
       const d = await host.confirm({ ...c, tasks: [row(f.pane)] }, signal);
       if (d.kind !== "run") return refused(d);
@@ -390,7 +389,7 @@ export async function runVoiceTool(name: string, args: Record<string, unknown>, 
       const target = pick(targets, q);
       if (!target) return { ok: false, text: `nie ma celu „${q}” (są: ${targets.join("; ")})` };
       const d = await host.confirm(
-        { head: "Kontynuować rozmowę gdzie indziej?", action: "Kontynuuj", tasks: [row(f.pane, `→ ${target} (streszczenie rozmowy, bez Entera)`)] },
+        { head: t("voice.card.contHead"), action: t("voice.card.cont"), tasks: [row(f.pane, t("voice.card.contRow", { target }))] },
         signal,
       );
       if (d.kind !== "run") return refused(d);
@@ -409,7 +408,7 @@ export async function runVoiceTool(name: string, args: Record<string, unknown>, 
       if (!name) return { ok: false, text: `nie ma presetu „${str(args.name)}” (są: ${presets.map((p) => p.name).join(", ") || "żadne"})` };
       const preset = presets.find((p) => p.name === name)!;
       const d = await host.confirm(
-        { head: `Dodać preset „${name}” do „${pr.name}”?`, action: "Dodaj", tasks: preset.agents.map((a) => ({ agent: a, title: name, prompt: "" })) },
+        { head: t("voice.card.presetHead", { name, project: pr.name }), action: t("voice.card.add"), tasks: preset.agents.map((a) => ({ agent: a, title: name, prompt: "" })) },
         signal,
       );
       if (d.kind !== "run") return refused(d);
@@ -440,38 +439,38 @@ export async function runVoiceTool(name: string, args: Record<string, unknown>, 
 export function voiceToolLabel(name: string, args: Record<string, unknown>): string {
   switch (name) {
     case "overview":
-      return "sprawdza projekty i panele";
+      return t("voice.label.overview");
     case "list_agents":
-      return "sprawdza agentów i presety";
+      return t("voice.label.list_agents");
     case "read_pane":
-      return `czyta panel ${str(args.id)}`;
+      return t("voice.label.read_pane", { id: str(args.id) });
     case "show":
-      return `pokazuje ${[str(args.pane) && `panel ${str(args.pane)}`, str(args.project), str(args.tab)].filter(Boolean).join(", ")}`;
+      return t("voice.label.show", { what: [str(args.pane) && t("voice.label.showPane", { id: str(args.pane) }), str(args.project), str(args.tab)].filter(Boolean).join(", ") });
     case "open_panes":
-      return `otwiera ${Array.isArray(args.tasks) ? args.tasks.length : 0} panel(e)`;
+      return tp("voice.label.open_panes", Array.isArray(args.tasks) ? args.tasks.length : 0);
     case "send_to_pane":
-      return `pisze do panelu ${str(args.id)}`;
+      return t("voice.label.send_to_pane", { id: str(args.id) });
     case "pane_control":
-      return `${str(args.action)} panelu ${str(args.id)}`;
+      return t("voice.label.pane_control", { action: str(args.action), id: str(args.id) });
     case "continue_elsewhere":
-      return `kontynuacja panelu ${str(args.id)}${str(args.target) ? ` → ${str(args.target)}` : ""}`;
+      return `${t("voice.label.continue_elsewhere", { id: str(args.id) })}${str(args.target) ? ` → ${str(args.target)}` : ""}`;
     case "apply_preset":
-      return `preset ${str(args.name)}`;
+      return t("voice.label.apply_preset", { name: str(args.name) });
     case "ask_bot":
-      return str(args.bot) ? `pyta bota ${str(args.bot)}` : "sprawdza boty";
+      return str(args.bot) ? t("voice.label.ask_bot", { bot: str(args.bot) }) : t("voice.label.list_bots");
   }
   return name;
 }
 
 /** Komunikat do powiedzenia, gdy agent skończy pracę w trakcie rozmowy. */
 export function finishedNote(p: { agent: string; title: string; project: string }): string {
-  return `${p.agent}${p.title ? ` od „${p.title}”` : ""} w projekcie ${p.project} skończył pracę.`;
+  return t("voice.finished", { agent: p.agent, title: p.title ? t("voice.finished.title", { title: p.title }) : "", project: p.project });
 }
 
 const YES =
-  /^(tak|ok|okej|okay|dobra|dobrze|jasne|zgoda|uruchom|uruchamiaj|odpal|odpalaj|dawaj|start|startuj|deploy|potwierdzam|wysyłaj|wyślij|leć|lecimy|jedziemy|zaczynaj|zamknij|przerwij|dodaj|kontynuuj|rób)$/;
-const NO = /^(nie|anuluj|odwołaj|stop|stój|zostaw|rezygnuję|nieważne)$/;
-const FIX = /^(popraw|zmień|poczekaj|czekaj|moment|chwila)$/;
+  /^(yes|yeah|yep|sure|confirm|send|run|tak|ok|okej|okay|dobra|dobrze|jasne|zgoda|uruchom|uruchamiaj|odpal|odpalaj|dawaj|start|startuj|deploy|potwierdzam|wysyłaj|wyślij|leć|lecimy|jedziemy|zaczynaj|zamknij|przerwij|dodaj|kontynuuj|rób)$/;
+const NO = /^(nope|cancel|abort|nie|anuluj|odwołaj|stop|stój|zostaw|rezygnuję|nieważne)$/;
+const FIX = /^(fix|change|wait|hold|popraw|zmień|poczekaj|czekaj|moment|chwila)$/;
 
 /** Odpowiedź głosem na widoczną kartę: krótkie „tak” / „nie” / „popraw”. Cokolwiek innego to
  *  poprawka z treścią (użytkownik mówi, co zmienić). Pusty transkrypt = brak decyzji. */

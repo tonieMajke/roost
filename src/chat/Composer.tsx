@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowUp, Check, ChevronDown, Globe, Square } from "lucide-react";
+import { useT } from "../i18n";
 import { GROUP_LABELS, findModel, modelLabel, supportsSearch, type ModelRef, type ProviderDef, type ProviderGroup } from "../chat";
 
 type Props = {
@@ -25,6 +26,7 @@ type Props = {
 const GROUPS: ProviderGroup[] = ["sub", "api", "local"];
 
 export function ModelMenu({ providers, offline, model, onModel, onProviders, onClose }: Pick<Props, "providers" | "offline" | "model" | "onModel" | "onProviders"> & { onClose(): void }) {
+  const { t } = useT();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const down = (e: PointerEvent) => {
@@ -79,9 +81,9 @@ export function ModelMenu({ providers, offline, model, onModel, onProviders, onC
               <div key={p.id} className="chat-menu-provider">
                 <div className="chat-menu-pname">
                   {p.name}
-                  {offline[p.id] && <span className="chat-menu-off" title={offline[p.id]}>nie odpowiada</span>}
+                  {offline[p.id] && <span className="chat-menu-off" title={offline[p.id]}>{t("chat.offline")}</span>}
                 </div>
-                {p.models.length === 0 && <div className="chat-menu-empty">{offline[p.id] ? "brak modeli" : "szukam modeli…"}</div>}
+                {p.models.length === 0 && <div className="chat-menu-empty">{offline[p.id] ? t("chat.noModels") : t("chat.findingModels")}</div>}
                 {p.models.map((m) => {
                   const on = model?.provider === p.id && model.model === m.id;
                   return (
@@ -114,13 +116,14 @@ export function ModelMenu({ providers, offline, model, onModel, onProviders, onC
           onProviders();
         }}
       >
-        <span>Dostawcy i klucze API…</span>
+        <span>{t("chat.manageProviders")}</span>
       </button>
     </div>
   );
 }
 
 export function Composer({ providers, offline, model, onModel, search, onSearch, busy, onSend, onStop, inject, big, onProviders, searchToggle = true, placeholder }: Props) {
+  const { t: tr } = useT();
   const [text, setText] = useState("");
   const [menu, setMenu] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -159,7 +162,7 @@ export function Composer({ providers, offline, model, onModel, search, onSearch,
         ref={area}
         rows={1}
         value={text}
-        placeholder={known ? (placeholder ?? "Napisz wiadomość…") : "Wybierz model poniżej"}
+        placeholder={known ? (placeholder ?? tr("chat.composer.placeholder")) : tr("chat.composer.pickModel")}
         spellCheck
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
@@ -172,7 +175,7 @@ export function Composer({ providers, offline, model, onModel, search, onSearch,
       <div className="chat-composer-row">
         <div className="chat-model-wrap">
           <button type="button" className="chat-model-btn" onClick={() => setMenu((v) => !v)} aria-haspopup="menu" aria-expanded={menu}>
-            <span>{model ? modelLabel(providers, model) : "Wybierz model"}</span>
+            <span>{model ? modelLabel(providers, model) : tr("chat.pickModel")}</span>
             <ChevronDown aria-hidden />
           </button>
           {menu && <ModelMenu providers={providers} offline={offline} model={model} onModel={onModel} onProviders={onProviders} onClose={() => setMenu(false)} />}
@@ -183,20 +186,20 @@ export function Composer({ providers, offline, model, onModel, search, onSearch,
             className={`chat-search-btn${search && canSearch ? " is-on" : ""}`}
             aria-pressed={search && canSearch}
             disabled={!canSearch}
-            title={canSearch ? "Szukaj w sieci" : "Ten model jeszcze nie umie szukać w sieci"}
+            title={canSearch ? tr("chat.webSearch") : tr("chat.webSearch.unsupported")}
             onClick={() => onSearch(!search)}
           >
             <Globe aria-hidden />
-            <span>Szukaj w sieci</span>
+            <span>{tr("chat.webSearch")}</span>
           </button>
         )}
         <span className="chat-composer-gap" />
         {busy ? (
-          <button type="button" className="chat-send is-stop" title="Zatrzymaj" onClick={onStop}>
+          <button type="button" className="chat-send is-stop" title={tr("chat.stop")} onClick={onStop}>
             <Square aria-hidden />
           </button>
         ) : (
-          <button type="button" className="chat-send" title="Wyślij (Enter)" disabled={text.trim() === "" || !known} onClick={send}>
+          <button type="button" className="chat-send" title={tr("chat.send")} disabled={text.trim() === "" || !known} onClick={send}>
             <ArrowUp aria-hidden />
           </button>
         )}

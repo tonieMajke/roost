@@ -2,6 +2,7 @@
 //! harmonogramem, rozmowami (`chats/`), przebiegami (`runs/`) i katalogiem roboczym (`work/`).
 //! Usunięty bot trafia do `bots-trash/`, nie jest kasowany.
 
+import { t } from "../i18n";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -76,7 +77,7 @@ export class BotStore {
   ) {}
 
   dir(id: string): string {
-    if (!isBotId(id)) throw new Error(`złe id bota: ${id}`);
+    if (!isBotId(id)) throw new Error(t("bot.badId", { id }));
     return path.join(this.root, id);
   }
 
@@ -119,7 +120,7 @@ export class BotStore {
         const r = parseBot(JSON.parse(raw));
         errors.push(...r.errors);
         if (r.bot && r.bot.id === name) bots.push(r.bot);
-        else if (r.bot) errors.push(`${file}: id \`${r.bot.id}\` nie zgadza się z katalogiem`);
+        else if (r.bot) errors.push(t("bot.idMismatch", { file, id: r.bot.id }));
       } catch (e) {
         errors.push(`${file}: ${String(e)}`);
       }
@@ -136,9 +137,9 @@ export class BotStore {
   /** Nowy bot; zajęte id = błąd (wolne id liczy strona przez `botId`). */
   create(json: string): BotDef {
     const { bot } = parseBot(JSON.parse(json));
-    if (!bot) throw new Error("zły format bota");
-    if (bot.builtin) throw new Error("wbudowanego bota nie da się utworzyć drugi raz");
-    if (fs.existsSync(this.dir(bot.id))) throw new Error(`bot „${bot.id}” już istnieje`);
+    if (!bot) throw new Error(t("bot.badFormat"));
+    if (bot.builtin) throw new Error(t("bot.builtinTwice"));
+    if (fs.existsSync(this.dir(bot.id))) throw new Error(t("bot.exists", { id: bot.id }));
     this.write(bot);
     return bot;
   }
@@ -146,7 +147,7 @@ export class BotStore {
   /** Zmiana istniejącego bota; `builtin` i `created` zostają z dysku. */
   save(json: string): BotDef {
     const { bot } = parseBot(JSON.parse(json));
-    if (!bot) throw new Error("zły format bota");
+    if (!bot) throw new Error(t("bot.badFormat"));
     const old = this.load(bot.id);
     if (!old) throw new Error(`nie ma bota „${bot.id}”`);
     const next: BotDef = { ...bot, created: old.created };
@@ -159,7 +160,7 @@ export class BotStore {
   /** Przeniesienie do `bots-trash/<id>-<data>`; Kreatora usunąć się nie da. */
   delete(id: string): void {
     const dir = this.mustExist(id);
-    if (this.load(id)?.builtin) throw new Error("wbudowanego bota nie da się usunąć");
+    if (this.load(id)?.builtin) throw new Error(t("bot.builtinDelete"));
     fs.mkdirSync(this.trash, { recursive: true });
     let dest = path.join(this.trash, `${id}-${stamp(new Date(this.now()))}`);
     for (let n = 2; fs.existsSync(dest); n++) dest = path.join(this.trash, `${id}-${stamp(new Date(this.now()))}-${n}`);
@@ -178,8 +179,8 @@ export class BotStore {
   memorySave(id: string, target: MemoryTarget, text: string): void {
     const dir = this.mustExist(id);
     const m = MEMORY_FILES[target];
-    if (!m) throw new Error(`nieznana pamięć: ${String(target)}`);
-    if (text.length > m.limit) throw new Error(`pamięć „${target}”: ${text.length}/${m.limit} znaków – za dużo`);
+    if (!m) throw new Error(t("bot.badMemory", { target: String(target) }));
+    if (text.length > m.limit) throw new Error(t("bot.memoryTooBig", { target, n: text.length, limit: m.limit }));
     writeAtomic(path.join(dir, m.file), text);
   }
 
@@ -188,7 +189,7 @@ export class BotStore {
   }
 
   private skillFile(id: string, name: string): string {
-    if (!isSkillName(name)) throw new Error(`zła nazwa skilla: ${name}`);
+    if (!isSkillName(name)) throw new Error(t("main.badSkill", { name }));
     return path.join(this.skillsDir(id), name, "SKILL.md");
   }
 
@@ -264,7 +265,7 @@ export class BotStore {
     const s = parseSkill(readOr(path.join(srcDir, "SKILL.md"), ""));
     if ("error" in s) throw new Error(`SKILL.md: ${s.error}`);
     const file = this.skillFile(id, s.name);
-    if (fs.existsSync(file)) throw new Error(`skill „${s.name}” już jest u tego bota`);
+    if (fs.existsSync(file)) throw new Error(t("bot.skillExists", { name: s.name }));
     const size = treeSize(srcDir, IMPORT_MAX);
     if (size > IMPORT_MAX) throw new Error(`skill „${s.name}” ma ponad ${IMPORT_MAX / 1024 / 1024} MB`);
     const dest = path.dirname(file);
@@ -278,7 +279,7 @@ export class BotStore {
     const dir = this.mustExist(id);
     const ext = path.extname(src).slice(1).toLowerCase();
     if (!AVATAR_TYPES[ext]) throw new Error("awatar: tylko PNG, JPG, WebP albo GIF");
-    if (fs.statSync(src).size > AVATAR_MAX) throw new Error(`awatar: plik większy niż ${AVATAR_MAX / 1024 / 1024} MB`);
+    if (fs.statSync(src).size > AVATAR_MAX) throw new Error(t("bot.avatarBig", { mb: AVATAR_MAX / 1024 / 1024 }));
     for (const f of fs.readdirSync(dir)) if (AVATAR_RE.test(f)) fs.rmSync(path.join(dir, f));
     const name = `avatar.${ext}`;
     fs.copyFileSync(src, path.join(dir, name));
@@ -329,14 +330,14 @@ export class BotStore {
 
   /** Rozmowy (`chats`) albo przebiegi z harmonogramu (`runs`) bota. */
   chats(id: string, kind: ChatKind): ChatStore {
-    if (kind !== "chats" && kind !== "runs") throw new Error(`nieznany rodzaj rozmów: ${String(kind)}`);
+    if (kind !== "chats" && kind !== "runs") throw new Error(t("bot.badKind", { kind: String(kind) }));
     return new ChatStore(path.join(this.mustExist(id), kind));
   }
 
   /** Zapis rozmowy bota: katalog z pola `bot`, rodzaj z `routine` (przebieg) albo bez (rozmowa). */
   chatSave(json: string): void {
     const c = parseBotChat(json);
-    if (!c) throw new Error("zły format rozmowy bota");
+    if (!c) throw new Error(t("bot.badChatFormat"));
     this.chats(c.bot, c.routine ? "runs" : "chats").save(json);
   }
 }

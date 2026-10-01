@@ -2,6 +2,7 @@
 //! model, najwyżej `MAX_STEPS` razy na wiadomość. Claude i codex mają własną pętlę i dostają
 //! te same narzędzia przez MCP (`bridge.ts`).
 
+import { t } from "../i18n";
 import type { ChatEvent, ChatRequest, ToolCall, ToolSpec, Turn } from "../../../src/chat";
 import { clipResult } from "../../../src/bot";
 import type { ToolOutcome } from "./tools";
@@ -84,5 +85,5 @@ export async function runBotTurn(
       if (signal.aborted) return;
     }
   }
-  emit({ type: "text", text: `\n\n_Przerwałem po ${MAX_STEPS} krokach z narzędziami. Napisz „dalej”, żebym kontynuował._` });
+  emit({ type: "text", text: t("loop.maxSteps", { n: MAX_STEPS }) });
 }

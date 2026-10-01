@@ -2,6 +2,7 @@
 //! bez MCP, ustawień i CLAUDE.md (własny pusty katalog roboczy, ten sam dla `--resume`).
 //! Tryb bota (`req.mcp`): dochodzi tylko serwer MCP `bot`, wbudowane Bash/Edit dalej wyłączone.
 
+import { t } from "../i18n";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -91,7 +92,7 @@ export class ClaudeParser implements LineParser {
         }
         break;
       case "result":
-        if (d.is_error) this.error ??= d.errors?.[0] ?? d.result ?? `błąd claude (${d.subtype ?? "?"})`;
+        if (d.is_error) this.error ??= d.errors?.[0] ?? d.result ?? t("chat.claudeError", { subtype: d.subtype ?? "?" });
         break;
     }
     return out;

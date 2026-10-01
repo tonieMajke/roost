@@ -1,6 +1,7 @@
 /** Feed „Na żywo” in the dock: events from all projects. Pure: no React, no DOM. Never saved. */
 import type { ExitInfo } from "./backend";
 import { exitText } from "./activity";
+import { t } from "./i18n";
 
 /** One tool call from the agent's session file (Rust `session_context`, oldest first). */
 export type ToolUse = { id: string; name: string; file: string | null; command: string | null };
@@ -43,13 +44,13 @@ export function feedFor(feed: FeedItem[], scope: "all" | "project", projectId: s
 /** „teraz”, „40 s temu”, „3 min temu”, „2 godz. temu”, „5 d temu”. */
 export function relativeTime(at: number, now: number): string {
   const s = Math.floor((now - at) / 1000);
-  if (s < 10) return "teraz"; // also a clock that went back
-  if (s < 60) return `${Math.floor(s / 10) * 10} s temu`;
+  if (s < 10) return t("ui2.feed.now"); // also a clock that went back
+  if (s < 60) return t("ui2.feed.sec", { n: Math.floor(s / 10) * 10 });
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m} min temu`;
+  if (m < 60) return t("ui2.feed.min", { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} godz. temu`;
-  return `${Math.floor(h / 24)} d temu`;
+  if (h < 24) return t("ui2.feed.hour", { n: h });
+  return t("ui2.feed.day", { n: Math.floor(h / 24) });
 }
 
 /**
@@ -79,9 +80,9 @@ export function toolText(tool: ToolUse, projectPath: string, home: string): stri
   return detail === "" ? tool.name : `${tool.name} ${detail}`;
 }
 
-export const STARTED_TEXT = "uruchomiony";
-export const FINISHED_TEXT = "skończył pracę";
+export const startedText = () => t("ui2.feed.started");
+export const finishedText = () => t("ui2.feed.finished");
 
 export function exitedText(info: ExitInfo): string {
-  return `proces zakończony (${exitText(info)})`;
+  return t("ui2.feed.exited", { text: exitText(info) });
 }

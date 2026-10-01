@@ -4,6 +4,7 @@
 //! Przebieg = rozmowa w `runs/` ze stanem (`state`); prośba o zgodę zatrzymuje go na
 //! „czeka na zgodę” – nikt nie odpowiada za użytkownika.
 
+import { t } from "../i18n";
 import { randomUUID } from "node:crypto";
 import {
   applyBotEvent,
@@ -115,8 +116,8 @@ export class Scheduler {
   runNow(bot: string, routine: string): void {
     if (this.stopped) throw new Error("harmonogram zatrzymany");
     const key = keyOf({ bot, routine });
-    if (this.active.has(key)) throw new Error("to zadanie właśnie pracuje");
-    if (this.queue.some((j) => keyOf(j) === key)) throw new Error("to zadanie czeka już w kolejce");
+    if (this.active.has(key)) throw new Error(t("sched.running"));
+    if (this.queue.some((j) => keyOf(j) === key)) throw new Error(t("sched.queued"));
     if (!this.routinesOf(bot).some((r) => r.id === routine)) throw new Error(`nie ma zadania „${routine}”`);
     this.queue.push({ bot, routine, manual: true });
     this.pump();

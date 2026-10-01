@@ -44,6 +44,15 @@ describe("parseVoiceConfig", () => {
     expect(r.errors).toHaveLength(2);
   });
 
+  it("Piper ma szablon na każdy język, z unikalnymi id i modelami", () => {
+    const piper = TTS_PRESETS.filter((p) => p.kind === "piper");
+    expect(piper.map((p) => p.model)).toEqual([
+      expect.stringContaining("pl_PL-"),
+      expect.stringContaining("en_US-"),
+    ]);
+    expect(new Set(TTS_PRESETS.map((p) => p.id)).size).toBe(TTS_PRESETS.length);
+  });
+
   it("dobre pola i wybrany silnik", () => {
     const { config, errors } = parseVoiceConfig(JSON.stringify({ brain: { provider: "anthropic", model: "claude-sonnet-5-5" }, tts: "piper", voice: " nova ", headphones: true }));
     expect(errors).toEqual([]);

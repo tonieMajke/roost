@@ -13,3 +13,12 @@ import { App } from "./App";
 import "./themes-chat.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// Przeciąganie krawędzi okna: blur za panelami (backdrop-filter) przelicza się co klatkę na całym
+// ekranie; na czas serii zmian rozmiaru motywy go wyłączają (`.is-resizing`).
+let resizeEnd: ReturnType<typeof setTimeout> | undefined;
+window.addEventListener("resize", () => {
+  document.documentElement.classList.add("is-resizing");
+  clearTimeout(resizeEnd);
+  resizeEnd = setTimeout(() => document.documentElement.classList.remove("is-resizing"), 200);
+});

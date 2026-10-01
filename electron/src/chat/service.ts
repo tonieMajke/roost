@@ -1,5 +1,6 @@
 //! Zakładka Czat w procesie głównym: konfiguracja, wykrywanie modeli, trwające odpowiedzi.
 
+import { t } from "../i18n";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -53,7 +54,7 @@ export class ChatService {
     // Wyszukiwanie dla dostawców HTTP idzie przez pi (adapter "pi"); CLI szukają same.
     const viaPi = req.search && (req.provider.kind === "openai" || req.provider.kind === "anthropic");
     const adapter = viaPi ? this.adapters.pi : this.adapters[req.provider.kind];
-    if (!adapter) return emit({ type: "error", message: `dostawca „${req.provider.kind}” jeszcze nie działa` });
+    if (!adapter) return emit({ type: "error", message: t("chat.noProvider", { kind: req.provider.kind }) });
     const ctl = new AbortController();
     this.running.get(reqId)?.abort();
     this.running.set(reqId, ctl);

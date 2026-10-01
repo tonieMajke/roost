@@ -2,6 +2,7 @@
 //! pi-web-access (narzędzia web_search, fetch_content). Własny katalog agenta pi z jednym
 //! dostawcą (wybranym modelem); klucz API idzie zmienną środowiskową, nie do pliku.
 
+import { t } from "../i18n";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -90,7 +91,7 @@ export class PiParser implements LineParser {
             for (const r of q.results ?? []) if (r.url) out.push({ type: "found", url: r.url, title: r.title ?? "" });
         break;
       case "message_end":
-        if (d.message?.role === "assistant" && d.message.stopReason === "error") this.error = d.message.errorMessage ?? "błąd modelu";
+        if (d.message?.role === "assistant" && d.message.stopReason === "error") this.error = d.message.errorMessage ?? t("chat.modelError");
         break;
     }
     return out;

@@ -1,6 +1,7 @@
 //! Claude przez API (klucz z console.anthropic.com): Messages API ze strumieniem, sam `fetch`.
 //! Z `req.tools` także narzędzia (`tool_use` / `tool_result`, pętla bota).
 
+import { t } from "../i18n";
 import type { ChatEvent, ChatRequest, ToolCall, Turn } from "../../../src/chat";
 import { CallParts, httpError, networkError } from "./http";
 import { sseEvents } from "./sse";
@@ -59,7 +60,7 @@ type Event = {
 /** Zdarzenia z jednego `data:`; bloki `tool_use` składane w `calls`. */
 export function anthropicEvents(data: string, calls?: CallParts): ChatEvent[] {
   const e = JSON.parse(data) as Event;
-  if (e.type === "error") return [{ type: "error", message: e.error?.message ?? "błąd API" }];
+  if (e.type === "error") return [{ type: "error", message: e.error?.message ?? t("chat.apiError") }];
   if (e.type === "content_block_start" && e.content_block?.type === "tool_use")
     calls?.add(e.index ?? 0, { id: e.content_block.id, name: e.content_block.name });
   if (e.type !== "content_block_delta") return [];

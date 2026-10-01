@@ -2,9 +2,13 @@ import { memo, useState, type ReactNode } from "react";
 import { AlertTriangle, ChevronRight, Globe, Pencil, RotateCcw } from "lucide-react";
 import { domain, linkCitations, modelLabel, type Message, type ProviderDef } from "../chat";
 import { backend } from "../backend";
+import { locale, t, useT } from "../i18n";
 import { CopyButton, Markdown } from "./Markdown";
 
-const seconds = (ms: number) => (ms < 10_000 ? `${(ms / 1000).toFixed(1).replace(".", ",")} s` : `${Math.round(ms / 1000)} s`);
+const seconds = (ms: number) => {
+  const s = ms < 10_000 ? new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(ms / 1000) : String(Math.round(ms / 1000));
+  return t("chat.seconds", { s });
+};
 
 function Sources({ m }: { m: Message }) {
   if (!m.sources?.length) return null;
@@ -33,10 +37,11 @@ function Sources({ m }: { m: Message }) {
 }
 
 function Searches({ m, live }: { m: Message; live: boolean }) {
+  const { t, tp } = useT();
   const [open, setOpen] = useState(false);
   if (!m.searches?.length) return null;
   const n = m.found?.length || m.sources?.length || 0;
-  const label = live && m.text === "" ? `Szukam: ${m.searches[m.searches.length - 1]}` : `Przeszukano ${n} ${n === 1 ? "stronę" : n >= 2 && n <= 4 ? "strony" : "stron"}`;
+  const label = live && m.text === "" ? t("chat.searching", { q: m.searches[m.searches.length - 1] }) : tp("chat.searched", n);
   return (
     <div className={`chat-fold${open ? " is-open" : ""}${live && m.text === "" ? " is-live" : ""}`}>
       <button type="button" className="chat-fold-head" onClick={() => setOpen((v) => !v)}>
@@ -76,13 +81,14 @@ function Searches({ m, live }: { m: Message; live: boolean }) {
 }
 
 function Thinking({ m, live }: { m: Message; live: boolean }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   if (!m.thinking) return null;
   const thinkingNow = live && m.text === "";
   return (
     <div className={`chat-fold${open ? " is-open" : ""}${thinkingNow ? " is-live" : ""}`}>
       <button type="button" className="chat-fold-head" onClick={() => setOpen((v) => !v)}>
-        <span>{thinkingNow ? "Myśli…" : "Przemyślenia"}</span>
+        <span>{thinkingNow ? t("chat.thinking.now") : t("chat.thinking")}</span>
         <ChevronRight className="chat-fold-chev" aria-hidden />
       </button>
       {open && <div className="chat-fold-body chat-thinking">{m.thinking}</div>}
@@ -117,6 +123,7 @@ const AssistantMessage = memo(function AssistantMessage({
   onRetry(): void;
   renderBody?: RenderBody;
 }) {
+  const { t } = useT();
   const body = renderBody?.(m, live) ?? null;
   const waiting = live && m.text === "" && !m.thinking && !m.searches?.length && body === null;
   return (
@@ -124,7 +131,7 @@ const AssistantMessage = memo(function AssistantMessage({
       <Searches m={m} live={live} />
       <Thinking m={m} live={live} />
       {waiting && (
-        <div className="chat-wait" aria-label="Czekam na odpowiedź">
+        <div className="chat-wait" aria-label={t("chat.waiting")}>
           <span />
           <span />
           <span />
@@ -136,7 +143,7 @@ const AssistantMessage = memo(function AssistantMessage({
             <Markdown text={linkCitations(m.text, m.sources)} />
           </div>
         ))}
-      {m.stopped && <div className="chat-note">przerwano</div>}
+      {m.stopped && <div className="chat-note">{t("chat.interrupted")}</div>}
       {m.error && (
         <div className="chat-error">
           <AlertTriangle aria-hidden />
@@ -152,9 +159,9 @@ const AssistantMessage = memo(function AssistantMessage({
           </span>
           {m.text !== "" && <CopyButton text={m.text} />}
           {last && (
-            <button type="button" className="chat-copy" onClick={onRetry} title="Odpowiedz jeszcze raz (wybranym modelem)">
+            <button type="button" className="chat-copy" onClick={onRetry} title={t("chat.retry.title")}>
               <RotateCcw aria-hidden />
-              <span>Ponów</span>
+              <span>{t("chat.retry")}</span>
             </button>
           )}
         </div>
@@ -164,6 +171,7 @@ const AssistantMessage = memo(function AssistantMessage({
 });
 
 export function Thread({ messages, providers, liveId, onRetry, onEdit, renderBody }: Props) {
+  const { t } = useT();
   const lastUser = messages.map((m) => m.role).lastIndexOf("user");
   return (
     <div className="chat-thread">
@@ -174,9 +182,9 @@ export function Thread({ messages, providers, liveId, onRetry, onEdit, renderBod
             <div className="chat-actions is-user">
               <CopyButton text={m.text} />
               {i === lastUser && liveId === null && (
-                <button type="button" className="chat-copy" onClick={() => onEdit(i)} title="Zmień pytanie i wyślij od nowa">
+                <button type="button" className="chat-copy" onClick={() => onEdit(i)} title={t("chat.edit.title")}>
                   <Pencil aria-hidden />
-                  <span>Edytuj</span>
+                  <span>{t("chat.edit")}</span>
                 </button>
               )}
             </div>

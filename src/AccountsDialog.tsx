@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import type { AccountDef, AccountKind, Accounts } from "./accounts";
 import { Dialog } from "./Dialog";
 import { IconButton } from "./IconButton";
+import { t, useT } from "./i18n";
 
 type Props = {
   value: Accounts;
@@ -15,19 +16,20 @@ type Props = {
   onClose(): void;
 };
 
-const KINDS: { kind: AccountKind; name: string; hint: string }[] = [
-  { kind: "claude", name: "Claude", hint: "np. ~/.claude-praca (CLAUDE_CONFIG_DIR)" },
-  { kind: "codex", name: "Codex", hint: "np. ~/.codex-praca (CODEX_HOME)" },
+const KINDS: { kind: AccountKind; name: string; hint: () => string }[] = [
+  { kind: "claude", name: "Claude", hint: () => t("ui2.acc.hintClaude") },
+  { kind: "codex", name: "Codex", hint: () => t("ui2.acc.hintCodex") },
 ];
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 /** Okno „Konta”: osobne foldery logowania Claude / Codex; konto domyślne agenta (bez wpisu) zawsze istnieje. */
 export function AccountsDialog({ value, pickDir, canLogin, onLogin, onChange, onClose }: Props) {
+  useT();
   const [kind, setKind] = useState<AccountKind>("claude");
   const [name, setName] = useState("");
   const [dir, setDir] = useState("");
-  const hint = KINDS.find((k) => k.kind === kind)!.hint;
+  const hint = KINDS.find((k) => k.kind === kind)!.hint();
 
   const remove = (a: AccountDef) => {
     const defaults = { ...value.defaults };
@@ -42,7 +44,7 @@ export function AccountsDialog({ value, pickDir, canLogin, onLogin, onChange, on
   };
 
   return (
-    <Dialog label="Konta" onClose={onClose}>
+    <Dialog label={t("ui2.acc.title")} onClose={onClose}>
       {() => {
         const trimmed = name.trim();
         const folder = dir.trim();
@@ -56,8 +58,8 @@ export function AccountsDialog({ value, pickDir, canLogin, onLogin, onChange, on
         };
         return (
           <>
-            <h2>Konta</h2>
-            <p>Osobne logowania agentów, np. praca i prywatne. Aplikacja zna tylko folder, tokenów nie czyta.</p>
+            <h2>{t("ui2.acc.title")}</h2>
+            <p>{t("ui2.acc.desc")}</p>
             {KINDS.map((k) => {
               const mine = value.accounts.filter((a) => a.kind === k.kind);
               const current = value.defaults[k.kind];
@@ -67,8 +69,8 @@ export function AccountsDialog({ value, pickDir, canLogin, onLogin, onChange, on
                   <ul className="pm-list">
                     <li className="pm-item">
                       <button type="button" className="pm-row" onClick={() => setDefault(null, k.kind)}>
-                        <span className="pm-name">{current === undefined ? "● " : "○ "}Domyślne konto {k.name}</span>
-                        <span className="pm-agents">folder agenta</span>
+                        <span className="pm-name">{current === undefined ? "● " : "○ "}{t("ui2.acc.default", { name: k.name })}</span>
+                        <span className="pm-agents">{t("ui2.acc.agentFolder")}</span>
                       </button>
                     </li>
                     {mine.map((a) => (
@@ -81,25 +83,25 @@ export function AccountsDialog({ value, pickDir, canLogin, onLogin, onChange, on
                           type="button"
                           className="btn acc-login"
                           disabled={!canLogin}
-                          title="Otwiera panel agenta na tym koncie (zaloguj się w nim)"
+                          title={t("ui2.acc.loginTip")}
                           onClick={() => onLogin(a)}
                         >
-                          Zaloguj
+                          {t("ui2.acc.login")}
                         </button>
-                        <IconButton icon={X} label={`Usuń konto ${a.name}`} className="pm-del" onClick={() => remove(a)} />
+                        <IconButton icon={X} label={t("ui2.acc.delete", { name: a.name })} className="pm-del" onClick={() => remove(a)} />
                       </li>
                     ))}
                   </ul>
                 </div>
               );
             })}
-            <p className="set-foot">● = konto, którego używają nowe panele. Usunięcie z listy nie rusza folderu.</p>
+            <p className="set-foot">{t("ui2.acc.foot")}</p>
             <hr className="pm-sep" />
             <div className="pm-save">
               <select
                 className="pm-input acc-kind"
                 value={kind}
-                aria-label="Agent konta"
+                aria-label={t("ui2.acc.kindAria")}
                 onChange={(e) => setKind(e.target.value as AccountKind)}
               >
                 {KINDS.map((k) => (
@@ -109,8 +111,8 @@ export function AccountsDialog({ value, pickDir, canLogin, onLogin, onChange, on
               <input
                 className="pm-input"
                 value={name}
-                placeholder="nazwa, np. Praca"
-                aria-label="Nazwa nowego konta"
+                placeholder={t("ui2.acc.namePh")}
+                aria-label={t("ui2.acc.nameAria")}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
@@ -119,7 +121,7 @@ export function AccountsDialog({ value, pickDir, canLogin, onLogin, onChange, on
                 className="pm-input"
                 value={dir}
                 placeholder={hint}
-                aria-label="Folder logowania"
+                aria-label={t("ui2.acc.dirAria")}
                 onChange={(e) => setDir(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key !== "Enter") return;
@@ -128,10 +130,10 @@ export function AccountsDialog({ value, pickDir, canLogin, onLogin, onChange, on
                 }}
               />
               <button type="button" className="btn" onClick={() => void pickDir().then((p) => p && setDir(p))}>
-                Wybierz…
+                {t("ui2.acc.pick")}
               </button>
               <button type="button" className="btn primary" disabled={trimmed === "" || folder === ""} onClick={add}>
-                Dodaj
+                {t("ui2.acc.add")}
               </button>
             </div>
           </>

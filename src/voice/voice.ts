@@ -3,6 +3,7 @@
 
 import { findModel, firstModel, type ChatModel, type ChatRequest, type ModelRef, type ProviderDef, type WireMessage } from "../chat";
 import type { DeployCard } from "./tools";
+import { getLang, t } from "../i18n";
 
 // ── konfiguracja ────────────────────────────────────────────────────────────
 
@@ -41,7 +42,9 @@ export type VoiceConfig = {
 export const TTS_PRESETS: TtsProvider[] = [
   { id: "openai", name: "OpenAI", kind: "speech", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini-tts", voice: "alloy", keyEnv: "OPENAI_API_KEY", key: true },
   { id: "local", name: "Lokalny serwer", kind: "speech", baseUrl: "http://127.0.0.1:8000/v1", model: "kokoro", voice: "", key: false },
-  { id: "piper", name: "Piper", kind: "piper", model: "~/.local/share/piper/pl_PL-bass-high.onnx", voice: "", key: false },
+  // Piper mówi głosem modelu, więc jest po jednym szablonie na język; id „piper” zostaje polskie (stare tts.json).
+  { id: "piper", name: "Piper (polski)", kind: "piper", model: "~/.local/share/piper/pl_PL-bass-high.onnx", voice: "", key: false },
+  { id: "piper-en", name: "Piper (English)", kind: "piper", model: "~/.local/share/piper/en_US-lessac-medium.onnx", voice: "", key: false },
 ];
 
 export const DEFAULT_TTS: TtsConfig = { providers: [] };
@@ -56,9 +59,9 @@ function parseJson(text: string, file: string): { raw: Record<string, unknown> |
   try {
     const raw = JSON.parse(text) as unknown;
     if (raw && typeof raw === "object" && !Array.isArray(raw)) return { raw: raw as Record<string, unknown> };
-    return { raw: null, error: `${file}: to nie jest obiekt` };
+    return { raw: null, error: t("voice.cfg.notObjectFile", { file }) };
   } catch {
-    return { raw: null, error: `${file}: to nie jest JSON` };
+    return { raw: null, error: t("voice.cfg.notJson", { file }) };
   }
 }
 
@@ -72,15 +75,15 @@ export function parseTtsConfig(text: string | null): { config: TtsConfig; errors
   const seen = new Set<string>();
   const list = Array.isArray(raw.providers) ? (raw.providers as Record<string, unknown>[]) : [];
   list.forEach((p, i) => {
-    const where = `tts.json: silnik ${i + 1}`;
-    if (!p || typeof p !== "object") return void errors.push(`${where}: nie jest obiektem`);
+    const where = t("voice.cfg.engine", { file: "tts.json", n: i + 1 });
+    if (!p || typeof p !== "object") return void errors.push(t("voice.cfg.notObject", { where }));
     const { id, name, kind, baseUrl, model, command, voice, keyEnv, key } = p;
-    if (typeof id !== "string" || !ID_RE.test(id)) return void errors.push(`${where}: złe \`id\``);
-    if (seen.has(id)) return void errors.push(`${where}: powtórzone id \`${id}\``);
-    if (kind !== "speech" && kind !== "piper") return void errors.push(`${where}: \`kind\` musi być \`speech\` albo \`piper\``);
+    if (typeof id !== "string" || !ID_RE.test(id)) return void errors.push(t("voice.cfg.badId", { where }));
+    if (seen.has(id)) return void errors.push(t("voice.cfg.dupId", { where, id }));
+    if (kind !== "speech" && kind !== "piper") return void errors.push(t("voice.cfg.badKind", { where }));
     if (kind === "speech" && (typeof baseUrl !== "string" || !/^https?:\/\//i.test(baseUrl)))
-      return void errors.push(`${where}: \`baseUrl\` musi zaczynać się od http(s)://`);
-    if (typeof model !== "string" || model.trim() === "") return void errors.push(`${where}: brak \`model\``);
+      return void errors.push(t("voice.cfg.badUrl", { where }));
+    if (typeof model !== "string" || model.trim() === "") return void errors.push(t("voice.cfg.noModel", { where }));
     seen.add(id);
     providers.push({
       id,
@@ -109,9 +112,9 @@ export function parseVoiceConfig(text: string | null): { config: VoiceConfig; er
   let brain: ModelRef | null = null;
   if (b && typeof b === "object" && typeof b.provider === "string" && typeof b.model === "string" && b.provider && b.model)
     brain = { provider: b.provider, model: b.model };
-  else if (b != null) errors.push("voice.json: złe `brain` (oczekiwane { provider, model })");
+  else if (b != null) errors.push(t("voice.cfg.badBrain"));
   const tts = typeof raw.tts === "string" && ID_RE.test(raw.tts) ? raw.tts : null;
-  if (raw.tts != null && tts === null) errors.push("voice.json: złe `tts`");
+  if (raw.tts != null && tts === null) errors.push(t("voice.cfg.badTts"));
   return {
     config: {
       brain,
@@ -210,7 +213,7 @@ export function splitSentences(buffer: string, final = false): { ready: string[]
 /** Markdown → tekst do przeczytania na głos. Kod nie jest czytany, linki zostawiają opis. */
 export function speakable(md: string): string {
   return md
-    .replace(/```[\s\S]*?(```|$)/g, " (kod pominięty) ")
+    .replace(/```[\s\S]*?(```|$)/g, t("voice.speak.code"))
     .replace(/`([^`]*)`/g, "$1")
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
@@ -367,7 +370,7 @@ export function exchangeTimes(e: VoiceExchange): { stt?: number; model?: number;
 }
 
 /** „1,4 s” / „350 ms” */
-export const fmtMs = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1).replace(".", ",")} s`);
+export const fmtMs = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1).replace(".", getLang() === "pl" ? "," : ".")} s`);
 
 /** Najwięcej wymian wysyłanych modelowi; starsze odpadają. */
 export const MAX_EXCHANGES = 30;

@@ -6,6 +6,7 @@ import { AudioLines, FolderPlus, Mic, PanelLeft, SlidersHorizontal, X } from "lu
 import { paneStatus, projectState, type PaneState } from "./activity";
 import type { Workspace } from "./workspace";
 import { ModeTabs, type Mode } from "./chat/ModeTabs";
+import { t, useT } from "./i18n";
 
 type Props = {
   mode: Mode;
@@ -34,7 +35,7 @@ type Props = {
 
 /** Treść title dla kropki projektu — sama kropka nie mówi, który panel. */
 const projDotTitle = (cls: string) =>
-  cls === "has-unread" ? "nowe wyjście w panelu" : cls === "has-work" ? "pracuje w panelu" : "";
+  cls === "has-unread" ? t("ui2.rail.dotUnread") : cls === "has-work" ? t("ui2.rail.dotWork") : "";
 
 /** Left rail (wzór D): marka, projekty z ich panelami, stopka z akcjami. */
 export function Rail({
@@ -56,6 +57,7 @@ export function Rail({
   talking,
   onToggleTalk,
 }: Props) {
+  useT();
   const keyOf = (id: string) => `p:${id}`;
   const armRef = useRef<Arm>(null);
   const [armedId, setArmedId] = useState<string | null>(null);
@@ -64,8 +66,8 @@ export function Rail({
   // "Na pewno?" lasts CONFIRM_MS, then the button goes back to ✕.
   useEffect(() => {
     if (armedId === null) return;
-    const t = setTimeout(() => setArmedId(null), CONFIRM_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setArmedId(null), CONFIRM_MS);
+    return () => clearTimeout(timer);
   }, [armedId]);
 
   const remove = (id: string) => {
@@ -83,12 +85,12 @@ export function Rail({
         <ModeTabs mode={mode} onMode={onMode} />
         <IconButton
           icon={PanelLeft}
-          label={ws.ui.rail === "closed" ? "Rozwiń szynę" : "Zwiń szynę"}
+          label={ws.ui.rail === "closed" ? t("ui2.rail.expand") : t("ui2.rail.collapse")}
           shortcut="Ctrl+Alt+B"
           onClick={onToggleRail}
         />
       </header>
-      <div className="rail-label">Projekty</div>
+      <div className="rail-label">{t("ui2.rail.projects")}</div>
       <div className="rail-list">
         {ws.projects.map((project, i) => {
           const st = (paneId: string) => state[paneId] ?? {};
@@ -139,12 +141,12 @@ export function Rail({
                     <span className="proj-dot" title={projDotTitle(dot)} />
                     <IconButton
                       icon={X}
-                      label={`Usuń projekt ${project.name}`}
+                      label={t("ui2.rail.delProject", { name: project.name })}
                       className={`proj-close${armedId === project.id ? " is-confirm" : ""}`}
                       title={
                         isArmed(armRef.current, keyOf(project.id), Date.now())
-                          ? "Kliknij ponownie, aby usunąć"
-                          : "Usuń projekt"
+                          ? t("ui2.rail.confirmDel")
+                          : t("ui2.rail.del")
                       }
                       onClick={(e) => {
                         e.stopPropagation();
@@ -153,7 +155,7 @@ export function Rail({
                       // two quick clicks on ✕ are also a dblclick; it must not open renaming
                       onDoubleClick={(e) => e.stopPropagation()}
                     >
-                      {armedId === project.id ? "Na pewno?" : undefined}
+                      {armedId === project.id ? t("ui2.rail.sure") : undefined}
                     </IconButton>
                   </>
                 )}
@@ -187,15 +189,15 @@ export function Rail({
         })}
       </div>
       <footer className="rail-foot">
-        <IconButton icon={FolderPlus} label="Dodaj projekt" shortcut="Ctrl+Alt+P" onClick={onAddProject} />
-        <IconButton icon={Mic} label="Dyktowanie" onClick={onOpenVoice} />
+        <IconButton icon={FolderPlus} label={t("ui2.rail.addProject")} shortcut="Ctrl+Alt+P" onClick={onAddProject} />
+        <IconButton icon={Mic} label={t("ui2.rail.dictation")} onClick={onOpenVoice} />
         <IconButton
           icon={AudioLines}
-          label={talking ? "Zakończ rozmowę głosową" : "Rozmowa głosowa"}
+          label={talking ? t("ui2.rail.endTalk") : t("ui2.rail.talk")}
           className={talking ? "is-on" : undefined}
           onClick={onToggleTalk}
         />
-        <IconButton icon={SlidersHorizontal} label="Wygląd" onClick={onOpenAppearance} />
+        <IconButton icon={SlidersHorizontal} label={t("ui2.rail.appearance")} onClick={onOpenAppearance} />
       </footer>
     </aside>
   );

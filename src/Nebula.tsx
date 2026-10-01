@@ -42,6 +42,7 @@ export function Nebula({ still }: { still: boolean }) {
     let raf = 0;
     let w = 0;
     let h = 0;
+    let resizing = false;
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -99,10 +100,18 @@ export function Nebula({ still }: { still: boolean }) {
 
     resize();
     emitters = readEmitters(root);
+    // Przeciąganie krawędzi okna: realokacja canvasu (dpr!) i odczyt układu co klatkę zatykały
+    // wątek. W trakcie serii canvas rozciąga się w CSS, a przeliczenie idzie raz, po ciszy.
+    let settle: ReturnType<typeof setTimeout> | undefined;
     const ro = new ResizeObserver(() => {
-      resize();
-      emitters = readEmitters(root);
-      if (still) for (let i = 0; i < 6; i++) draw();
+      resizing = true;
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        resizing = false;
+        resize();
+        emitters = readEmitters(root);
+        if (still) for (let i = 0; i < 6; i++) draw();
+      }, 150);
     });
     ro.observe(root);
 
@@ -113,13 +122,14 @@ export function Nebula({ still }: { still: boolean }) {
       // Nie rysujemy, gdy okno jest ukryte; cząstki po powrocie ruszają od zera, nie od zalegającej kupy.
       const loop = () => {
         if (document.hidden) particles = [];
-        else frame();
+        else if (!resizing) frame();
         raf = requestAnimationFrame(loop);
       };
       raf = requestAnimationFrame(loop);
     }
     return () => {
       cancelAnimationFrame(raf);
+      clearTimeout(settle);
       ro.disconnect();
     };
   }, [still]);

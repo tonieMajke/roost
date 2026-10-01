@@ -1,6 +1,7 @@
 //! Rozmowy zakładki Czat: `<configDir>/chats/<id>.json` + `index.json` (id, tytuł, data),
 //! żeby lista rozmów nie czytała przy starcie wszystkich plików.
 
+import { t } from "../i18n";
 import fs from "node:fs";
 import path from "node:path";
 import { chatMeta, parseChat, sortChats, type ChatMeta } from "../../../src/chat";
@@ -13,7 +14,7 @@ export class ChatStore {
   constructor(private dir: string) {}
 
   private file(id: string): string {
-    if (!ID_RE.test(id)) throw new Error(`złe id rozmowy: ${id}`);
+    if (!ID_RE.test(id)) throw new Error(t("store.badChatId", { id }));
     return path.join(this.dir, `${id}.json`);
   }
 
@@ -63,7 +64,7 @@ export class ChatStore {
 
   save(json: string): void {
     const chat = parseChat(json);
-    if (!chat) throw new Error("zły format rozmowy");
+    if (!chat) throw new Error(t("store.badChat"));
     fs.mkdirSync(this.dir, { recursive: true });
     writeAtomic(this.file(chat.id), json);
     const list = (this.readIndex() ?? []).filter((c) => c.id !== chat.id);

@@ -8,6 +8,7 @@ import type { VoiceTab } from "./TalkSettings";
 import { overviewText, runVoiceTool, voiceTools, type CardDecision, type PaneHost } from "./tools";
 import { encodeWav, Utterances, VAD_DEFAULT, VAD_PLAYING } from "./vad";
 import { activeTts, resolveBrain, VOICE_IDLE, voicePrompt, voiceRequest, voiceTurns, type VoiceState } from "./voice";
+import { t } from "../i18n";
 
 export type VoiceSetup =
   | { status: "loading" }
@@ -41,14 +42,14 @@ export function useVoiceSession(host?: PaneHost, noteRef?: MutableRefObject<((te
       try {
         [stt, voice, tts, chat] = await Promise.all([backend.sttConfig(), backend.voiceConfig(), backend.ttsConfig(), backend.chatConfig()]);
       } catch (e) {
-        return fail(`ustawienia: ${e instanceof Error ? e.message : String(e)}`);
+        return fail(t("voice.setup.settings", { msg: e instanceof Error ? e.message : String(e) }));
       }
       if (closed) return;
-      if (!activeStt(stt.config)) return fail("Wybierz silnik transkrypcji (Dyktowanie).", "dictation");
+      if (!activeStt(stt.config)) return fail(t("voice.setup.noStt"), "dictation");
       const found = resolveBrain(chat.providers, voice.config.brain);
       if (!found) {
         const ref = voice.config.brain;
-        return fail(ref ? `Nie ma modelu ${ref.provider}/${ref.model} w Czacie.` : "Brak modeli w Czacie.", "talk");
+        return fail(ref ? t("voice.setup.noModel", { model: `${ref.provider}/${ref.model}` }) : t("voice.setup.noModels"), "talk");
       }
       const ttsP = activeTts(tts.config, voice.config);
       const headphones = voice.config.headphones;

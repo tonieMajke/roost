@@ -10,6 +10,7 @@ import { ResizeThrottle } from "./resize-throttle";
 import { WriteQueue, peakQueueBytes } from "./write-queue";
 import { DEFAULT_TERM_FONT } from "./themes";
 import { findPathRefs } from "./term-links";
+import { t, useT } from "./i18n";
 
 // Ręczny pomiar w oknie (test 16 × 20 MB): w konsoli devtools `awPeakQueueMB()`.
 (globalThis as { awPeakQueueMB?: () => number }).awPeakQueueMB = () =>
@@ -66,6 +67,7 @@ export type TerminalHandle = {
  * component: the effect has no dependencies, so it restarts only under a new React key.
  */
 export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSize = 13, focused, onExit, onStart, onFocus, onOutput, onRedraw, onTitle, apiRef }: Props) {
+  useT();
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<XTerm | undefined>(undefined);
   // Read once at mount; later prop changes must never restart the process.
@@ -231,7 +233,7 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
         const b = x.buffer.active;
         setScrolledUp(b.viewportY < b.baseY);
       };
-      x.onTitleChange((t) => titleRef.current?.(t));
+      x.onTitleChange((title) => titleRef.current?.(title));
       x.onScroll(syncScrolled);
       x.onWriteParsed(syncScrolled); // nowe wyjście przy przewiniętym widoku: baseY rośnie, viewportY stoi
       observer.observe(el);
@@ -257,7 +259,7 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
           startRef.current?.();
         }
       } catch (e) {
-        x.write(`\x1b[31mNie udało się uruchomić: ${String(e)}\x1b[0m\r\n`);
+        x.write(`\x1b[31m${t("pane.term.startFail", { error: String(e) })}\x1b[0m\r\n`);
       }
       // Only the focused pane takes the keyboard; otherwise the last pane to start would
       // steal focus (and via onFocus move the workspace focus, even switch projects).
@@ -352,8 +354,8 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
             type="text"
             defaultValue={query.current}
             spellCheck={false}
-            placeholder="Szukaj w terminalu"
-            aria-label="Szukaj w terminalu"
+            placeholder={t("pane.term.search")}
+            aria-label={t("pane.term.search")}
             aria-invalid={noMatch}
             onChange={(e) => {
               query.current = e.target.value;
@@ -369,10 +371,10 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
               else runSearch(act);
             }}
           />
-          <span className="term-search-state" aria-live="polite">{noMatch ? "Brak trafień" : ""}</span>
-          <button type="button" title="Poprzednie (Ctrl+Shift+G)" aria-label="Poprzednie trafienie" onClick={() => runSearch("prev")}>↑</button>
-          <button type="button" title="Następne (Ctrl+G)" aria-label="Następne trafienie" onClick={() => runSearch("next")}>↓</button>
-          <button type="button" title="Zamknij (Esc)" aria-label="Zamknij szukanie" onClick={closeSearch}>✕</button>
+          <span className="term-search-state" aria-live="polite">{noMatch ? t("pane.term.noMatch") : ""}</span>
+          <button type="button" title={t("pane.term.prev")} aria-label={t("pane.term.prevAria")} onClick={() => runSearch("prev")}>↑</button>
+          <button type="button" title={t("pane.term.next")} aria-label={t("pane.term.nextAria")} onClick={() => runSearch("next")}>↓</button>
+          <button type="button" title={t("pane.term.closeTip")} aria-label={t("pane.term.closeAria")} onClick={closeSearch}>✕</button>
         </div>
       )}
       <div className="terminal" ref={host} />
@@ -380,8 +382,8 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
         <button
           type="button"
           className="to-bottom"
-          title="Przewiń na dół"
-          aria-label="Przewiń na dół"
+          title={t("pane.term.bottom")}
+          aria-label={t("pane.term.bottom")}
           onClick={() => {
             term.current?.scrollToBottom();
             term.current?.focus();

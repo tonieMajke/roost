@@ -5,6 +5,7 @@ import { BUILT_IN_PRESETS } from "./presets";
 import { Dialog } from "./Dialog";
 import { IconButton } from "./IconButton";
 import { X } from "lucide-react";
+import { useT } from "./i18n";
 
 type Props = {
   /** Presety własne z workspace.presets. */
@@ -20,6 +21,7 @@ type Props = {
 
 /** Okno „Presety”: wbudowane, kreska, własne z ✕, na końcu zapis obecnego układu. */
 export function PresetMenu({ custom, agents, canSave, onApply, onDelete, onSave, onClose }: Props) {
+  const { t } = useT();
   const [name, setName] = useState("");
 
   // Własny preset o nazwie wbudowanego zastępuje go w menu (nie dublujemy wierszy).
@@ -37,7 +39,7 @@ export function PresetMenu({ custom, agents, canSave, onApply, onDelete, onSave,
   );
 
   return (
-    <Dialog label="Presety paneli" onClose={onClose}>
+    <Dialog label={t("ui2.preset.title")} onClose={onClose}>
       {(cancel) => {
         const save = () => {
           const trimmed = name.trim();
@@ -47,8 +49,8 @@ export function PresetMenu({ custom, agents, canSave, onApply, onDelete, onSave,
         };
         return (
           <>
-            <h2>Presety paneli</h2>
-            <p>Dodają panele do aktywnego projektu.</p>
+            <h2>{t("ui2.preset.title")}</h2>
+            <p>{t("ui2.preset.desc")}</p>
             <ul className="pm-list">
               {builtIn.map((preset) => (
                 <li key={preset.name}>
@@ -60,7 +62,7 @@ export function PresetMenu({ custom, agents, canSave, onApply, onDelete, onSave,
             </ul>
             <hr className="pm-sep" />
             {custom.length === 0 ? (
-              <p className="set-foot">Brak własnych presetów</p>
+              <p className="set-foot">{t("ui2.preset.none")}</p>
             ) : (
               <ul className="pm-list">
                 {custom.map((preset) => (
@@ -70,7 +72,7 @@ export function PresetMenu({ custom, agents, canSave, onApply, onDelete, onSave,
                     </button>
                     <IconButton
                       icon={X}
-                      label={`Usuń preset ${preset.name}`}
+                      label={t("ui2.preset.delete", { name: preset.name })}
                       className="pm-del"
                       onClick={() => onDelete(preset.name)}
                     />
@@ -82,8 +84,8 @@ export function PresetMenu({ custom, agents, canSave, onApply, onDelete, onSave,
               <input
                 className="pm-input"
                 value={name}
-                placeholder="nazwa"
-                aria-label="Nazwa nowego presetu"
+                placeholder={t("ui2.preset.name")}
+                aria-label={t("ui2.preset.nameAria")}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key !== "Enter") return;
@@ -92,15 +94,15 @@ export function PresetMenu({ custom, agents, canSave, onApply, onDelete, onSave,
                 }}
               />
               <button type="button" className="btn" onClick={save} disabled={!canSave || name.trim() === ""}>
-                Zapisz obecny układ…
+                {t("ui2.preset.save")}
               </button>
             </div>
             <div className="dialog-foot">
               <span>
-                <kbd>Enter</kbd> zapisz
+                <kbd>Enter</kbd> {t("ui2.preset.hintSave")}
               </span>
               <span>
-                <kbd>Esc</kbd> zamknij
+                <kbd>Esc</kbd> {t("ui2.preset.hintClose")}
               </span>
             </div>
           </>

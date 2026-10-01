@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from "react";
 import { agentColor, agentModels, type AgentDef } from "./agents";
 import { accountKind, accountsFor, pickAccountId, type Accounts } from "./accounts";
 import { Dialog } from "./Dialog";
+import { useT } from "./i18n";
 import { dialogKey, stepModel, tileDelayMs } from "./new-pane";
 
 type Props = {
@@ -17,6 +18,7 @@ type Props = {
 
 /** Okno „Nowy panel” (wzór D): kafelki agentów, 1–9 / strzałki / Enter / Esc; ←/→ model. */
 export function NewPaneDialog({ projectName, agents, accounts, startIndex, onPick, onClose }: Props) {
+  const { t } = useT();
   const [index, setIndex] = useState(Math.min(Math.max(startIndex, 0), Math.max(agents.length - 1, 0)));
   // Model dotyczy zaznaczonego agenta; zmiana agenta wraca do domyślnego.
   const [model, setModel] = useState<string | undefined>(undefined);
@@ -41,7 +43,7 @@ export function NewPaneDialog({ projectName, agents, accounts, startIndex, onPic
   };
 
   return (
-    <Dialog label={`Nowy panel w ${projectName}`} onClose={onClose} onKey={(e, cancel) => {
+    <Dialog label={t("ui2.np.title", { name: projectName })} onClose={onClose} onKey={(e, cancel) => {
       const action = dialogKey(e.key, index, agents.length);
       if (!action) return;
       e.preventDefault();
@@ -52,10 +54,10 @@ export function NewPaneDialog({ projectName, agents, accounts, startIndex, onPic
     }}>
       {(cancel) => (
         <>
-          <h2>Nowy panel w {projectName}</h2>
-          <p>Agent startuje w folderze projektu.</p>
+          <h2>{t("ui2.np.title", { name: projectName })}</h2>
+          <p>{t("ui2.np.desc")}</p>
           {agents.length === 0 ? (
-            <p className="tile-cmd">Brak agentów w agents.json</p>
+            <p className="tile-cmd">{t("ui2.np.noAgents")}</p>
           ) : (
             <div className="tiles">
               {agents.map((agent, i) => (
@@ -83,11 +85,11 @@ export function NewPaneDialog({ projectName, agents, accounts, startIndex, onPic
             <div
               className="models"
               role="radiogroup"
-              aria-label={`Model: ${selected.name}`}
+              aria-label={t("ui2.np.modelAria", { name: selected.name })}
               style={{ "--ag": agentColor(selected) } as CSSProperties}
             >
-              <span className="models-label">Model</span>
-              {[{ id: undefined, name: "domyślny" }, ...models].map((m) => (
+              <span className="models-label">{t("ui2.np.model")}</span>
+              {[{ id: undefined, name: t("ui2.np.defaultM") }, ...models].map((m) => (
                 <button
                   key={m.id ?? ""}
                   type="button"
@@ -105,11 +107,11 @@ export function NewPaneDialog({ projectName, agents, accounts, startIndex, onPic
             <div
               className="models"
               role="radiogroup"
-              aria-label={`Konto: ${selected.name}`}
+              aria-label={t("ui2.np.accountAria", { name: selected.name })}
               style={{ "--ag": agentColor(selected) } as CSSProperties}
             >
-              <span className="models-label">Konto</span>
-              {[{ id: "", name: "domyślne" }, ...accountList].map((a) => (
+              <span className="models-label">{t("ui2.np.account")}</span>
+              {[{ id: "", name: t("ui2.np.defaultA") }, ...accountList].map((a) => (
                 <button
                   key={a.id}
                   type="button"
@@ -125,20 +127,20 @@ export function NewPaneDialog({ projectName, agents, accounts, startIndex, onPic
           )}
           <div className="dialog-foot">
             <span>
-              <kbd>1</kbd>–<kbd>{Math.min(agents.length, 9)}</kbd> wybór
+              <kbd>1</kbd>–<kbd>{Math.min(agents.length, 9)}</kbd> {t("ui2.np.hintPick")}
             </span>
             <span>
               <kbd>↑</kbd>
-              <kbd>↓</kbd> ruch
+              <kbd>↓</kbd> {t("ui2.np.hintMove")}
             </span>
             {models.length > 0 && (
               <span>
                 <kbd>←</kbd>
-                <kbd>→</kbd> model
+                <kbd>→</kbd> {t("ui2.np.hintModel")}
               </span>
             )}
             <span>
-              <kbd>Esc</kbd> zamknij
+              <kbd>Esc</kbd> {t("ui2.preset.hintClose")}
             </span>
           </div>
         </>

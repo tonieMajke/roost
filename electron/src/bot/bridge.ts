@@ -2,6 +2,7 @@
 //! wołają przez nie rejestr narzędzi. Sesja = jedna odpowiedź bota, rozpoznawana po tokenie;
 //! gniazdo ma prawa 0600, token chroni przed pomyłką sesji, nie przed innym użytkownikiem.
 
+import { t } from "../i18n";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
@@ -76,7 +77,7 @@ export class ToolBridge {
         if (!sock.destroyed) sock.write(`${JSON.stringify({ id: req.id, ...r })}\n`);
       };
       const s = typeof req.token === "string" ? this.sessions.get(req.token) : undefined;
-      if (!s) return reply({ error: "rozmowa bota już się zakończyła" });
+      if (!s) return reply({ error: t("bot.chatEnded") });
       if (req.op === "list") return reply({ result: s.tools });
       if (req.op === "call" && typeof req.name === "string") {
         const args = req.args && typeof req.args === "object" && !Array.isArray(req.args) ? (req.args as Record<string, unknown>) : {};
@@ -86,7 +87,7 @@ export class ToolBridge {
         );
         return;
       }
-      reply({ error: "złe żądanie" });
+      reply({ error: t("bot.badRequest") });
     });
   }
 

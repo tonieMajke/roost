@@ -1,4 +1,5 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { t } from "./i18n";
 import {
   BUBBLE_PX,
   DROP_MS,
@@ -188,7 +189,7 @@ function createDrag(optsRef: { readonly current: Options }) {
       s.mode = mode;
       s.ghost!.dataset.mode = mode;
       s.ghost!.querySelector(".drag-label")!.textContent =
-        mode === "handoff" ? "kontekst →" : mode === "blocked" ? "brak rozmowy" : "";
+        mode === "handoff" ? t("pane.drag.handoff") : mode === "blocked" ? t("pane.drag.blocked") : "";
     }
     const mark = mode === "handoff" ? "handoff" : "target";
     const cell = target ? cellOf(s.grid, target) : null;

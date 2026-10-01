@@ -3,6 +3,7 @@
 // tutaj wszystko da się sprawdzić atrapami.
 
 import type { ChatEvent, ToolCall, Turn } from "../chat";
+import { t } from "../i18n";
 import { cardAnswer, VOICE_MAX_STEPS, voiceToolLabel, type CardDecision, type DeployCard, type VoiceToolResult } from "./tools";
 import { speakable, splitSentences, VOICE_IDLE, voiceReducer, type VoiceEvent, type VoiceExchange, type VoiceState } from "./voice";
 
@@ -255,8 +256,8 @@ export class VoiceSession {
 
     const step = () => {
       if (steps++ >= VOICE_MAX_STEPS) {
-        this.emit({ type: "delta", n, text: " Przerwałem, za dużo kroków z panelami.", at: this.deps.now() });
-        buffer += " Przerwałem, za dużo kroków z panelami.";
+        this.emit({ type: "delta", n, text: t("voice.tooManySteps"), at: this.deps.now() });
+        buffer += t("voice.tooManySteps");
         return finish();
       }
       let text = "";

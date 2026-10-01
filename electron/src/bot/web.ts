@@ -1,6 +1,7 @@
 //! Sieć dla narzędzi bota: `web_search` (DuckDuckGo HTML, bez klucza) i `web_fetch`
 //! (strona jako tekst). Dostawcy CLI mają własne WebSearch/WebFetch; to jest dla reszty.
 
+import { t } from "../i18n";
 const UA = "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0";
 const FETCH_TIMEOUT = 20_000;
 const MAX_DOWNLOAD = 2_000_000;
@@ -114,7 +115,7 @@ export async function webSearch(query: string, signal: AbortSignal, limit = 8): 
   const { text } = await readCapped(res, MAX_DOWNLOAD);
   if (!res.ok) throw new Error(`wyszukiwarka: HTTP ${res.status}`);
   const results = parseDdg(text);
-  if (results.length === 0 && /error-lite|anomaly/i.test(text)) throw new Error("wyszukiwarka odrzuciła zapytanie (spróbuj za chwilę)");
+  if (results.length === 0 && /error-lite|anomaly/i.test(text)) throw new Error(t("web.rejected"));
   return formatResults(q, results.slice(0, limit));
 }
 
@@ -124,7 +125,7 @@ export async function webFetch(url: string, signal: AbortSignal): Promise<string
   try {
     u = new URL(url);
   } catch {
-    throw new Error(`zły adres: ${url}`);
+    throw new Error(t("web.badUrl", { url }));
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("tylko adresy http(s)");
   const res = await get(u.href, signal);

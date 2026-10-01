@@ -2,6 +2,7 @@
 //! MCP dla claude/codex z etapu 5). Tu zapada decyzja o zgodzie (`needsApproval`) i tu
 //! narzędzie czeka na kliknięcie w UI – dlatego działa tak samo przy każdym modelu.
 
+import { t } from "../i18n";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -216,29 +217,29 @@ function approvalText(tool: ToolName, a: Record<string, unknown>, ctx: ToolConte
   const p = str(a.path) ?? "";
   switch (tool) {
     case "read_file":
-      return { title: `Przeczytać plik \`${p}\`?` };
+      return { title: t("appr.read", { p }) };
     case "list_dir":
-      return { title: `Zajrzeć do folderu \`${p}\`?` };
+      return { title: t("appr.list", { p }) };
     case "grep":
-      return { title: `Przeszukać \`${p}\`?`, detail: `wzorzec: ${str(a.pattern) ?? ""}` };
+      return { title: t("appr.grep", { p }), detail: t("appr.pattern", { pattern: str(a.pattern) ?? "" }) };
     case "write_file":
-      return { title: `${fs.existsSync(p) ? "Nadpisać" : "Utworzyć"} plik \`${p}\`?`, detail: clip(str(a.content) ?? "") };
+      return { title: t(fs.existsSync(p) ? "appr.overwrite" : "appr.create", { p }), detail: clip(str(a.content) ?? "") };
     case "edit_file": {
       const diff = (pre: string, t: string) => t.split("\n").map((l) => `${pre} ${l}`).join("\n");
-      return { title: `Zmienić plik \`${p}\`?`, detail: clip(`${diff("-", str(a.old) ?? "")}\n${diff("+", str(a.new) ?? "")}`) };
+      return { title: t("appr.edit", { p }), detail: clip(`${diff("-", str(a.old) ?? "")}\n${diff("+", str(a.new) ?? "")}`) };
     }
     case "bash":
-      return { title: "Uruchomić polecenie?", detail: `${str(a.command) ?? ""}\n\nw: ${str(a.cwd) ?? ctx.store.work(ctx.bot.id)}` };
+      return { title: t("appr.bash"), detail: `${str(a.command) ?? ""}\n\n${t("appr.in")}: ${str(a.cwd) ?? ctx.store.work(ctx.bot.id)}` };
     case "bot_create":
     case "bot_update": {
-      if (!plan) return { title: `Użyć narzędzia ${tool}?` };
+      if (!plan) return { title: t("appr.tool", { tool }) };
       const name = plan.bot.name;
-      if (plan.kind === "update") return { title: `Zmienić bota „${name}”?`, preview: { bot: plan.bot, changed: plan.changed } };
+      if (plan.kind === "update") return { title: t("appr.botUpdate", { name }), preview: { bot: plan.bot, changed: plan.changed } };
       const skills = plan.skills.map((md) => parseSkill(md)).flatMap((p) => ("error" in p ? [] : [{ name: p.name, description: p.description }]));
-      return { title: `Utworzyć bota „${name}”?`, preview: { bot: plan.bot, skills, routines: plan.routines.map((r) => ({ name: r.name, schedule: r.schedule })) } };
+      return { title: t("appr.botCreate", { name }), preview: { bot: plan.bot, skills, routines: plan.routines.map((r) => ({ name: r.name, schedule: r.schedule })) } };
     }
     default:
-      return { title: `Użyć narzędzia ${tool}?` };
+      return { title: t("appr.tool", { tool }) };
   }
 }
 

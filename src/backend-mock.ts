@@ -452,6 +452,7 @@ export const mockBackend: Backend = {
   },
 
   // Podgląd nie ma powiadomień pulpitu — zostaje log w konsoli dewelopera.
+  setLanguage: () => undefined,
   async notify(title, body) {
     console.info(`[powiadomienie] ${title}: ${body}`);
   },

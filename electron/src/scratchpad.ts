@@ -2,6 +2,7 @@
 //! Poza repo użytkownika; zapis atomowy (tmp + fsync + rename), żeby przerwany zapis
 //! zostawił poprzednią wersję, nie pół pliku.
 
+import { t } from "./i18n";
 import fs from "node:fs";
 import path from "node:path";
 import { configDir } from "./config";
@@ -13,7 +14,7 @@ export const MAX_BYTES = 1024 * 1024;
 
 /** Id projektu to UUID (`crypto.randomUUID`); inne nie wchodzą w ścieżkę pliku (`../`). */
 export function scratchpadPath(id: string, dir = configDir()): string {
-  if (!validId(id)) throw new Error(`Nieprawidłowe id projektu: ${JSON.stringify(id)}`);
+  if (!validId(id)) throw new Error(t("scratch.badId", { id: JSON.stringify(id) }));
   return path.join(dir, DIR, `${id}.md`);
 }
 
@@ -30,7 +31,7 @@ export function scratchpadLoad(id: string, dir = configDir()): string {
 
 export function scratchpadSave(id: string, text: string, dir = configDir()): void {
   const file = scratchpadPath(id, dir);
-  if (Buffer.byteLength(text, "utf8") > MAX_BYTES) throw new Error("Notatka jest za duża (limit 1 MB)");
+  if (Buffer.byteLength(text, "utf8") > MAX_BYTES) throw new Error(t("scratch.tooBig"));
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
   let fd: number | null = null;

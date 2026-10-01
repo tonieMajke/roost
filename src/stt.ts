@@ -2,6 +2,8 @@
 // funkcje czyste. Każdy silnik to serwer z `POST {baseUrl}/audio/transcriptions` (multipart, jak
 // OpenAI): OpenRouter, cortecs.ai, OpenAI i lokalne serwery (whisper.cpp, speaches) mówią tak samo.
 
+import { t } from "./i18n";
+
 export type SttProvider = {
   id: string;
   name: string;
@@ -45,20 +47,20 @@ export function parseSttConfig(text: string | null): { config: SttConfig; errors
   try {
     raw = JSON.parse(text) as Record<string, unknown>;
   } catch {
-    return { config: DEFAULT_STT, errors: ["stt.json: to nie jest JSON"] };
+    return { config: DEFAULT_STT, errors: [t("voice.cfg.notJson", { file: "stt.json" })] };
   }
   const errors: string[] = [];
   const providers: SttProvider[] = [];
   const seen = new Set<string>();
   const list = Array.isArray(raw?.providers) ? (raw.providers as Record<string, unknown>[]) : [];
   list.forEach((p, i) => {
-    const where = `stt.json: silnik ${i + 1}`;
-    if (!p || typeof p !== "object") return void errors.push(`${where}: nie jest obiektem`);
+    const where = t("voice.cfg.engine", { file: "stt.json", n: i + 1 });
+    if (!p || typeof p !== "object") return void errors.push(t("voice.cfg.notObject", { where }));
     const { id, name, baseUrl, model, keyEnv, key } = p;
-    if (typeof id !== "string" || !ID_RE.test(id)) return void errors.push(`${where}: złe \`id\``);
-    if (seen.has(id)) return void errors.push(`${where}: powtórzone id \`${id}\``);
-    if (typeof baseUrl !== "string" || !/^https?:\/\//i.test(baseUrl)) return void errors.push(`${where}: \`baseUrl\` musi zaczynać się od http(s)://`);
-    if (typeof model !== "string" || model.trim() === "") return void errors.push(`${where}: brak \`model\``);
+    if (typeof id !== "string" || !ID_RE.test(id)) return void errors.push(t("voice.cfg.badId", { where }));
+    if (seen.has(id)) return void errors.push(t("voice.cfg.dupId", { where, id }));
+    if (typeof baseUrl !== "string" || !/^https?:\/\//i.test(baseUrl)) return void errors.push(t("voice.cfg.badUrl", { where }));
+    if (typeof model !== "string" || model.trim() === "") return void errors.push(t("voice.cfg.noModel", { where }));
     seen.add(id);
     providers.push({
       id,

@@ -1,8 +1,10 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { ChevronDown, ChevronRight, Download, FolderPlus, ImagePlus, Trash2, X } from "lucide-react";
+import { locale, t, useT, type Key } from "../i18n";
 import { backend, type BotSkillMeta, type BotSkillSource } from "../backend";
 import {
   botGreeting,
+  displayName,
   MEMORY_LIMIT,
   parseSkill,
   TOOL_GROUPS,
@@ -20,33 +22,18 @@ import { Avatar, forgetAvatar } from "./Avatar";
 import { Routines } from "./Routines";
 
 export type CardTab = "persona" | "memory" | "skills" | "routines" | "settings";
-const TABS: { id: CardTab; label: string }[] = [
-  { id: "persona", label: "Osobowość" },
-  { id: "memory", label: "Pamięć" },
-  { id: "skills", label: "Skille" },
-  { id: "routines", label: "Harmonogram" },
-  { id: "settings", label: "Ustawienia" },
-];
+const TAB_IDS: CardTab[] = ["persona", "memory", "skills", "routines", "settings"];
 
-export const TONES: { id: Tone; label: string }[] = [
-  { id: "serious", label: "Poważnie" },
-  { id: "balanced", label: "Pośrodku" },
-  { id: "playful", label: "Na luzie" },
-];
+/** Etykiety liczone przy każdym użyciu, żeby szły za zmianą języka. */
+export const tones = (): { id: Tone; label: string }[] =>
+  (["serious", "balanced", "playful"] as const).map((id) => ({ id, label: t(`bot.tone.${id}` as const) }));
 const COLORS = ["#7c8cff", "#e2704a", "#e0a050", "#4fc38a", "#3fb4d0", "#9b7cf0", "#e05f95", "#9aa0a6"];
 const EMOJI = ["🤖", "🦀", "🌙", "🧭", "📚", "🛠️", "🧪", "🎨", "🐙", "🦉"];
 
-export const GROUPS: Record<ToolGroup, { label: string; hint: string }> = {
-  web: { label: "Sieć", hint: "wyszukiwanie i czytanie stron" },
-  read: { label: "Czytanie plików", hint: "foldery poniżej bez pytania, reszta za zgodą" },
-  write: { label: "Zapis plików", hint: "w katalogu roboczym swobodnie, poza nim za zgodą" },
-  bash: { label: "Powłoka", hint: "każde polecenie za zgodą" },
-  memory: { label: "Pamięć", hint: "notatki bota i to, co wie o tobie" },
-  skills: { label: "Skille", hint: "czyta i zapisuje własne przepisy" },
-};
+export const groups = (): Record<ToolGroup, { label: string; hint: string }> =>
+  Object.fromEntries(TOOL_GROUPS.map((g) => [g, { label: t(`bot.group.${g}` as Key), hint: t(`bot.group.${g}.hint` as Key) }])) as Record<ToolGroup, { label: string; hint: string }>;
 
-const BY: Record<NonNullable<BotSkillMeta["by"]>, string> = { bot: "bot", user: "ty", import: "import" };
-const day = (ms: number) => new Date(ms).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" });
+const day = (ms: number) => new Date(ms).toLocaleDateString(locale(), { day: "numeric", month: "short", year: "numeric" });
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 type Props = {
@@ -63,6 +50,8 @@ type Props = {
 };
 
 function Persona({ draft, set, onError }: { draft: BotDef; set(p: Partial<BotDef>): void; onError(e: string): void }) {
+  const { t } = useT();
+  const tn = tones();
   const pickImage = async () => {
     try {
       const file = await backend.pickImage();
@@ -79,11 +68,11 @@ function Persona({ draft, set, onError }: { draft: BotDef; set(p: Partial<BotDef
     <div className="card-grid">
       <div className="card-fields">
         <label className="card-field">
-          <span>Imię</span>
+          <span>{t("bot.persona.name")}</span>
           <input value={draft.name} maxLength={40} onChange={(e) => set({ name: e.target.value })} />
         </label>
         <div className="card-field">
-          <span>Awatar</span>
+          <span>{t("bot.persona.avatar")}</span>
           <div className="card-row">
             {EMOJI.map((em) => (
               <button
@@ -98,53 +87,53 @@ function Persona({ draft, set, onError }: { draft: BotDef; set(p: Partial<BotDef
             <input
               className="card-emoji-input"
               value={draft.avatar.image ? "" : (draft.avatar.emoji ?? "")}
-              placeholder="inne"
+              placeholder={t("bot.persona.emojiOther")}
               maxLength={8}
               onChange={(e) => set({ avatar: { emoji: e.target.value || undefined } })}
-              aria-label="Własne emoji"
+              aria-label={t("bot.persona.emojiAria")}
             />
             <button type="button" className="btn" onClick={() => void pickImage()}>
-              <ImagePlus aria-hidden /> Obrazek…
+              <ImagePlus aria-hidden /> {t("bot.persona.image")}
             </button>
           </div>
         </div>
         <div className="card-field">
-          <span>Kolor</span>
+          <span>{t("bot.persona.color")}</span>
           <div className="card-row">
             {COLORS.map((c) => (
-              <button key={c} type="button" className={`card-swatch${draft.color === c ? " is-on" : ""}`} style={{ background: c }} onClick={() => set({ color: c })} aria-label={`Kolor ${c}`} />
+              <button key={c} type="button" className={`card-swatch${draft.color === c ? " is-on" : ""}`} style={{ background: c }} onClick={() => set({ color: c })} aria-label={t("bot.persona.colorAria", { c })} />
             ))}
-            <input type="color" className="card-color" value={draft.color} onChange={(e) => set({ color: e.target.value })} aria-label="Własny kolor" />
+            <input type="color" className="card-color" value={draft.color} onChange={(e) => set({ color: e.target.value })} aria-label={t("bot.persona.colorCustom")} />
           </div>
         </div>
         <label className="card-field">
-          <span>Kim jest i do czego służy</span>
-          <textarea rows={3} value={draft.persona} placeholder="Pierwsze zdanie to powitanie w nowej rozmowie." onChange={(e) => set({ persona: e.target.value })} />
+          <span>{t("bot.persona.who")}</span>
+          <textarea rows={3} value={draft.persona} placeholder={t("bot.persona.whoPh")} onChange={(e) => set({ persona: e.target.value })} />
         </label>
         <label className="card-field">
-          <span>Jak mówi</span>
-          <textarea rows={2} value={draft.style} placeholder="np. krótko, z humorem, jak pirat" onChange={(e) => set({ style: e.target.value })} />
+          <span>{t("bot.persona.how")}</span>
+          <textarea rows={2} value={draft.style} placeholder={t("bot.persona.howPh")} onChange={(e) => set({ style: e.target.value })} />
         </label>
         <label className="card-field">
-          <span>Czego unika</span>
-          <input value={draft.avoid} placeholder="np. plotek bez źródła" onChange={(e) => set({ avoid: e.target.value })} />
+          <span>{t("bot.persona.avoid")}</span>
+          <input value={draft.avoid} placeholder={t("bot.persona.avoidPh")} onChange={(e) => set({ avoid: e.target.value })} />
         </label>
         <div className="card-field">
-          <span>Ton</span>
+          <span>{t("bot.persona.tone")}</span>
           <div className="card-tone">
             <input
               type="range"
               min={0}
               max={2}
               step={1}
-              value={TONES.findIndex((t) => t.id === draft.tone)}
-              onChange={(e) => set({ tone: TONES[Number(e.target.value)].id })}
-              aria-label="Ton: powaga – luz"
+              value={tn.findIndex((x) => x.id === draft.tone)}
+              onChange={(e) => set({ tone: tn[Number(e.target.value)].id })}
+              aria-label={t("bot.persona.toneAria")}
             />
             <div className="card-tone-labels">
-              {TONES.map((t) => (
-                <span key={t.id} className={draft.tone === t.id ? "is-on" : ""}>
-                  {t.label}
+              {tn.map((x) => (
+                <span key={x.id} className={draft.tone === x.id ? "is-on" : ""}>
+                  {x.label}
                 </span>
               ))}
             </div>
@@ -152,9 +141,9 @@ function Persona({ draft, set, onError }: { draft: BotDef; set(p: Partial<BotDef
         </div>
       </div>
       <aside className="card-preview" style={{ "--bot": draft.color } as CSSProperties}>
-        <div className="rail-label">Tak się przedstawi</div>
+        <div className="rail-label">{t("bot.persona.preview")}</div>
         <Avatar bot={draft} size="lg" />
-        <div className="card-preview-name">{draft.name || "Bez imienia"}</div>
+        <div className="card-preview-name">{draft.name || t("bot.persona.unnamed")}</div>
         <p className="card-preview-text">{botGreeting(draft)}</p>
         {draft.style.trim() && <p className="card-preview-style">„{draft.style.trim()}”</p>}
       </aside>
@@ -163,6 +152,7 @@ function Persona({ draft, set, onError }: { draft: BotDef; set(p: Partial<BotDef
 }
 
 function MemoryField({ title, hint, value, limit, onSave }: { title: string; hint: string; value: string; limit: number; onSave(text: string): Promise<void> }) {
+  const { t } = useT();
   const [text, setText] = useState(value);
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   useEffect(() => setText(value), [value]);
@@ -179,7 +169,7 @@ function MemoryField({ title, hint, value, limit, onSave }: { title: string; hin
       <div className="card-row">
         <small className="card-hint">{hint}</small>
         <span className="chat-composer-gap" />
-        {state === "saved" && <small className="card-ok">zapisano</small>}
+        {state === "saved" && <small className="card-ok">{t("bot.mem.saved")}</small>}
         <button
           type="button"
           className="btn"
@@ -192,7 +182,7 @@ function MemoryField({ title, hint, value, limit, onSave }: { title: string; hin
             );
           }}
         >
-          Zapisz
+          {t("bot.save")}
         </button>
       </div>
     </div>
@@ -200,11 +190,12 @@ function MemoryField({ title, hint, value, limit, onSave }: { title: string; hin
 }
 
 function Memory({ bot, onError }: { bot: BotDef; onError(e: string): void }) {
+  const { t } = useT();
   const [mem, setMem] = useState<{ memory: string; user: string } | null>(null);
   useEffect(() => {
     void backend.botMemory(bot.id).then(setMem, (e: unknown) => onError(errText(e)));
   }, [bot.id, onError]);
-  if (!mem) return <p className="card-hint">Wczytuję…</p>;
+  if (!mem) return <p className="card-hint">{t("bot.loading")}</p>;
   const save = (target: "memory" | "user") => async (text: string) => {
     try {
       await backend.botMemorySave(bot.id, target, text);
@@ -216,14 +207,15 @@ function Memory({ bot, onError }: { bot: BotDef; onError(e: string): void }) {
   };
   return (
     <div className="card-fields">
-      <p className="card-hint">Wpisy oddziela linia z samym znakiem §. Bot widzi zmiany od następnej rozmowy.</p>
-      <MemoryField title="Notatki bota" hint="fakty i wnioski z pracy" value={mem.memory} limit={MEMORY_LIMIT} onSave={save("memory")} />
-      <MemoryField title="O tobie" hint="kim jesteś, co lubisz" value={mem.user} limit={USER_LIMIT} onSave={save("user")} />
+      <p className="card-hint">{t("bot.mem.intro")}</p>
+      <MemoryField title={t("bot.mem.notes")} hint={t("bot.mem.notesHint")} value={mem.memory} limit={MEMORY_LIMIT} onSave={save("memory")} />
+      <MemoryField title={t("bot.mem.user")} hint={t("bot.mem.userHint")} value={mem.user} limit={USER_LIMIT} onSave={save("user")} />
     </div>
   );
 }
 
 function Skills({ bot, onError }: { bot: BotDef; onError(e: string): void }) {
+  const { t } = useT();
   const [list, setList] = useState<BotSkillMeta[] | null>(null);
   const [open, setOpen] = useState<{ name: string; body: string } | null>(null);
   const [armed, setArmed] = useState<string | null>(null);
@@ -256,9 +248,9 @@ function Skills({ bot, onError }: { bot: BotDef; onError(e: string): void }) {
   return (
     <div className="card-fields">
       {list === null ? (
-        <p className="card-hint">Wczytuję…</p>
+        <p className="card-hint">{t("bot.loading")}</p>
       ) : list.length === 0 ? (
-        <p className="card-hint">Bot nie ma jeszcze skilli. Zapisze je sam po zadaniach, które wymagały wielu kroków, albo zaimportuj gotowe.</p>
+        <p className="card-hint">{t("bot.skills.none")}</p>
       ) : (
         <div className="card-list">
           {list.map((s) => (
@@ -270,11 +262,11 @@ function Skills({ bot, onError }: { bot: BotDef; onError(e: string): void }) {
                   <span className="card-skill-desc">{s.error ? <span className="is-warn">{s.error}</span> : s.description}</span>
                 </button>
                 <span className="card-skill-meta">
-                  {s.by ? `${BY[s.by]} · ` : ""}
+                  {s.by ? `${t(`bot.by.${s.by}` as const)} · ` : ""}
                   {day(s.updated)}
                 </span>
-                <button type="button" className={`btn card-del${armed === s.name ? " is-confirm" : ""}`} onClick={() => remove(s.name)} title="Usuń skill">
-                  {armed === s.name ? "Na pewno?" : <Trash2 aria-hidden />}
+                <button type="button" className={`btn card-del${armed === s.name ? " is-confirm" : ""}`} onClick={() => remove(s.name)} title={t("bot.skills.delete")}>
+                  {armed === s.name ? t("bot.sure") : <Trash2 aria-hidden />}
                 </button>
               </div>
               {open?.name === s.name && (
@@ -288,13 +280,13 @@ function Skills({ bot, onError }: { bot: BotDef; onError(e: string): void }) {
       )}
       <div className="card-row">
         <button type="button" className="btn" onClick={toggleImport}>
-          <Download aria-hidden /> Importuj z <code>~/.claude/skills</code>
+          <Download aria-hidden /> {t("bot.skills.import")} <code>~/.claude/skills</code>
           {sources ? <ChevronDown aria-hidden /> : null}
         </button>
       </div>
       {sources && (
         <div className="card-list">
-          {sources.length === 0 && <p className="card-hint">W ~/.claude/skills nie ma skilli.</p>}
+          {sources.length === 0 && <p className="card-hint">{t("bot.skills.noSources")}</p>}
           {sources.map((s) => (
             <div key={s.name} className="card-skill-row">
               <span className="card-skill-name">{s.name}</span>
@@ -305,11 +297,11 @@ function Skills({ bot, onError }: { bot: BotDef; onError(e: string): void }) {
                 disabled={!!s.error || have.has(s.name)}
                 onClick={() => void backend.botSkillImport(bot.id, s.name).then(reload, (e: unknown) => onError(errText(e)))}
               >
-                {have.has(s.name) ? "jest" : "Importuj"}
+                {have.has(s.name) ? t("bot.skills.have") : t("bot.skills.importBtn")}
               </button>
             </div>
           ))}
-          <p className="card-hint">Kopia do folderu bota – oryginał zostaje bez zmian.</p>
+          <p className="card-hint">{t("bot.skills.copyHint")}</p>
         </div>
       )}
     </div>
@@ -331,6 +323,8 @@ function Settings({
   onProviders(): void;
   onDelete(): void;
 }) {
+  const { t } = useT();
+  const g = groups();
   const [menu, setMenu] = useState(false);
   const [armed, setArmed] = useState(false);
   useEffect(() => {
@@ -345,10 +339,10 @@ function Settings({
   return (
     <div className="card-fields">
       <div className="card-field">
-        <span>Model</span>
+        <span>{t("bot.set.model")}</span>
         <div className="chat-model-wrap">
           <button type="button" className="btn card-model" onClick={() => setMenu((v) => !v)} aria-haspopup="menu" aria-expanded={menu}>
-            {draft.model ? modelLabel(providers, draft.model) : "Pierwszy z listy"}
+            {draft.model ? modelLabel(providers, draft.model) : t("bot.set.firstModel")}
             <ChevronDown aria-hidden />
           </button>
           {menu && (
@@ -364,31 +358,31 @@ function Settings({
         </div>
       </div>
       <div className="card-field">
-        <span>Foldery, które bot czyta bez pytania</span>
-        {draft.folders.length === 0 && <small className="card-hint">Żadnych – czyta tylko swój katalog roboczy.</small>}
+        <span>{t("bot.set.folders")}</span>
+        {draft.folders.length === 0 && <small className="card-hint">{t("bot.set.noFolders")}</small>}
         {draft.folders.map((f) => (
           <div key={f} className="card-folder">
             <code>{f}</code>
-            <button type="button" className="icon" aria-label={`Usuń folder ${f}`} onClick={() => set({ folders: draft.folders.filter((x) => x !== f) })}>
+            <button type="button" className="icon" aria-label={t("bot.set.removeFolder", { f })} onClick={() => set({ folders: draft.folders.filter((x) => x !== f) })}>
               <X size={14} aria-hidden />
             </button>
           </div>
         ))}
         <div className="card-row">
           <button type="button" className="btn" onClick={() => void addFolder()}>
-            <FolderPlus aria-hidden /> Dodaj folder…
+            <FolderPlus aria-hidden /> {t("bot.set.addFolder")}
           </button>
         </div>
       </div>
       <div className="card-field">
-        <span>Narzędzia</span>
+        <span>{t("bot.set.tools")}</span>
         <div className="card-tools">
-          {TOOL_GROUPS.map((g) => (
-            <label key={g} className="card-tool">
-              <input type="checkbox" checked={draft.tools[g]} onChange={(e) => set({ tools: { ...draft.tools, [g]: e.target.checked } })} />
+          {TOOL_GROUPS.map((id) => (
+            <label key={id} className="card-tool">
+              <input type="checkbox" checked={draft.tools[id]} onChange={(e) => set({ tools: { ...draft.tools, [id]: e.target.checked } })} />
               <span className="card-tool-text">
-                <b>{GROUPS[g].label}</b>
-                <small>{GROUPS[g].hint}</small>
+                <b>{g[id].label}</b>
+                <small>{g[id].hint}</small>
               </span>
             </label>
           ))}
@@ -397,7 +391,7 @@ function Settings({
       {!draft.builtin && (
         <div className="card-danger">
           <span>
-            Usunięty bot trafia do kosza (<code>bots-trash</code>) razem z pamięcią i rozmowami.
+            {t("bot.set.trash", { dir: "bots-trash" })}
           </span>
           <button
             type="button"
@@ -407,7 +401,7 @@ function Settings({
               onDelete();
             }}
           >
-            <Trash2 aria-hidden /> {armed ? "Na pewno usunąć?" : "Usuń bota"}
+            <Trash2 aria-hidden /> {armed ? t("bot.set.confirmDelete") : t("bot.set.delete")}
           </button>
         </div>
       )}
@@ -418,6 +412,7 @@ function Settings({
 /** Karta bota: osobowość, pamięć, skille, harmonogram i ustawienia. Osobowość i ustawienia zapisuje
  *  „Zapisz”, pamięć, skille i harmonogram zapisują się od razu (osobne pliki). */
 export function BotCard({ bot, providers, offline, tab: initial, onSaved, onDeleted, onProviders, onOpenRun, onClose }: Props) {
+  const { t } = useT();
   const [tab, setTab] = useState<CardTab>(initial);
   const [draft, setDraft] = useState<BotDef>(bot);
   const [error, setError] = useState<string | null>(null);
@@ -440,23 +435,23 @@ export function BotCard({ bot, providers, offline, tab: initial, onSaved, onDele
   };
 
   return (
-    <Dialog label={`Karta bota ${bot.name}`} className="bot-card" onClose={onClose}>
+    <Dialog label={t("bot.card.label", { name: displayName(bot) })} className="bot-card" onClose={onClose}>
       {(cancel) => (
         <>
           <header className="card-head">
             <Avatar bot={draft} size="md" />
             <div className="card-title">
-              <h2>{draft.name || "Bez imienia"}</h2>
-              <small>{draft.builtin ? "wbudowany – można edytować, nie można usunąć" : `utworzony ${day(draft.created)}`}</small>
+              <h2>{draft.builtin ? displayName(draft) : draft.name || t("bot.persona.unnamed")}</h2>
+              <small>{draft.builtin ? t("bot.card.builtin") : t("bot.card.created", { date: day(draft.created) })}</small>
             </div>
-            <button type="button" className="icon" aria-label="Zamknij" onClick={cancel}>
+            <button type="button" className="icon" aria-label={t("bot.card.close")} onClick={cancel}>
               <X size={15} aria-hidden />
             </button>
           </header>
           <div className="seg card-tabs" role="tablist">
-            {TABS.map((t) => (
-              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={tab === t.id ? "is-on" : ""} onClick={() => setTab(t.id)}>
-                {t.label}
+            {TAB_IDS.map((id) => (
+              <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? "is-on" : ""} onClick={() => setTab(id)}>
+                {t(`bot.tab.${id}` as const)}
               </button>
             ))}
           </div>
@@ -484,13 +479,13 @@ export function BotCard({ bot, providers, offline, tab: initial, onSaved, onDele
           </div>
           {(tab === "persona" || tab === "settings" || dirty) && (
             <footer className="card-foot">
-              <small>{dirty ? "Niezapisane zmiany osobowości lub ustawień" : "Bez zmian"}</small>
+              <small>{dirty ? t("bot.card.dirty") : t("bot.card.clean")}</small>
               <span className="chat-composer-gap" />
               <button type="button" className="btn" onClick={cancel}>
-                Anuluj
+                {t("bot.cancel")}
               </button>
               <button type="button" className="btn primary" disabled={!dirty || !valid || saving} onClick={() => void save(cancel)}>
-                Zapisz
+                {t("bot.save")}
               </button>
             </footer>
           )}

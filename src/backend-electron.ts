@@ -148,6 +148,7 @@ export const electronBackend: Backend = {
   },
 
   notify: (title, body) => call<void>("notify", title, body),
+  setLanguage: (lang) => void call("set_language", lang).catch(ignore),
 
   async chatConfig() {
     const raw = await call<{ chat: string; pi: string | null }>("chat_config");

@@ -1,5 +1,6 @@
 //! Pliki konfiguracji w `configDir()` (`~/.config/dev.majke.agents/`, jak w wersji Tauri).
 
+import { t } from "./i18n";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -111,7 +112,7 @@ export function workspaceSave(json: string, dir = configDir()): void {
 /** Kopia `workspace.json` → `workspace.<data>.bak` obok; istniejącej kopii nie nadpisuje. */
 export function workspaceBackup(date: string, dir = configDir()): void {
   // Data trafia do nazwy pliku: tylko `RRRR-MM-DD`.
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`zła data: ${date}`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(t("config.badDate", { date }));
   const src = path.join(dir, WORKSPACE_FILE);
   const dst = path.join(dir, `workspace.${date}.bak`);
   if (!isFile(src) || fs.existsSync(dst)) return;

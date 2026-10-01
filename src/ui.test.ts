@@ -6,7 +6,7 @@ import {
   nextMode,
   FONT_MIN,
   UI_CHOICES,
-  UI_ROWS,
+  uiRows,
   parseUi,
   stepFontSize,
   uiClasses,
@@ -129,15 +129,15 @@ describe("ACCENT_HEX", () => {
   });
 });
 
-describe("UI_ROWS (okno „Wygląd”)", () => {
+describe("uiRows (okno „Wygląd”)", () => {
   it("każdy klucz ustawień (bez dock) ma dokładnie jeden wiersz, w kolejności UI_CHOICES", () => {
-    const keys = UI_ROWS.map((r) => r.key);
+    const keys = uiRows().map((r) => r.key);
     expect(keys).toEqual(Object.keys(UI_CHOICES));
     expect(new Set(keys).size).toBe(keys.length);
   });
 
   it("wiersz pokrywa się z UI_CHOICES: te same wartości, etykieta przy każdej", () => {
-    for (const row of UI_ROWS) {
+    for (const row of uiRows()) {
       expect(row.label).not.toBe("");
       expect(row.choices.map((c) => c.value)).toEqual([...UI_CHOICES[row.key]]);
       for (const c of row.choices) {
@@ -148,11 +148,11 @@ describe("UI_ROWS (okno „Wygląd”)", () => {
   });
 
   it("tylko akcent ma kółka koloru (poza „Z motywu”), a ich barwy to ACCENT_HEX", () => {
-    for (const row of UI_ROWS) {
+    for (const row of uiRows()) {
       const swatches = row.choices.filter((c) => c.swatch !== undefined);
       expect(swatches.length).toBe(row.key === "accent" ? row.choices.length - 1 : 0);
     }
-    const accent = UI_ROWS.find((r) => r.key === "accent")!;
+    const accent = uiRows().find((r) => r.key === "accent")!;
     for (const c of accent.choices) {
       if (c.value === "theme") expect(c.swatch).toBeUndefined();
       else expect(c.swatch).toBe(ACCENT_HEX[c.value as Exclude<Ui["accent"], "theme">]);
@@ -160,11 +160,11 @@ describe("UI_ROWS (okno „Wygląd”)", () => {
   });
 
   it("tylko motyw ma próbki, z akcentem motywu", () => {
-    for (const row of UI_ROWS) {
+    for (const row of uiRows()) {
       const tiles = row.choices.filter((c) => c.theme !== undefined);
       expect(tiles.length).toBe(row.key === "theme" ? row.choices.length : 0);
     }
-    const theme = UI_ROWS.find((r) => r.key === "theme")!;
+    const theme = uiRows().find((r) => r.key === "theme")!;
     for (const c of theme.choices) expect(c.theme?.accent).toBe(THEMES[c.value as ThemeId].accent);
   });
 
@@ -174,7 +174,7 @@ describe("UI_ROWS (okno „Wygląd”)", () => {
 
   it("uiPatch z pary wiersz/wartość daje Partial<Ui> do reduktora", () => {
     expect(uiPatch("edge", "soft")).toEqual({ edge: "soft" });
-    const row = UI_ROWS.find((r) => r.key === "rail")!;
+    const row = uiRows().find((r) => r.key === "rail")!;
     expect(uiPatch(row.key, row.choices[1].value)).toEqual({ rail: "closed" });
   });
 });

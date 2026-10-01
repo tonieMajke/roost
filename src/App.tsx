@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { backend, inElectron } from "./backend";
+import { applyLangPref, getLang, useT } from "./i18n";
 import { agentModels, type AgentDef } from "./agents";
 import { accentHex, nextMode, stepFontSize, uiClasses } from "./ui";
 import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";
@@ -41,7 +42,7 @@ import { BotView } from "./bot/BotView";
 import type { Mode } from "./chat/ModeTabs";
 import { CONTEXT_POLL_MS, cleanTermTitle, contextKind, contextTargets, paneMeter, paneTitles, sessionTitles, type SessionContext } from "./context";
 import { FALLBACK_MAX_CHARS, SUMMARY_SYSTEM, digestText, handoffText, summaryText } from "./handoff";
-import { FINISHED_TEXT, STARTED_TEXT, exitedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
+import { exitedText, finishedText, startedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
 import { LIMITS_POLL_MS, limitHit, type ClaudeLimits } from "./limits";
 import { TOAST_MS, toastText } from "./toast";
 import { PANE_OUT_MS } from "./Pane";
@@ -72,6 +73,7 @@ const PASTE_SETTLE_MS = 1500;
 const SUBMIT_DELAY_MS = 150;
 
 export function App() {
+  const { t, tp } = useT();
   const [ws, dispatch] = useReducer(reduce, emptyWorkspace);
   const [agents, setAgents] = useState<AgentDef[]>([]);
   const [accounts, setAccounts] = useState<Accounts>(NO_ACCOUNTS);
@@ -189,7 +191,7 @@ export function App() {
   useEffect(() => {
     if (!loaded) return;
     void backend.saveWorkspace(JSON.stringify(ws, null, 2)).catch((e: unknown) =>
-      setErrors((prev) => [...prev, `zapis: ${String(e)}`]),
+      setErrors((prev) => [...prev, t("app.errSave", { error: String(e) })]),
     );
   }, [ws, loaded]);
 
@@ -216,6 +218,11 @@ export function App() {
     () => ({ theme: termTheme(theme, accent), font: theme.termFont ?? DEFAULT_TERM_FONT }),
     [theme, accent],
   );
+  useLayoutEffect(() => {
+    applyLangPref(ws.ui.lang);
+    // Proces główny (dialogi, powiadomienia, błędy) tłumaczy po swojej stronie.
+    backend.setLanguage(getLang());
+  }, [ws.ui.lang]);
   // Motyw na <html>: tokeny themes.css obejmują też body, paski przewijania i pasek tytułu.
   // Tło terminala z themes.ts (jedno źródło dla xtermu i `.pane-body`), przed malowaniem.
   useLayoutEffect(() => {
@@ -306,7 +313,7 @@ export function App() {
       setEphemeral((prev) => ({ ...prev, [paneId]: { ...prev[paneId], exited: info } }));
       addFeed(paneId, [exitedText(info)]);
     },
-    started: (paneId) => addFeed(paneId, [STARTED_TEXT]),
+    started: (paneId) => addFeed(paneId, [startedText()]),
     registerTerminal: (paneId, handle) => {
       if (handle) terms.current.set(paneId, handle);
       else terms.current.delete(paneId);
@@ -344,14 +351,14 @@ export function App() {
         try {
           picked = await backend.pickDir();
         } catch (e) {
-          setNotice(`Wybór katalogu: ${String(e)}`);
+          setNotice(t("app.pickDirFailed", { error: String(e) }));
           return;
         }
         if (picked === null) return; // anulowane
         // `home.current === ""` (brak HOME) zostawia pełną ścieżkę — Rust i tak ją rozumie.
         const path = tildify(picked, home.current);
         if (!(await backend.dirExists(path).catch(() => false))) {
-          setNotice(`Katalog nie istnieje: ${path}`);
+          setNotice(t("app.dirMissing", { path }));
           return;
         }
         setNotice(null);
@@ -396,9 +403,9 @@ export function App() {
         dispatch({ type: "add", pane });
         setLastAgentId(agentId);
       }
-      if (plan.skipped.length > 0) msgs.push(`Brak agentów w konfiguracji: ${plan.skipped.join(", ")}`);
+      if (plan.skipped.length > 0) msgs.push(t("app.presetNoAgents", { agents: plan.skipped.join(", ") }));
       if (plan.dropped > 0) {
-        msgs.push(`Pominięto ${plan.dropped} z powodu limitu ${MAX_PANES} paneli na projekt`);
+        msgs.push(t("app.presetDropped", { n: plan.dropped, max: MAX_PANES }));
       }
       if (msgs.length > 0) setNotice(toastText(...msgs));
     },
@@ -455,9 +462,9 @@ export function App() {
   );
   const windowTitle =
     mode === "chat"
-      ? `${chatTitle || "Czat"} — Agents`
+      ? `${chatTitle || t("app.titleChat")} — Agents`
       : mode === "bot"
-        ? `${botTitle || "Boty"} — Agents`
+        ? `${botTitle || t("app.titleBots")} — Agents`
         : focusedTitle
           ? `${focusedTitle} — Agents`
           : "Agents";
@@ -492,7 +499,7 @@ export function App() {
     const term = terms.current.get(to);
     if (!term?.bracketedPaste()) {
       // Bez bracketed paste każda linia wyciągu poszłaby jako Enter, czyli jako polecenie.
-      setNotice(`„${dst.agent}” nie przyjmuje wklejenia blokiem – kontekstu nie wysłano`);
+      setNotice(t("app.noBlockPaste", { agent: dst.agent }));
       return;
     }
     if (summarizingRef.current.includes(to)) return; // jedno streszczenie naraz do danego panelu
@@ -508,7 +515,7 @@ export function App() {
     try {
       const h = await backend.sessionHandoff(kind, pane.sessionId, accountById(accounts, pane.account)?.dir).catch(() => null);
       if (!h) {
-        setNotice(`Nie udało się odczytać rozmowy „${src.agent}”`);
+        setNotice(t("app.readFailed", { agent: src.agent }));
         return;
       }
       const source = { agent: src.agent, project: src.project, projectPath: src.path, home: home.current };
@@ -517,7 +524,7 @@ export function App() {
       const dstAgent = agents.find((a) => a.id === ws.projects.flatMap((p) => p.panes).find((p) => p.id === to)?.agentId);
       const local = dstAgent !== undefined && dstAgent.command.split("/").pop() === "pi";
       const claude = agents.find((a) => a.command.split("/").pop() === "claude")?.command ?? "claude";
-      setNotice(`Streszczam rozmowę „${src.agent}” (${local ? "lokalny model" : "Haiku"})…`);
+      setNotice(t("app.summarizing", { agent: src.agent, model: local ? t("app.localModel") : "Haiku" }));
       try {
         const input = digestText(h, source);
         const out = local
@@ -534,17 +541,17 @@ export function App() {
     // Po kilku sekundach cel mógł się zamknąć albo wyjść z trybu wklejania blokiem.
     const target = terms.current.get(to);
     if (!target?.bracketedPaste()) {
-      setNotice(`„${dst.agent}” nie przyjmuje już wklejenia blokiem – kontekstu nie wysłano`);
+      setNotice(t("app.noBlockPasteNow", { agent: dst.agent }));
       return;
     }
     target.paste(text);
     dispatch({ type: "focus", id: to });
     setNotice(
       failed === null
-        ? `Wklejono streszczenie z „${src.agent}” – dopisz polecenie i wciśnij Enter`
-        : `Streszczenie nie wyszło (${failed}) – wklejono skrócony wyciąg z „${src.agent}”`,
+        ? t("app.pastedSummary", { agent: src.agent })
+        : t("app.summaryFailed", { error: failed, agent: src.agent }),
     );
-    addFeed(from, [`przekazał kontekst → ${dst.agent}`]);
+    addFeed(from, [t("app.feedHandoff", { agent: dst.agent })]);
   };
 
   // Ref, bo `continueTo` czeka na nowy panel: domknięcie sprzed renderu nie widzi jeszcze jego ani `ws`.
@@ -561,7 +568,7 @@ export function App() {
     if (agent.session) pane.sessionId = crypto.randomUUID();
     if (target.account) pane.account = target.account;
     dispatch({ type: "add", pane });
-    setNotice(`Uruchamiam ${target.label}…`);
+    setNotice(t("app.launching", { label: target.label }));
     // Agent musi wstać i włączyć wklejanie blokiem (bracketed paste); inaczej wyciąg poszedłby jako Enter-y.
     for (let waited = 0; waited < CONTINUE_WAIT_MS; waited += 250) {
       await new Promise((r) => setTimeout(r, 250));
@@ -570,7 +577,7 @@ export function App() {
         return;
       }
     }
-    setNotice(`„${target.label}” nie wystartował na czas – przeciągnij rozmowę z Shiftem, żeby wkleić kontekst`);
+    setNotice(t("app.launchTimeout", { label: target.label }));
   };
 
   const activeRef = useRef(ws.active);
@@ -643,7 +650,7 @@ export function App() {
       if (text.includes("\n") && !term.bracketedPaste()) return `panel ${short} nie przyjmuje wklejenia blokiem – wyślij jedną linię`;
       term.paste(text);
       later(SUBMIT_DELAY_MS, () => terms.current.get(id)?.type("\r"));
-      addFeed(id, ["dostał wiadomość z rozmowy głosowej"]);
+      addFeed(id, [t("app.feedVoiceMsg")]);
       return null;
     },
     read: (short, lines) => {
@@ -733,7 +740,7 @@ export function App() {
     }
     if (mode !== "code") setMode("code");
     if (panes.length === 0) return "nie otwarto żadnego panelu (limit albo nieznany agent)";
-    setNotice(`Rozmowa głosowa: uruchamiam ${panes.length} panel(e)…`);
+    setNotice(tp("app.voiceLaunching", panes.length));
     const results = await Promise.all(
       panes.map(async ({ pane, task }) => {
         for (let waited = 0; waited < CONTINUE_WAIT_MS; waited += 250) {
@@ -817,7 +824,7 @@ export function App() {
 
   // Limity czytane po starcie: od razu, co LIMITS_POLL_MS i na przycisk.
   const limitSources = [
-    { id: "", name: accounts.accounts.some((x) => x.kind === "claude") ? "Domyślne konto" : "Claude" },
+    { id: "", name: accounts.accounts.some((x) => x.kind === "claude") ? t("app.defaultAccount") : "Claude" },
     ...accounts.accounts.filter((x) => x.kind === "claude").map((x) => ({ id: x.id, name: x.name })),
   ];
   const readLimits = () => {
@@ -894,7 +901,7 @@ export function App() {
         later(DONE_MS, () => setDone(false));
         // Agent właśnie dopisał turę do pliku sesji: jego ostatnie narzędzia wjeżdżają przed końcem pracy.
         void readContexts.current(finished).then(() => {
-          for (const id of finished) addFeed(id, [FINISHED_TEXT]);
+          for (const id of finished) addFeed(id, [finishedText()]);
         });
         // Rozmowa głosowa trwa: mówi, kto skończył (w chwili ciszy).
         for (const id of finished) {
@@ -910,8 +917,8 @@ export function App() {
         // Schowany projekt: kropka na szynie dostaje jednorazowy `ping`.
         if (info.projectId !== activeRef.current) pingRef.current(info.projectId);
         void backend
-          .notify(`Agents: ${info.agent}`, `skończył pracę w ${info.project}`)
-          .catch((e: unknown) => setErrors((prev) => [...prev, `powiadomienie: ${String(e)}`]));
+          .notify(`Agents: ${info.agent}`, t("app.notifyFinished", { project: info.project }))
+          .catch((e: unknown) => setErrors((prev) => [...prev, t("app.errNotify", { error: String(e) })]));
       }
     }, TICK_MS);
     return () => clearInterval(timer);
@@ -997,7 +1004,7 @@ export function App() {
       case "fontSize": {
         const size = stepFontSize(ws.ui.fontSize, cmd.step);
         dispatch({ type: "setUi", patch: { fontSize: size } });
-        setNotice(`Czcionka terminali: ${size} px`);
+        setNotice(t("app.termFont", { size }));
         break;
       }
       case "selectProject": {
@@ -1014,7 +1021,7 @@ export function App() {
       case "copy": {
         const text = focusedId === null ? "" : (terms.current.get(focusedId)?.copySelection() ?? "");
         if (text === "") break; // brak zaznaczenia: nie nadpisujemy schowka
-        void backend.copyText(text).catch((e: unknown) => setErrors((prev) => [...prev, `schowek: ${String(e)}`]));
+        void backend.copyText(text).catch((e: unknown) => setErrors((prev) => [...prev, t("app.errClipboard", { error: String(e) })]));
         break;
       }
       case "paste": {
@@ -1023,7 +1030,7 @@ export function App() {
             const text = await backend.pasteText();
             if (text !== null && focusedId !== null) terms.current.get(focusedId)?.paste(text);
           } catch (e) {
-            setErrors((prev) => [...prev, `schowek: ${String(e)}`]);
+            setErrors((prev) => [...prev, t("app.errClipboard", { error: String(e) })]);
           }
         })();
         break;
@@ -1103,18 +1110,18 @@ export function App() {
         {errors.length > 0 && (
           <div className="config-errors">
             <span>{errors.join(" · ")}</span>
-            <IconButton icon={X} label="Zamknij błędy konfiguracji" onClick={() => setErrors([])} />
+            <IconButton icon={X} label={t("app.closeErrors")} onClick={() => setErrors([])} />
           </div>
         )}
         {!loaded ? (
           <div className="empty">
-            <p>Wczytywanie…</p>
+            <p>{t("app.loading")}</p>
           </div>
         ) : ws.projects.length === 0 ? (
           <div className="empty">
-            <p>Dodaj folder projektu</p>
+            <p>{t("app.addFolder")}</p>
             <button type="button" className="btn primary" onClick={projectActions.addProject}>
-              <FolderPlus strokeWidth={1.75} aria-hidden /> Projekt
+              <FolderPlus strokeWidth={1.75} aria-hidden /> {t("app.project")}
             </button>
           </div>
         ) : (
@@ -1132,45 +1139,45 @@ export function App() {
               <button
                 type="button"
                 className={`btn${ws.ui.dock ? " is-on" : ""}`}
-                title="Pulpit (Ctrl+Alt+D)"
+                title={t("app.dockTitle")}
                 aria-pressed={ws.ui.dock}
                 onClick={() => dispatch({ type: "setUi", patch: { dock: !ws.ui.dock } })}
               >
-                <Gauge strokeWidth={1.75} aria-hidden /> Pulpit
+                <Gauge strokeWidth={1.75} aria-hidden /> {t("app.dock")}
               </button>
               <button
                 type="button"
                 className={`btn${scratchOpen ? " is-on" : ""}`}
-                title="Notatki projektu"
+                title={t("app.notesTitle")}
                 aria-pressed={scratchOpen}
                 onClick={() => setScratchOpen((o) => !o)}
                 disabled={active === null}
               >
-                <NotebookPen strokeWidth={1.75} aria-hidden /> Notatki
+                <NotebookPen strokeWidth={1.75} aria-hidden /> {t("app.notes")}
               </button>
               <button
                 type="button"
                 className={`btn${gitOpen ? " is-on" : ""}`}
-                title="Pliki i git projektu"
+                title={t("app.filesTitle")}
                 aria-pressed={gitOpen}
                 onClick={() => setGitOpen((v) => !v)}
               >
-                <FolderTree strokeWidth={1.75} aria-hidden /> Pliki
+                <FolderTree strokeWidth={1.75} aria-hidden /> {t("app.files")}
               </button>
-              <button type="button" className="btn" title="Konta agentów" onClick={() => setAccountsDialog(true)}>
-                <UserRound strokeWidth={1.75} aria-hidden /> Konta
+              <button type="button" className="btn" title={t("app.accountsTitle")} onClick={() => setAccountsDialog(true)}>
+                <UserRound strokeWidth={1.75} aria-hidden /> {t("app.accounts")}
               </button>
               <button type="button" className="btn" onClick={() => setPresetMenu(true)} disabled={active === null}>
-                <LayoutGrid strokeWidth={1.75} aria-hidden /> Presety
+                <LayoutGrid strokeWidth={1.75} aria-hidden /> {t("app.presets")}
               </button>
               <button
                 type="button"
                 className="btn primary"
-                title="Nowy panel (Ctrl+Alt+N)"
+                title={t("app.newPaneTitle")}
                 onClick={projectActions.openPaneDialog}
                 disabled={active === null || paneCount >= MAX_PANES}
               >
-                <Plus strokeWidth={1.75} aria-hidden /> Panel
+                <Plus strokeWidth={1.75} aria-hidden /> {t("app.pane")}
               </button>
             </header>
             <div className="grids">
@@ -1199,7 +1206,7 @@ export function App() {
             </div>
           </>
         )}
-        {!inElectron && <div className="preview-badge">podgląd – bez prawdziwych procesów</div>}
+        {!inElectron && <div className="preview-badge">{t("app.previewBadge")}</div>}
       </main>
       {scratchOpen && active && (
         <Scratchpad key={active.id} projectId={active.id} projectName={active.name} onClose={() => setScratchOpen(false)} />
@@ -1213,6 +1220,8 @@ export function App() {
           onPickPane={(id) => dispatch({ type: "focus", id })}
           feedScope={ws.ui.feed}
           onFeedScope={(feed) => dispatch({ type: "setUi", patch: { feed } })}
+          order={ws.ui.dockOrder}
+          onOrder={(dockOrder) => dispatch({ type: "setUi", patch: { dockOrder } })}
           feed={feed}
           limits={limits}
           limitSources={limitSources}

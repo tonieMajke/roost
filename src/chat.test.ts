@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { setLang } from "./i18n";
 import {
   applyEvent,
   buildChatConfig,
@@ -310,4 +311,15 @@ describe("configJson / freeId", () => {
 
 it("modelsCount", () => {
   expect([1, 2, 5, 12, 22, 25].map(modelsCount)).toEqual(["1 model", "2 modele", "5 modeli", "12 modeli", "22 modele", "25 modeli"]);
+});
+
+describe("chat i18n (en)", () => {
+  afterEach(() => setLang("pl"));
+  it("translates labels, plurals and config errors", () => {
+    setLang("en");
+    expect(greeting(8)).toBe("Good morning");
+    expect(dayGroup(Date.now(), Date.now())).toBe("Today");
+    expect([1, 2].map(modelsCount)).toEqual(["1 model", "2 models"]);
+    expect(parseChatConfig({}).errors).toEqual(["chat.json: missing `providers` array"]);
+  });
 });

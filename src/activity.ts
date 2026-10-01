@@ -2,6 +2,7 @@
 //! All functions are pure and take `now` from the caller (Date.now() in App, fixed in tests).
 
 import type { ExitInfo } from "./backend";
+import { t } from "./i18n";
 
 /** Jak często App odpytuje `tick` (1 s — wystarczająco dokładnie dla kropek). */
 export const TICK_MS = 1000;
@@ -65,7 +66,7 @@ export const DONE_MS = 1600;
 
 /** Opis zakończonego procesu: „kod 0” / „sygnał 15” (używany w panelu i na szynie). */
 export function exitText(info: ExitInfo): string {
-  return info.signal ? `sygnał ${info.signal}` : `kod ${info.code}`;
+  return info.signal ? t("pane.exit.signal", { n: info.signal }) : t("pane.exit.code", { n: info.code });
 }
 
 export type PaneStatus = { cls: string; text: string };
@@ -75,11 +76,11 @@ export type PaneStatus = { cls: string; text: string };
  * Kolejność: pracuje > skończył > nowe wyjście > zakończony proces > czeka.
  */
 export function paneStatus(s: PaneState): PaneStatus {
-  if (s.working) return { cls: "st-working", text: "pracuje" };
-  if (s.done) return { cls: "st-done", text: "skończył" };
-  if (s.unread) return { cls: "st-unread", text: "nowe wyjście" };
+  if (s.working) return { cls: "st-working", text: t("pane.st.working") };
+  if (s.done) return { cls: "st-done", text: t("pane.st.done") };
+  if (s.unread) return { cls: "st-unread", text: t("pane.st.unread") };
   if (s.exited) return { cls: "st-exited", text: exitText(s.exited) };
-  return { cls: "st-idle", text: "czeka" };
+  return { cls: "st-idle", text: t("pane.st.idle") };
 }
 
 /**

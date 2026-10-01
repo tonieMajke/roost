@@ -1,4 +1,5 @@
 import { Dialog } from "./Dialog";
+import { useT } from "./i18n";
 import type { ContinueTarget } from "./continue";
 
 type Props = {
@@ -13,28 +14,27 @@ type Props = {
 
 /** Okno „Kontynuuj gdzie indziej”: lista celów; wybór otwiera nowy panel ze streszczeniem rozmowy. */
 export function ContinueDialog({ source, targets, canAdd, onPick, onClose }: Props) {
+  const { t } = useT();
   return (
-    <Dialog label="Kontynuuj gdzie indziej" onClose={onClose}>
+    <Dialog label={t("ui2.cont.title")} onClose={onClose}>
       {() => (
         <>
-          <h2>Kontynuuj gdzie indziej</h2>
-          <p>
-            Otwiera nowy panel i wkleja streszczenie rozmowy „{source}” (bez Entera). Stary panel zostaje.
-          </p>
+          <h2>{t("ui2.cont.title")}</h2>
+          <p>{t("ui2.cont.desc", { source })}</p>
           {targets.length === 0 ? (
-            <p className="set-foot">Brak innego konta ani agenta. Dodaj konto w oknie „Konta”.</p>
+            <p className="set-foot">{t("ui2.cont.none")}</p>
           ) : (
             <ul className="pm-list">
-              {targets.map((t) => (
-                <li key={`${t.agentId}:${t.account ?? ""}`}>
-                  <button type="button" className="pm-row" disabled={!canAdd} onClick={() => onPick(t)}>
-                    <span className="pm-name">{t.label}</span>
+              {targets.map((target) => (
+                <li key={`${target.agentId}:${target.account ?? ""}`}>
+                  <button type="button" className="pm-row" disabled={!canAdd} onClick={() => onPick(target)}>
+                    <span className="pm-name">{target.label}</span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
-          {!canAdd && <p className="set-foot">Osiągnięto limit paneli – zamknij któryś.</p>}
+          {!canAdd && <p className="set-foot">{t("ui2.cont.limit")}</p>}
         </>
       )}
     </Dialog>

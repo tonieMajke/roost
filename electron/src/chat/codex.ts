@@ -2,6 +2,7 @@
 //! piaskownica tylko do odczytu w pustym katalogu, wyszukiwanie przez natywne `web_search`.
 //! `exec` nie strumieniuje tekstu: odpowiedź przychodzi w całości w `item.completed`.
 
+import { t } from "../i18n";
 import type { ChatEvent, ChatRequest } from "../../../src/chat";
 import { runCli, type LineParser } from "./cli";
 
@@ -81,8 +82,8 @@ export class CodexParser implements LineParser {
   failure(): string | null {
     if (!this.error) return null;
     const m = /The model `([^`]+)` does not exist or you do not have access/.exec(this.error);
-    if (m) return `model ${m[1]} niedostępny w tej subskrypcji ChatGPT`;
-    if (/usage limit|rate limit/i.test(this.error)) return `limit subskrypcji ChatGPT: ${this.error}`;
+    if (m) return t("chat.codexModel", { model: m[1] });
+    if (/usage limit|rate limit/i.test(this.error)) return t("chat.codexLimit", { msg: this.error });
     return this.error.replace(/, url: \S+.*$/, "");
   }
 }

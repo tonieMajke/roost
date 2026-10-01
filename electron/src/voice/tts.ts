@@ -2,6 +2,7 @@
 //! oraz synteza jednego zdania. Do strony wracają bajty pliku audio (WAV albo to, co poda API);
 //! strona dekoduje je przez `decodeAudioData`. Klucz nigdy nie wraca do strony.
 
+import { t as tr } from "../i18n";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -56,8 +57,8 @@ function isExecutable(f: string): boolean {
 
 function checkText(text: string): string {
   const t = oneLine(text);
-  if (!t) throw new Error("pusty tekst do przeczytania");
-  if (t.length > MAX_TEXT) throw new Error(`za długi tekst do przeczytania (limit ${MAX_TEXT} znaków)`);
+  if (!t) throw new Error(tr("tts.emptyText"));
+  if (t.length > MAX_TEXT) throw new Error(tr("tts.tooLong", { max: MAX_TEXT }));
   return t;
 }
 
@@ -78,14 +79,14 @@ export async function speakHttp(p: TtsProvider, key: string | null, text: string
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
   } catch (e) {
-    if (isAbort(e) && !signal?.aborted) throw new Error(`serwer mowy nie odpowiedział w ${TIMEOUT_MS / 1000} s`);
+    if (isAbort(e) && !signal?.aborted) throw new Error(tr("tts.timeout", { s: TIMEOUT_MS / 1000 }));
     if (signal?.aborted) throw e;
     throw networkError(e, url);
   }
   if (!res.ok) throw await httpError(res);
-  if (/json|text\//i.test(res.headers.get("content-type") ?? "")) throw new Error("serwer zwrócił tekst zamiast dźwięku (to nie jest silnik mowy?)");
+  if (/json|text\//i.test(res.headers.get("content-type") ?? "")) throw new Error(tr("tts.notAudio"));
   const audio = new Uint8Array(await res.arrayBuffer());
-  if (audio.byteLength === 0) throw new Error("serwer mowy zwrócił pusty dźwięk");
+  if (audio.byteLength === 0) throw new Error(tr("tts.emptyAudio"));
   return audio;
 }
 
@@ -119,7 +120,7 @@ export class Piper {
     this.child.stdout.on("data", (d: string) => this.onOut(d));
     this.child.stderr.on("data", (d: string) => (this.err = (this.err + d).slice(-2000)));
     this.child.on("error", (e) => this.fail(new Error(this.explain(e))));
-    this.child.on("exit", (code, sig) => this.fail(new Error(`Piper zakończył się (${sig ?? code})${this.err ? `: ${this.err.trim().split("\n").pop()}` : ""}`)));
+    this.child.on("exit", (code, sig) => this.fail(new Error(tr("tts.exit", { how: sig ?? code ?? "", tail: this.err ? `: ${this.err.trim().split("\n").pop()}` : "" }))));
     this.child.stdin.on("error", () => undefined); // EPIPE po śmierci procesu: błąd idzie przez `exit`
   }
 
@@ -128,7 +129,7 @@ export class Piper {
   }
 
   private explain(e: NodeJS.ErrnoException): string {
-    return e.code === "ENOENT" ? `nie znaleziono programu „${this.command}” (zainstaluj Piper – „piper-tts” albo „piper” – lub podaj ścieżkę w ustawieniach)` : `Piper: ${e.message}`;
+    return e.code === "ENOENT" ? tr("tts.noPiper", { command: this.command }) : `Piper: ${e.message}`;
   }
 
   private onOut(d: string) {
@@ -144,7 +145,7 @@ export class Piper {
       try {
         audio = new Uint8Array(fs.readFileSync(file));
       } catch (e) {
-        error = new Error(`Piper: nie da się odczytać ${file}: ${String(e)}`);
+        error = new Error(tr("tts.unreadable", { file, msg: String(e) }));
       }
       fs.rm(file, { force: true }, () => undefined);
       if (!job || job.signal?.aborted) continue;
@@ -178,7 +179,7 @@ export class Piper {
   }
 
   close() {
-    this.fail(new Error("Piper zamknięty"));
+    this.fail(new Error(tr("tts.closed")));
     this.child.stdin.end();
     if (this.child.exitCode === null && this.child.signalCode === null) this.child.kill("SIGTERM");
   }

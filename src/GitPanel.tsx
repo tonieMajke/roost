@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Folder, GitBranch, Minus
 import { backend } from "./backend";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import { IconButton } from "./IconButton";
+import { t, tp, useT } from "./i18n";
 import {
   branchLabel,
   buildTree,
@@ -42,6 +43,7 @@ const sig = (s: GitStatus | null) => JSON.stringify(s);
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export function GitPanel({ path, onClose, onNotice }: Props) {
+  useT();
   const [status, setStatus] = useState<GitStatus | null | undefined>(undefined); // undefined = jeszcze nie wczytano
   const [files, setFiles] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
         filesSig.current = fsig === "" ? "\0" : fsig;
         setFiles(await backend.gitFiles(path));
       }
-      setTick((t) => t + 1);
+      setTick((n) => n + 1);
     } catch (e) {
       setError(msg(e));
     } finally {
@@ -107,8 +109,8 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
 
   useEffect(() => {
     if (armedKey === null) return;
-    const t = setTimeout(() => setArmedKey(null), CONFIRM_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setArmedKey(null), CONFIRM_MS);
+    return () => clearTimeout(timer);
   }, [armedKey]);
 
   const entries = status?.entries.filter((e) => e.kind !== "ignored") ?? [];
@@ -145,7 +147,7 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
       const out = await fn();
       if (out) onNotice(out);
     } catch (e) {
-      onNotice(`Git: ${msg(e)}`);
+      onNotice(t("pane.git.err", { error: msg(e) }));
     } finally {
       setBusy(null);
       void refresh();
@@ -165,17 +167,17 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
     const untracked = es.filter((e) => discardPlan(e) === "clean").map((e) => e.path);
     void run("discard", async () => {
       await backend.gitDiscard(path, tracked, untracked);
-      onNotice(`Odrzucono zmiany: ${tracked.length + untracked.length} ${tracked.length + untracked.length === 1 ? "plik" : "plików"}`);
+      onNotice(tp("pane.git.discarded", tracked.length + untracked.length));
     });
   };
 
-  const blocked = status ? canCommit(status.entries, message) : "Brak repozytorium";
+  const blocked = status ? canCommit(status.entries, message) : t("pane.git.noRepo");
   const commit = () => {
     if (blocked) return;
     void run("commit", async () => {
       const line = await backend.gitCommit(path, message);
       setMessage("");
-      return `Zatwierdzono: ${line}`;
+      return t("pane.git.committed", { line });
     });
   };
   const onMessageKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -234,18 +236,18 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
           {plan && (
             <IconButton
               icon={Undo2}
-              label={plan === "clean" ? "Usuń plik z dysku" : "Odrzuć zmiany"}
+              label={plan === "clean" ? t("pane.git.rmFile") : t("pane.git.discard")}
               className={armedKey === key ? "is-confirm" : undefined}
               disabled={busy !== null}
               onClick={() => discard(key, [e])}
             >
-              {armedKey === key ? "Na pewno?" : undefined}
+              {armedKey === key ? t("ui2.rail.sure") : undefined}
             </IconButton>
           )}
           {section === "staged" ? (
-            <IconButton icon={Minus} label="Wyłącz z indeksu" disabled={busy !== null} onClick={() => unstage([e])} />
+            <IconButton icon={Minus} label={t("pane.git.unstage")} disabled={busy !== null} onClick={() => unstage([e])} />
           ) : (
-            !isConflict(e) && <IconButton icon={Plus} label="Dodaj do indeksu" disabled={busy !== null} onClick={() => stage([e])} />
+            !isConflict(e) && <IconButton icon={Plus} label={t("pane.git.stage")} disabled={busy !== null} onClick={() => stage([e])} />
           )}
         </span>
       </div>
@@ -254,7 +256,7 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
 
   const header = (
     <header className="git-head">
-      <span className="git-title">Pliki</span>
+      <span className="git-title">{t("pane.git.files")}</span>
       {branch && (
         <span className="git-chip" title={branch.upstream ? `${branchLabel(branch)} → ${branch.upstream}` : branchLabel(branch)}>
           <GitBranch size={13} strokeWidth={1.75} aria-hidden />
@@ -265,31 +267,31 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
       <span className="git-spacer" />
       {branch && (
         <>
-          <button type="button" className="btn" disabled={!canPull} title="Pull (tylko fast-forward)" onClick={() => void run("pull", () => backend.gitSync(path, "pull"))}>
+          <button type="button" className="btn" disabled={!canPull} title={t("pane.git.pullTip")} onClick={() => void run("pull", () => backend.gitSync(path, "pull"))}>
             <ArrowDown strokeWidth={1.75} aria-hidden /> Pull{branch.behind > 0 ? ` ${branch.behind}` : ""}
           </button>
           <button
             type="button"
             className="btn"
             disabled={!canPush}
-            title={branch.upstream === null ? "Opublikuj branch w origin (push -u)" : "Push"}
+            title={branch.upstream === null ? t("pane.git.publishTip") : "Push"}
             onClick={() => void run("push", () => backend.gitSync(path, "push"))}
           >
-            <ArrowUp strokeWidth={1.75} aria-hidden /> {branch.upstream === null ? "Opublikuj" : `Push${branch.ahead > 0 ? ` ${branch.ahead}` : ""}`}
+            <ArrowUp strokeWidth={1.75} aria-hidden /> {branch.upstream === null ? t("pane.git.publish") : `Push${branch.ahead > 0 ? ` ${branch.ahead}` : ""}`}
           </button>
         </>
       )}
-      <IconButton icon={RefreshCw} label="Odśwież" onClick={() => void refresh()} className={busy !== null ? "is-spin" : undefined} />
-      <IconButton icon={X} label="Zamknij panel plików" onClick={onClose} />
+      <IconButton icon={RefreshCw} label={t("pane.git.refresh")} onClick={() => void refresh()} className={busy !== null ? "is-spin" : undefined} />
+      <IconButton icon={X} label={t("pane.git.close")} onClick={onClose} />
     </header>
   );
 
   if (status === undefined || status === null || error) {
     return (
-      <aside className="git git-empty" aria-label="Pliki i git">
+      <aside className="git git-empty" aria-label={t("pane.git.aria")}>
         {header}
         <p className="git-note" role={error ? "alert" : undefined}>
-          {error ? `Git: ${error}` : status === undefined ? "Wczytywanie…" : "To nie repozytorium git."}
+          {error ? t("pane.git.err", { error }) : status === undefined ? t("pane.git.loading") : t("pane.git.notRepo")}
         </p>
       </aside>
     );
@@ -298,54 +300,54 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
   const onlyConflict = entries.some(isConflict);
 
   return (
-    <aside className="git" aria-label="Pliki i git">
+    <aside className="git" aria-label={t("pane.git.aria")}>
       {header}
       <div className="git-body">
         <div className="git-side">
           <section className="git-sec">
             <h3>
-              Staged <span className="git-count">{staged.length}</span>
+              {t("pane.git.staged")} <span className="git-count">{staged.length}</span>
               {staged.length > 0 && (
                 <button type="button" className="git-link" disabled={busy !== null} onClick={() => unstage(staged)}>
-                  wyłącz wszystko
+                  {t("pane.git.unstageAll")}
                 </button>
               )}
             </h3>
-            {staged.length === 0 ? <p className="git-none">Nic w indeksie</p> : staged.map((e) => changeRow(e, "staged"))}
+            {staged.length === 0 ? <p className="git-none">{t("pane.git.nothingStaged")}</p> : staged.map((e) => changeRow(e, "staged"))}
           </section>
           <section className="git-sec">
             <h3>
-              Zmiany <span className="git-count">{unstaged.length}</span>
+              {t("pane.git.changes")} <span className="git-count">{unstaged.length}</span>
               {unstaged.some((e) => !isConflict(e)) && (
                 <button type="button" className="git-link" disabled={busy !== null} onClick={() => stage(unstaged.filter((e) => !isConflict(e)))}>
-                  dodaj wszystko
+                  {t("pane.git.stageAll")}
                 </button>
               )}
             </h3>
-            {unstaged.length === 0 ? <p className="git-none">Czysto</p> : unstaged.map((e) => changeRow(e, "unstaged"))}
+            {unstaged.length === 0 ? <p className="git-none">{t("pane.git.clean")}</p> : unstaged.map((e) => changeRow(e, "unstaged"))}
           </section>
           <section className="git-commit">
             <textarea
               value={message}
               rows={3}
-              placeholder="Komunikat commitu (Ctrl+Enter zatwierdza)"
-              aria-label="Komunikat commitu"
+              placeholder={t("pane.git.msgPh")}
+              aria-label={t("pane.git.msgAria")}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={onMessageKey}
             />
-            <button type="button" className="btn primary" disabled={blocked !== null || busy !== null} title={blocked ?? "Zatwierdź zmiany z indeksu"} onClick={commit}>
-              Zatwierdź{staged.length > 0 ? ` (${staged.length})` : ""}
+            <button type="button" className="btn primary" disabled={blocked !== null || busy !== null} title={blocked ?? t("pane.git.commitTip")} onClick={commit}>
+              {t("pane.git.commit")}{staged.length > 0 ? ` (${staged.length})` : ""}
             </button>
-            {onlyConflict && <span className="git-none">Konflikty blokują commit</span>}
+            {onlyConflict && <span className="git-none">{t("pane.git.conflictBlocks")}</span>}
           </section>
           <section className="git-sec git-tree">
             <h3>
-              Drzewo
+              {t("pane.git.tree")}
               <label className="git-link">
-                <input type="checkbox" checked={onlyChanged} onChange={(e) => setOnlyChanged(e.target.checked)} /> tylko zmienione
+                <input type="checkbox" checked={onlyChanged} onChange={(e) => setOnlyChanged(e.target.checked)} /> {t("pane.git.onlyChanged")}
               </label>
             </h3>
-            {rows.length === 0 && <p className="git-none">{onlyChanged ? "Brak zmian" : "Pusto"}</p>}
+            {rows.length === 0 && <p className="git-none">{onlyChanged ? t("pane.git.noChanges") : t("pane.git.empty")}</p>}
             {rows.map(({ node, depth }) => {
               const act = node.dir ? () => toggleDir(node.path) : () => select(node.path);
               const e = node.entry;
@@ -365,7 +367,7 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
                       {onlyChanged || open.has(node.path) ? <ChevronDown size={13} strokeWidth={1.75} aria-hidden /> : <ChevronRight size={13} strokeWidth={1.75} aria-hidden />}
                       <Folder size={13} strokeWidth={1.75} aria-hidden />
                       <span className="git-name">{node.name}</span>
-                      {node.changed > 0 && <span className="git-dot" title={`Zmienione pliki: ${node.changed}`}>{node.changed}</span>}
+                      {node.changed > 0 && <span className="git-dot" title={t("pane.git.changedFiles", { n: node.changed })}>{node.changed}</span>}
                     </>
                   ) : (
                     <>
@@ -379,9 +381,9 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
             })}
           </section>
         </div>
-        <div className="git-diff" aria-label="Diff">
+        <div className="git-diff" aria-label={t("pane.git.diffAria")}>
           {!selected ? (
-            <p className="git-note">Wybierz plik, żeby zobaczyć zmiany.</p>
+            <p className="git-note">{t("pane.git.pick")}</p>
           ) : (
             <>
               <div className="git-diff-head">
@@ -390,7 +392,7 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
                   <span className="git-tabs">
                     {(["unstaged", "staged"] as const).map((m) => (
                       <button key={m} type="button" className={mode === m || (m === "unstaged" && mode === "untracked") ? "is-on" : undefined} onClick={() => select(selected.path, m)}>
-                        {m === "staged" ? "Staged" : "Zmiany"}
+                        {m === "staged" ? t("pane.git.staged") : t("pane.git.changes")}
                       </button>
                     ))}
                   </span>
@@ -403,15 +405,15 @@ export function GitPanel({ path, onClose, onNotice }: Props) {
               </div>
               <div className="git-diff-body">
                 {!mode ? (
-                  <p className="git-note">{selEntry && isConflict(selEntry) ? "Konflikt – rozwiąż go poza panelem." : "Brak zmian w tym pliku."}</p>
+                  <p className="git-note">{selEntry && isConflict(selEntry) ? t("pane.git.conflictFile") : t("pane.git.noFileChanges")}</p>
                 ) : diff?.key === diffKey && diff.error ? (
                   <p className="git-note" role="alert">{diff.error}</p>
                 ) : !parsed ? (
-                  <p className="git-note">Wczytywanie…</p>
+                  <p className="git-note">{t("pane.git.loading")}</p>
                 ) : parsed.lines.length === 0 ? (
-                  <p className="git-note">Pusty diff.</p>
+                  <p className="git-note">{t("pane.git.emptyDiff")}</p>
                 ) : parsed.binary ? (
-                  <p className="git-note">Plik binarny.</p>
+                  <p className="git-note">{t("pane.git.binary")}</p>
                 ) : (
                   <pre className="git-lines">
                     {parsed.lines

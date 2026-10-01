@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Check, KeyRound, Loader2, Plus, Server, Terminal, Trash2, Zap } from "lucide-react";
 import { backend, type KeyState } from "../backend";
 import { Dialog } from "../Dialog";
+import { locale, t, useT } from "../i18n";
 import { freeId, GROUP_LABELS, modelsCount, PROVIDER_TEMPLATES, type ProviderDef, type ProviderGroup } from "../chat";
 
 type Props = {
@@ -20,8 +21,8 @@ type Test = { state: "run" } | { state: "ok"; text: string; ms: number } | { sta
 const GROUPS: ProviderGroup[] = ["sub", "api", "local"];
 
 function kindLabel(p: ProviderDef): string {
-  if (p.kind === "claude-cli") return `subskrypcja przez program ${p.command || "claude"}`;
-  if (p.kind === "codex-cli") return `subskrypcja przez program ${p.command || "codex"}`;
+  if (p.kind === "claude-cli") return t("chat.prov.viaCli", { cmd: p.command || "claude" });
+  if (p.kind === "codex-cli") return t("chat.prov.viaCli", { cmd: p.command || "codex" });
   return p.baseUrl ?? "";
 }
 
@@ -40,6 +41,7 @@ function ProviderRow({
   onRemove?: () => void;
   onEdit?: (patch: Partial<ProviderDef>) => void;
 }) {
+  const { t } = useT();
   const [test, setTest] = useState<Test | null>(null);
   const [keyOpen, setKeyOpen] = useState(false);
   const [key, setKey] = useState("");
@@ -48,7 +50,7 @@ function ProviderRow({
 
   const runTest = () => {
     const model = p.models[0];
-    if (!model) return setTest({ state: "fail", text: offline ?? "brak modelu do testu" });
+    if (!model) return setTest({ state: "fail", text: offline ?? t("chat.prov.noTestModel") });
     setTest({ state: "run" });
     const t0 = performance.now();
     let text = "";
@@ -70,20 +72,20 @@ function ProviderRow({
         <div className="prov-text">
           <div className="prov-name">
             {p.name}
-            {p.from === "pi" && <span className="prov-tag">z pi</span>}
+            {p.from === "pi" && <span className="prov-tag">{t("chat.prov.fromPi")}</span>}
           </div>
           <div className="prov-sub">{kindLabel(p)}</div>
           <div className="prov-state">
-            {p.key && (keyState === "stored" ? <span className="is-ok">klucz w sejfie</span> : keyState === "env" ? <span className="is-ok">klucz z ${p.keyEnv}</span> : <span className="is-warn">brak klucza</span>)}
-            {offline ? <span className="is-warn" title={offline}>nie odpowiada</span> : p.discover && p.models.length > 0 ? <span>{modelsCount(p.models.length)}</span> : null}
+            {p.key && (keyState === "stored" ? <span className="is-ok">{t("chat.prov.keyStored")}</span> : keyState === "env" ? <span className="is-ok">{t("chat.prov.keyEnv", { env: p.keyEnv ?? "" })}</span> : <span className="is-warn">{t("chat.prov.noKey")}</span>)}
+            {offline ? <span className="is-warn" title={offline}>{t("chat.offline")}</span> : p.discover && p.models.length > 0 ? <span>{modelsCount(p.models.length)}</span> : null}
             {test?.state === "run" && (
               <span>
-                <Loader2 className="spin" aria-hidden /> test…
+                <Loader2 className="spin" aria-hidden /> {t("chat.prov.testing")}
               </span>
             )}
             {test?.state === "ok" && (
               <span className="is-ok">
-                <Check aria-hidden /> {test.text} · {(test.ms / 1000).toFixed(1).replace(".", ",")} s
+                <Check aria-hidden /> {test.text} · {t("chat.seconds", { s: new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(test.ms / 1000) })}
               </span>
             )}
             {test?.state === "fail" && <span className="is-warn">{test.text}</span>}
@@ -91,15 +93,15 @@ function ProviderRow({
         </div>
         <div className="prov-btns">
           <button type="button" className="btn" onClick={runTest} disabled={test?.state === "run"}>
-            <Zap aria-hidden /> Testuj
+            <Zap aria-hidden /> {t("chat.prov.test")}
           </button>
           {p.key && p.from !== "pi" && (
             <button type="button" className={`btn${keyOpen ? " is-on" : ""}`} onClick={() => setKeyOpen((v) => !v)}>
-              <KeyRound aria-hidden /> Klucz
+              <KeyRound aria-hidden /> {t("chat.prov.key")}
             </button>
           )}
           {onRemove && (
-            <button type="button" className="icon" title="Usuń dostawcę" aria-label={`Usuń dostawcę ${p.name}`} onClick={onRemove}>
+            <button type="button" className="icon" title={t("chat.prov.remove")} aria-label={t("chat.prov.removeNamed", { name: p.name })} onClick={onRemove}>
               <Trash2 size={15} strokeWidth={1.75} aria-hidden />
             </button>
           )}
@@ -107,7 +109,7 @@ function ProviderRow({
       </div>
       {onEdit && (p.kind === "openai" || p.kind === "anthropic") && (
         <label className="prov-field">
-          <span>Adres</span>
+          <span>{t("chat.prov.url")}</span>
           <input
             value={url}
             spellCheck={false}
@@ -130,14 +132,14 @@ function ProviderRow({
               .catch((err: unknown) => setKeyErr(err instanceof Error ? err.message : String(err)));
           }}
         >
-          <span>Klucz API</span>
-          <input type="password" value={key} autoFocus placeholder={keyState === "stored" ? "zapisany – wpisz nowy, by zmienić" : "sk-…"} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
+          <span>{t("chat.prov.apiKey")}</span>
+          <input type="password" value={key} autoFocus placeholder={keyState === "stored" ? t("chat.prov.keyPlaceholder") : "sk-…"} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
           <button type="submit" className="btn primary" disabled={key.trim() === ""}>
-            Zapisz
+            {t("chat.prov.save")}
           </button>
           {keyState === "stored" && (
             <button type="button" className="btn" onClick={() => void onKey(null).then(() => setKeyOpen(false))}>
-              Usuń
+              {t("chat.prov.delete")}
             </button>
           )}
           {keyErr && <em className="is-warn">{keyErr}</em>}
@@ -148,6 +150,7 @@ function ProviderRow({
 }
 
 export function ProvidersDialog({ providers, offline, onSave, onClose }: Props) {
+  const { t } = useT();
   const [keys, setKeys] = useState<Record<string, KeyState>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -169,13 +172,11 @@ export function ProvidersDialog({ providers, offline, onSave, onClose }: Props) 
   };
 
   return (
-    <Dialog label="Dostawcy" className="prov-dialog" onClose={onClose}>
+    <Dialog label={t("chat.prov.dialog")} className="prov-dialog" onClose={onClose}>
       {() => (
         <>
-          <h2>Dostawcy modeli</h2>
-          <p>
-            Subskrypcje działają przez zalogowane programy <code>claude</code> i <code>codex</code>. Klucze API trafiają do sejfu systemowego, nie do plików. Dostawców z pi edytujesz w <code>~/.pi/agent/models.json</code>.
-          </p>
+          <h2>{t("chat.prov.title")}</h2>
+          <p>{t("chat.prov.intro").split(/(<code>.*?<\/code>)/).map((x, i) => (x.startsWith("<code>") ? <code key={i}>{x.slice(6, -7)}</code> : x))}</p>
           {error && <div className="prov-error">{error}</div>}
           <div className="prov-list">
             {GROUPS.map((g) => {
@@ -202,7 +203,7 @@ export function ProvidersDialog({ providers, offline, onSave, onClose }: Props) 
               );
             })}
           </div>
-          <div className="rail-label">Dodaj</div>
+          <div className="rail-label">{t("chat.prov.add")}</div>
           <div className="prov-add">
             {PROVIDER_TEMPLATES.map((t) => (
               <button key={t.id} type="button" className="btn" onClick={() => add(t)}>

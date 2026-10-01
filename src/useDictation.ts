@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { backend } from "./backend";
 import { cleanTranscript, MAX_RECORDING_MS, micConstraints, MIN_RECORDING_MS, pickRecorderMime } from "./stt";
+import { t } from "./i18n";
 
 export type DictationPhase = "idle" | "recording" | "transcribing";
 
@@ -16,10 +17,10 @@ type Hooks = {
 /** Powód, dla którego `getUserMedia` odmówiło, po ludzku. */
 function micError(e: unknown): string {
   const name = (e as { name?: string })?.name;
-  if (name === "NotAllowedError" || name === "SecurityError") return "brak zgody na mikrofon";
-  if (name === "NotFoundError" || name === "OverconstrainedError") return "nie znaleziono mikrofonu";
-  if (name === "NotReadableError") return "mikrofon zajęty przez inny program";
-  return `mikrofon: ${e instanceof Error ? e.message : String(e)}`;
+  if (name === "NotAllowedError" || name === "SecurityError") return t("voice.mic.denied");
+  if (name === "NotFoundError" || name === "OverconstrainedError") return t("voice.mic.notFound");
+  if (name === "NotReadableError") return t("voice.mic.busy");
+  return t("voice.mic.other", { msg: e instanceof Error ? e.message : String(e) });
 }
 
 /**
@@ -55,7 +56,7 @@ export function useDictation({ onText, onError, getMic }: Hooks) {
       if (!alive.current) return;
       setPhase("idle");
       if (text) hooks.current.onText(text);
-      else hooks.current.onError("nic nie usłyszano");
+      else hooks.current.onError(t("voice.dictation.nothing"));
     } catch (e) {
       if (!alive.current) return;
       setPhase("idle");
@@ -89,7 +90,7 @@ export function useDictation({ onText, onError, getMic }: Hooks) {
     recorder.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
     recorder.onerror = () => {
       state.discard = true;
-      hooks.current.onError("błąd nagrywania");
+      hooks.current.onError(t("voice.dictation.recError"));
       if (recorder.state !== "inactive") recorder.stop();
     };
     recorder.onstop = () => {

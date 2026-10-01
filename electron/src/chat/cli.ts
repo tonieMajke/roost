@@ -1,5 +1,6 @@
 //! Program CLI jako dostawca czatu: proces z poleceniem na stdin, wyjście linia po linii (JSON).
 
+import { t } from "../i18n";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import type { ChatEvent } from "../../../src/chat";
@@ -74,7 +75,7 @@ export function runCli(
       if (failure) return reject(new Error(failure));
       if (code !== 0) {
         const why = err.split("\n").find((l) => l.trim() !== "")?.trim();
-        return reject(new Error(why ? `${program}: ${why}` : `${program} zakończył się kodem ${code ?? sig}`));
+        return reject(new Error(why ? `${program}: ${why}` : t("chat.cliExit", { program, code: code ?? sig ?? "" })));
       }
       resolve();
     });

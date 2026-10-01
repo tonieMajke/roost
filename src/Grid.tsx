@@ -13,6 +13,7 @@ import type { PaneActions, ProjectActions } from "./handlers";
 import { Pane } from "./Pane";
 import type { TermLook } from "./Terminal";
 import { usePaneDrag } from "./usePaneDrag";
+import { useT } from "./i18n";
 import {
   ENTER_WINDOW_MS,
   FLIP_EASE,
@@ -93,6 +94,7 @@ export function Grid({
   paneActions,
   projectActions,
 }: Props) {
+  const { t } = useT();
   // Wjazd siatki po przełączeniu projektu (wzór D: slideNext/slidePrev + panele kolejno).
   const [shown, setShown] = useState(activeId);
   const [enter, setEnter] = useState<{ id: string; cls: string | null; at: number } | null>(null);
@@ -105,8 +107,8 @@ export function Grid({
   useEffect(() => {
     if (enter === null) return;
     // Po wjeździe zdejmujemy opóźnienia: panel dodany później nie może czekać.
-    const t = setTimeout(() => setEnter(null), ENTER_WINDOW_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setEnter(null), ENTER_WINDOW_MS);
+    return () => clearTimeout(timer);
   }, [enter]);
 
   // FLIP: pudełka komórek sprzed zmiany układu, per projekt.
@@ -255,10 +257,10 @@ export function Grid({
           >
             {n === 0 ? (
               <div className="empty">
-                <p>Brak paneli w tym projekcie</p>
+                <p>{t("pane.empty")}</p>
                 <div className="empty-actions">
                   <button type="button" className="btn primary" onClick={projectActions.openPaneDialog}>
-                    <Plus strokeWidth={1.75} aria-hidden /> Panel
+                    <Plus strokeWidth={1.75} aria-hidden /> {t("pane.emptyPane")}
                   </button>
                   {BUILT_IN_PRESETS.map((preset) => (
                     <button key={preset.name} type="button" onClick={() => projectActions.applyPreset(preset)}>

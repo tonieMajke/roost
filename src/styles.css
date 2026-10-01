@@ -422,7 +422,20 @@ button.ctx-row:focus-visible { outline: 1px solid var(--accent); outline-offset:
 .ctx-row .bar span { background: var(--ag); }
 .ctx-row.is-warn .bar span { background: var(--accent); }
 .ctx-row.is-warn .ctx-line b { color: var(--accent); }
-.dock-live { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dock-live { min-height: 0; display: flex; flex-direction: column; }
+.dock-live:last-child { flex: 1; }
+/* uchwyt do zmiany kolejności sekcji: przy lewej krawędzi, widoczny po najechaniu na sekcję */
+.dock-sec-ord { position: relative; }
+.dock-grip {
+  position: absolute; left: 1px; top: 12px; width: 14px; height: 18px; padding: 0; border: 0; background: none;
+  color: var(--faint); cursor: grab; opacity: 0; display: grid; place-items: center; border-radius: 3px;
+}
+.dock-sec-ord:hover .dock-grip, .dock-grip:focus-visible { opacity: 1; }
+.dock-grip:hover { color: var(--accent); }
+.dock-grip:active { cursor: grabbing; }
+.dock-sec-ord.is-dragging { opacity: 0.45; }
+.dock-sec-ord.is-over-before { box-shadow: inset 0 2px 0 var(--accent); }
+.dock-sec-ord.is-over-after { box-shadow: inset 0 -2px 0 var(--accent); }
 /* wzór: `overflow: hidden`; 30 zdarzeń się nie mieści, więc lista się przewija */
 .feed { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow-y: auto; }
 .feed-item { display: flex; gap: 9px; font-size: 12px; line-height: 1.4; animation: feedIn 0.45s var(--ease) both; }

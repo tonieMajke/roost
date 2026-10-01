@@ -1,5 +1,6 @@
 //! Proces główny: okno z frontendem z `src/` i backend dla `src/backend-electron.ts` przez IPC.
 
+import { t } from "./i18n";
 import fs from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, powerMonitor, safeStorage, shell } from "electron";
@@ -10,6 +11,7 @@ import { sessionHandoff } from "./handoff";
 import * as git from "./git";
 import { claudeLimits, claudeSettingsArg } from "./limits";
 import { notify } from "./notify";
+import { resolveMainLang, setMainLang } from "./i18n";
 import { openFile, resolveFiles } from "./open-path";
 import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
@@ -148,6 +150,7 @@ handle("git_unstage", (cwd: string, paths: string[]) => git.gitUnstage(cwd, path
 handle("git_discard", (cwd: string, tracked: string[], untracked: string[]) => git.gitDiscard(cwd, tracked, untracked));
 handle("git_commit", (cwd: string, message: string) => git.gitCommit(cwd, message));
 handle("git_sync", (cwd: string, op: "pull" | "push") => git.gitSync(cwd, op === "pull" ? "pull" : "push"));
+handle("set_language", (lang: string) => setMainLang(lang === "en" ? "en" : "pl"));
 handle("home_dir", () => app.getPath("home"));
 handle("workspace_load", () => config.workspaceLoad());
 handle("workspace_save", (json: string) => config.workspaceSave(json));
@@ -167,7 +170,7 @@ handle("copy_text", (text: string) => clipboard.writeText(text));
 handle("paste_text", () => clipboard.readText());
 // Linki z odpowiedzi modeli: tylko http(s), nic, co uruchomiłoby program albo plik.
 handle("open_external", (url: string) => {
-  if (!/^https?:\/\//i.test(url)) throw new Error("tylko adresy http(s)");
+  if (!/^https?:\/\//i.test(url)) throw new Error(t("main.httpOnly"));
   return shell.openExternal(url);
 });
 // Ścieżki z terminala (Ctrl-klik): istnienie sprawdza proces główny, plik otwiera spawn z tablicą argumentów.
@@ -199,7 +202,7 @@ ipcMain.handle("chat_send", (event, reqId: string, req: ChatRequest) => {
         call: async (name, args) => ({ ...(await windowTools.call(reqId, emit, name, args)), approval: "auto" }),
       });
     } catch (e) {
-      return emit({ type: "error", message: `most narzędzi: ${e instanceof Error ? e.message : String(e)}` });
+      return emit({ type: "error", message: t("main.bridge", { msg: e instanceof Error ? e.message : String(e) }) });
     }
     try {
       const mcp = ToolBridge.serverSpec(process.execPath, path.join(__dirname, "mcp-server.cjs"), session.env);
@@ -219,7 +222,7 @@ handle("stt_set_key", (id: string, key: string | null) => keys.set(sttKeyId(id),
 handle("stt_transcribe", (audio: Uint8Array, mime: string) => {
   const { config: cfg } = parseSttConfig(sttConfigLoad(config.configDir()));
   const p = activeStt(cfg);
-  if (!p) throw new Error("nie wybrano silnika transkrypcji (Ustawienia głosu)");
+  if (!p) throw new Error(t("main.noStt"));
   return transcribe(p, keys.get(sttKeyId(p.id), p.keyEnv), audio, mime, cfg.language);
 });
 // Rozmowa głosowa (eksperyment, `docs/plan-glos.md`): mózg i silnik mowy z `voice.json`/`tts.json`;
@@ -257,7 +260,7 @@ handle("bot_approve", (id: string, decision: ApprovalDecision) => approvals.deci
 const claudeSkills = () => path.join(app.getPath("home"), ".claude", "skills");
 handle("bot_skill_sources", () => BotStore.skillSources(claudeSkills()));
 handle("bot_skill_import", (id: string, name: string) => {
-  if (!isSkillName(name)) throw new Error(`zła nazwa skilla: ${name}`);
+  if (!isSkillName(name)) throw new Error(t("main.badSkill", { name }));
   return bots.skillImport(id, path.join(claudeSkills(), name));
 });
 handle("bot_avatar_import", (id: string, file: string) => bots.avatarImport(id, file));
@@ -270,21 +273,21 @@ ipcMain.handle("bot_send", (event, reqId: string, chatJson: string, req: ChatReq
   const emit = (e: unknown) => {
     if (!sender.isDestroyed()) sender.send("bot_event", reqId, e);
   };
-  if (!c) return emit({ type: "error", message: "zła rozmowa bota" });
+  if (!c) return emit({ type: "error", message: t("main.badBotChat") });
   void botService.send(reqId, c, req, emit);
 });
 handle("bot_chat_delete", (id: string, kind: ChatKind, chatId: string) => bots.chats(id, kind).delete(chatId));
 handle("pick_dir", async () => {
-  const opts: Electron.OpenDialogOptions = { title: "Katalog projektu", properties: ["openDirectory"] };
+  const opts: Electron.OpenDialogOptions = { title: t("dialog.dir"), properties: ["openDirectory"] };
   const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
   return res.canceled ? null : (res.filePaths[0] ?? null);
 });
 
 handle("pick_image", async () => {
   const opts: Electron.OpenDialogOptions = {
-    title: "Obrazek awatara",
+    title: t("dialog.avatar"),
     properties: ["openFile"],
-    filters: [{ name: "Obrazy", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
+    filters: [{ name: t("dialog.images"), extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
   };
   const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
   return res.canceled ? null : (res.filePaths[0] ?? null);
@@ -359,7 +362,19 @@ function createWindow() {
   win.on("closed", () => (win = null));
 }
 
+/** Język procesu głównego do czasu, aż strona zgłosi własny (`set_language`): `ui.lang` z workspace.json, "auto" = język systemu. */
+function initialLang(): void {
+  let pref: string | undefined;
+  try {
+    pref = (JSON.parse(config.workspaceLoad() ?? "null") as { ui?: { lang?: string } } | null)?.ui?.lang;
+  } catch {
+    // zepsuty workspace.json: język systemu
+  }
+  setMainLang(resolveMainLang(pref, app.getLocale()));
+}
+
 void app.whenReady().then(() => {
+  initialLang();
   createWindow();
   scheduler.start();
   // Po wybudzeniu od razu, nie po najbliższym tyknięciu.

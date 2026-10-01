@@ -7,6 +7,7 @@ import { backend } from "./backend";
 import { IconButton } from "./IconButton";
 import { Markdown } from "./chat/Markdown";
 import { createAutosave, type SaveState } from "./scratchpad";
+import { useT } from "./i18n";
 
 type Props = {
   /** Notatka należy do projektu; zmiana projektu = nowy `key`, więc stan zaczyna się od zera. */
@@ -15,14 +16,15 @@ type Props = {
   onClose(): void;
 };
 
-const STATE_TEXT: Record<SaveState, string> = {
-  saved: "Zapisano",
-  dirty: "Niezapisane…",
-  saving: "Zapisuję…",
-  error: "Błąd zapisu",
-};
+const STATE_KEY = {
+  saved: "ui2.scratch.saved",
+  dirty: "ui2.scratch.dirty",
+  saving: "ui2.scratch.saving",
+  error: "ui2.scratch.error",
+} as const satisfies Record<SaveState, string>;
 
 export function Scratchpad({ projectId, projectName, onClose }: Props) {
+  const { t } = useT();
   const [text, setText] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export function Scratchpad({ projectId, projectName, onClose }: Props) {
   const autosave = useMemo(
     () =>
       createAutosave(
-        (t) => backend.scratchpadSave(projectId, t),
+        (txt) => backend.scratchpadSave(projectId, txt),
         (s, e) => {
           setState(s);
           setError(e);
@@ -47,9 +49,9 @@ export function Scratchpad({ projectId, projectName, onClose }: Props) {
     let on = true;
     backend
       .scratchpadLoad(projectId)
-      .then((t) => {
+      .then((txt) => {
         if (!on) return;
-        setText(t);
+        setText(txt);
         setLoaded(true);
       })
       .catch((e: unknown) => {
@@ -76,25 +78,25 @@ export function Scratchpad({ projectId, projectName, onClose }: Props) {
   }, [loaded, preview]);
 
   return (
-    <aside className="scratch" aria-label={`Notatki projektu ${projectName}`}>
+    <aside className="scratch" aria-label={t("ui2.scratch.aria", { name: projectName })}>
       <header className="scratch-head">
         <span className="scratch-title" title={projectName}>
-          Notatki · {projectName}
+          {t("ui2.scratch.title", { name: projectName })}
         </span>
         <IconButton
           icon={preview ? Pencil : Eye}
-          label={preview ? "Edytuj" : "Podgląd"}
+          label={preview ? t("ui2.scratch.edit") : t("ui2.scratch.preview")}
           shortcut="Ctrl+Enter"
           onClick={() => setPreview((p) => !p)}
           disabled={!loaded}
         />
-        <IconButton icon={X} label="Zamknij notatki" onClick={onClose} />
+        <IconButton icon={X} label={t("ui2.scratch.close")} onClick={onClose} />
       </header>
       {loadError !== null ? (
-        <p className="scratch-empty">Nie udało się wczytać notatki: {loadError}</p>
+        <p className="scratch-empty">{t("ui2.scratch.loadFail", { error: loadError })}</p>
       ) : preview ? (
         <div className="scratch-preview chat-md">
-          {text.trim() === "" ? <p className="scratch-empty">Pusta notatka.</p> : <Markdown text={text} />}
+          {text.trim() === "" ? <p className="scratch-empty">{t("ui2.scratch.empty")}</p> : <Markdown text={text} />}
         </div>
       ) : (
         <textarea
@@ -103,7 +105,7 @@ export function Scratchpad({ projectId, projectName, onClose }: Props) {
           value={text}
           disabled={!loaded}
           spellCheck={false}
-          placeholder={loaded ? "Markdown: # nagłówek, - lista, - [ ] zadanie, ```kod```" : "Wczytywanie…"}
+          placeholder={loaded ? t("ui2.scratch.placeholder") : t("ui2.scratch.loading")}
           onChange={(e) => {
             setText(e.target.value);
             autosave.change(e.target.value);
@@ -117,7 +119,7 @@ export function Scratchpad({ projectId, projectName, onClose }: Props) {
         />
       )}
       <footer className={`scratch-foot is-${state}`} role="status" title={error}>
-        {STATE_TEXT[state]}
+        {t(STATE_KEY[state])}
         {state === "error" && error ? `: ${error}` : ""}
       </footer>
     </aside>

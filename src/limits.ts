@@ -1,5 +1,6 @@
 /** „Limity Claude” in the dock: windows from Claude Code's status line (Rust `limits.rs`). Pure. */
 import type { AgentDef } from "./agents";
+import { locale, t } from "./i18n";
 
 /** `pct` 0–100 (above 100 once exceeded), `resetsAt` in Unix seconds. */
 export type LimitWindow = { pct: number; resetsAt: number };
@@ -15,8 +16,6 @@ export function withClaudeSettings(agent: AgentDef, args: string[], settings: st
   return [...args, "--settings", settings];
 }
 
-const DAYS = ["niedz.", "pon.", "wt.", "śr.", "czw.", "pt.", "sob."];
-
 const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
 /** „reset o 22:40” today, „reset jutro 09:00”, else „reset w pon. 09:00” (local time). */
@@ -28,9 +27,9 @@ export function resetText(resetsAt: number, now: number): string {
       new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) /
       86_400_000,
   );
-  if (dayDiff <= 0) return `reset o ${hhmm(at)}`;
-  if (dayDiff === 1) return `reset jutro ${hhmm(at)}`;
-  return `reset w ${DAYS[at.getDay()]} ${hhmm(at)}`;
+  if (dayDiff <= 0) return t("ui2.limits.resetToday", { time: hhmm(at) });
+  if (dayDiff === 1) return t("ui2.limits.resetTomorrow", { time: hhmm(at) });
+  return t("ui2.limits.resetDay", { day: at.toLocaleDateString(locale(), { weekday: "short" }), time: hhmm(at) });
 }
 
 export type LimitMeter = { label: string; pct: number; note: string };
@@ -39,8 +38,8 @@ export type LimitMeter = { label: string; pct: number; note: string };
 export function limitMeters(limits: ClaudeLimits | null, now: number): LimitMeter[] {
   if (limits === null) return [];
   const rows: [string, LimitWindow | null][] = [
-    ["Sesja (5 h)", limits.fiveHour],
-    ["Tydzień", limits.sevenDay],
+    [t("ui2.limits.session"), limits.fiveHour],
+    [t("ui2.limits.week"), limits.sevenDay],
   ];
   return rows.flatMap(([label, w]) =>
     w === null || w.resetsAt * 1000 <= now
@@ -73,15 +72,16 @@ export function limitBlocks(
  * Okno, które właśnie zablokowało konto: użyte w 100 % i jeszcze przed resetem. Przy kilku wygrywa to,
  * które skończy się najpóźniej (to ono mówi, kiedy da się wrócić). Tekst do paska w panelu.
  */
+type HitKey = "ui2.limits.hitSession" | "ui2.limits.hitWeek";
 export function limitHit(limits: ClaudeLimits | undefined, now: number): { text: string; resetsAt: number } | null {
   if (!limits) return null;
-  const rows: [string, LimitWindow | null][] = [
-    ["sesji (5 h)", limits.fiveHour],
-    ["tygodnia", limits.sevenDay],
+  const rows: [HitKey, LimitWindow | null][] = [
+    ["ui2.limits.hitSession", limits.fiveHour],
+    ["ui2.limits.hitWeek", limits.sevenDay],
   ];
-  let hit: { label: string; w: LimitWindow } | null = null;
+  let hit: { label: HitKey; w: LimitWindow } | null = null;
   for (const [label, w] of rows) {
     if (w && w.pct >= 100 && w.resetsAt * 1000 > now && (!hit || w.resetsAt > hit.w.resetsAt)) hit = { label, w };
   }
-  return hit && { text: `Limit ${hit.label} wyczerpany · ${resetText(hit.w.resetsAt, now)}`, resetsAt: hit.w.resetsAt };
+  return hit && { text: t(hit.label, { reset: resetText(hit.w.resetsAt, now) }), resetsAt: hit.w.resetsAt };
 }

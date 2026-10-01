@@ -8,6 +8,7 @@ import remarkBreaks from "remark-breaks";
 import { Check, Copy } from "lucide-react";
 import type { Highlighter } from "shiki";
 import { backend } from "../backend";
+import { useT } from "../i18n";
 
 const THEMES = { light: "github-light", dark: "github-dark" } as const;
 const LANGS = ["typescript", "tsx", "javascript", "jsx", "bash", "shell", "python", "rust", "json", "css", "html", "sql", "yaml", "toml", "go", "c", "cpp", "java", "diff", "markdown"];
@@ -26,7 +27,9 @@ function getHighlighter(): Promise<Highlighter> {
   return highlighterPromise;
 }
 
-export function CopyButton({ text, label = "Kopiuj" }: { text: string; label?: string }) {
+export function CopyButton({ text, label }: { text: string; label?: string }) {
+  const { t } = useT();
+  label ??= t("chat.copy");
   const [done, setDone] = useState(false);
   return (
     <button
@@ -41,7 +44,7 @@ export function CopyButton({ text, label = "Kopiuj" }: { text: string; label?: s
       }}
     >
       {done ? <Check aria-hidden /> : <Copy aria-hidden />}
-      <span>{done ? "Skopiowano" : label}</span>
+      <span>{done ? t("chat.copied") : label}</span>
     </button>
   );
 }

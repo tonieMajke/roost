@@ -102,6 +102,8 @@ export interface Backend {
   chatLoad(id: string): Promise<Chat | null>;
   chatSave(chat: Chat): Promise<void>;
   chatDelete(id: string): Promise<void>;
+  /** Język komunikatów procesu głównego (dialogi, powiadomienia, błędy); UI woła to po zmianie języka. */
+  setLanguage(lang: "pl" | "en"): void;
   /** Link z odpowiedzi w przeglądarce systemowej (tylko http/https). */
   openExternal(url: string): Promise<void>;
   /** Ścieżki z terminala względem `cwd`: bezwzględna ścieżka istniejącego pliku albo `null`. */

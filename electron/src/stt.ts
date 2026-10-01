@@ -1,6 +1,7 @@
 //! Transkrypcja głosu w procesie głównym: `stt.json` w `configDir()` i jedno zapytanie
 //! `POST {baseUrl}/audio/transcriptions` (multipart). Klucz nigdy nie wraca do strony.
 
+import { t } from "./i18n";
 import fs from "node:fs";
 import path from "node:path";
 import { audioExt, type SttProvider } from "../../src/stt";
@@ -38,8 +39,8 @@ export async function transcribe(
   signal?: AbortSignal,
 ): Promise<string> {
   if (audio.byteLength === 0) throw new Error("puste nagranie");
-  if (audio.byteLength > MAX_AUDIO_BYTES) throw new Error("nagranie za duże (limit 25 MB)");
-  if (p.key && !key) throw new Error(`brak klucza API dla „${p.name}” (Ustawienia głosu → Klucz)`);
+  if (audio.byteLength > MAX_AUDIO_BYTES) throw new Error(t("stt.tooBig"));
+  if (p.key && !key) throw new Error(t("stt.noKey", { name: p.name }));
   // Nagłówek HTTP przyjmuje tylko ASCII; klucz wklejony z dopiskiem dałby niezrozumiały błąd `ByteString`.
   if (key && !/^[\x21-\x7e]+$/.test(key)) throw new Error("klucz API zawiera spacje albo niedozwolone znaki (wklejony z dopiskiem?)");
   const form = new FormData();
@@ -58,7 +59,7 @@ export async function transcribe(
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
   } catch (e) {
-    if (isAbort(e) && !signal?.aborted) throw new Error(`serwer nie odpowiedział w ${TIMEOUT_MS / 1000} s`);
+    if (isAbort(e) && !signal?.aborted) throw new Error(t("stt.timeout", { s: TIMEOUT_MS / 1000 }));
     if (signal?.aborted) throw e;
     throw networkError(e, url);
   }
@@ -67,8 +68,8 @@ export async function transcribe(
   try {
     body = (await res.json()) as { text?: unknown };
   } catch {
-    throw new Error("serwer zwrócił odpowiedź, która nie jest JSON-em (zły adres?)");
+    throw new Error(t("stt.notJson"));
   }
-  if (typeof body.text !== "string") throw new Error("odpowiedź bez pola `text` (to nie jest silnik transkrypcji?)");
+  if (typeof body.text !== "string") throw new Error(t("stt.noText"));
   return body.text;
 }

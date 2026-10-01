@@ -27,6 +27,7 @@ import {
   type ProviderDef,
   configJson,
 } from "../chat";
+import { useT } from "../i18n";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "../confirm";
 import { IconButton } from "../IconButton";
 import { Composer } from "./Composer";
@@ -68,6 +69,7 @@ type Props = {
 };
 
 export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpenAppearance }: Props) {
+  const { t, lang } = useT();
   const { providers, offline, errors, setErrors, discovered, reload: loadConfig } = useProviders();
   const [list, setList] = useState<ChatMeta[]>([]);
   const [chat, setChat] = useState<Chat | null>(null);
@@ -106,8 +108,8 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
   }, [providers, model]);
 
   useEffect(() => {
-    onTitle(chat ? displayTitle(chat) : "Nowa rozmowa");
-  }, [chat, onTitle]);
+    onTitle(chat ? displayTitle(chat) : t("chat.newTitle"));
+  }, [chat, onTitle, t, lang]);
 
   useEffect(() => {
     if (armedId === null) return;
@@ -127,7 +129,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
 
   const save = useCallback((c: Chat) => {
     setList((prev) => sortChats([...prev.filter((x) => x.id !== c.id), chatMeta(c)]));
-    void backend.chatSave(c).catch((e: unknown) => setErrors((prev) => [...prev, `zapis rozmowy: ${String(e)}`]));
+    void backend.chatSave(c).catch((e: unknown) => setErrors((prev) => [...prev, t("chat.err.save", { err: String(e) })]));
   }, []);
 
   const pickModel = (m: ModelRef) => {
@@ -257,7 +259,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
     const l = liveRef.current;
     if (l?.chat.id === id) return setChat(l.chat);
     const c = await backend.chatLoad(id).catch(() => null);
-    if (!c) return setErrors((prev) => [...prev, "nie udało się otworzyć rozmowy"]);
+    if (!c) return setErrors((prev) => [...prev, t("chat.err.open")]);
     setChat(c);
     stick.current = true;
     if (findModel(providers, c.model)) setModel(c.model);
@@ -292,7 +294,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
   const groups = useMemo(() => {
     const f = filter.trim().toLowerCase();
     return groupChats(f ? list.filter((c) => displayTitle(c).toLowerCase().includes(f)) : list, Date.now());
-  }, [list, filter]);
+  }, [list, filter, lang]);
 
   const messages = chat?.messages ?? [];
   const empty = messages.length === 0;
@@ -318,15 +320,15 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
       <aside className={`chat-side${railOpen ? "" : " is-closed"}`}>
         <header className="rail-head chat-side-head">
           <ModeTabs mode={mode} onMode={onMode} />
-          <IconButton icon={PanelLeft} label={railOpen ? "Zwiń listę" : "Rozwiń listę"} shortcut="Ctrl+Alt+B" onClick={onToggleRail} />
+          <IconButton icon={PanelLeft} label={railOpen ? t("chat.rail.collapse") : t("chat.rail.expand")} shortcut="Ctrl+Alt+B" onClick={onToggleRail} />
         </header>
-        <button type="button" className="chat-new" onClick={newConversation} title="Nowa rozmowa">
+        <button type="button" className="chat-new" onClick={newConversation} title={t("chat.new")}>
           <MessageSquarePlus aria-hidden />
-          <span>Nowa rozmowa</span>
+          <span>{t("chat.new")}</span>
         </button>
         <label className="chat-filter">
           <Search aria-hidden />
-          <input value={filter} placeholder="Szukaj rozmów" onChange={(e) => setFilter(e.target.value)} spellCheck={false} />
+          <input value={filter} placeholder={t("chat.search.placeholder")} onChange={(e) => setFilter(e.target.value)} spellCheck={false} />
         </label>
         <nav className="chat-list">
           {groups.map((g) => (
@@ -363,16 +365,16 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
                       </span>
                       <IconButton
                         icon={X}
-                        label={`Usuń rozmowę ${displayTitle(c)}`}
+                        label={t("chat.delete.named", { title: displayTitle(c) })}
                         className={`proj-close${armedId === c.id ? " is-confirm" : ""}`}
-                        title={armedId === c.id ? "Kliknij ponownie, aby usunąć" : "Usuń rozmowę"}
+                        title={armedId === c.id ? t("chat.delete.confirm") : t("chat.delete")}
                         onClick={(e) => {
                           e.stopPropagation();
                           remove(c.id);
                         }}
                         onDoubleClick={(e) => e.stopPropagation()}
                       >
-                        {armedId === c.id ? "Na pewno?" : undefined}
+                        {armedId === c.id ? t("chat.delete.sure") : undefined}
                       </IconButton>
                     </>
                   )}
@@ -380,18 +382,18 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
               ))}
             </div>
           ))}
-          {list.length === 0 && <p className="chat-list-empty">Tu pojawią się Twoje rozmowy.</p>}
+          {list.length === 0 && <p className="chat-list-empty">{t("chat.list.empty")}</p>}
         </nav>
         <footer className="rail-foot">
-          <IconButton icon={Plug} label="Dostawcy modeli" onClick={() => setProvidersOpen(true)} />
-          <IconButton icon={SlidersHorizontal} label="Wygląd" onClick={onOpenAppearance} />
+          <IconButton icon={Plug} label={t("chat.providers")} onClick={() => setProvidersOpen(true)} />
+          <IconButton icon={SlidersHorizontal} label={t("chat.appearance")} onClick={onOpenAppearance} />
         </footer>
       </aside>
       <main className="chat-main">
         {errors.length > 0 && (
           <div className="config-errors">
             <span>{errors.join(" · ")}</span>
-            <IconButton icon={X} label="Zamknij błędy" onClick={() => setErrors([])} />
+            <IconButton icon={X} label={t("chat.errors.close")} onClick={() => setErrors([])} />
           </div>
         )}
         {empty ? (
@@ -412,7 +414,7 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
             </div>
             <div className="chat-dock">
               {composer}
-              <p className="chat-hint">Modele się mylą. Sprawdzaj ważne informacje.</p>
+              <p className="chat-hint">{t("chat.hint")}</p>
             </div>
           </>
         )}

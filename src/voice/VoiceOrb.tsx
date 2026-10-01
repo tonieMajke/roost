@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { MessageSquareText, Mic, MicOff, PhoneOff, Settings } from "lucide-react";
 import { IconButton } from "../IconButton";
+import { useT } from "../i18n";
 import type { VoiceTab } from "./TalkSettings";
 import type { CardDecision, DeployCard, PaneHost } from "./tools";
 import { useVoiceSession } from "./useVoiceSession";
-import { exchangeTimes, fmtMs, INTERRUPTED, type VoiceExchange, type VoiceState } from "./voice";
+import { exchangeTimes, fmtMs, type VoiceExchange, type VoiceState } from "./voice";
 import "./voice.css";
 
 type Props = {
@@ -17,18 +18,18 @@ type Props = {
   noteRef?: MutableRefObject<((text: string) => void) | null>;
 };
 
-function statusText(s: VoiceState, muted: boolean): string {
-  if (muted) return "Wyciszony";
-  if (s.hearing) return "Słucham…";
+function statusText(t: ReturnType<typeof useT>["t"], s: VoiceState, muted: boolean): string {
+  if (muted) return t("voice.orb.muted");
+  if (s.hearing) return t("voice.orb.hearing");
   switch (s.phase) {
     case "transcribing":
-      return "Rozpoznaję…";
+      return t("voice.orb.transcribing");
     case "thinking":
-      return "Myślę…";
+      return t("voice.orb.thinking");
     case "speaking":
-      return "Mówię — wejdź mi w słowo";
+      return t("voice.orb.speaking");
     case "listening":
-      return "Mów";
+      return t("voice.orb.listening");
     default:
       return "";
   }
@@ -39,6 +40,7 @@ const norm = (rms: number) => Math.min(1, Math.sqrt(rms * 8));
 
 /** Kuleczka rozmowy na żywo w prawym dolnym rogu; transkrypt z czasami kroków po rozwinięciu. */
 export function VoiceOrb({ onClose, onOpenSettings, host, noteRef }: Props) {
+  const { t } = useT();
   const { setup, state, muted, setMuted, interrupt, decide, levels } = useVoiceSession(host, noteRef);
   const [showLog, setShowLog] = useState(false);
   const orb = useRef<HTMLButtonElement>(null);
@@ -67,6 +69,7 @@ export function VoiceOrb({ onClose, onOpenSettings, host, noteRef }: Props) {
   }, [onClose]);
 
   const busy = state.phase === "thinking" || state.phase === "speaking";
+  const orbLabel = busy ? t("voice.orb.interrupt") : muted ? t("voice.orb.unmute") : t("voice.orb.mute");
   const cls = [
     "vorb",
     `is-${setup.status === "ready" ? state.phase : setup.status}`,
@@ -77,18 +80,18 @@ export function VoiceOrb({ onClose, onOpenSettings, host, noteRef }: Props) {
     .join(" ");
 
   return (
-    <div className="vorb-wrap" role="region" aria-label="Rozmowa głosowa">
+    <div className="vorb-wrap" role="region" aria-label={t("voice.orb.region")}>
       {showLog && setup.status === "ready" && <Transcript state={state} />}
       {state.card && <Card card={state.card} onDecide={decide} />}
       <div className="vorb-bar">
         <div className="vorb-info">
-          {setup.status === "loading" && <span className="vorb-status">Uruchamiam…</span>}
+          {setup.status === "loading" && <span className="vorb-status">{t("voice.orb.starting")}</span>}
           {setup.status === "error" && (
             <>
               <span className="vorb-status is-error">{setup.message}</span>
               {setup.settings && (
                 <button type="button" className="vorb-link" onClick={() => onOpenSettings(setup.settings!)}>
-                  Ustawienia głosu
+                  {t("voice.orb.settingsLink")}
                 </button>
               )}
             </>
@@ -96,11 +99,11 @@ export function VoiceOrb({ onClose, onOpenSettings, host, noteRef }: Props) {
           {setup.status === "ready" && (
             <>
               <span className="vorb-status" aria-live="polite">
-                {statusText(state, muted)}
+                {statusText(t, state, muted)}
               </span>
-              <span className="vorb-meta" title="Mózg · głos">
-                {setup.brain} · {setup.tts ?? "bez głosu"}
-                {!setup.tools && host && " · bez paneli"}
+              <span className="vorb-meta" title={t("voice.orb.brainVoice")}>
+                {setup.brain} · {setup.tts ?? t("voice.orb.noVoice")}
+                {!setup.tools && host && t("voice.orb.noPanes")}
               </span>
               {state.error && <span className="vorb-status is-error">{state.error}</span>}
             </>
@@ -109,27 +112,27 @@ export function VoiceOrb({ onClose, onOpenSettings, host, noteRef }: Props) {
         <div className="vorb-tools">
           <IconButton
             icon={muted ? MicOff : Mic}
-            label={muted ? "Włącz mikrofon" : "Wycisz mikrofon"}
+            label={muted ? t("voice.orb.unmute") : t("voice.orb.mute")}
             className={muted ? "is-on" : undefined}
             disabled={setup.status !== "ready"}
             onClick={() => setMuted(!muted)}
           />
           <IconButton
             icon={MessageSquareText}
-            label={showLog ? "Schowaj zapis rozmowy" : "Pokaż zapis rozmowy"}
+            label={showLog ? t("voice.orb.hideLog") : t("voice.orb.showLog")}
             className={showLog ? "is-on" : undefined}
             disabled={setup.status !== "ready"}
             onClick={() => setShowLog(!showLog)}
           />
-          <IconButton icon={Settings} label="Ustawienia rozmowy" onClick={() => onOpenSettings("talk")} />
-          <IconButton icon={PhoneOff} label="Zakończ rozmowę" shortcut="Esc" onClick={onClose} />
+          <IconButton icon={Settings} label={t("voice.orb.talkSettings")} onClick={() => onOpenSettings("talk")} />
+          <IconButton icon={PhoneOff} label={t("voice.orb.end")} shortcut="Esc" onClick={onClose} />
         </div>
         <button
           ref={orb}
           type="button"
           className={cls}
-          aria-label={busy ? "Przerwij odpowiedź" : muted ? "Włącz mikrofon" : "Wycisz mikrofon"}
-          title={busy ? "Przerwij odpowiedź" : muted ? "Włącz mikrofon" : "Wycisz mikrofon"}
+          aria-label={orbLabel}
+          title={orbLabel}
           disabled={setup.status !== "ready"}
           onClick={() => (busy ? interrupt() : setMuted(!muted))}
         >
@@ -141,6 +144,7 @@ export function VoiceOrb({ onClose, onOpenSettings, host, noteRef }: Props) {
 }
 
 function Transcript({ state }: { state: VoiceState }) {
+  const { t } = useT();
   const end = useRef<HTMLDivElement>(null);
   const last = state.history[state.history.length - 1];
   useEffect(() => {
@@ -148,7 +152,7 @@ function Transcript({ state }: { state: VoiceState }) {
   }, [state.history.length, last?.reply, last?.spoken.length]);
   return (
     <div className="vorb-log">
-      {state.history.length === 0 && <p className="vorb-empty">Zapis pojawi się po pierwszej wypowiedzi.</p>}
+      {state.history.length === 0 && <p className="vorb-empty">{t("voice.orb.logEmpty")}</p>}
       {state.history.map((e, i) => (
         <Fragment key={i}>
           {notes(state, i)}
@@ -173,14 +177,15 @@ const notes = (s: VoiceState, i: number) =>
     ));
 
 function Exchange({ e }: { e: VoiceExchange }) {
+  const { t: tr } = useT();
   const t = exchangeTimes(e);
   const said = e.interrupted ? e.spoken.join(" ") : e.reply;
   const unsaid = e.interrupted ? e.reply.slice(said.length) : "";
   const parts = [
-    t.stt !== undefined && `mowa→tekst ${fmtMs(t.stt)}`,
-    t.model !== undefined && `model ${fmtMs(t.model)}`,
-    t.voice !== undefined && `głos ${fmtMs(t.voice)}`,
-    t.total !== undefined && `razem ${fmtMs(t.total)}`,
+    t.stt !== undefined && tr("voice.orb.tStt", { t: fmtMs(t.stt) }),
+    t.model !== undefined && tr("voice.orb.tModel", { t: fmtMs(t.model) }),
+    t.voice !== undefined && tr("voice.orb.tVoice", { t: fmtMs(t.voice) }),
+    t.total !== undefined && tr("voice.orb.tTotal", { t: fmtMs(t.total) }),
   ].filter(Boolean);
   return (
     <div className="vorb-ex">
@@ -188,14 +193,14 @@ function Exchange({ e }: { e: VoiceExchange }) {
       {(said || e.interrupted) && (
         <p className="vorb-reply">
           {said}
-          {e.interrupted && <span className="vorb-cut"> {INTERRUPTED}</span>}
+          {e.interrupted && <span className="vorb-cut"> {tr("voice.interrupted")}</span>}
           {unsaid && <span className="vorb-unsaid">{unsaid}</span>}
         </p>
       )}
       {e.tools?.map((t, i) => (
         <p key={i} className={`vorb-tool${t.ok ? "" : " is-fail"}`}>
           {t.label}
-          {t.ok ? "" : " – nie wyszło"}
+          {t.ok ? "" : tr("voice.orb.tFail")}
         </p>
       ))}
       {e.error && <p className="vorb-status is-error">{e.error}</p>}
@@ -213,6 +218,7 @@ const preview = (text: string) => {
 
 /** Karta deploy: zadania czekają na klik albo „tak” / „nie” / „popraw…” głosem. */
 function Card({ card, onDecide }: { card: DeployCard; onDecide(d: CardDecision): void }) {
+  const { t: tr } = useT();
   const run = useRef<HTMLButtonElement>(null);
   useEffect(() => run.current?.focus(), [card]);
   const head = card.head;
@@ -233,12 +239,12 @@ function Card({ card, onDecide }: { card: DeployCard; onDecide(d: CardDecision):
         ))}
       </ol>
       <div className="vorb-card-actions">
-        <span className="vorb-hint">albo powiedz „tak”, „nie” lub co zmienić</span>
+        <span className="vorb-hint">{tr("voice.orb.cardHint")}</span>
         <button type="button" className="btn" onClick={() => onDecide({ kind: "cancel" })}>
-          Anuluj
+          {tr("voice.orb.cancel")}
         </button>
         <button type="button" className="btn" onClick={() => onDecide({ kind: "fix" })}>
-          Popraw
+          {tr("voice.orb.fix")}
         </button>
         <button ref={run} type="button" className="btn primary" onClick={() => onDecide({ kind: "run" })}>
           {card.action}

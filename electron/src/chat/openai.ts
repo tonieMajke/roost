@@ -1,6 +1,7 @@
 //! Dostawca zgodny z OpenAI (`/chat/completions` ze strumieniem): llama-server, FreeToken,
 //! OpenRouter, OpenAI. Sam `fetch`, bez SDK. Z `req.tools` także function calling (pętla bota).
 
+import { t } from "../i18n";
 import type { ChatEvent, ChatRequest, ToolCall, Turn } from "../../../src/chat";
 import { CallParts, httpError, networkError } from "./http";
 import { sseEvents } from "./sse";
@@ -45,7 +46,7 @@ export function openaiEvents(data: string, calls?: CallParts): ChatEvent[] {
   if (data === "[DONE]") return [];
   const chunk = JSON.parse(data) as Chunk;
   if (chunk.error) {
-    const message = typeof chunk.error === "string" ? chunk.error : (chunk.error.message ?? "błąd modelu");
+    const message = typeof chunk.error === "string" ? chunk.error : (chunk.error.message ?? t("chat.modelError"));
     return [{ type: "error", message }];
   }
   const d = chunk.choices?.[0]?.delta;

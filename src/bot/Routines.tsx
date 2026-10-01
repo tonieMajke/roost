@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Clock, LoaderCircle, Pencil, Play, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { backend } from "../backend";
+import { t, useT } from "../i18n";
 import {
+  dayName,
   freeRoutineId,
   newRoutine,
   parseRoutines,
@@ -20,7 +22,7 @@ import { CONFIRM_MS } from "../confirm";
 
 /** Ile ostatnich przebiegów czytać, żeby pokazać ostatni wynik każdego zadania. */
 const RECENT_RUNS = 30;
-const DAYS: { d: number; label: string }[] = [1, 2, 3, 4, 5, 6, 0].map((d) => ({ d, label: ["nd", "pn", "wt", "śr", "cz", "pt", "sb"][d] }));
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 type Last = { chat: string; at: number; state: BotChat["state"]; text: string };
@@ -33,12 +35,13 @@ async function lastRuns(bot: string): Promise<Record<string, Last>> {
   for (const c of chats) {
     if (!c?.routine || out[c.routine]) continue;
     const reply = [...c.messages].reverse().find((m) => m.role === "assistant");
-    out[c.routine] = { chat: c.id, at: c.updated, state: c.state, text: reply?.error ? `błąd: ${reply.error}` : firstSentence(reply?.text ?? "") };
+    out[c.routine] = { chat: c.id, at: c.updated, state: c.state, text: reply?.error ? t("bot.rt.lastError", { error: reply.error }) : firstSentence(reply?.text ?? "") };
   }
   return out;
 }
 
 function Editor({ value, onSave, onCancel }: { value: Routine; onSave(r: Routine): Promise<void>; onCancel(): void }) {
+  const { t } = useT();
   const [r, setR] = useState(value);
   const [bash, setBash] = useState(value.allow.bash.join(", "));
   const [error, setError] = useState<string | null>(null);
@@ -58,37 +61,37 @@ function Editor({ value, onSave, onCancel }: { value: Routine; onSave(r: Routine
       allow: { ...r.allow, bash: bash.split(/[,\n]/).map((x) => x.trim()).filter(Boolean) },
     };
     const check = parseRoutines({ routines: [next] });
-    if (check.errors.length) return setError(check.errors.join("; ").replace(/^routines\.json: zadanie 1: /, ""));
+    if (check.errors.length) return setError(check.errors.join("; ").replace(`${t("bot.err.routineWhere", { n: 1 })}: `, ""));
     setError(null);
     void onSave(check.routines[0]).catch((e: unknown) => setError(errText(e)));
   };
   return (
     <div className="routine-edit">
       <label className="card-field">
-        <span>Nazwa</span>
-        <input value={r.name} placeholder="np. Poranne newsy" onChange={(e) => set({ name: e.target.value })} />
+        <span>{t("bot.rt.name")}</span>
+        <input value={r.name} placeholder={t("bot.rt.namePh")} onChange={(e) => set({ name: e.target.value })} />
       </label>
       <label className="card-field">
-        <span>Polecenie dla bota</span>
-        <textarea rows={3} value={r.prompt} placeholder="Co ma zrobić przy każdym przebiegu" onChange={(e) => set({ prompt: e.target.value })} />
+        <span>{t("bot.rt.prompt")}</span>
+        <textarea rows={3} value={r.prompt} placeholder={t("bot.rt.promptPh")} onChange={(e) => set({ prompt: e.target.value })} />
       </label>
       <div className="card-field">
-        <span>Kiedy</span>
+        <span>{t("bot.rt.when")}</span>
         <div className="seg routine-kind" role="radiogroup">
           <button type="button" role="radio" aria-checked={s.kind === "daily"} className={s.kind === "daily" ? "is-on" : ""} onClick={() => s.kind !== "daily" && setSchedule({ kind: "daily", at: "08:00" })}>
-            Codziennie o…
+            {t("bot.rt.daily")}
           </button>
           <button type="button" role="radio" aria-checked={s.kind === "every"} className={s.kind === "every" ? "is-on" : ""} onClick={() => s.kind !== "every" && setSchedule({ kind: "every", minutes: 60 })}>
-            Co N minut
+            {t("bot.rt.every")}
           </button>
         </div>
         {s.kind === "daily" ? (
           <div className="card-row">
             <input type="time" className="routine-time" value={s.at} onChange={(e) => e.target.value && setSchedule({ ...s, at: e.target.value })} />
-            <div className="routine-days" role="group" aria-label="Dni tygodnia">
-              {DAYS.map(({ d, label }) => (
+            <div className="routine-days" role="group" aria-label={t("bot.rt.daysAria")}>
+              {DAY_ORDER.map((d) => (
                 <button key={d} type="button" aria-pressed={days.includes(d)} className={`routine-day${days.includes(d) ? " is-on" : ""}`} onClick={() => toggleDay(d)}>
-                  {label}
+                  {dayName(d)}
                 </button>
               ))}
             </div>
@@ -96,32 +99,32 @@ function Editor({ value, onSave, onCancel }: { value: Routine; onSave(r: Routine
           </div>
         ) : (
           <div className="card-row">
-            <span className="card-hint">co</span>
+            <span className="card-hint">{t("bot.rt.everyPre")}</span>
             <input type="number" className="routine-minutes" min={5} step={5} value={s.minutes} onChange={(e) => setSchedule({ kind: "every", minutes: Number(e.target.value) })} />
-            <span className="card-hint">minut (najmniej 5)</span>
+            <span className="card-hint">{t("bot.rt.everyPost")}</span>
           </div>
         )}
       </div>
       <div className="card-field">
-        <span>Bez pytania o zgodę</span>
+        <span>{t("bot.rt.noAsk")}</span>
         <label className="card-tool">
           <input type="checkbox" checked={r.allow.writeWork} onChange={(e) => set({ allow: { ...r.allow, writeWork: e.target.checked } })} />
           <span className="card-tool-text">
-            <b>Może pisać w katalogu roboczym</b>
-            <small>poza nim zapis i tak czeka na twoją zgodę</small>
+            <b>{t("bot.rt.writeWork")}</b>
+            <small>{t("bot.rt.writeWorkHint")}</small>
           </span>
         </label>
-        <input value={bash} placeholder="polecenia, np. git pull, cargo test" onChange={(e) => setBash(e.target.value)} />
-        <small className="card-hint">Polecenia powłoki, które przebieg uruchamia sam (po przecinku; liczy się początek polecenia). Każde inne czeka na zgodę.</small>
+        <input value={bash} placeholder={t("bot.rt.bashPh")} onChange={(e) => setBash(e.target.value)} />
+        <small className="card-hint">{t("bot.rt.bashHint")}</small>
       </div>
       {error && <div className="prov-error">{error}</div>}
       <div className="card-row">
         <span className="chat-composer-gap" />
         <button type="button" className="btn" onClick={onCancel}>
-          Anuluj
+          {t("bot.cancel")}
         </button>
         <button type="button" className="btn primary" onClick={save}>
-          Zapisz zadanie
+          {t("bot.rt.saveTask")}
         </button>
       </div>
     </div>
@@ -130,6 +133,7 @@ function Editor({ value, onSave, onCancel }: { value: Routine; onSave(r: Routine
 
 /** Zakładka „Harmonogram” karty bota: zadania cykliczne. Zapis od razu (osobny plik `routines.json`). */
 export function Routines({ bot, onError, onOpenRun }: { bot: BotDef; onError(e: string): void; onOpenRun(chat: string): void }) {
+  const { t } = useT();
   const [list, setList] = useState<Routine[] | null>(null);
   const [last, setLast] = useState<Record<string, Last>>({});
   const [active, setActive] = useState<RunInfo[]>([]);
@@ -182,24 +186,23 @@ export function Routines({ bot, onError, onOpenRun }: { bot: BotDef; onError(e: 
   const runNow = (r: Routine) =>
     void backend.botRunNow(bot.id, r.id).catch((e: unknown) => onError(errText(e)));
 
-  if (list === null) return <p className="card-hint">Wczytuję…</p>;
+  if (list === null) return <p className="card-hint">{t("bot.loading")}</p>;
   if (editing) return <Editor key={editing.id} value={editing} onSave={saveOne} onCancel={() => setEditing(null)} />;
 
   return (
     <div className="card-fields">
       <p className="card-hint">
-        Zadania działają, gdy aplikacja jest otwarta. Zaległe (komputer wyłączony) wykonują się raz po uruchomieniu. Wynik trafia na listę
-        rozmów bota i do powiadomienia.
+        {t("bot.rt.intro")}
       </p>
-      {list.length === 0 && <p className="card-hint">Ten bot nie ma jeszcze zadań.</p>}
+      {list.length === 0 && <p className="card-hint">{t("bot.rt.none")}</p>}
       <div className="card-list">
         {list.map((r) => {
           const run = active.find((a) => a.routine === r.id);
           const prev = last[r.id];
           return (
             <div key={r.id} className={`routine${r.enabled ? "" : " is-off"}`}>
-              <label className="routine-switch" title={r.enabled ? "Wyłącz" : "Włącz"}>
-                <input type="checkbox" role="switch" checked={r.enabled} onChange={(e) => toggle(r, e.target.checked)} aria-label={`${r.name}: włączone`} />
+              <label className="routine-switch" title={r.enabled ? t("bot.rt.turnOff") : t("bot.rt.turnOn")}>
+                <input type="checkbox" role="switch" checked={r.enabled} onChange={(e) => toggle(r, e.target.checked)} aria-label={t("bot.rt.enabledAria", { name: r.name })} />
                 <span aria-hidden />
               </label>
               <div className="routine-main">
@@ -213,28 +216,28 @@ export function Routines({ bot, onError, onOpenRun }: { bot: BotDef; onError(e: 
                   {run ? (
                     <button type="button" className={`routine-last is-${run.state}`} onClick={() => onOpenRun(run.chat)}>
                       {run.state === "waiting_approval" ? <ShieldAlert aria-hidden /> : <LoaderCircle className="spin" aria-hidden />}
-                      {run.state === "waiting_approval" ? "czeka na twoją zgodę" : "pracuje…"}
+                      {run.state === "waiting_approval" ? t("bot.rt.waitingApproval") : t("bot.rt.working")}
                     </button>
                   ) : (
-                    <span>{r.enabled ? `następne: ${runWhen(routineNext(r, now), now)}` : "wyłączone"}</span>
+                    <span>{r.enabled ? t("bot.rt.next", { when: runWhen(routineNext(r, now), now) }) : t("bot.rt.disabled")}</span>
                   )}
                   {!run && prev && (
-                    <button type="button" className={`routine-last is-${prev.state ?? "done"}`} onClick={() => onOpenRun(prev.chat)} title="Otwórz przebieg">
-                      ostatnio {runWhen(prev.at, now)}
+                    <button type="button" className={`routine-last is-${prev.state ?? "done"}`} onClick={() => onOpenRun(prev.chat)} title={t("bot.rt.openRun")}>
+                      {t("bot.rt.last", { when: runWhen(prev.at, now) })}
                       {prev.text ? ` · ${prev.text}` : ""}
                     </button>
                   )}
                 </div>
               </div>
               <div className="routine-actions">
-                <button type="button" className="btn" disabled={run !== undefined} onClick={() => runNow(r)} title="Uruchom teraz (także wyłączone)">
-                  <Play aria-hidden /> Uruchom teraz
+                <button type="button" className="btn" disabled={run !== undefined} onClick={() => runNow(r)} title={t("bot.rt.runNowTitle")}>
+                  <Play aria-hidden /> {t("bot.rt.runNow")}
                 </button>
-                <button type="button" className="btn card-del" onClick={() => setEditing(r)} title="Edytuj">
+                <button type="button" className="btn card-del" onClick={() => setEditing(r)} title={t("bot.rt.edit")}>
                   <Pencil aria-hidden />
                 </button>
-                <button type="button" className={`btn card-del${armed === r.id ? " is-confirm" : ""}`} onClick={() => remove(r.id)} title="Usuń zadanie">
-                  {armed === r.id ? "Na pewno?" : <Trash2 aria-hidden />}
+                <button type="button" className={`btn card-del${armed === r.id ? " is-confirm" : ""}`} onClick={() => remove(r.id)} title={t("bot.rt.delete")}>
+                  {armed === r.id ? t("bot.sure") : <Trash2 aria-hidden />}
                 </button>
               </div>
             </div>
@@ -243,7 +246,7 @@ export function Routines({ bot, onError, onOpenRun }: { bot: BotDef; onError(e: 
       </div>
       <div className="card-row">
         <button type="button" className="btn" onClick={() => setEditing(newRoutine(freeRoutineId(list), Date.now()))}>
-          <Plus aria-hidden /> Nowe zadanie
+          <Plus aria-hidden /> {t("bot.rt.new")}
         </button>
       </div>
     </div>

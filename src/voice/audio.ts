@@ -3,6 +3,7 @@
 
 import { micConstraints } from "../stt";
 import { FRAME, SAMPLE_RATE } from "./vad";
+import { t } from "../i18n";
 
 /** Ramki po FRAME próbek z wątku audio. Moduł z adresu blob: strona Electrona stoi na `file://`. */
 const TAP = `
@@ -23,10 +24,10 @@ registerProcessor("aw-tap", Tap);
 /** Powód, dla którego `getUserMedia` odmówiło, po ludzku (jak w dyktowaniu). */
 export function micError(e: unknown): string {
   const name = (e as { name?: string })?.name;
-  if (name === "NotAllowedError" || name === "SecurityError") return "brak zgody na mikrofon";
-  if (name === "NotFoundError" || name === "OverconstrainedError") return "nie znaleziono mikrofonu";
-  if (name === "NotReadableError") return "mikrofon zajęty przez inny program";
-  return `mikrofon: ${e instanceof Error ? e.message : String(e)}`;
+  if (name === "NotAllowedError" || name === "SecurityError") return t("voice.mic.denied");
+  if (name === "NotFoundError" || name === "OverconstrainedError") return t("voice.mic.notFound");
+  if (name === "NotReadableError") return t("voice.mic.busy");
+  return t("voice.mic.other", { msg: e instanceof Error ? e.message : String(e) });
 }
 
 /** Otwarty mikrofon: 16 kHz mono (Chromium sam przelicza), z tłumieniem echa i szumu. */

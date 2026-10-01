@@ -1,6 +1,7 @@
 //! Panel plików z gitem: uruchamianie gita (spawn z tablicą argumentów, bez powłoki).
 //! Parsowanie i reguły są w `src/git.ts`; tu tylko wejście/wyjście.
 
+import { t } from "./i18n";
 import fs from "node:fs";
 import { spawn } from "node:child_process";
 import { childEnv, expand } from "./env";
@@ -45,7 +46,7 @@ export function runGit(cwd: string, args: string[], opts: RunOpts = {}): Promise
     child.stderr.on("data", (b: Buffer) => err.length < 256 && err.push(b));
     child.on("error", (e) => {
       clearTimeout(timer);
-      reject(new Error((e as NodeJS.ErrnoException).code === "ENOENT" ? "Nie znaleziono programu git" : String(e)));
+      reject(new Error((e as NodeJS.ErrnoException).code === "ENOENT" ? t("git.notFound") : String(e)));
     });
     child.stdin.on("error", () => {}); // git mógł zakończyć się, zanim przeczytał wejście
     child.stdin.end(input ?? "");
@@ -53,9 +54,9 @@ export function runGit(cwd: string, args: string[], opts: RunOpts = {}): Promise
       clearTimeout(timer);
       const stdout = Buffer.concat(out).toString("utf8");
       const stderr = Buffer.concat(err).toString("utf8").trim();
-      if (timedOut) return reject(new Error(`git ${args[0]}: przekroczono limit czasu`));
+      if (timedOut) return reject(new Error(t("git.timeout", { cmd: args[0] })));
       const c = code ?? -1;
-      if (!okCodes.includes(c)) return reject(new Error(stderr || stdout.trim() || `git ${args[0]}: kod ${c}`));
+      if (!okCodes.includes(c)) return reject(new Error(stderr || stdout.trim() || t("git.code", { cmd: args[0], code: c })));
       resolve({ code: c, stdout: truncated ? stdout.slice(0, maxBytes) : stdout, stderr, truncated });
     });
   });
@@ -63,7 +64,7 @@ export function runGit(cwd: string, args: string[], opts: RunOpts = {}): Promise
 
 function checkPaths(paths: string[]): string[] {
   const bad = paths.find((p) => !validRelPath(p));
-  if (bad !== undefined) throw new Error(`Niedozwolona ścieżka: ${bad}`);
+  if (bad !== undefined) throw new Error(t("git.badPath", { path: bad }));
   return paths;
 }
 
@@ -102,7 +103,7 @@ export async function gitDiff(cwd: string, path: string, mode: DiffMode): Promis
         ? [...base, "--", path]
         : [...base, "--no-index", "--", "/dev/null", path]; // kod 1 = są różnice
   const r = await runGit(cwd, args, { okCodes: [0, 1], maxBytes: MAX_DIFF_BYTES });
-  return r.truncated ? `${r.stdout}\n\\ Diff ucięty (powyżej ${MAX_DIFF_BYTES / 1024} KB)\n` : r.stdout;
+  return r.truncated ? `${r.stdout}\n\\ ${t("git.diffCut", { kb: MAX_DIFF_BYTES / 1024 })}\n` : r.stdout;
 }
 
 export async function gitStage(cwd: string, paths: string[]): Promise<void> {
@@ -126,7 +127,7 @@ export async function gitDiscard(cwd: string, tracked: string[], untracked: stri
 
 /** Zwraca pierwszą linię wyniku (np. „[main 3f2a9c1] komunikat”). */
 export async function gitCommit(cwd: string, message: string): Promise<string> {
-  if (message.trim() === "") throw new Error("Pusty komunikat");
+  if (message.trim() === "") throw new Error(t("git.emptyMsg"));
   const r = await runGit(cwd, ["commit", "-F", "-"], { input: message });
   return r.stdout.split("\n")[0] ?? "";
 }

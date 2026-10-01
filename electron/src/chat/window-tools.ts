@@ -2,6 +2,7 @@
 //! (`bridge.ts`), proces główny wysyła prośbę zdarzeniem `tool_request` w strumieniu `chat_event`,
 //! okno wykonuje narzędzie i odpowiada przez `chat_tool_result`.
 
+import { t } from "../i18n";
 import { randomUUID } from "node:crypto";
 import type { ChatEvent } from "../../../src/chat";
 
@@ -33,7 +34,7 @@ export class WindowTools {
     for (const [id, p] of [...this.pending]) {
       if (p.owner !== owner) continue;
       this.pending.delete(id);
-      p.resolve({ ok: false, text: "rozmowa się skończyła" });
+      p.resolve({ ok: false, text: t("chat.ended") });
     }
   }
 }

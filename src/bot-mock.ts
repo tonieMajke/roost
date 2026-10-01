@@ -23,6 +23,7 @@ import {
   type RunInfo,
 } from "./bot";
 import { chatMeta, sortChats, type ChatEvent } from "./chat";
+import { t } from "./i18n";
 
 const KEY = "aw-bots";
 
@@ -37,25 +38,22 @@ type MockBot = {
 };
 
 /** Udawane `~/.claude/skills` w podglądzie. */
-const MOCK_SOURCES = [
-  { name: "pdf", description: "Czytanie, łączenie i wypełnianie plików PDF.", body: "# PDF\n\nUżyj `pdftotext`, a do łączenia `qpdf`.\n" },
-  { name: "commit-message", description: "Komunikat commita w stylu repozytorium: krótko, po polsku.", body: "# Commit\n\n1. `git diff --cached`\n2. Jedno zdanie, czas przeszły.\n" },
+const mockSources = () => [
+  { name: "pdf", description: t("bot.mock.pdfDesc"), body: t("bot.mock.pdfBody") },
+  { name: "commit-message", description: t("bot.mock.commitDesc"), body: t("bot.mock.commitBody") },
 ];
-
-const RUSTY_TEXT =
-  "Arr! Przejrzałem notatki wydania. Najważniejsze:\n\n- **async closures** stabilne,\n- szybszy `cargo check` przy dużych workspace'ach." +
-  "\n\nZapisałem też przepis na takie przeglądy jako skill `rust-news`.";
 
 function seed(now: number): Record<string, MockBot> {
   const day = 86_400_000;
   const model = { provider: "claude", model: "haiku" };
+  const rustyText = t("bot.mock.rustyText");
   const rusty = newBot("rusty", now - 3 * day, {
     name: "Rusty",
     avatar: { emoji: "🦀" },
     color: "#e2704a",
-    persona: "Ahoj! Jestem Rusty, twój pirat od Rusta. Co rano przeczesuję sieć w poszukiwaniu nowości o Ruście i pomagam przy kodzie.",
-    style: "Mówi jak pirat, ale konkretnie. Kod zawsze w blokach.",
-    avoid: "Plotek bez źródła.",
+    persona: t("bot.mock.rustyPersona"),
+    style: t("bot.mock.rustyStyle"),
+    avoid: t("bot.mock.rustyAvoid"),
     tone: "playful",
     model,
     folders: ["/home/majke/Projekty/kod"],
@@ -64,22 +62,22 @@ function seed(now: number): Record<string, MockBot> {
     name: "Ola",
     avatar: { emoji: "🌙" },
     color: "#9b7cf0",
-    persona: "Hej, tu Ola. Jestem od rozmów późną nocą: słucham, dopytuję i czasem żartuję.",
-    style: "Ciepło, krótkimi zdaniami.",
+    persona: t("bot.mock.olaPersona"),
+    style: t("bot.mock.olaStyle"),
     tone: "balanced",
     model,
     tools: { web: false, read: false, write: false, bash: false, memory: true, skills: false },
   });
   const chat: BotChat = {
     ...newBotChat("aaaaaaaa-0001", "rusty", now - 2 * 3_600_000, model),
-    title: "Co nowego w Ruście 1.92?",
+    title: t("bot.mock.chatTitle"),
     updated: now - 2 * 3_600_000,
     messages: [
-      { id: "m1", role: "user", text: "Co nowego w Ruście 1.92?", at: now - 2 * 3_600_000 },
+      { id: "m1", role: "user", text: t("bot.mock.chatQ"), at: now - 2 * 3_600_000 },
       {
         id: "m2",
         role: "assistant",
-        text: RUSTY_TEXT,
+        text: rustyText,
         at: now - 2 * 3_600_000 + 9000,
         model,
       },
@@ -87,30 +85,30 @@ function seed(now: number): Record<string, MockBot> {
     calls: [
       { id: "c1", message: "m2", name: "web_search", args: { query: "Rust 1.92 release notes" }, result: "1. Announcing Rust 1.92.0 — blog.rust-lang.org\n2. Rust 1.92 changelog — github.com", approval: "auto", at: 0 },
       { id: "c2", message: "m2", name: "web_fetch", args: { url: "https://blog.rust-lang.org/2026/09/18/Rust-1.92.0/" }, result: "Announcing Rust 1.92.0\n\nThe Rust team is happy to announce…", approval: "auto", at: 0 },
-      { id: "c3", message: "m2", name: "skill_create", args: { name: "rust-news", description: "Przegląd nowości o Ruście" }, result: "zapisano skill rust-news", approval: "auto", at: RUSTY_TEXT.indexOf("\n\nZapisałem") },
+      { id: "c3", message: "m2", name: "skill_create", args: { name: "rust-news", description: t("bot.mock.skillCreateDesc") }, result: t("bot.mock.skillCreateResult"), approval: "auto", at: rustyText.lastIndexOf("\n\n") },
     ],
   };
   const run: BotChat = {
     ...newBotChat("bbbbbbbb-0001", "rusty", now - 5 * 3_600_000, model, "rano"),
-    title: "Poranne newsy o Ruście",
+    title: t("bot.mock.runTitle"),
     state: "done",
     updated: now - 5 * 3_600_000,
     messages: [
-      { id: "r1", role: "user", text: "Przejrzyj newsy o Ruście z ostatniej doby.", at: now - 5 * 3_600_000 },
-      { id: "r2", role: "assistant", text: "Spokojna doba: dwa nowe wydania tokio i jeden RFC o `gen` blokach.", at: now - 5 * 3_600_000 + 20_000, model },
+      { id: "r1", role: "user", text: t("bot.mock.runPrompt"), at: now - 5 * 3_600_000 },
+      { id: "r2", role: "assistant", text: t("bot.mock.runReply"), at: now - 5 * 3_600_000 + 20_000, model },
     ],
   };
   return {
     rusty: {
       def: rusty,
-      memory: ["Użytkownik pisze aplikację w Electronie i Ruście (Agents workspace).", "Woli krótkie podsumowania z linkami."].join(MEMORY_SEP),
-      user: "Majke, programista na CachyOS (KDE, Wayland). Pisze po polsku.",
+      memory: [t("bot.mock.memNote1"), t("bot.mock.memNote2")].join(MEMORY_SEP),
+      user: t("bot.mock.memUser"),
       skills: {
         "rust-news": {
           md: skillMarkdown({
             name: "rust-news",
-            description: "Przegląd nowości o Ruście z ostatniej doby: blog, This Week in Rust, wydania crate'ów.",
-            body: "# Kroki\n\n1. `web_search`: „Rust release”, „This Week in Rust”.\n2. Przeczytaj 2–3 źródła.\n3. Podsumuj w ≤ 5 punktach z linkami.\n",
+            description: t("bot.mock.rustNewsDesc"),
+            body: t("bot.mock.rustNewsBody"),
           }),
           updated: now - 2 * 3_600_000,
           by: "bot",
@@ -119,8 +117,8 @@ function seed(now: number): Record<string, MockBot> {
       routines: [
         {
           id: "rano",
-          name: "Poranne newsy o Ruście",
-          prompt: "Przejrzyj newsy o Ruście z ostatniej doby.",
+          name: t("bot.mock.runTitle"),
+          prompt: t("bot.mock.runPrompt"),
           schedule: { kind: "daily", at: "08:00", days: [1, 2, 3, 4, 5] },
           allow: { writeWork: true, bash: [] },
           enabled: true,
@@ -158,14 +156,14 @@ function save(all: Record<string, MockBot>) {
 
 function get(all: Record<string, MockBot>, id: string): MockBot {
   const b = all[id];
-  if (!b) throw new Error(`nie ma bota „${id}”`);
+  if (!b) throw new Error(t("bot.mock.errNoBot", { id }));
   return b;
 }
 
 /** Ta sama walidacja co w `electron/src/bot/store.ts`, żeby podgląd odrzucał to samo. */
 function checked(bot: BotDef): BotDef {
   const r = parseBot(JSON.parse(JSON.stringify(bot)));
-  if (!r.bot) throw new Error("zły format bota");
+  if (!r.bot) throw new Error(t("bot.mock.errBadFormat"));
   return r.bot;
 }
 
@@ -234,7 +232,7 @@ async function mockRun(botId: string, routine: Routine) {
   put(chat);
   runChanged(info);
   await new Promise((r) => setTimeout(r, 2500));
-  const text = "(podgląd) Przebieg zakończony: spokojna doba, dwa nowe wydania tokio. Prawdziwy wynik da model w oknie aplikacji.";
+  const text = t("bot.mock.runDone");
   const done: BotChat = { ...chat, state: "done", updated: Date.now(), messages: [chat.messages[0], { ...chat.messages[1], text, ms: 2500 }] };
   put(done);
   runChanged({ ...info, state: "done" });
@@ -275,10 +273,10 @@ async function mockTurn(bot: BotDef, chat: BotChat, signal: AbortSignal, emit: (
   if (bot.builtin === "creator") return creatorTurn(bot, chat, signal, emit, wait, words);
   if (!bot.tools.read && !bot.tools.bash) {
     await wait(400);
-    return words(`(podgląd) ${bot.name} odpowiada bez narzędzi. Prawdziwą odpowiedź da model w oknie aplikacji.`);
+    return words(t("bot.mock.noToolsReply", { name: bot.name }));
   }
   await wait(300);
-  await words("Już sprawdzam, co jest w projekcie.");
+  await words(t("bot.mock.checking"));
   const read = crypto.randomUUID();
   emit({ type: "tool_call", id: read, name: "read_file", args: { path: "/home/majke/Projekty/kod/src/main.rs" } });
   await wait(500);
@@ -287,18 +285,18 @@ async function mockTurn(bot: BotDef, chat: BotChat, signal: AbortSignal, emit: (
   const command = "cargo test";
   emit({ type: "tool_call", id: run, name: "bash", args: { command, cwd: "/home/majke/Projekty/kod" } });
   const d = await ask(
-    { bot: bot.id, chat: chat.id, tool: "bash", title: "Uruchomić polecenie?", detail: `${command}\n\nw: /home/majke/Projekty/kod`, canGrant: true },
+    { bot: bot.id, chat: chat.id, tool: "bash", title: t("bot.mock.askRun"), detail: `${command}\n\nw: /home/majke/Projekty/kod`, canGrant: true },
     signal,
   );
   if (d === "deny") {
-    emit({ type: "tool_result", id: run, text: "Użytkownik odmówił zgody.", error: true, approval: d });
+    emit({ type: "tool_result", id: run, text: t("bot.mock.denied"), error: true, approval: d });
     emit({ type: "text", text: "\n\n" });
-    return words("Dobrze, nie uruchamiam testów. Co mam zrobić zamiast tego?");
+    return words(t("bot.mock.deniedReply"));
   }
   await wait(900);
   emit({ type: "tool_result", id: run, text: "running 12 tests\n............\ntest result: ok. 12 passed; 0 failed", error: false, approval: d });
   emit({ type: "text", text: "\n\n" });
-  await words("Testy przechodzą: **12/12**. `main.rs` wypisuje tylko powitanie, więc jest gdzie rosnąć.");
+  await words(t("bot.mock.testsOk"));
 }
 
 /** Kreator w podglądzie: najpierw dopytuje, w drugiej odpowiedzi proponuje bota z podglądem karty. */
@@ -312,9 +310,7 @@ async function creatorTurn(
 ) {
   await wait(300);
   if (chat.messages.filter((m) => m.role === "user").length < 2)
-    return words(
-      "Dobry pomysł. Dwa pytania, zanim go zbuduję:\n\n1. O jakiej porze i w które dni ma przeglądać newsy?\n2. Pirat na serio czy z przymrużeniem oka?",
-    );
+    return words(t("bot.mock.creatorAsk"));
   const all = load();
   const id = botId("Bosman", Object.keys(all));
   const now = Date.now();
@@ -322,24 +318,24 @@ async function creatorTurn(
     name: "Bosman",
     avatar: { emoji: "🏴‍☠️" },
     color: "#3fb4d0",
-    persona: "Ahoj, tu Bosman! Co rano przeczesuję sieć w poszukiwaniu nowości o Ruście i zdaję ci raport. Pytaj też o crate'y i wydania.",
-    style: "Mówi jak pirat, ale konkretnie; krótkie punkty z linkami.",
-    avoid: "Plotek bez źródła i długich wstępów.",
+    persona: t("bot.mock.bosmanPersona"),
+    style: t("bot.mock.bosmanStyle"),
+    avoid: t("bot.mock.bosmanAvoid"),
     tone: "playful",
     model: chat.model,
     tools: { web: true, read: false, write: false, bash: false, memory: true, skills: true },
   });
-  const skill = { name: "rust-news", description: "Przegląd nowości o Ruście z ostatniej doby.", body: "1. `web_search`: This Week in Rust, blog Rusta.\n2. ≤ 5 punktów z linkami.\n" };
+  const skill = { name: "rust-news", description: t("bot.mock.bosmanSkillDesc"), body: t("bot.mock.bosmanSkillBody") };
   const routine: Routine = {
     id: "r1",
-    name: "Poranne newsy",
-    prompt: "Przejrzyj newsy o Ruście z ostatniej doby i zdaj raport.",
+    name: t("bot.mock.bosmanRoutine"),
+    prompt: t("bot.mock.bosmanRoutinePrompt"),
     schedule: { kind: "daily", at: "08:00", days: [1, 2, 3, 4, 5] },
     allow: { writeWork: false, bash: [] },
     enabled: false,
     created: now,
   };
-  await words("Mam wszystko. Proponuję takiego bota:");
+  await words(t("bot.mock.proposal"));
   const call = crypto.randomUUID();
   const args = { name: def.name, emoji: "🏴‍☠️", persona: def.persona, tools: ["web", "memory", "skills"], skills: [skill], routines: [{ name: routine.name, prompt: routine.prompt, schedule: routine.schedule }] };
   emit({ type: "tool_call", id: call, name: "bot_create", args });
@@ -348,23 +344,23 @@ async function creatorTurn(
       bot: creator.id,
       chat: chat.id,
       tool: "bot_create",
-      title: `Utworzyć bota „${def.name}”?`,
+      title: t("bot.mock.createTitle", { name: def.name }),
       preview: { bot: def, skills: [{ name: skill.name, description: skill.description }], routines: [{ name: routine.name, schedule: routine.schedule }] },
       canGrant: true,
     },
     signal,
   );
   if (d === "deny") {
-    emit({ type: "tool_result", id: call, text: "Użytkownik odmówił zgody.", error: true, approval: d });
+    emit({ type: "tool_result", id: call, text: t("bot.mock.denied"), error: true, approval: d });
     emit({ type: "text", text: "\n\n" });
-    return words("Jasne. Co mam zmienić?");
+    return words(t("bot.mock.changeWhat"));
   }
   const fresh = load();
   fresh[id] = { def, memory: "", user: "", skills: { [skill.name]: { md: skillMarkdown(skill), updated: now, by: "bot" } }, routines: [routine], chats: {}, runs: {} };
   save(fresh);
   emit({ type: "tool_result", id: call, text: `utworzono bota „${def.name}” (id: ${id}), 1 skill(e), 1 zadanie(a) w harmonogramie – wyłączone, użytkownik włącza je sam`, error: false, approval: d });
   emit({ type: "text", text: "\n\n" });
-  await words("Gotowe! Bosman przegląda newsy o Ruście i pamięta, co już ci pokazał. Poranne zadanie (pn–pt 8:00) włączysz w jego karcie.");
+  await words(t("bot.mock.created"));
 }
 
 const chatsOf = (b: MockBot, kind: BotChatKind) => (kind === "runs" ? b.runs : b.chats);
@@ -378,8 +374,8 @@ export const mockBotBackend: BotApi = {
   async botCreate(bot) {
     const all = load();
     const def = checked(bot);
-    if (def.builtin) throw new Error("wbudowanego bota nie da się utworzyć drugi raz");
-    if (all[def.id]) throw new Error(`bot „${def.id}” już istnieje`);
+    if (def.builtin) throw new Error(t("bot.mock.errBuiltinTwice"));
+    if (all[def.id]) throw new Error(t("bot.mock.errExists", { id: def.id }));
     all[def.id] = { def, memory: "", user: "", skills: {}, routines: [], chats: {}, runs: {} };
     save(all);
     return def;
@@ -396,7 +392,7 @@ export const mockBotBackend: BotApi = {
   },
   async botDelete(id) {
     const all = load();
-    if (get(all, id).def.builtin) throw new Error("wbudowanego bota nie da się usunąć");
+    if (get(all, id).def.builtin) throw new Error(t("bot.mock.errBuiltinDelete"));
     delete all[id];
     save(all);
   },
@@ -406,7 +402,7 @@ export const mockBotBackend: BotApi = {
   },
   async botMemorySave(id, target, text) {
     const limit = target === "memory" ? MEMORY_LIMIT : USER_LIMIT;
-    if (text.length > limit) throw new Error(`pamięć „${target}”: ${text.length}/${limit} znaków – za dużo`);
+    if (text.length > limit) throw new Error(t("bot.mock.errMemory", { target, len: text.length, limit }));
     const all = load();
     get(all, id)[target] = text;
     save(all);
@@ -434,20 +430,20 @@ export const mockBotBackend: BotApi = {
     return p.name;
   },
   async botSkillSources() {
-    return MOCK_SOURCES.map(({ name, description }) => ({ name, description }));
+    return mockSources().map(({ name, description }) => ({ name, description }));
   },
   async botSkillImport(id, name) {
-    const src = MOCK_SOURCES.find((s) => s.name === name);
-    if (!src) throw new Error(`nie ma skilla „${name}” w ~/.claude/skills`);
+    const src = mockSources().find((s) => s.name === name);
+    if (!src) throw new Error(t("bot.mock.errNoSkill", { name }));
     const all = load();
     const b = get(all, id);
-    if (b.skills[name]) throw new Error(`skill „${name}” już jest u tego bota`);
+    if (b.skills[name]) throw new Error(t("bot.mock.errHaveSkill", { name }));
     b.skills[name] = { md: skillMarkdown({ name, description: src.description, body: src.body }), updated: Date.now(), by: "import" };
     save(all);
     return name;
   },
   async botAvatarImport() {
-    throw new Error("obrazek awatara działa tylko w oknie aplikacji");
+    throw new Error(t("bot.mock.errAvatar"));
   },
   async botAvatar() {
     return null;
@@ -517,9 +513,9 @@ export const mockBotBackend: BotApi = {
     return () => void runListeners.delete(cb);
   },
   async botRunNow(id, routineId) {
-    if (runs.has(`${id}/${routineId}`)) throw new Error("to zadanie właśnie pracuje");
+    if (runs.has(`${id}/${routineId}`)) throw new Error(t("bot.mock.errBusy"));
     const r = get(load(), id).routines.find((x) => x.id === routineId);
-    if (!r) throw new Error(`nie ma zadania „${routineId}”`);
+    if (!r) throw new Error(t("bot.mock.errNoRoutine", { id: routineId }));
     void mockRun(id, r);
   },
   onBotOpenRun() {

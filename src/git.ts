@@ -1,6 +1,8 @@
 //! Panel plików z gitem: czyste funkcje (parsowanie wyjścia gita, drzewo, reguły operacji).
 //! Uruchamia git `electron/src/git.ts`; tu nie ma wejścia/wyjścia.
 
+import { t } from "./i18n";
+
 export type GitCode = "." | "M" | "A" | "D" | "R" | "C" | "T" | "U" | "?" | "!";
 export type EntryKind = "ordinary" | "renamed" | "unmerged" | "untracked" | "ignored";
 
@@ -130,21 +132,21 @@ export function discardPlan(e: GitEntry): DiscardPlan {
 export const unstagePaths = (e: GitEntry): string[] => (e.orig ? [e.path, e.orig] : [e.path]);
 
 export function canCommit(entries: GitEntry[], message: string): string | null {
-  if (message.trim() === "") return "Wpisz komunikat";
-  if (entries.some(isConflict)) return "Rozwiąż konflikty";
-  if (!entries.some(isStaged)) return "Nic w indeksie";
+  if (message.trim() === "") return t("pane.git.needMsg");
+  if (entries.some(isConflict)) return t("pane.git.conflicts");
+  if (!entries.some(isStaged)) return t("pane.git.nothingStaged");
   return null;
 }
 
 export function branchLabel(b: GitBranch): string {
   if (b.head !== null) return b.head;
-  return b.oid ? `odłączony HEAD @ ${b.oid.slice(0, 7)}` : "odłączony HEAD";
+  return b.oid ? t("pane.git.detachedAt", { oid: b.oid.slice(0, 7) }) : t("pane.git.detached");
 }
 
 /** `↑2 ↓1`, `zsynchronizowany`, `brak upstreamu`. */
 export function syncLabel(b: GitBranch): string {
-  if (b.upstream === null) return "brak upstreamu";
-  if (b.ahead === 0 && b.behind === 0) return "zsynchronizowany";
+  if (b.upstream === null) return t("pane.git.noUpstream");
+  if (b.ahead === 0 && b.behind === 0) return t("pane.git.inSync");
   return [b.ahead > 0 ? `↑${b.ahead}` : "", b.behind > 0 ? `↓${b.behind}` : ""].filter(Boolean).join(" ");
 }
 

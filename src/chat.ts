@@ -1,6 +1,8 @@
 /** Zakładka Czat (M3): model rozmów i dostawców. Czyste funkcje, bez Reacta i IPC.
  *  Typy żądania i zdarzeń (`ChatRequest`, `ChatEvent`) są wspólne ze `electron/src/chat/`. */
 
+import { t, tp } from "./i18n";
+
 export type ProviderKind = "claude-cli" | "codex-cli" | "openai" | "anthropic";
 /** Grupa w menu modeli: subskrypcja (program CLI), API z kluczem, serwer lokalny. */
 export type ProviderGroup = "sub" | "api" | "local";
@@ -165,22 +167,22 @@ function parseModels(raw: unknown): ChatModel[] | null {
 export function parseChatConfig(raw: unknown): { providers: ProviderDef[]; errors: string[] } {
   const errors: string[] = [];
   const list = (raw as { providers?: unknown })?.providers;
-  if (!Array.isArray(list)) return { providers: DEFAULT_PROVIDERS, errors: ["chat.json: brak tablicy `providers`"] };
+  if (!Array.isArray(list)) return { providers: DEFAULT_PROVIDERS, errors: [t("chat.cfg.noProviders")] };
   const providers: ProviderDef[] = [];
   const seen = new Set<string>();
   list.forEach((p: Record<string, unknown>, i) => {
-    const where = `chat.json: dostawca ${i + 1}`;
-    if (!p || typeof p !== "object") return void errors.push(`${where}: nie jest obiektem`);
+    const where = t("chat.cfg.provider", { n: i + 1 });
+    if (!p || typeof p !== "object") return void errors.push(t("chat.cfg.notObject", { where }));
     const id = p.id;
-    if (typeof id !== "string" || !ID_RE.test(id)) return void errors.push(`${where}: złe \`id\``);
-    if (seen.has(id)) return void errors.push(`${where}: powtórzone id \`${id}\``);
+    if (typeof id !== "string" || !ID_RE.test(id)) return void errors.push(t("chat.cfg.badId", { where }));
+    if (seen.has(id)) return void errors.push(t("chat.cfg.dupId", { where, id }));
     const kind = p.kind as ProviderKind;
-    if (!KINDS.includes(kind)) return void errors.push(`${where} (${id}): nieznany \`kind\``);
+    if (!KINDS.includes(kind)) return void errors.push(t("chat.cfg.badKind", { where, id }));
     const group = (GROUPS.includes(p.group as ProviderGroup) ? p.group : kind.endsWith("-cli") ? "sub" : "api") as ProviderGroup;
     const models = parseModels(p.models ?? []);
-    if (!models) return void errors.push(`${where} (${id}): \`models\` musi być tablicą`);
+    if (!models) return void errors.push(t("chat.cfg.badModels", { where, id }));
     if ((kind === "openai" || kind === "anthropic") && typeof p.baseUrl !== "string")
-      return void errors.push(`${where} (${id}): brak \`baseUrl\``);
+      return void errors.push(t("chat.cfg.noBaseUrl", { where, id }));
     seen.add(id);
     providers.push({
       id,
@@ -270,7 +272,7 @@ export function chatTitle(prompt: string): string {
   return `${(space > 30 ? cut.slice(0, space) : cut).replace(/[\s,.;:–-]+$/, "")}…`;
 }
 
-export const displayTitle = (c: { title: string }) => c.title || "Nowa rozmowa";
+export const displayTitle = (c: { title: string }) => c.title || t("chat.newTitle");
 
 /** Plik rozmowy; `null` = nie da się odczytać (zły JSON, inna wersja). */
 export function parseChat(text: string): Chat | null {
@@ -287,19 +289,20 @@ export const chatMeta = (c: Chat): ChatMeta => ({ id: c.id, title: c.title, upda
 
 export const sortChats = <T extends ChatMeta>(list: T[]) => [...list].sort((a, b) => b.updated - a.updated);
 
-export type DayGroup = "Dziś" | "Wczoraj" | "Ostatnie 7 dni" | "Ostatnie 30 dni" | "Starsze";
+/** Etykieta grupy w bieżącym języku (wartość do wyświetlenia, nie klucz). */
+export type DayGroup = string;
 
 /** Grupa na liście rozmów, liczona od północy czasu lokalnego. */
 export function dayGroup(at: number, now: number): DayGroup {
   const midnight = new Date(now);
   midnight.setHours(0, 0, 0, 0);
   const day = 86_400_000;
-  const t = midnight.getTime();
-  if (at >= t) return "Dziś";
-  if (at >= t - day) return "Wczoraj";
-  if (at >= t - 6 * day) return "Ostatnie 7 dni";
-  if (at >= t - 29 * day) return "Ostatnie 30 dni";
-  return "Starsze";
+  const t0 = midnight.getTime();
+  if (at >= t0) return t("chat.day.today");
+  if (at >= t0 - day) return t("chat.day.yesterday");
+  if (at >= t0 - 6 * day) return t("chat.day.week");
+  if (at >= t0 - 29 * day) return t("chat.day.month");
+  return t("chat.day.older");
 }
 
 export function groupChats(list: ChatMeta[], now: number): { group: DayGroup; chats: ChatMeta[] }[] {
@@ -424,14 +427,25 @@ export function linkCitations(text: string, sources: Source[] | undefined): stri
 /** Czy dostawca umie „Szukaj w sieci”: CLI natywnie, HTTP przez pi z pi-web-access. */
 export const supportsSearch = (p: ProviderDef | undefined) => p !== undefined;
 
-export const GROUP_LABELS: Record<ProviderGroup, string> = { sub: "Subskrypcje", api: "API", local: "Lokalne" };
+/** Etykiety grup dostawców; getter, żeby tłumaczyć w chwili odczytu (nie przy imporcie). */
+export const GROUP_LABELS: Record<ProviderGroup, string> = {
+  get sub() {
+    return t("chat.group.sub");
+  },
+  get api() {
+    return t("chat.group.api");
+  },
+  get local() {
+    return t("chat.group.local");
+  },
+};
 
 /** Powitanie pustego czatu według pory dnia. */
 export function greeting(hour: number): string {
-  if (hour >= 5 && hour < 12) return "Dzień dobry";
-  if (hour >= 12 && hour < 18) return "Miłego popołudnia";
-  if (hour >= 18 && hour < 23) return "Dobry wieczór";
-  return "Nocna zmiana?";
+  if (hour >= 5 && hour < 12) return t("chat.greet.morning");
+  if (hour >= 12 && hour < 18) return t("chat.greet.afternoon");
+  if (hour >= 18 && hour < 23) return t("chat.greet.evening");
+  return t("chat.greet.night");
 }
 
 const SOURCES_HEAD = /\n[ \t]*(?:#{1,4}[ \t]*)?\**(?:Źródła|Sources|Zrodla)\**:?\**[ \t]*\n/i;
@@ -500,9 +514,4 @@ export function configJson(providers: ProviderDef[], discovered: Record<string, 
 }
 
 /** „1 model”, „3 modele”, „5 modeli”, „22 modele”. */
-export function modelsCount(n: number): string {
-  const d = n % 10;
-  const t = n % 100;
-  if (n === 1) return "1 model";
-  return `${n} ${d >= 2 && d <= 4 && (t < 12 || t > 14) ? "modele" : "modeli"}`;
-}
+export const modelsCount = (n: number): string => tp("chat.models", n);

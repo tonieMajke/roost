@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Check, Mic, Plus, Trash2 } from "lucide-react";
 import { backend, type KeyState } from "./backend";
 import { Dialog } from "./Dialog";
+import { t as tr, useT } from "./i18n";
 import { STT_PRESETS, sttFreeId, type SttConfig, type SttProvider } from "./stt";
 import { TalkSettings, type VoiceTab } from "./voice/TalkSettings";
 
@@ -17,15 +18,7 @@ type Props = {
   tab?: VoiceTab;
 };
 
-const LANGUAGES: [string, string][] = [
-  ["auto", "Wykryj automatycznie"],
-  ["pl", "Polski"],
-  ["en", "Angielski"],
-  ["de", "Niemiecki"],
-  ["es", "Hiszpański"],
-  ["fr", "Francuski"],
-  ["ja", "Japoński"],
-];
+const LANGUAGES = ["auto", "pl", "en", "de", "es", "fr", "ja"] as const;
 
 function Row({
   p,
@@ -44,6 +37,7 @@ function Row({
   onRemove(): void;
   onKey(key: string | null): Promise<void>;
 }) {
+  const { t } = useT();
   const [url, setUrl] = useState(p.baseUrl);
   const [model, setModel] = useState(p.model);
   const [keyOpen, setKeyOpen] = useState(false);
@@ -58,40 +52,40 @@ function Row({
         <div className="prov-text">
           <div className="prov-name">
             {p.name}
-            {active && <span className="prov-tag">używany</span>}
+            {active && <span className="prov-tag">{t("voice.dlg.inUse")}</span>}
           </div>
           <div className="prov-state">
             {!p.key ? (
-              <span>bez klucza (serwer lokalny)</span>
+              <span>{t("voice.dlg.noKeyLocal")}</span>
             ) : keyState === "stored" ? (
-              <span className="is-ok">klucz w sejfie</span>
+              <span className="is-ok">{t("voice.dlg.keyStored")}</span>
             ) : keyState === "env" ? (
-              <span className="is-ok">klucz z ${p.keyEnv}</span>
+              <span className="is-ok">{t("voice.dlg.keyEnv", { env: p.keyEnv ?? "" })}</span>
             ) : (
-              <span className="is-warn">brak klucza</span>
+              <span className="is-warn">{t("voice.dlg.keyMissing")}</span>
             )}
           </div>
         </div>
         <div className="prov-btns">
-          <button type="button" className={`btn${active ? " is-on" : ""}`} onClick={onActivate} disabled={active || missingKey} title={missingKey ? "Najpierw wpisz klucz" : undefined}>
-            <Check aria-hidden /> {active ? "Wybrany" : "Użyj"}
+          <button type="button" className={`btn${active ? " is-on" : ""}`} onClick={onActivate} disabled={active || missingKey} title={missingKey ? t("voice.dlg.needKey") : undefined}>
+            <Check aria-hidden /> {active ? t("voice.dlg.selected") : t("voice.dlg.use")}
           </button>
           {p.key && (
             <button type="button" className={`btn${keyOpen ? " is-on" : ""}`} onClick={() => setKeyOpen((v) => !v)}>
-              Klucz
+              {t("voice.dlg.key")}
             </button>
           )}
-          <button type="button" className="icon" title="Usuń silnik" aria-label={`Usuń silnik ${p.name}`} onClick={onRemove}>
+          <button type="button" className="icon" title={t("voice.dlg.removeEngine")} aria-label={t("voice.dlg.removeEngineNamed", { name: p.name })} onClick={onRemove}>
             <Trash2 size={15} strokeWidth={1.75} aria-hidden />
           </button>
         </div>
       </div>
       <label className="prov-field">
-        <span>Adres</span>
+        <span>{t("voice.dlg.address")}</span>
         <input value={url} spellCheck={false} onChange={(e) => setUrl(e.target.value)} onBlur={() => url.trim() !== p.baseUrl && /^https?:\/\//i.test(url.trim()) && onEdit({ baseUrl: url.trim().replace(/\/+$/, "") })} />
       </label>
       <label className="prov-field">
-        <span>Model</span>
+        <span>{t("voice.dlg.model")}</span>
         <input value={model} spellCheck={false} onChange={(e) => setModel(e.target.value)} onBlur={() => model.trim() && model.trim() !== p.model && onEdit({ model: model.trim() })} />
       </label>
       {keyOpen && (
@@ -108,14 +102,14 @@ function Row({
               .catch((err: unknown) => setKeyErr(err instanceof Error ? err.message : String(err)));
           }}
         >
-          <span>Klucz API</span>
-          <input type="password" value={key} autoFocus autoComplete="off" placeholder={keyState === "stored" ? "zapisany – wpisz nowy, by zmienić" : "klucz API"} onChange={(e) => setKey(e.target.value)} />
+          <span>{t("voice.dlg.apiKey")}</span>
+          <input type="password" value={key} autoFocus autoComplete="off" placeholder={keyState === "stored" ? t("voice.dlg.keyPlaceholderStored") : t("voice.dlg.keyPlaceholder")} onChange={(e) => setKey(e.target.value)} />
           <button type="submit" className="btn primary" disabled={key.trim() === ""}>
-            Zapisz
+            {t("voice.dlg.save")}
           </button>
           {keyState === "stored" && (
             <button type="button" className="btn" onClick={() => void onKey(null).then(() => setKeyOpen(false))}>
-              Usuń
+              {t("voice.dlg.remove")}
             </button>
           )}
           {keyErr && <em className="is-warn">{keyErr}</em>}
@@ -138,10 +132,11 @@ async function listMics(): Promise<Mic[]> {
     devices = await inputs();
   }
   // „default” i „communications” dublują konkretne urządzenia; domyślny mikrofon ma własną pozycję na liście.
-  return devices.filter((d) => d.deviceId !== "default" && d.deviceId !== "communications").map((d, i) => ({ id: d.deviceId, label: d.label || `Mikrofon ${i + 1}` }));
+  return devices.filter((d) => d.deviceId !== "default" && d.deviceId !== "communications").map((d, i) => ({ id: d.deviceId, label: d.label || tr("voice.dict.micN", { n: i + 1 }) }));
 }
 
 export function VoiceDialog({ config, onSave, onClose, tab: initialTab = "dictation" }: Props) {
+  const { t } = useT();
   const [tab, setTab] = useState<VoiceTab>(initialTab);
   const [keys, setKeys] = useState<Record<string, KeyState>>({});
   const [error, setError] = useState<string | null>(null);
@@ -152,7 +147,7 @@ export function VoiceDialog({ config, onSave, onClose, tab: initialTab = "dictat
     let live = true;
     listMics()
       .then((m) => live && setMics(m))
-      .catch(() => live && setMicErr("nie udało się odczytać listy mikrofonów (brak zgody?)"));
+      .catch(() => live && setMicErr(t("voice.dict.micErr")));
     return () => {
       live = false;
     };
@@ -169,25 +164,25 @@ export function VoiceDialog({ config, onSave, onClose, tab: initialTab = "dictat
     setError(null);
     void onSave(next).catch((e: unknown) => setError(String(e)));
   };
-  const add = (t: SttProvider) => {
+  const add = (preset: SttProvider) => {
     const taken = config.providers.map((p) => p.id);
-    const id = sttFreeId(t.id, taken);
-    const added = { ...t, id, name: id === t.id ? t.name : `${t.name} ${id.split("-").pop()}` };
+    const id = sttFreeId(preset.id, taken);
+    const added = { ...preset, id, name: id === preset.id ? preset.name : `${preset.name} ${id.split("-").pop()}` };
     // Pierwszy silnik bez klucza (lokalny) od razu działa; z kluczem czeka na jego wpisanie.
     save({ ...config, active: config.active ?? (added.key ? null : id), providers: [...config.providers, added] });
   };
 
   return (
-    <Dialog label="Głos" className="prov-dialog" onClose={onClose}>
+    <Dialog label={t("voice.dlg.title")} className="prov-dialog" onClose={onClose}>
       {() => (
         <>
-          <h2>Głos</h2>
-          <div className="seg voice-tabs" role="tablist" aria-label="Ustawienia głosu">
+          <h2>{t("voice.dlg.title")}</h2>
+          <div className="seg voice-tabs" role="tablist" aria-label={t("voice.dlg.tabs")}>
             <button type="button" role="tab" aria-selected={tab === "dictation"} className={tab === "dictation" ? "is-on" : undefined} onClick={() => setTab("dictation")}>
-              Dyktowanie
+              {t("voice.dlg.tabDictation")}
             </button>
             <button type="button" role="tab" aria-selected={tab === "talk"} className={tab === "talk" ? "is-on" : undefined} onClick={() => setTab("talk")}>
-              Rozmowa
+              {t("voice.dlg.tabTalk")}
             </button>
           </div>
           {tab === "talk" ? (
@@ -195,7 +190,7 @@ export function VoiceDialog({ config, onSave, onClose, tab: initialTab = "dictat
           ) : (
             <>
               <p>
-                Mikrofon w nagłówku panelu nagrywa głos, wysyła go do wybranego silnika, a gotowy tekst wkleja do terminala bez Entera. Silnik to dowolny serwer z <code>/audio/transcriptions</code>: chmura albo własny, lokalny. Klucze trafiają do sejfu systemowego.
+                {t("voice.dict.intro.pre")}<code>/audio/transcriptions</code>{t("voice.dict.intro.post")}
               </p>
               {error && <div className="prov-error">{error}</div>}
               <div className="prov-list">
@@ -216,34 +211,34 @@ export function VoiceDialog({ config, onSave, onClose, tab: initialTab = "dictat
                   />
                 ))}
               </div>
-              <div className="rail-label">Dodaj silnik</div>
+              <div className="rail-label">{t("voice.dict.addEngine")}</div>
               <div className="prov-add">
-                {STT_PRESETS.map((t) => (
-                  <button key={t.id} type="button" className="btn" onClick={() => add(t)}>
-                    <Plus aria-hidden /> {t.name}
+                {STT_PRESETS.map((preset) => (
+                  <button key={preset.id} type="button" className="btn" onClick={() => add(preset)}>
+                    <Plus aria-hidden /> {preset.name}
                   </button>
                 ))}
               </div>
               <label className="prov-field" style={{ marginLeft: 0, marginTop: 16 }}>
-                <span>Mikrofon</span>
+                <span>{t("voice.dict.mic")}</span>
                 <select value={config.mic} onChange={(e) => save({ ...config, mic: e.target.value })}>
-                  <option value="">Domyślny mikrofon systemu</option>
+                  <option value="">{t("voice.dict.micDefault")}</option>
                   {mics.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.label}
                     </option>
                   ))}
-                  {config.mic !== "" && !mics.some((m) => m.id === config.mic) && <option value={config.mic}>Zapisany mikrofon (niepodłączony)</option>}
+                  {config.mic !== "" && !mics.some((m) => m.id === config.mic) && <option value={config.mic}>{t("voice.dict.micSaved")}</option>}
                 </select>
                 {micErr && <em className="is-warn">{micErr}</em>}
               </label>
-              <p className="prov-state">Mikrofon i język obowiązują też w rozmowie głosowej.</p>
+              <p className="prov-state">{t("voice.dict.micNote")}</p>
               <label className="prov-field" style={{ marginLeft: 0, marginTop: 8 }}>
-                <span>Język</span>
+                <span>{t("voice.dict.language")}</span>
                 <select value={config.language} onChange={(e) => save({ ...config, language: e.target.value })}>
-                  {LANGUAGES.map(([code, name]) => (
+                  {LANGUAGES.map((code) => (
                     <option key={code} value={code}>
-                      {name}
+                      {t(`voice.lang.${code}`)}
                     </option>
                   ))}
                 </select>

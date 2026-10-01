@@ -1,5 +1,6 @@
 //! Powiadomienie na pulpicie przez `notify-send` (Linux), jak w wersji Tauri.
 
+import { t } from "./i18n";
 import { spawn } from "node:child_process";
 import { childEnv } from "./env";
 
@@ -9,7 +10,7 @@ const CLICK = "default";
 
 /** Argumenty `notify-send`: nazwa aplikacji, (akcja kliknięcia), tytuł, treść. */
 export function notifyArgs(title: string, body: string, clickable = false): string[] {
-  return ["-a", APP_NAME, ...(clickable ? ["-A", `${CLICK}=Otwórz`] : []), title, body];
+  return ["-a", APP_NAME, ...(clickable ? ["-A", `${CLICK}=${t("notify.open")}`] : []), title, body];
 }
 
 /** `onClick`: notify-send czeka na decyzję i wypisuje nazwę wybranej akcji. */

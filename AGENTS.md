@@ -45,7 +45,9 @@ pnpm test                                             # vitest (od etapu 1)
 
 ## Styl
 
-- Nazwy w kodzie po angielsku, teksty w UI po polsku.
+- Nazwy w kodzie po angielsku. Teksty w UI idą przez `t()` / `useT()` z `src/i18n` (klucze w
+  `src/i18n/messages/<obszar>.ts`, para `pl` + `en`); nie wpisuj polskich napisów w komponentach.
+  W procesie głównym Electrona analogicznie `electron/src/i18n.ts`.
 - Komentarze krótkie: dlaczego, nie co.
 - Logika bez UI (układ siatki, argumenty, skróty, aktywność) trafia do czystych funkcji
   w osobnych plikach `src/*.ts` z testami `src/*.test.ts`.

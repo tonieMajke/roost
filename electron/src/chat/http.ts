@@ -1,6 +1,7 @@
 //! Wspólne dla dostawców HTTP: błędy po polsku z odpowiedzi i z `fetch`, wywołania narzędzi
 //! składane z kawałków strumienia.
 
+import { t } from "../i18n";
 import { randomUUID } from "node:crypto";
 import type { ToolCall } from "../../../src/chat";
 
@@ -23,12 +24,12 @@ export async function httpError(res: Response): Promise<HttpError> {
   }
   const what =
     res.status === 401 || res.status === 403
-      ? "zły albo brakujący klucz API"
+      ? t("net.badKey")
       : res.status === 404
-        ? "nie ma takiego adresu albo modelu"
+        ? t("net.notFound404")
         : res.status === 429
-          ? "przekroczony limit zapytań"
-          : `błąd serwera ${res.status}`;
+          ? t("net.rateLimit")
+          : t("net.server", { status: res.status });
   return Object.assign(new Error(detail.trim() ? `${what}: ${detail.trim()}` : what), { status: res.status });
 }
 
@@ -44,10 +45,10 @@ export function networkError(e: unknown, url: string): Error {
       return url;
     }
   })();
-  if (cause === "ECONNREFUSED") return new Error(`serwer ${host} nie odpowiada (nie działa?)`);
-  if (cause === "ENOTFOUND" || cause === "EAI_AGAIN") return new Error(`nie znaleziono ${host} (sieć?)`);
-  if (cause === "ECONNRESET" || cause === "UND_ERR_SOCKET") return new Error(`serwer ${host} zerwał połączenie`);
-  return new Error(`połączenie z ${host}: ${e instanceof Error ? e.message : String(e)}`);
+  if (cause === "ECONNREFUSED") return new Error(t("net.refused", { host }));
+  if (cause === "ENOTFOUND" || cause === "EAI_AGAIN") return new Error(t("net.noHost", { host }));
+  if (cause === "ECONNRESET" || cause === "UND_ERR_SOCKET") return new Error(t("net.reset", { host }));
+  return new Error(t("net.conn", { host, msg: e instanceof Error ? e.message : String(e) }));
 }
 
 export const isAbort = (e: unknown) => (e as { name?: string })?.name === "AbortError";

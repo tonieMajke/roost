@@ -1,6 +1,7 @@
 /** Zakładka Bot (M5): model botów, pamięci, skilli i harmonogramu. Czyste funkcje,
  *  bez Reacta i IPC. Wspólne z `electron/src/bot/`. */
 
+import { t, type Key } from "./i18n";
 import { applyEvent, firstModel, freeId, parseChat, type Chat, type ChatEvent, type ModelRef, type ProviderDef, type Turn } from "./chat";
 
 /** Grupy narzędzi, które użytkownik włącza w ustawieniach bota. */
@@ -147,7 +148,7 @@ export function newBot(id: string, now: number, patch: Partial<BotDef> = {}): Bo
   return {
     version: 1,
     id,
-    name: "Nowy bot",
+    name: t("bot.newName"),
     avatar: { emoji: "🤖" },
     color: DEFAULT_COLOR,
     persona: "",
@@ -164,14 +165,18 @@ export function newBot(id: string, now: number, patch: Partial<BotDef> = {}): Bo
 
 export const CREATOR_ID = "kreator";
 
+// Zapisane na dysku i wysyłane modelowi: zostaje po polsku. UI pokazuje tłumaczenie (`displayName`, `botGreeting`).
+const CREATOR_NAME = "Kreator";
+const CREATOR_PERSONA =
+  "Jestem Kreatorem: pomagam ci zbudować nowego bota albo poprawić istniejącego. " +
+  "Pytam, do czego ma służyć i jaki ma mieć charakter, a potem zakładam go za twoją zgodą.";
+
 export function creatorBot(now: number): BotDef {
   return newBot(CREATOR_ID, now, {
-    name: "Kreator",
+    name: CREATOR_NAME,
     avatar: { emoji: "🛠️" },
     color: "#e0a050",
-    persona:
-      "Jestem Kreatorem: pomagam ci zbudować nowego bota albo poprawić istniejącego. " +
-      "Pytam, do czego ma służyć i jaki ma mieć charakter, a potem zakładam go za twoją zgodą.",
+    persona: CREATOR_PERSONA,
     style: "Krótko, rzeczowo, z konkretnymi propozycjami.",
     tools: { web: true, read: false, write: false, bash: false, memory: true, skills: false },
     builtin: "creator",
@@ -200,12 +205,12 @@ const str = (v: unknown, fallback = "") => (typeof v === "string" ? v : fallback
 export function parseBot(raw: unknown): { bot: BotDef | null; errors: string[] } {
   const errors: string[] = [];
   const r = raw as Record<string, unknown>;
-  if (!r || typeof r !== "object") return { bot: null, errors: ["bot.json: nie jest obiektem"] };
-  if (typeof r.id !== "string" || !ID_RE.test(r.id)) return { bot: null, errors: ["bot.json: złe `id`"] };
+  if (!r || typeof r !== "object") return { bot: null, errors: [t("bot.err.notObject")] };
+  if (typeof r.id !== "string" || !ID_RE.test(r.id)) return { bot: null, errors: [t("bot.err.badId")] };
   const where = `bot ${r.id}`;
   const bot = newBot(r.id, typeof r.created === "number" ? r.created : 0);
   if (typeof r.name === "string" && r.name.trim()) bot.name = r.name.trim();
-  else errors.push(`${where}: brak \`name\``);
+  else errors.push(t("bot.err.noName", { where }));
   const av = r.avatar as Record<string, unknown> | undefined;
   if (av && typeof av === "object") {
     const avatar: BotDef["avatar"] = {};
@@ -215,24 +220,24 @@ export function parseBot(raw: unknown): { bot: BotDef | null; errors: string[] }
   }
   if (r.color !== undefined) {
     if (typeof r.color === "string" && COLOR_RE.test(r.color)) bot.color = r.color;
-    else errors.push(`${where}: zły \`color\``);
+    else errors.push(t("bot.err.badColor", { where }));
   }
   bot.persona = str(r.persona);
   bot.style = str(r.style);
   bot.avoid = str(r.avoid);
   if (r.tone !== undefined) {
     if (TONES.includes(r.tone as Tone)) bot.tone = r.tone as Tone;
-    else errors.push(`${where}: \`tone\` nie jest jednym z ${TONES.join(", ")}`);
+    else errors.push(t("bot.err.badTone", { where, tones: TONES.join(", ") }));
   }
   const m = r.model as Record<string, unknown> | null | undefined;
   if (m && typeof m.provider === "string" && typeof m.model === "string") bot.model = { provider: m.provider, model: m.model };
-  else if (m != null) errors.push(`${where}: zły \`model\``);
+  else if (m != null) errors.push(t("bot.err.badModel", { where }));
   if (Array.isArray(r.folders)) {
     bot.folders = r.folders.filter((f): f is string => typeof f === "string" && f.startsWith("/"));
-    if (bot.folders.length !== r.folders.length) errors.push(`${where}: \`folders\` przyjmuje tylko ścieżki bezwzględne`);
+    if (bot.folders.length !== r.folders.length) errors.push(t("bot.err.folders", { where }));
   }
-  const t = r.tools as Record<string, unknown> | undefined;
-  if (t && typeof t === "object") for (const g of TOOL_GROUPS) if (typeof t[g] === "boolean") bot.tools[g] = t[g] as boolean;
+  const tl = r.tools as Record<string, unknown> | undefined;
+  if (tl && typeof tl === "object") for (const g of TOOL_GROUPS) if (typeof tl[g] === "boolean") bot.tools[g] = tl[g] as boolean;
   if (r.builtin === "creator") bot.builtin = "creator";
   return { bot, errors };
 }
@@ -243,31 +248,31 @@ function parseSchedule(raw: unknown): Schedule | string {
   const s = raw as Record<string, unknown>;
   if (s?.kind === "every") {
     const n = s.minutes;
-    if (typeof n !== "number" || !Number.isInteger(n) || n < MIN_EVERY) return `\`minutes\` musi być liczbą całkowitą ≥ ${MIN_EVERY}`;
+    if (typeof n !== "number" || !Number.isInteger(n) || n < MIN_EVERY) return t("bot.err.minutes", { min: MIN_EVERY });
     return { kind: "every", minutes: n };
   }
   if (s?.kind === "daily") {
-    if (typeof s.at !== "string" || !TIME_RE.test(s.at)) return "`at` musi mieć postać GG:MM";
+    if (typeof s.at !== "string" || !TIME_RE.test(s.at)) return t("bot.err.at");
     if (s.days === undefined) return { kind: "daily", at: s.at };
     if (!Array.isArray(s.days) || s.days.length === 0 || !s.days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6))
-      return "`days` to niepusta lista liczb 0–6";
+      return t("bot.err.days");
     return { kind: "daily", at: s.at, days: [...new Set(s.days as number[])].sort() };
   }
-  return "`schedule.kind` to `every` albo `daily`";
+  return t("bot.err.kind");
 }
 
 /** `routines.json`: `{ routines: [...] }`. Złe wpisy pominięte i opisane. */
 export function parseRoutines(raw: unknown): { routines: Routine[]; errors: string[] } {
   const errors: string[] = [];
   const list = (raw as { routines?: unknown })?.routines;
-  if (!Array.isArray(list)) return { routines: [], errors: raw == null ? [] : ["routines.json: brak tablicy `routines`"] };
+  if (!Array.isArray(list)) return { routines: [], errors: raw == null ? [] : [t("bot.err.noRoutines")] };
   const routines: Routine[] = [];
   const seen = new Set<string>();
   list.forEach((r: Record<string, unknown>, i) => {
-    const where = `routines.json: zadanie ${i + 1}`;
-    if (!r || typeof r !== "object") return void errors.push(`${where}: nie jest obiektem`);
-    if (typeof r.id !== "string" || !r.id || seen.has(r.id)) return void errors.push(`${where}: złe albo powtórzone \`id\``);
-    if (typeof r.prompt !== "string" || !r.prompt.trim()) return void errors.push(`${where}: brak \`prompt\``);
+    const where = t("bot.err.routineWhere", { n: i + 1 });
+    if (!r || typeof r !== "object") return void errors.push(t("bot.err.routineNotObject", { where }));
+    if (typeof r.id !== "string" || !r.id || seen.has(r.id)) return void errors.push(t("bot.err.routineId", { where }));
+    if (typeof r.prompt !== "string" || !r.prompt.trim()) return void errors.push(t("bot.err.routinePrompt", { where }));
     const schedule = parseSchedule(r.schedule);
     if (typeof schedule === "string") return void errors.push(`${where}: ${schedule}`);
     const a = (r.allow ?? {}) as Record<string, unknown>;
@@ -337,16 +342,16 @@ export function routineDue(r: Routine, now: number): boolean {
 /** Dostawca i model przebiegu: model bota albo pierwszy z listy (jak w zakładce). Tekst = błąd. */
 export function runModel(bot: BotDef, providers: ProviderDef[]): { provider: ProviderDef; ref: ModelRef } | string {
   const ref = bot.model ?? firstModel(providers);
-  if (!ref) return "nie ma żadnego modelu – dodaj dostawcę w zakładce Czat";
+  if (!ref) return t("bot.err.noModel");
   const provider = providers.find((p) => p.id === ref.provider);
   // Model spoza listy dostawcy jest w porządku: modele lokalne bywają wykryte dopiero w oknie (`/models`).
-  if (!provider) return `nie ma dostawcy „${ref.provider}” (model bota: ${ref.model})`;
+  if (!provider) return t("bot.err.noProvider", { provider: ref.provider, model: ref.model });
   return { provider, ref };
 }
 
-const DAY_NAMES = ["nd", "pn", "wt", "śr", "cz", "pt", "sb"];
-
-const MONTHS = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
+/** Skrót dnia tygodnia (0 = niedziela). */
+export const dayName = (d: number) => t(`bot.day.${d}` as Key);
+const monthName = (m: number) => t(`bot.month.${m}` as Key);
 
 /** Termin w harmonogramie: „dziś 08:00”, „jutro 08:00”, „wczoraj 08:00”, „pt 3 paź 08:00”. */
 export function runWhen(at: number, now: number): string {
@@ -357,19 +362,26 @@ export function runWhen(at: number, now: number): string {
     return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   };
   const diff = Math.round((day(at) - day(now)) / 86_400_000);
-  const name = diff === 0 ? "dziś" : diff === 1 ? "jutro" : diff === -1 ? "wczoraj" : `${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
-  return `${name} ${hm}`;
+  const name =
+    diff === 0
+      ? t("bot.when.today")
+      : diff === 1
+        ? t("bot.when.tomorrow")
+        : diff === -1
+          ? t("bot.when.yesterday")
+          : t("bot.when.date", { day: dayName(d.getDay()), d: d.getDate(), month: monthName(d.getMonth()) });
+  return t("bot.when.at", { day: name, time: hm });
 }
 
 /** „co 15 min”, „codziennie 08:00”, „pn–pt 08:00”, „pn, śr 08:00”. */
 export function scheduleLabel(s: Schedule): string {
-  if (s.kind === "every") return s.minutes % 60 === 0 ? `co ${s.minutes / 60} h` : `co ${s.minutes} min`;
+  if (s.kind === "every") return s.minutes % 60 === 0 ? t("bot.sched.hours", { n: s.minutes / 60 }) : t("bot.sched.minutes", { n: s.minutes });
   const d = s.days;
-  if (!d || d.length === 7) return `codziennie ${s.at}`;
-  if (d.join() === "1,2,3,4,5") return `pn–pt ${s.at}`;
-  if (d.join() === "0,6") return `weekendy ${s.at}`;
+  if (!d || d.length === 7) return t("bot.sched.daily", { at: s.at });
+  if (d.join() === "1,2,3,4,5") return t("bot.sched.weekdays", { at: s.at });
+  if (d.join() === "0,6") return t("bot.sched.weekends", { at: s.at });
   const order = [...d].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)); // od poniedziałku
-  return `${order.map((x) => DAY_NAMES[x]).join(", ")} ${s.at}`;
+  return t("bot.sched.days", { days: order.map(dayName).join(", "), at: s.at });
 }
 
 function unquote(v: string): string {
@@ -388,17 +400,17 @@ export type Skill = { name: string; description: string; body: string };
 /** `SKILL.md`: frontmatter z `name` i `description` (pojedyncze linie, cudzysłowy opcjonalne). */
 export function parseSkill(md: string): Skill | { error: string } {
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(md);
-  if (!m) return { error: "brak nagłówka `---` z `name` i `description`" };
+  if (!m) return { error: t("bot.err.skillHeader") };
   const fields: Record<string, string> = {};
   for (const line of m[1].split(/\r?\n/)) {
     const kv = /^([a-z_-]+):\s*(.*)$/i.exec(line);
     if (kv) fields[kv[1]] = unquote(kv[2].trim());
   }
   const name = fields.name ?? "";
-  if (!isSkillName(name)) return { error: "`name`: małe litery, cyfry i myślniki, ≤ 64 znaki" };
+  if (!isSkillName(name)) return { error: t("bot.err.skillName") };
   const description = fields.description ?? "";
-  if (!description) return { error: "brak `description`" };
-  if (description.length > 1024) return { error: "`description` dłuższe niż 1024 znaki" };
+  if (!description) return { error: t("bot.err.skillNoDesc") };
+  if (description.length > 1024) return { error: t("bot.err.skillLongDesc") };
   return { name, description, body: m[2] };
 }
 
@@ -564,15 +576,21 @@ export function firstSentence(text: string): string {
 /** Pierwsze zdanie opisu bota (powitanie bez wywołania modelu). */
 export function botGreeting(bot: BotDef): string {
   const p = bot.persona.trim();
-  return p ? firstSentence(p) : `Cześć, tu ${bot.name}.`;
+  if (bot.builtin === "creator" && p === CREATOR_PERSONA) return t("bot.creator.greeting");
+  return p ? firstSentence(p) : t("bot.greeting.default", { name: displayName(bot) });
+}
+
+/** Imię do pokazania w UI: wbudowany Kreator z domyślnym imieniem jest tłumaczony. */
+export function displayName(bot: BotDef): string {
+  return bot.builtin === "creator" && bot.name === CREATOR_NAME ? t("bot.creator.name") : bot.name;
 }
 
 /** Powiadomienie po przebiegu: pierwsze zdanie wyniku (bez markdownu), błąd albo prośba o zgodę. */
 export function runNotice(botName: string, run: BotChat): { title: string; body: string } | null {
-  const title = `${botName}: ${run.title || "zadanie z harmonogramu"}`;
+  const title = `${botName}: ${run.title || t("bot.notice.defaultTitle")}`;
   const reply = [...run.messages].reverse().find((m) => m.role === "assistant");
-  if (run.state === "waiting_approval") return { title, body: "Czeka na twoją zgodę." };
-  if (run.state === "error") return { title, body: `Nie udało się: ${reply?.error ?? "błąd"}` };
+  if (run.state === "waiting_approval") return { title, body: t("bot.notice.waiting") };
+  if (run.state === "error") return { title, body: t("bot.notice.failed", { error: reply?.error ?? t("bot.notice.errorFallback") }) };
   if (run.state !== "done") return null;
   const plain = (reply?.text ?? "")
     .replace(/```[\s\S]*?```/g, " ")
@@ -582,7 +600,7 @@ export function runNotice(botName: string, run: BotChat): { title: string; body:
     .replace(/[*_`>]/g, "")
     .replace(/\s+/g, " ");
   const first = firstSentence(plain);
-  return { title, body: first.length > 200 ? `${first.slice(0, 199)}…` : first || "Gotowe (bez tekstu)." };
+  return { title, body: first.length > 200 ? `${first.slice(0, 199)}…` : first || t("bot.notice.done") };
 }
 
 export type ApprovalContext = {
@@ -754,19 +772,19 @@ export function toolLabel(name: string, args: Record<string, unknown>): string {
   const p = shortPath(arg(args, "path"));
   switch (name) {
     case "read_file":
-      return `Czyta \`${p}\``;
+      return t("bot.tool.read_file", { p });
     case "list_dir":
-      return `Przegląda folder \`${arg(args, "path") ? p : "."}\``;
+      return t("bot.tool.list_dir", { p: arg(args, "path") ? p : "." });
     case "grep":
-      return `Szuka \`${oneLine(arg(args, "pattern"), 40)}\`${arg(args, "path") ? ` w \`${p}\`` : ""}`;
+      return t(arg(args, "path") ? "bot.tool.grepIn" : "bot.tool.grep", { pattern: oneLine(arg(args, "pattern"), 40), p });
     case "write_file":
-      return `Zapisuje \`${p}\``;
+      return t("bot.tool.write_file", { p });
     case "edit_file":
-      return `Zmienia \`${p}\``;
+      return t("bot.tool.edit_file", { p });
     case "bash":
-      return `Uruchamia \`${oneLine(arg(args, "command"))}\``;
+      return t("bot.tool.bash", { cmd: oneLine(arg(args, "command")) });
     case "web_search":
-      return `Szuka w sieci: ${oneLine(arg(args, "query"))}`;
+      return t("bot.tool.web_search", { query: oneLine(arg(args, "query")) });
     case "web_fetch": {
       const u = arg(args, "url");
       let host = u;
@@ -775,24 +793,24 @@ export function toolLabel(name: string, args: Record<string, unknown>): string {
       } catch {
         // nie URL: cały tekst
       }
-      return `Czyta stronę ${host}`;
+      return t("bot.tool.web_fetch", { host });
     }
     case "memory":
-      return arg(args, "target") === "user" ? "Zapisuje coś o tobie" : "Zapisuje w pamięci";
+      return t(arg(args, "target") === "user" ? "bot.tool.memory.user" : "bot.tool.memory.self");
     case "history_search":
-      return `Szuka w dawnych rozmowach: ${oneLine(arg(args, "query"), 40)}`;
+      return t("bot.tool.history_search", { query: oneLine(arg(args, "query"), 40) });
     case "skill_view":
-      return `Czyta skill \`${arg(args, "name")}\``;
+      return t("bot.tool.skill_view", { name: arg(args, "name") });
     case "skill_create":
-      return `Zapisuje skill \`${arg(args, "name")}\``;
+      return t("bot.tool.skill_create", { name: arg(args, "name") });
     case "skill_patch":
-      return `Poprawia skill \`${arg(args, "name")}\``;
+      return t("bot.tool.skill_patch", { name: arg(args, "name") });
     case "bot_create":
-      return `Tworzy bota „${arg(args, "name")}”`;
+      return t("bot.tool.bot_create", { name: arg(args, "name") });
     case "bot_update":
-      return `Zmienia bota „${arg(args, "id")}”`;
+      return t("bot.tool.bot_update", { id: arg(args, "id") });
     default:
-      return `Używa ${name}`;
+      return t("bot.tool.other", { name });
   }
 }
 

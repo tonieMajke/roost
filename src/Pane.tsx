@@ -11,6 +11,7 @@ import type { PaneActions } from "./handlers";
 import { Terminal, type TermLook, type TerminalHandle } from "./Terminal";
 import { IconButton } from "./IconButton";
 import { useDictation } from "./useDictation";
+import { useT } from "./i18n";
 import { ArrowRightLeft, Loader2, Maximize2, MessageSquarePlus, Mic, Minimize2, RotateCw, Square, X } from "lucide-react";
 
 type Props = {
@@ -61,6 +62,7 @@ export const PANE_OUT_MS = 190;
 
 /** Frame around one terminal: header with agent, state and controls. */
 export function Pane({ pane, path, agent, account, showAccount, limitHit, canContinue, look, fontSize, focused, maximized, state, meter, title, closing, armed, actions }: Props) {
+  const { t } = useT();
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armedClick, setArmedClick] = useState(false);
@@ -102,8 +104,8 @@ export function Pane({ pane, path, agent, account, showAccount, limitHit, canCon
   // "Na pewno?" lasts CONFIRM_MS, then the button goes back to ✕.
   useEffect(() => {
     if (!armedClick) return;
-    const t = setTimeout(() => setArmedClick(false), CONFIRM_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setArmedClick(false), CONFIRM_MS);
+    return () => clearTimeout(timer);
   }, [armedClick]);
 
   const close = () => {
@@ -144,7 +146,7 @@ export function Pane({ pane, path, agent, account, showAccount, limitHit, canCon
           </span>
         )}
         {account && showAccount && (
-          <span className="pane-account" title={`Konto: ${account.name} (${account.dir})`}>
+          <span className="pane-account" title={t("pane.account", { name: account.name, dir: account.dir })}>
             {account.name}
           </span>
         )}
@@ -152,7 +154,7 @@ export function Pane({ pane, path, agent, account, showAccount, limitHit, canCon
         {meter && (
           <span
             className={`ctx${meter.warn ? " is-warn" : ""}`}
-            title={meter.known ? `Kontekst: ${meter.used} z ${meter.limit}` : `Kontekst: brak odczytu (okno ${meter.limit})`}
+            title={meter.known ? t("pane.ctx.known", { used: meter.used, limit: meter.limit }) : t("pane.ctx.unknown", { limit: meter.limit })}
           >
             <span className="ctx-bar">
               <span style={{ width: `${meter.pct}%` }} />
@@ -162,37 +164,37 @@ export function Pane({ pane, path, agent, account, showAccount, limitHit, canCon
         )}
         <span className={`tools${voice.phase !== "idle" ? " has-rec" : ""}`}>
           {state.exited ? null : voice.phase === "transcribing" ? (
-            <IconButton icon={Loader2} label="Transkrybuję…" className="is-busy" disabled />
+            <IconButton icon={Loader2} label={t("pane.transcribing")} className="is-busy" disabled />
           ) : (
             <IconButton
               icon={voice.phase === "recording" ? Square : Mic}
-              label={voice.phase === "recording" ? "Zakończ nagranie i wstaw tekst" : "Dyktuj głosem"}
+              label={voice.phase === "recording" ? t("pane.dictStop") : t("pane.dict")}
               className={voice.phase === "recording" ? "is-rec" : undefined}
               onClick={mic}
             />
           )}
           {canContinue && (
-            <IconButton icon={ArrowRightLeft} label="Kontynuuj gdzie indziej" onClick={() => actions.continueFrom(pane.id)} />
+            <IconButton icon={ArrowRightLeft} label={t("pane.continue")} onClick={() => actions.continueFrom(pane.id)} />
           )}
           {agent?.session && (
-            <IconButton icon={MessageSquarePlus} label="Nowa rozmowa" onClick={() => actions.newConversation(pane.id)} />
+            <IconButton icon={MessageSquarePlus} label={t("pane.newConv")} onClick={() => actions.newConversation(pane.id)} />
           )}
-          <IconButton icon={RotateCw} label="Uruchom ponownie" shortcut="Ctrl+Alt+R" onClick={() => actions.restart(pane.id)} />
+          <IconButton icon={RotateCw} label={t("pane.restart")} shortcut="Ctrl+Alt+R" onClick={() => actions.restart(pane.id)} />
           <IconButton
             icon={maximized ? Minimize2 : Maximize2}
-            label={maximized ? "Przywróć" : "Maksymalizuj"}
+            label={maximized ? t("ui2.win.restore") : t("ui2.win.maximize")}
             shortcut="Ctrl+Alt+Enter"
             className={maximized ? "is-on" : undefined}
             onClick={() => actions.toggleMaximize(pane.id)}
           />
           <IconButton
             icon={X}
-            label="Zamknij panel"
+            label={t("pane.closePane")}
             shortcut="Ctrl+Alt+W"
             className={showArmed ? "is-confirm" : undefined}
             onClick={close}
           >
-            {showArmed ? "Na pewno?" : undefined}
+            {showArmed ? t("ui2.rail.sure") : undefined}
           </IconButton>
         </span>
       </header>
@@ -213,7 +215,7 @@ export function Pane({ pane, path, agent, account, showAccount, limitHit, canCon
             onFocus={() => actions.focus(pane.id)}
             onOutput={() => actions.output(pane.id)}
             onRedraw={() => actions.redraw(pane.id)}
-            onTitle={(t) => actions.title(pane.id, t)}
+            onTitle={(text) => actions.title(pane.id, text)}
           />
         )}
       </div>
@@ -221,19 +223,19 @@ export function Pane({ pane, path, agent, account, showAccount, limitHit, canCon
         <div className="pane-exit pane-limit">
           {limitHit.text} ·{" "}
           <button type="button" className="link" onClick={() => actions.continueFrom(pane.id)}>
-            Kontynuuj gdzie indziej
+            {t("pane.continue")}
           </button>{" "}
           ·{" "}
           <button type="button" className="link" onClick={() => setDismissedReset(limitHit.resetsAt)}>
-            Poczekam
+            {t("pane.wait")}
           </button>
         </div>
       )}
       {state.exited && (
         <div className="pane-exit">
-          Proces zakończony ({exitText(state.exited)}) ·{" "}
+          {t("pane.exited", { text: exitText(state.exited) })} ·{" "}
           <button type="button" className="link" onClick={() => actions.restart(pane.id)}>
-            Uruchom ponownie
+            {t("pane.restart")}
           </button>{" "}
           <kbd>Ctrl+Alt+R</kbd>
         </div>

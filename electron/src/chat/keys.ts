@@ -2,6 +2,7 @@
 //! `safeStorage` Electrona (KWallet / libsecret). Bez bezpiecznego magazynu nie zapisujemy nic.
 //! Strona nigdy nie dostaje klucza z powrotem, tylko informację, że jest.
 
+import { t } from "../i18n";
 import fs from "node:fs";
 import path from "node:path";
 import { writeAtomic } from "../config";
@@ -40,7 +41,7 @@ export class KeyStore {
     const all = { ...this.read() };
     if (key === null || key.trim() === "") delete all[providerId];
     else {
-      if (!this.cipher.available()) throw new Error("brak sejfu systemowego (KWallet / libsecret): klucz nie został zapisany");
+      if (!this.cipher.available()) throw new Error(t("keys.noVault"));
       all[providerId] = this.cipher.encrypt(key.trim()).toString("base64");
     }
     fs.mkdirSync(path.dirname(this.file), { recursive: true });

@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
-import { UI_ROWS, uiPatch, type Ui } from "./ui";
+import { uiRows, uiPatch, type Ui } from "./ui";
 import { Dialog } from "./Dialog";
+import { useT } from "./i18n";
 
 type Props = {
   ui: Ui;
@@ -14,12 +15,13 @@ type Props = {
  * z próbką (tło, panel, tekst, akcent), akcent jako kółka kolorów, reszta jako przyciski segmentowe. Kotwica: lewy dolny róg, naprzeciw stopki szyny.
  */
 export function AppearanceDialog({ ui, onSet, onClose }: Props) {
+  const { t } = useT();
   return (
-    <Dialog label="Wygląd" className="settings" scrim={false} onClose={onClose}>
+    <Dialog label={t("ui.title")} className="settings" scrim={false} onClose={onClose}>
       {() => (
         <>
-          <h2>Wygląd</h2>
-          {UI_ROWS.map((row) => (
+          <h2>{t("ui.title")}</h2>
+          {uiRows().map((row) => (
             <div className="set-row" key={row.key}>
               <span className="set-label">{row.label}</span>
               <div className={row.key === "theme" ? "themes" : "seg"} role="group" aria-label={row.label}>
@@ -71,7 +73,7 @@ export function AppearanceDialog({ ui, onSet, onClose }: Props) {
               </div>
             </div>
           ))}
-          <div className="set-foot">Zapisywane w workspace.json · kolory agentów w agents.json</div>
+          <div className="set-foot">{t("ui.foot")}</div>
         </>
       )}
     </Dialog>

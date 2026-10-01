@@ -1,6 +1,7 @@
 //! Streszczenie wyciągu rozmowy przez jednorazowe `claude -p` (M4, Shift przy upuszczeniu).
 //! Bez narzędzi, MCP, ustawień i zapisu sesji; katalog tymczasowy, żeby nie czytał CLAUDE.md.
 
+import { t } from "./i18n";
 import { spawn } from "node:child_process";
 import os from "node:os";
 import { childEnv } from "./env";
@@ -42,18 +43,18 @@ export function run(program: string, args: string[], input: string, timeoutMs: n
     }, timeoutMs);
     child.on("error", (e) => {
       clearTimeout(timer);
-      reject(new Error(`nie uruchomiono \`${program}\`: ${e.message}`));
+      reject(new Error(t("summary.spawn", { program, msg: e.message })));
     });
     child.on("close", (code, signal) => {
       clearTimeout(timer);
-      if (timedOut) return reject(new Error(`brak odpowiedzi po ${Math.round(timeoutMs / 1000)} s`));
+      if (timedOut) return reject(new Error(t("summary.timeout", { s: Math.round(timeoutMs / 1000) })));
       if (code !== 0) {
         const why = err.split("\n").find((l) => l.trim() !== "")?.trim() ?? "";
-        if (code === null) return reject(new Error(`przerwany sygnałem ${signal ?? ""}`.trim()));
-        return reject(new Error(why === "" ? `kod ${code}` : `kod ${code}: ${why}`));
+        if (code === null) return reject(new Error(t("summary.signal", { signal: signal ?? "" }).trim()));
+        return reject(new Error(why === "" ? t("summary.code", { code }) : t("summary.codeWhy", { code, why })));
       }
       const text = out.trim();
-      if (text === "") return reject(new Error("pusta odpowiedź"));
+      if (text === "") return reject(new Error(t("summary.empty")));
       resolve(text);
     });
   });

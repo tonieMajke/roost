@@ -3,6 +3,7 @@
 //! `freetoken@<instancja>` i czeka, aż odpowie. Ta sama logika co `freetoken-autostart.ts` w pi
 //! (jeden silnik na dwóch RTX 5090 naraz), bez dzierżaw sesji i bez wyłączania po bezczynności.
 
+import { t } from "../i18n";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -173,27 +174,27 @@ export function ensureFreeToken(
   const p = (async () => {
     if (await env.answers(model)) return;
     const b = env.blocker(`ft:${instance}`);
-    if (b) throw new Error(`GPU używa ${b}: poczekaj, aż skończy, albo przełącz ją na ten sam model`);
-    status("Uruchamiam serwer FreeToken…");
+    if (b) throw new Error(t("ft.gpuBusySame", { b }));
+    status(t("ft.starting"));
     // inna instancja FreeToken trzyma karty (ten sam port): zatrzymać
     for (const other of new Set(Object.values(FT_INSTANCES))) {
       if (other !== instance && (await env.unitActive(other))) await env.systemctl("stop", `freetoken@${other}.service`);
     }
     if (!(await env.unitActive(instance))) {
       const left = await env.freeRouter();
-      if (left.length > 0) throw new Error(`router llama.cpp nie zwolnił GPU (trzyma: ${left.join(", ")})`);
+      if (left.length > 0) throw new Error(t("ft.routerHolds", { left: left.join(", ") }));
       const used = await env.vram();
       const full = used.findIndex((m) => m > VRAM_BUSY_MIB);
-      if (full >= 0) throw new Error(`GPU${full} ma zajęte ${used[full]} MiB — coś innego trzyma kartę (nvidia-smi)`);
+      if (full >= 0) throw new Error(t("ft.gpuFull", { gpu: full, mib: used[full] }));
       if ((await env.systemctl("start", `freetoken@${instance}.service`)) !== 0)
-        throw new Error(`nie udało się uruchomić freetoken@${instance}.service`);
+        throw new Error(t("ft.startFail", { instance }));
     }
-    status("Ładuję model do GPU (ok. minuty)…");
+    status(t("ft.loading"));
     const deadline = Date.now() + timeoutMs;
     while (!(await env.answers(model))) {
       signal.throwIfAborted();
-      if (!(await env.unitActive(instance))) throw new Error(`FreeToken padł przy starcie — journalctl --user -u freetoken@${instance}`);
-      if (Date.now() > deadline) throw new Error("FreeToken nie wstał w 6 minut");
+      if (!(await env.unitActive(instance))) throw new Error(t("ft.died", { instance }));
+      if (Date.now() > deadline) throw new Error(t("ft.timeout"));
       await sleep(2_000, signal);
     }
   })().finally(() => inflight.delete(model));
@@ -210,12 +211,12 @@ export async function freeGpuForRouter(signal: AbortSignal, status: (msg: string
   for (const inst of new Set(Object.values(FT_INSTANCES))) if (await env.unitActive(inst)) active.push(inst);
   if (active.length === 0) return;
   // FreeToken właśnie wstaje dla innego zapytania z aplikacji: nie zabijać go w połowie
-  if (inflight.size > 0) throw new Error("FreeToken właśnie się uruchamia dla innej rozmowy: poczekaj, aż skończy, albo wybierz jego model");
+  if (inflight.size > 0) throw new Error(t("ft.busyOther"));
   const b = env.blocker("llama");
-  if (b) throw new Error(`GPU używa ${b}: poczekaj, aż skończy, albo przełącz ją na model z routera`);
+  if (b) throw new Error(t("ft.gpuBusyRouter", { b }));
   signal.throwIfAborted();
-  status("Zatrzymuję FreeToken, zwalniam GPU dla routera…");
+  status(t("ft.stopping"));
   for (const inst of active) {
-    if ((await env.systemctl("stop", `freetoken@${inst}.service`)) !== 0) throw new Error(`nie udało się zatrzymać freetoken@${inst}.service`);
+    if ((await env.systemctl("stop", `freetoken@${inst}.service`)) !== 0) throw new Error(t("ft.stopFail", { instance: inst }));
   }
 }

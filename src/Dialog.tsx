@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { useT } from "./i18n";
 
 type Props = {
   /** Opis okna dla czytnika (wzór D: „Nowy panel”, „Presety”). */
@@ -20,6 +21,7 @@ type Props = {
  * Esc i klik w tło anulują i oddają fokus; karta przejmuje klawiaturę przy starcie.
  */
 export function Dialog({ label, className, scrim = true, onClose, onKey, children }: Props) {
+  const { t } = useT();
   const box = useRef<HTMLDivElement>(null);
   // Gdzie był fokus przed oknem (zwykle terminal panelu); anulowanie go przywraca.
   // Wybór agenta celowo nie przywraca: nowy panel przejmuje fokus sam.
@@ -41,7 +43,7 @@ export function Dialog({ label, className, scrim = true, onClose, onKey, childre
       <button
         type="button"
         className={scrim ? "backdrop" : "backdrop is-clear"}
-        aria-label={`Zamknij okno ${label}`}
+        aria-label={t("ui2.dialog.closeWin", { label })}
         onClick={cancel}
       />
       <div

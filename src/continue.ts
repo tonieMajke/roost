@@ -2,6 +2,7 @@
 import { accountById, accountKind, accountsFor, pickAccountId, type Accounts } from "./accounts";
 import type { AgentDef } from "./agents";
 import type { Pane } from "./workspace";
+import { t } from "./i18n";
 
 /** `account`: id konta nowego panelu; `undefined` = własny folder agenta. */
 export type ContinueTarget = { agentId: string; account?: string; label: string };
@@ -24,7 +25,7 @@ export function continueTargets(src: Pane, agents: AgentDef[], accounts: Account
     const choices: (string | undefined)[] = [undefined, ...accountsFor(accounts, kind).map((a) => a.id)];
     for (const id of choices) {
       if (id === src.account) continue;
-      const label = id === undefined ? `${own.name} · domyślne konto` : withAccount(own, accounts, id);
+      const label = id === undefined ? t("ui2.cont.defaultAcc", { name: own.name }) : withAccount(own, accounts, id);
       out.push({ agentId: own.id, ...(id !== undefined && { account: id }), label });
     }
   }

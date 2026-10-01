@@ -1,12 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Clock, MessageSquarePlus, PanelLeft, Plug, Plus, Settings2, ShieldAlert, SlidersHorizontal, Wand2, X } from "lucide-react";
 import { backend, type BotChatKind } from "../backend";
+import { useT } from "../i18n";
 import {
   applyBotEvent,
   botGreeting,
   botId,
   createdBot,
   CREATOR_ID,
+  displayName,
   messageSegments,
   newBot,
   newBotChat,
@@ -69,6 +71,7 @@ type Props = {
 };
 
 export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail, onOpenAppearance, openRun }: Props) {
+  const { t } = useT();
   const { providers, offline, errors, setErrors, discovered, reload } = useProviders();
   const [bots, setBots] = useState<BotDef[]>([]);
   const [selected, setSelected] = useState<string | null>(() => {
@@ -108,7 +111,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
         setBots(r.bots);
         if (r.errors.length) setErrors((prev) => [...prev, ...r.errors]);
       })
-      .catch((e: unknown) => setErrors((prev) => [...prev, `boty: ${String(e)}`]));
+      .catch((e: unknown) => setErrors((prev) => [...prev, t("bot.view.errBots", { e: String(e) })]));
 
   useEffect(() => {
     loadBots();
@@ -155,8 +158,8 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
   );
 
   useEffect(() => {
-    onTitle(bot ? (chat ? `${bot.name}: ${displayTitle(chat)}` : bot.name) : "Boty");
-  }, [bot, chat, onTitle]);
+    onTitle(bot ? (chat ? `${displayName(bot)}: ${displayTitle(chat)}` : displayName(bot)) : t("bot.view.title"));
+  }, [bot, chat, onTitle, t]);
 
   useEffect(() => {
     if (armedId === null) return;
@@ -178,7 +181,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
   shownBot.current = bot?.id ?? null;
   const save = (c: BotChat) => {
     if (shownBot.current === c.bot) setList((prev) => sortChats([...prev.filter((x) => x.id !== c.id), { ...chatMeta(c), kind: kindOf(c) }]));
-    void backend.botChatSave(c).catch((e: unknown) => setErrors((prev) => [...prev, `zapis rozmowy: ${String(e)}`]));
+    void backend.botChatSave(c).catch((e: unknown) => setErrors((prev) => [...prev, t("bot.view.errSaveChat", { e: String(e) })]));
   };
 
   const pickBot = (id: string) => {
@@ -194,7 +197,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
     if (!bot) return;
     const next = { ...bot, model: m };
     setBots((prev) => prev.map((b) => (b.id === bot.id ? next : b)));
-    void backend.botSave(next).catch((e: unknown) => setErrors((prev) => [...prev, `zapis bota: ${String(e)}`]));
+    void backend.botSave(next).catch((e: unknown) => setErrors((prev) => [...prev, t("bot.view.errSaveBot", { e: String(e) })]));
   };
 
   /** Odpowiedź na `base`, której ostatnia wiadomość to pytanie użytkownika. */
@@ -320,7 +323,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
     const l = lives.current.get(id);
     if (l) return setChat(l.chat);
     const c = await backend.botChatLoad(botId, kind, id).catch(() => null);
-    if (!c) return setErrors((prev) => [...prev, "nie udało się otworzyć rozmowy"]);
+    if (!c) return setErrors((prev) => [...prev, t("bot.view.errOpen")]);
     setChat(c);
     stick.current = true;
   };
@@ -351,7 +354,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
   };
 
   const addBot = () => {
-    const def = newBot(botId("Nowy bot", bots.map((b) => b.id)), Date.now(), { model });
+    const def = newBot(botId(t("bot.newName"), bots.map((b) => b.id)), Date.now(), { model });
     void backend
       .botCreate(def)
       .then((created) => {
@@ -359,12 +362,12 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
         pickBot(created.id);
         setCard("persona");
       })
-      .catch((e: unknown) => setErrors((prev) => [...prev, `nowy bot: ${String(e)}`]));
+      .catch((e: unknown) => setErrors((prev) => [...prev, t("bot.view.errNewBot", { e: String(e) })]));
   };
 
   const decide = (id: string, d: ApprovalDecision) => {
     setApprovals((prev) => prev.filter((a) => a.id !== id));
-    void backend.botApprove(id, d).catch((e: unknown) => setErrors((prev) => [...prev, `zgoda: ${String(e)}`]));
+    void backend.botApprove(id, d).catch((e: unknown) => setErrors((prev) => [...prev, t("bot.view.errApprove", { e: String(e) })]));
   };
 
   const working = (id: string) => [...lives.current.values()].some((l) => l.chat.bot === id) || runs.some((r) => r.bot === id && r.state === "running");
@@ -413,7 +416,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
       inject={inject}
       big={empty}
       onProviders={() => setProvidersOpen(true)}
-      placeholder={bot ? `Napisz do: ${bot.name}…` : undefined}
+      placeholder={bot ? t("bot.view.placeholder", { name: displayName(bot) }) : undefined}
     />
   );
   const regular = bots.filter((b) => !b.builtin);
@@ -424,27 +427,27 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
       <aside className={`chat-side${railOpen ? "" : " is-closed"}`}>
         <header className="rail-head chat-side-head">
           <ModeTabs mode={mode} onMode={onMode} />
-          <IconButton icon={PanelLeft} label={railOpen ? "Zwiń listę" : "Rozwiń listę"} shortcut="Ctrl+Alt+B" onClick={onToggleRail} />
+          <IconButton icon={PanelLeft} label={railOpen ? t("bot.view.listClose") : t("bot.view.listOpen")} shortcut="Ctrl+Alt+B" onClick={onToggleRail} />
         </header>
         <nav className="chat-list bot-list">
-          <div className="rail-label">Twoje boty</div>
-          {regular.length === 0 && <p className="chat-list-empty">Nie masz jeszcze botów. Zrób pierwszego z Kreatorem albo ręcznie.</p>}
+          <div className="rail-label">{t("bot.view.yours")}</div>
+          {regular.length === 0 && <p className="chat-list-empty">{t("bot.view.empty")}</p>}
           {regular.map((b) => (
             <div key={b.id} className="bot-entry">
               <button type="button" className={`bot-item${b.id === bot?.id ? " is-active" : ""}`} onClick={() => pickBot(b.id)}>
                 <Avatar bot={b} />
                 <span className="bot-item-name">{b.name}</span>
                 {waiting(b.id) ? (
-                  <span className="bot-dot is-approval" title="Czeka na zgodę" />
+                  <span className="bot-dot is-approval" title={t("bot.view.waitingTitle")} />
                 ) : working(b.id) ? (
-                  <span className="bot-dot is-working" title="Pracuje" />
+                  <span className="bot-dot is-working" title={t("bot.view.workingTitle")} />
                 ) : null}
               </button>
               {b.id === bot?.id && (
                 <div className="bot-chats">
                   <button type="button" className="bot-chat-new" onClick={newConversation}>
                     <MessageSquarePlus aria-hidden />
-                    <span>Nowa rozmowa</span>
+                    <span>{t("bot.view.newChat")}</span>
                   </button>
                   {list.map((c) => {
                     const run = runs.find((r) => r.chat === c.id);
@@ -456,21 +459,21 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
                       onClick={() => void open(c.id, c.kind)}
                     >
                       {c.kind === "runs" &&
-                        (waitingRun ? <ShieldAlert className="bot-run-icon is-approval" aria-label="czeka na zgodę" /> : <Clock className="bot-run-icon" aria-label="z harmonogramu" />)}
+                        (waitingRun ? <ShieldAlert className="bot-run-icon is-approval" aria-label={t("bot.view.waitingAria")} /> : <Clock className="bot-run-icon" aria-label={t("bot.view.scheduled")} />)}
                       <span className="chat-item-title" title={displayTitle(c)}>
                         {displayTitle(c)}
                       </span>
                       {!run && <IconButton
                         icon={X}
-                        label={`Usuń rozmowę ${displayTitle(c)}`}
+                        label={t("bot.view.deleteChat", { title: displayTitle(c) })}
                         className={`proj-close${armedId === c.id ? " is-confirm" : ""}`}
-                        title={armedId === c.id ? "Kliknij ponownie, aby usunąć" : "Usuń rozmowę"}
+                        title={armedId === c.id ? t("bot.view.deleteChatConfirm") : t("bot.view.deleteChatTitle")}
                         onClick={(e) => {
                           e.stopPropagation();
                           remove(c.id, c.kind);
                         }}
                       >
-                        {armedId === c.id ? "Na pewno?" : undefined}
+                        {armedId === c.id ? t("bot.sure") : undefined}
                       </IconButton>}
                     </div>
                     );
@@ -483,51 +486,51 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
         <div className="bot-side-actions">
           <button type="button" className="bot-side-btn" onClick={addBot}>
             <Plus aria-hidden />
-            <span>Nowy bot</span>
+            <span>{t("bot.view.newBot")}</span>
           </button>
           {creator && (
-            <button type="button" className={`bot-side-btn${creator.id === bot?.id ? " is-active" : ""}`} onClick={() => pickBot(creator.id)} title="Zbuduj bota z opisu">
+            <button type="button" className={`bot-side-btn${creator.id === bot?.id ? " is-active" : ""}`} onClick={() => pickBot(creator.id)} title={t("bot.view.creatorTitle")}>
               <Wand2 aria-hidden />
-              <span>Kreator</span>
+              <span>{t("bot.creator.name")}</span>
               {waiting(creator.id) ? <span className="bot-dot is-approval" /> : working(creator.id) ? <span className="bot-dot is-working" /> : null}
             </button>
           )}
         </div>
         <footer className="rail-foot">
-          <IconButton icon={Plug} label="Dostawcy modeli" onClick={() => setProvidersOpen(true)} />
-          <IconButton icon={SlidersHorizontal} label="Wygląd" onClick={onOpenAppearance} />
+          <IconButton icon={Plug} label={t("bot.view.providers")} onClick={() => setProvidersOpen(true)} />
+          <IconButton icon={SlidersHorizontal} label={t("bot.view.appearance")} onClick={onOpenAppearance} />
         </footer>
       </aside>
       <main className="chat-main" style={bot ? ({ "--bot": bot.color } as CSSProperties) : undefined}>
         {errors.length > 0 && (
           <div className="config-errors">
             <span>{errors.join(" · ")}</span>
-            <IconButton icon={X} label="Zamknij błędy" onClick={() => setErrors([])} />
+            <IconButton icon={X} label={t("bot.view.closeErrors")} onClick={() => setErrors([])} />
           </div>
         )}
         {bot && (
           <header className="bot-head">
             <Avatar bot={bot} />
-            <span className="bot-head-name">{bot.name}</span>
+            <span className="bot-head-name">{displayName(bot)}</span>
             <span className="bot-head-title">{chat && !empty ? displayTitle(chat) : ""}</span>
-            {chat?.toolsUnsupported && <span className="bot-note">bez narzędzi (model ich nie obsługuje)</span>}
-            <button type="button" className="bot-head-card" onClick={() => setCard("persona")} title="Osobowość, pamięć, skille i ustawienia">
+            {chat?.toolsUnsupported && <span className="bot-note">{t("bot.view.noTools")}</span>}
+            <button type="button" className="bot-head-card" onClick={() => setCard("persona")} title={t("bot.view.cardTitle")}>
               <Settings2 aria-hidden />
-              <span>Karta bota</span>
+              <span>{t("bot.view.cardBtn")}</span>
             </button>
           </header>
         )}
         {!bot ? (
           <div className="chat-welcome">
-            <p className="chat-list-empty">Wczytuję boty…</p>
+            <p className="chat-list-empty">{t("bot.view.loadingBots")}</p>
           </div>
         ) : empty ? (
           <div className="chat-welcome">
             <div className="bot-hello">
               <Avatar bot={bot} size="lg" />
-              <h1 className="bot-hello-name">{bot.name}</h1>
+              <h1 className="bot-hello-name">{displayName(bot)}</h1>
               <p className="bot-hello-text">{botGreeting(bot)}</p>
-              {chat?.toolsUnsupported && <p className="bot-note">Ten model nie obsługuje narzędzi – bot tylko rozmawia.</p>}
+              {chat?.toolsUnsupported && <p className="bot-note">{t("bot.view.noToolsNote")}</p>}
             </div>
             {composer}
           </div>
@@ -537,13 +540,13 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
               <div className="chat-column">
                 <Thread messages={messages} providers={providers} liveId={live ? live.msgId : null} onRetry={retry} onEdit={edit} renderBody={renderBody} />
                 {pending.map((a) => (
-                  <ApprovalCard key={a.id} req={a} botName={bot.name} active={active && a.id === pending[0].id} onDecide={(d) => decide(a.id, d)} />
+                  <ApprovalCard key={a.id} req={a} botName={displayName(bot)} active={active && a.id === pending[0].id} onDecide={(d) => decide(a.id, d)} />
                 ))}
               </div>
             </div>
             <div className="chat-dock">
               {composer}
-              <p className="chat-hint">Bot pyta o zgodę przed zapisem plików i każdym poleceniem w powłoce.</p>
+              <p className="chat-hint">{t("bot.view.hint")}</p>
             </div>
           </>
         )}

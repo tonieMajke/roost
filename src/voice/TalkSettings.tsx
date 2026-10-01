@@ -9,10 +9,9 @@ import { sttFreeId } from "../stt";
 import { Player } from "./audio";
 import "./voice.css";
 import { activeTts, DEFAULT_TTS, DEFAULT_VOICE, fmtMs, TTS_PRESETS, type TtsConfig, type TtsProvider, type VoiceConfig } from "./voice";
+import { useT } from "../i18n";
 
 export type VoiceTab = "dictation" | "talk";
-
-const SAMPLE = "Cześć, tak brzmi mój głos. Możemy porozmawiać o twoim pomyśle.";
 
 /** Pole tekstowe zapisywane po wyjściu z pola (jak w zakładce „Dyktowanie”). */
 function Field({ label, value, placeholder, valid = (v) => v !== "", onSave }: { label: string; value: string; placeholder?: string; valid?: (v: string) => boolean; onSave(v: string): void }) {
@@ -43,6 +42,7 @@ function TtsRow({
   onRemove(): void;
   onKey(key: string | null): Promise<void>;
 }) {
+  const { t } = useT();
   const [keyOpen, setKeyOpen] = useState(false);
   const [key, setKey] = useState("");
   const [keyErr, setKeyErr] = useState<string | null>(null);
@@ -54,45 +54,45 @@ function TtsRow({
         <div className="prov-text">
           <div className="prov-name">
             {p.name}
-            {active && <span className="prov-tag">używany</span>}
+            {active && <span className="prov-tag">{t("voice.dlg.inUse")}</span>}
           </div>
           <div className="prov-state">
             {p.kind === "piper" ? (
-              <span>lokalny program Piper</span>
+              <span>{t("voice.talk.piperLocal")}</span>
             ) : !p.key ? (
-              <span>bez klucza (serwer lokalny)</span>
+              <span>{t("voice.dlg.noKeyLocal")}</span>
             ) : keyState === "stored" ? (
-              <span className="is-ok">klucz w sejfie</span>
+              <span className="is-ok">{t("voice.dlg.keyStored")}</span>
             ) : keyState === "env" ? (
-              <span className="is-ok">klucz z ${p.keyEnv}</span>
+              <span className="is-ok">{t("voice.dlg.keyEnv", { env: p.keyEnv ?? "" })}</span>
             ) : (
-              <span className="is-warn">brak klucza</span>
+              <span className="is-warn">{t("voice.dlg.keyMissing")}</span>
             )}
           </div>
         </div>
         <div className="prov-btns">
-          <button type="button" className={`btn${active ? " is-on" : ""}`} onClick={onActivate} disabled={active || missingKey} title={missingKey ? "Najpierw wpisz klucz" : undefined}>
-            <Check aria-hidden /> {active ? "Wybrany" : "Użyj"}
+          <button type="button" className={`btn${active ? " is-on" : ""}`} onClick={onActivate} disabled={active || missingKey} title={missingKey ? t("voice.dlg.needKey") : undefined}>
+            <Check aria-hidden /> {active ? t("voice.dlg.selected") : t("voice.dlg.use")}
           </button>
           {p.key && (
             <button type="button" className={`btn${keyOpen ? " is-on" : ""}`} onClick={() => setKeyOpen((v) => !v)}>
-              Klucz
+              {t("voice.dlg.key")}
             </button>
           )}
-          <button type="button" className="icon" title="Usuń silnik" aria-label={`Usuń silnik ${p.name}`} onClick={onRemove}>
+          <button type="button" className="icon" title={t("voice.dlg.removeEngine")} aria-label={t("voice.dlg.removeEngineNamed", { name: p.name })} onClick={onRemove}>
             <Trash2 size={15} strokeWidth={1.75} aria-hidden />
           </button>
         </div>
       </div>
       {p.kind === "speech" ? (
         <>
-          <Field label="Adres" value={p.baseUrl ?? ""} valid={(v) => /^https?:\/\//i.test(v)} onSave={(v) => onEdit({ baseUrl: v.replace(/\/+$/, "") })} />
-          <Field label="Model" value={p.model} onSave={(model) => onEdit({ model })} />
+          <Field label={t("voice.dlg.address")} value={p.baseUrl ?? ""} valid={(v) => /^https?:\/\//i.test(v)} onSave={(v) => onEdit({ baseUrl: v.replace(/\/+$/, "") })} />
+          <Field label={t("voice.dlg.model")} value={p.model} onSave={(model) => onEdit({ model })} />
         </>
       ) : (
         <>
-          <Field label="Program" value={p.command ?? ""} placeholder="piper-tts albo piper (z PATH)" valid={() => true} onSave={(v) => onEdit({ command: v || undefined })} />
-          <Field label="Głos (.onnx)" value={p.model} onSave={(model) => onEdit({ model })} />
+          <Field label={t("voice.talk.program")} value={p.command ?? ""} placeholder={t("voice.talk.programPlaceholder")} valid={() => true} onSave={(v) => onEdit({ command: v || undefined })} />
+          <Field label={t("voice.talk.onnx")} value={p.model} onSave={(model) => onEdit({ model })} />
         </>
       )}
       {keyOpen && (
@@ -109,14 +109,14 @@ function TtsRow({
               .catch((err: unknown) => setKeyErr(err instanceof Error ? err.message : String(err)));
           }}
         >
-          <span>Klucz API</span>
-          <input type="password" value={key} autoFocus autoComplete="off" placeholder={keyState === "stored" ? "zapisany – wpisz nowy, by zmienić" : "klucz API"} onChange={(e) => setKey(e.target.value)} />
+          <span>{t("voice.dlg.apiKey")}</span>
+          <input type="password" value={key} autoFocus autoComplete="off" placeholder={keyState === "stored" ? t("voice.dlg.keyPlaceholderStored") : t("voice.dlg.keyPlaceholder")} onChange={(e) => setKey(e.target.value)} />
           <button type="submit" className="btn primary" disabled={key.trim() === ""}>
-            Zapisz
+            {t("voice.dlg.save")}
           </button>
           {keyState === "stored" && (
             <button type="button" className="btn" onClick={() => void onKey(null).then(() => setKeyOpen(false))}>
-              Usuń
+              {t("voice.dlg.remove")}
             </button>
           )}
           {keyErr && <em className="is-warn">{keyErr}</em>}
@@ -127,6 +127,7 @@ function TtsRow({
 }
 
 export function TalkSettings() {
+  const { t } = useT();
   const [voice, setVoice] = useState<VoiceConfig>(DEFAULT_VOICE);
   const [tts, setTts] = useState<TtsConfig>(DEFAULT_TTS);
   const [providers, setProviders] = useState<ProviderDef[]>([]);
@@ -176,9 +177,9 @@ export function TalkSettings() {
     void backend.ttsSaveConfig(next).catch(fail);
     if (nextVoice) saveVoice(nextVoice);
   };
-  const add = (t: TtsProvider) => {
-    const id = sttFreeId(t.id, tts.providers.map((p) => p.id));
-    const added = { ...t, id, name: id === t.id ? t.name : `${t.name} ${id.split("-").pop()}` };
+  const add = (preset: TtsProvider) => {
+    const id = sttFreeId(preset.id, tts.providers.map((p) => p.id));
+    const added = { ...preset, id, name: id === preset.id ? preset.name : `${preset.name} ${id.split("-").pop()}` };
     // Pierwszy silnik bez klucza od razu jest używany; z kluczem czeka na jego wpisanie.
     saveTts({ providers: [...tts.providers, added] }, voice.tts === null && !added.key ? { ...voice, tts: id } : undefined);
   };
@@ -187,12 +188,12 @@ export function TalkSettings() {
     setTest({ busy: true });
     const t0 = performance.now();
     try {
-      const audio = await backend.voiceSpeak("probe", SAMPLE);
+      const audio = await backend.voiceSpeak("probe", t("voice.sample"));
       const ms = Math.round(performance.now() - t0);
-      setTest({ busy: true, text: `synteza ${fmtMs(ms)}, gra…` });
+      setTest({ busy: true, text: t("voice.talk.synthPlaying", { t: fmtMs(ms) }) });
       player.current ??= new Player();
       await player.current.play(audio, new AbortController().signal);
-      setTest({ busy: false, text: `synteza ${fmtMs(ms)}` });
+      setTest({ busy: false, text: t("voice.talk.synth", { t: fmtMs(ms) }) });
     } catch (e) {
       setTest({ busy: false, text: e instanceof Error ? e.message : String(e), error: true });
     }
@@ -203,12 +204,12 @@ export function TalkSettings() {
   const brainProvider = voice.brain && providers.find((p) => p.id === voice.brain!.provider);
   const brainMissing = voice.brain && !providers.some((p) => p.id === voice.brain!.provider && (p.discover || p.models.some((m) => m.id === voice.brain!.model)));
 
-  if (!loaded && errors.length === 0) return <p>Wczytuję…</p>;
+  if (!loaded && errors.length === 0) return <p>{t("voice.talk.loading")}</p>;
 
   return (
     <>
       <p>
-        Kuleczka rozmowy słucha cały czas, a koniec wypowiedzi wykrywa po ciszy. Tekst rozpoznaje silnik z zakładki „Dyktowanie”, odpowiada model z Czatu, a czyta silnik mowy: lokalny Piper albo dowolne API z <code>/audio/speech</code>. Każdy z tych trzech elementów wybierasz osobno.
+        {t("voice.talk.intro.pre")}<code>/audio/speech</code>{t("voice.talk.intro.post")}
       </p>
       {errors.map((e, i) => (
         <div key={i} className="prov-error">
@@ -216,7 +217,7 @@ export function TalkSettings() {
         </div>
       ))}
 
-      <div className="rail-label">Mózg</div>
+      <div className="rail-label">{t("voice.talk.brain")}</div>
       <label className="prov-field" style={{ marginLeft: 0 }}>
         <span>Model</span>
         <select
@@ -227,9 +228,9 @@ export function TalkSettings() {
             saveVoice({ ...voice, brain: v ? { provider, model: rest.join("/") } : null });
           }}
         >
-          <option value="">Pierwszy model z Czatu</option>
+          <option value="">{t("voice.talk.firstModel")}</option>
           {providers.map((p) => (
-            <optgroup key={p.id} label={isCli(p) ? `${p.name} (bez narzędzi, wolniejszy start)` : p.name}>
+            <optgroup key={p.id} label={isCli(p) ? t("voice.talk.cliGroup", { name: p.name }) : p.name}>
               {p.models.map((m) => (
                 <option key={m.id} value={modelKey({ provider: p.id, model: m.id })}>
                   {m.name}
@@ -237,15 +238,15 @@ export function TalkSettings() {
               ))}
             </optgroup>
           ))}
-          {brainMissing && <option value={brainValue}>{brainValue} (nie ma w Czacie)</option>}
+          {brainMissing && <option value={brainValue}>{t("voice.talk.notInChat", { model: brainValue })}</option>}
         </select>
         {brainProvider && isCli(brainProvider) && (
-          <em>Program CLI startuje przy każdej odpowiedzi (kilka sekund). Do płynnej rozmowy lepszy jest model przez API albo lokalny.</em>
+          <em>{t("voice.talk.cliNote")}</em>
         )}
       </label>
 
       <div className="rail-label" style={{ marginTop: 16 }}>
-        Głos
+        {t("voice.talk.voice")}
       </div>
       <div className="prov-list">
         {tts.providers.map((p) => (
@@ -264,12 +265,12 @@ export function TalkSettings() {
             }}
           />
         ))}
-        {tts.providers.length === 0 && <p className="prov-state">Bez silnika mowy rozmówca odpowiada tylko tekstem w zapisie rozmowy.</p>}
+        {tts.providers.length === 0 && <p className="prov-state">{t("voice.talk.noEngine")}</p>}
       </div>
       <div className="prov-add">
-        {TTS_PRESETS.map((t) => (
-          <button key={t.id} type="button" className="btn" onClick={() => add(t)}>
-            <Plus aria-hidden /> {t.name}
+        {TTS_PRESETS.map((preset) => (
+          <button key={preset.id} type="button" className="btn" onClick={() => add(preset)}>
+            <Plus aria-hidden /> {preset.name}
           </button>
         ))}
       </div>
@@ -277,15 +278,15 @@ export function TalkSettings() {
         <>
           <Field
             key={`${selected.id}-${voice.voice}`}
-            label={selected.kind === "piper" ? "Mówca (numer)" : "Głos"}
+            label={selected.kind === "piper" ? t("voice.talk.speaker") : t("voice.talk.voice")}
             value={voice.voice}
-            placeholder={selected.voice || (selected.kind === "piper" ? "0" : "domyślny serwera")}
+            placeholder={selected.voice || (selected.kind === "piper" ? "0" : t("voice.talk.serverDefault"))}
             valid={() => true}
             onSave={(v) => saveVoice({ ...voice, voice: v })}
           />
           <div className="prov-field">
             <button type="button" className="btn" disabled={test.busy} onClick={() => void listen()}>
-              <Volume2 aria-hidden /> Posłuchaj
+              <Volume2 aria-hidden /> {t("voice.talk.listen")}
             </button>
             {test.text && <span className={test.error ? "is-warn" : undefined}>{test.text}</span>}
           </div>
@@ -294,12 +295,10 @@ export function TalkSettings() {
 
       <label className="prov-check">
         <input type="checkbox" checked={voice.headphones} onChange={(e) => saveVoice({ ...voice, headphones: e.target.checked })} />
-        <span>
-          Mam słuchawki — szybsze przerywanie (bez ochrony przed echem z głośników)
-        </span>
+        <span>{t("voice.talk.headphones")}</span>
       </label>
       <p className="prov-state" style={{ marginTop: 12 }}>
-        Zmiany działają od następnej rozmowy (zamknij i otwórz kuleczkę).
+        {t("voice.talk.applyNote")}
       </p>
     </>
   );
