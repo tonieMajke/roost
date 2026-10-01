@@ -1,7 +1,7 @@
 /** Zakładka Bot w podglądzie (`pnpm dev`): boty w localStorage, z przykładowymi danymi
  *  (Kreator, bot newsowy z pamięcią, skillem i harmonogramem, bot-postać bez narzędzi). */
 
-import type { Backend, BotChatKind, BotSkillMeta } from "./backend";
+import type { Backend, BotApprovalChange, BotChatKind, BotSkillMeta } from "./backend";
 import {
   creatorBot,
   MEMORY_LIMIT,
@@ -14,11 +14,13 @@ import {
   parseSkill,
   skillMarkdown,
   USER_LIMIT,
+  type ApprovalDecision,
+  type ApprovalRequest,
   type BotChat,
   type BotDef,
   type Routine,
 } from "./bot";
-import { chatMeta, sortChats } from "./chat";
+import { chatMeta, sortChats, type ChatEvent } from "./chat";
 
 const KEY = "aw-bots";
 
@@ -31,6 +33,10 @@ type MockBot = {
   chats: Record<string, BotChat>;
   runs: Record<string, BotChat>;
 };
+
+const RUSTY_TEXT =
+  "Arr! Przejrzałem notatki wydania. Najważniejsze:\n\n- **async closures** stabilne,\n- szybszy `cargo check` przy dużych workspace'ach." +
+  "\n\nZapisałem też przepis na takie przeglądy jako skill `rust-news`.";
 
 function seed(now: number): Record<string, MockBot> {
   const day = 86_400_000;
@@ -65,15 +71,15 @@ function seed(now: number): Record<string, MockBot> {
       {
         id: "m2",
         role: "assistant",
-        text: "Arr! Przejrzałem notatki wydania. Najważniejsze:\n\n- **async closures** stabilne,\n- szybszy `cargo check` przy dużych workspace'ach.\n\nZapisałem też przepis na takie przeglądy jako skill `rust-news`.",
+        text: RUSTY_TEXT,
         at: now - 2 * 3_600_000 + 9000,
         model,
       },
     ],
     calls: [
-      { id: "c1", message: "m2", name: "web_search", args: { query: "Rust 1.92 release notes" }, result: "5 wyników", approval: "auto" },
-      { id: "c2", message: "m2", name: "web_fetch", args: { url: "https://blog.rust-lang.org/" }, result: "12 KB tekstu", approval: "auto" },
-      { id: "c3", message: "m2", name: "skill_create", args: { name: "rust-news" }, result: "zapisano", approval: "auto" },
+      { id: "c1", message: "m2", name: "web_search", args: { query: "Rust 1.92 release notes" }, result: "1. Announcing Rust 1.92.0 — blog.rust-lang.org\n2. Rust 1.92 changelog — github.com", approval: "auto", at: 0 },
+      { id: "c2", message: "m2", name: "web_fetch", args: { url: "https://blog.rust-lang.org/2026/09/18/Rust-1.92.0/" }, result: "Announcing Rust 1.92.0\n\nThe Rust team is happy to announce…", approval: "auto", at: 0 },
+      { id: "c3", message: "m2", name: "skill_create", args: { name: "rust-news", description: "Przegląd nowości o Ruście" }, result: "zapisano skill rust-news", approval: "auto", at: RUSTY_TEXT.indexOf("\n\nZapisałem") },
     ],
   };
   const run: BotChat = {
@@ -171,7 +177,71 @@ type BotApi = Pick<
   | "botChatLoad"
   | "botChatSave"
   | "botChatDelete"
+  | "botSend"
+  | "botApprovals"
+  | "botApprove"
+  | "onBotApproval"
 >;
+
+// Zgody w podglądzie: jak `ApprovalBroker`, bez procesu głównego.
+const pending = new Map<string, { req: ApprovalRequest; resolve: (d: ApprovalDecision) => void }>();
+const approvalListeners = new Set<(e: BotApprovalChange) => void>();
+const decide = (id: string, decision: ApprovalDecision) => {
+  const p = pending.get(id);
+  if (!p) return;
+  pending.delete(id);
+  approvalListeners.forEach((cb) => cb({ type: "resolved", id, decision }));
+  p.resolve(decision);
+};
+function ask(r: Omit<ApprovalRequest, "id" | "at">, signal: AbortSignal): Promise<ApprovalDecision> {
+  const req: ApprovalRequest = { ...r, id: crypto.randomUUID(), at: Date.now() };
+  return new Promise((resolve) => {
+    pending.set(req.id, { req, resolve });
+    signal.addEventListener("abort", () => decide(req.id, "deny"), { once: true });
+    approvalListeners.forEach((cb) => cb({ type: "request", req }));
+  });
+}
+
+/** Odpowiedź z podglądu: bot z narzędziami czyta plik i prosi o zgodę na `cargo test`. */
+async function mockTurn(bot: BotDef, chat: BotChat, signal: AbortSignal, emit: (e: ChatEvent) => void) {
+  const wait = (ms: number) =>
+    new Promise<void>((resolve, reject) => {
+      const t = setTimeout(resolve, ms);
+      signal.addEventListener("abort", () => (clearTimeout(t), reject(new DOMException("stop", "AbortError"))), { once: true });
+    });
+  const words = async (text: string) => {
+    for (const w of text.split(/(?<= )/)) {
+      await wait(25);
+      emit({ type: "text", text: w });
+    }
+  };
+  if (!bot.tools.read && !bot.tools.bash) {
+    await wait(400);
+    return words(`(podgląd) ${bot.name} odpowiada bez narzędzi. Prawdziwą odpowiedź da model w oknie aplikacji.`);
+  }
+  await wait(300);
+  await words("Już sprawdzam, co jest w projekcie.");
+  const read = crypto.randomUUID();
+  emit({ type: "tool_call", id: read, name: "read_file", args: { path: "/home/majke/Projekty/kod/src/main.rs" } });
+  await wait(500);
+  emit({ type: "tool_result", id: read, text: 'fn main() {\n    println!("hej");\n}\n', error: false, approval: "auto" });
+  const run = crypto.randomUUID();
+  const command = "cargo test";
+  emit({ type: "tool_call", id: run, name: "bash", args: { command, cwd: "/home/majke/Projekty/kod" } });
+  const d = await ask(
+    { bot: bot.id, chat: chat.id, tool: "bash", title: "Uruchomić polecenie?", detail: `${command}\n\nw: /home/majke/Projekty/kod`, canGrant: true },
+    signal,
+  );
+  if (d === "deny") {
+    emit({ type: "tool_result", id: run, text: "Użytkownik odmówił zgody.", error: true, approval: d });
+    emit({ type: "text", text: "\n\n" });
+    return words("Dobrze, nie uruchamiam testów. Co mam zrobić zamiast tego?");
+  }
+  await wait(900);
+  emit({ type: "tool_result", id: run, text: "running 12 tests\n............\ntest result: ok. 12 passed; 0 failed", error: false, approval: d });
+  emit({ type: "text", text: "\n\n" });
+  await words("Testy przechodzą: **12/12**. `main.rs` wypisuje tylko powitanie, więc jest gdzie rosnąć.");
+}
 
 const chatsOf = (b: MockBot, kind: BotChatKind) => (kind === "runs" ? b.runs : b.chats);
 
@@ -268,5 +338,30 @@ export const mockBotBackend: BotApi = {
     const all = load();
     delete chatsOf(get(all, id), kind)[chatId];
     save(all);
+  },
+  botSend(chat, _req, onEvent) {
+    const ctl = new AbortController();
+    const emit = (e: ChatEvent) => {
+      if (!ctl.signal.aborted) onEvent(e);
+    };
+    void (async () => {
+      try {
+        await mockTurn(get(load(), chat.bot).def, chat, ctl.signal, emit);
+        onEvent({ type: "done" });
+      } catch (e) {
+        onEvent(ctl.signal.aborted ? { type: "done" } : { type: "error", message: String(e) });
+      }
+    })();
+    return () => ctl.abort();
+  },
+  async botApprovals() {
+    return [...pending.values()].map((p) => p.req);
+  },
+  async botApprove(id, decision) {
+    decide(id, decision);
+  },
+  onBotApproval(cb) {
+    approvalListeners.add(cb);
+    return () => void approvalListeners.delete(cb);
   },
 };

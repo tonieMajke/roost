@@ -2,21 +2,11 @@
 //! „Zezwalaj w tej rozmowie” albo „Odrzuć”. Stop rozmowy (abort) = odmowa.
 
 import { randomUUID } from "node:crypto";
-import type { ApprovalDecision, ToolName } from "../../../src/bot";
+import type { ApprovalDecision, ApprovalRequest } from "../../../src/bot";
 
-export type ApprovalRequest = {
-  id: string;
-  bot: string;
-  chat: string;
-  tool: ToolName;
-  /** Jedna linia do karty zgody: „Uruchomić `cargo test`?”. */
-  title: string;
-  /** Szczegóły pod spodem: polecenie, treść pliku, zmiana old→new, definicja bota. */
-  detail?: string;
-  /** Czy „Zezwalaj w tej rozmowie” ma sens (bash bez prostego prefiksu: nie). */
-  canGrant: boolean;
-  at: number;
-};
+export type { ApprovalRequest };
+/** Zmiana listy czekających próśb (do strony: `bot_approval`). */
+export type ApprovalChange = { type: "request"; req: ApprovalRequest } | { type: "resolved"; id: string; decision: ApprovalDecision };
 
 type Pending = { req: ApprovalRequest; resolve: (d: ApprovalDecision) => void; cleanup: () => void };
 
@@ -25,7 +15,7 @@ export class ApprovalBroker {
 
   constructor(
     /** Nowa prośba (do UI) i zakończona (decyzja, odmowa przez Stop): UI zdejmuje kartę. */
-    private onChange: (e: { type: "request"; req: ApprovalRequest } | { type: "resolved"; id: string; decision: ApprovalDecision }) => void = () => {},
+    private onChange: (e: ApprovalChange) => void = () => {},
     private now: () => number = Date.now,
   ) {}
 

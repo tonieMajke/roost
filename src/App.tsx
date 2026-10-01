@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { backend, inElectron } from "./backend";
 import type { AgentDef } from "./agents";
-import { accentHex, stepFontSize, uiClasses } from "./ui";
+import { accentHex, nextMode, stepFontSize, uiClasses } from "./ui";
 import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";
 import type { TermLook } from "./Terminal";
 import { IconButton } from "./IconButton";
@@ -27,6 +27,7 @@ import { activeStt, DEFAULT_STT, type SttConfig } from "./stt";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
 import { ChatView } from "./chat/ChatView";
+import { BotView } from "./bot/BotView";
 import type { Mode } from "./chat/ModeTabs";
 import { CONTEXT_POLL_MS, cleanTermTitle, contextKind, contextTargets, paneTitles, sessionTitles, type SessionContext } from "./context";
 import { FALLBACK_MAX_CHARS, SUMMARY_SYSTEM, digestText, handoffText, summaryText } from "./handoff";
@@ -387,15 +388,24 @@ export function App() {
   // Okno (pasek zadań, przełącznik okien) nosi temat panelu w fokusie, jak zwykła konsola z claude.
   const focusedTitle = focusedId ? titles[focusedId] : undefined;
   const [chatTitle, setChatTitle] = useState("");
-  // Czat montowany przy pierwszym wejściu i potem zostaje (trwająca odpowiedź płynie w tle).
+  const [botTitle, setBotTitle] = useState("");
+  // Czat i Bot montowane przy pierwszym wejściu i potem zostają (trwająca odpowiedź płynie w tle).
   const [chatMounted, setChatMounted] = useState(false);
+  const [botMounted, setBotMounted] = useState(false);
   const mode = ws.ui.mode;
   useEffect(() => {
     if (mode === "chat") setChatMounted(true);
+    if (mode === "bot") setBotMounted(true);
   }, [mode]);
   const setMode = (m: Mode) => dispatch({ type: "setUi", patch: { mode: m } });
   const windowTitle =
-    mode === "chat" ? `${chatTitle || "Czat"} — Agents` : focusedTitle ? `${focusedTitle} — Agents` : "Agents";
+    mode === "chat"
+      ? `${chatTitle || "Czat"} — Agents`
+      : mode === "bot"
+        ? `${botTitle || "Boty"} — Agents`
+        : focusedTitle
+          ? `${focusedTitle} — Agents`
+          : "Agents";
   useEffect(() => {
     document.title = windowTitle; // podgląd w przeglądarce; w oknie tytuł ustawia TitleBar
   }, [windowTitle]);
@@ -711,7 +721,7 @@ export function App() {
         dispatch({ type: "setUi", patch: { dock: !ws.ui.dock } });
         break;
       case "toggleChat":
-        setMode(mode === "chat" ? "code" : "chat");
+        setMode(nextMode(mode));
         break;
       case "fontSize": {
         const size = stepFontSize(ws.ui.fontSize, cmd.step);
@@ -756,8 +766,8 @@ export function App() {
   onKey.current = (e: KeyboardEvent) => {
     const cmd = commandFor(e);
     if (cmd === null) return;
-    // W Czacie skróty siatki nie działają: Ctrl+Shift+C/V zostają dla pola tekstowego.
-    if (mode === "chat" && cmd.type !== "toggleChat" && cmd.type !== "toggleRail") return;
+    // W Czacie i Botach skróty siatki nie działają: Ctrl+Shift+C/V zostają dla pola tekstowego.
+    if (mode !== "code" && cmd.type !== "toggleChat" && cmd.type !== "toggleRail") return;
     e.preventDefault();
     runCommand(cmd);
   };
@@ -777,6 +787,17 @@ export function App() {
           mode={mode}
           onMode={setMode}
           onTitle={setChatTitle}
+          railOpen={ws.ui.rail === "open"}
+          onToggleRail={() => dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } })}
+          onOpenAppearance={() => setAppearance(true)}
+        />
+      )}
+      {botMounted && (
+        <BotView
+          mode={mode}
+          onMode={setMode}
+          active={mode === "bot"}
+          onTitle={setBotTitle}
           railOpen={ws.ui.rail === "open"}
           onToggleRail={() => dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } })}
           onOpenAppearance={() => setAppearance(true)}

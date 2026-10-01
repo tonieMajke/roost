@@ -3,6 +3,7 @@ import {
   ACCENT_HEX,
   DEFAULT_UI,
   FONT_MAX,
+  nextMode,
   FONT_MIN,
   UI_CHOICES,
   UI_ROWS,
@@ -44,7 +45,9 @@ describe("parseUi", () => {
 
   it("mode: chat wczytuje się, zła wartość = code + błąd", () => {
     expect(parseUi({ mode: "chat" }).ui.mode).toBe("chat");
-    expect(parseUi({ mode: "x" }).errors).toEqual(["ui.mode: `x` is not one of code, chat, using `code`"]);
+    expect(parseUi({ mode: "bot" }).ui.mode).toBe("bot");
+    expect(parseUi({ mode: "x" }).errors).toEqual(["ui.mode: `x` is not one of code, chat, bot, using `code`"]);
+    expect([nextMode("code"), nextMode("chat"), nextMode("bot")]).toEqual(["chat", "bot", "code"]);
   });
 
   it("feed: project wczytuje się, zła wartość = all + błąd", () => {

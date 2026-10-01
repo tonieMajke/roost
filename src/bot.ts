@@ -80,6 +80,21 @@ export type Routine = {
 
 export type ApprovalDecision = "once" | "chat" | "deny";
 
+/** Prośba narzędzia o zgodę, czekająca na kliknięcie w UI. */
+export type ApprovalRequest = {
+  id: string;
+  bot: string;
+  chat: string;
+  tool: ToolName;
+  /** Jedna linia do karty zgody: „Uruchomić `cargo test`?”. */
+  title: string;
+  /** Szczegóły pod spodem: polecenie, treść pliku, zmiana old→new, definicja bota. */
+  detail?: string;
+  /** Czy „Zezwalaj w tej rozmowie” ma sens (bash bez prostego prefiksu: nie). */
+  canGrant: boolean;
+  at: number;
+};
+
 export type ToolCallRecord = {
   id: string;
   message: string; // id odpowiedzi, w której padło wywołanie
@@ -591,4 +606,87 @@ export function applyBotEvent(chat: BotChat, messageId: string, e: ChatEvent): B
 export function clipResult(text: string, limit = RESULT_LIMIT): string {
   if (text.length <= limit) return text;
   return `${text.slice(0, limit)}\n… [ucięte, ${text.length - limit} znaków więcej]`;
+}
+
+/** Ścieżka do karty: ostatnie dwa człony („src/main.rs”), żeby wiersz się mieścił. */
+export function shortPath(p: string): string {
+  const parts = p.replace(/\/+$/, "").split("/").filter(Boolean);
+  if (parts.length <= 2) return p || ".";
+  return `…/${parts.slice(-2).join("/")}`;
+}
+
+const arg = (a: Record<string, unknown>, k: string) => (typeof a[k] === "string" ? (a[k] as string) : "");
+const oneLine = (t: string, max = 60) => {
+  const l = t.trim().split("\n")[0];
+  return l.length > max ? `${l.slice(0, max - 1)}…` : l;
+};
+
+/** Zwinięta karta narzędzia jednym wierszem: „Czyta `src/main.rs`”, „Uruchamia `cargo test`”.
+ *  Fragmenty w backtickach UI pokazuje jako kod. */
+export function toolLabel(name: string, args: Record<string, unknown>): string {
+  const p = shortPath(arg(args, "path"));
+  switch (name) {
+    case "read_file":
+      return `Czyta \`${p}\``;
+    case "list_dir":
+      return `Przegląda folder \`${arg(args, "path") ? p : "."}\``;
+    case "grep":
+      return `Szuka \`${oneLine(arg(args, "pattern"), 40)}\`${arg(args, "path") ? ` w \`${p}\`` : ""}`;
+    case "write_file":
+      return `Zapisuje \`${p}\``;
+    case "edit_file":
+      return `Zmienia \`${p}\``;
+    case "bash":
+      return `Uruchamia \`${oneLine(arg(args, "command"))}\``;
+    case "web_search":
+      return `Szuka w sieci: ${oneLine(arg(args, "query"))}`;
+    case "web_fetch": {
+      const u = arg(args, "url");
+      let host = u;
+      try {
+        host = new URL(u).hostname.replace(/^www\./, "");
+      } catch {
+        // nie URL: cały tekst
+      }
+      return `Czyta stronę ${host}`;
+    }
+    case "memory":
+      return arg(args, "target") === "user" ? "Zapisuje coś o tobie" : "Zapisuje w pamięci";
+    case "history_search":
+      return `Szuka w dawnych rozmowach: ${oneLine(arg(args, "query"), 40)}`;
+    case "skill_view":
+      return `Czyta skill \`${arg(args, "name")}\``;
+    case "skill_create":
+      return `Zapisuje skill \`${arg(args, "name")}\``;
+    case "skill_patch":
+      return `Poprawia skill \`${arg(args, "name")}\``;
+    case "bot_create":
+      return `Tworzy bota „${arg(args, "name")}”`;
+    case "bot_update":
+      return `Zmienia bota „${arg(args, "id")}”`;
+    default:
+      return `Używa ${name}`;
+  }
+}
+
+export type Segment = { kind: "text"; text: string } | { kind: "calls"; calls: ToolCallRecord[] };
+
+/** Odpowiedź do pokazania: tekst pocięty w miejscach wywołań (`at`), wywołania jednego kroku razem. */
+export function messageSegments(text: string, calls: ToolCallRecord[]): Segment[] {
+  const out: Segment[] = [];
+  let pos = 0;
+  const steps = new Map<number, ToolCallRecord[]>();
+  for (const c of calls) {
+    const at = Math.min(c.at ?? 0, text.length);
+    steps.set(at, [...(steps.get(at) ?? []), c]);
+  }
+  for (const at of [...steps.keys()].sort((a, b) => a - b)) {
+    const t = text.slice(pos, at);
+    if (t.trim()) out.push({ kind: "text", text: t });
+    out.push({ kind: "calls", calls: steps.get(at)! });
+    pos = at;
+  }
+  const rest = text.slice(pos);
+  if (rest.trim() || out.length === 0) out.push({ kind: "text", text: rest });
+  return out;
 }

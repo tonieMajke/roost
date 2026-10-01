@@ -17,6 +17,9 @@ type Props = {
   inject: { text: string; seq: number } | null;
   big?: boolean; // pusty czat: większe pole na środku
   onProviders(): void;
+  /** Przełącznik wyszukiwania (Bot: nie – sieć to narzędzie bota). */
+  searchToggle?: boolean;
+  placeholder?: string;
 };
 
 const GROUPS: ProviderGroup[] = ["sub", "api", "local"];
@@ -115,7 +118,7 @@ function ModelMenu({ providers, offline, model, onModel, onProviders, onClose }:
   );
 }
 
-export function Composer({ providers, offline, model, onModel, search, onSearch, busy, onSend, onStop, inject, big, onProviders }: Props) {
+export function Composer({ providers, offline, model, onModel, search, onSearch, busy, onSend, onStop, inject, big, onProviders, searchToggle = true, placeholder }: Props) {
   const [text, setText] = useState("");
   const [menu, setMenu] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -154,7 +157,7 @@ export function Composer({ providers, offline, model, onModel, search, onSearch,
         ref={area}
         rows={1}
         value={text}
-        placeholder={known ? "Napisz wiadomość…" : "Wybierz model poniżej"}
+        placeholder={known ? (placeholder ?? "Napisz wiadomość…") : "Wybierz model poniżej"}
         spellCheck
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
@@ -172,17 +175,19 @@ export function Composer({ providers, offline, model, onModel, search, onSearch,
           </button>
           {menu && <ModelMenu providers={providers} offline={offline} model={model} onModel={onModel} onProviders={onProviders} onClose={() => setMenu(false)} />}
         </div>
-        <button
-          type="button"
-          className={`chat-search-btn${search && canSearch ? " is-on" : ""}`}
-          aria-pressed={search && canSearch}
-          disabled={!canSearch}
-          title={canSearch ? "Szukaj w sieci" : "Ten model jeszcze nie umie szukać w sieci"}
-          onClick={() => onSearch(!search)}
-        >
-          <Globe aria-hidden />
-          <span>Szukaj w sieci</span>
-        </button>
+        {searchToggle && (
+          <button
+            type="button"
+            className={`chat-search-btn${search && canSearch ? " is-on" : ""}`}
+            aria-pressed={search && canSearch}
+            disabled={!canSearch}
+            title={canSearch ? "Szukaj w sieci" : "Ten model jeszcze nie umie szukać w sieci"}
+            onClick={() => onSearch(!search)}
+          >
+            <Globe aria-hidden />
+            <span>Szukaj w sieci</span>
+          </button>
+        )}
         <span className="chat-composer-gap" />
         {busy ? (
           <button type="button" className="chat-send is-stop" title="Zatrzymaj" onClick={onStop}>

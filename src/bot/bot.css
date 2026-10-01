@@ -1,0 +1,121 @@
+/* Zakładka Bot (M5): lista botów, karty narzędzi i zgody. Układ i wątek z Czatu (chat.css),
+   tu tylko to, czego Czat nie ma. Kolor bota (`--bot`) tylko w awatarze i powitaniu. */
+
+/* lewa kolumna */
+.bot-list .rail-label { color: var(--faint); text-transform: none; letter-spacing: 0; font-size: 11.5px; padding: 8px 10px 4px; }
+.bot-entry + .bot-entry { margin-top: 2px; }
+.bot-item {
+  width: 100%; display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px 0 6px;
+  border: 0; border-radius: 10px; background: transparent; color: var(--muted);
+  font-size: 13.5px; font-weight: 600; text-align: left; transition: background 0.12s, color 0.12s;
+}
+.bot-item:hover { background: var(--hover); color: var(--text); }
+.bot-item.is-active { background: var(--active); color: var(--text); }
+.bot-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bot-chats { margin: 2px 0 6px 20px; padding-left: 8px; border-left: 1px solid var(--line); }
+.bot-chats .chat-item { min-height: 28px; font-size: 12.5px; }
+.bot-chat-new {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 28px; padding: 0 10px;
+  border: 0; border-radius: 8px; background: transparent; color: var(--accent); font-size: 12.5px; font-weight: 600;
+}
+.bot-chat-new svg { width: 14px; height: 14px; }
+.bot-chat-new:hover { background: var(--hover); }
+
+.bot-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.bot-dot.is-working { background: var(--accent); animation: breathe 1.6s ease-in-out infinite; }
+.bot-dot.is-approval { background: var(--warn-text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn-text) 25%, transparent); }
+
+.bot-side-actions { display: flex; flex-direction: column; gap: 2px; padding: 6px 0 2px; border-top: 1px solid var(--line); }
+.bot-side-btn {
+  display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px;
+  border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 600;
+}
+.bot-side-btn svg { width: 16px; height: 16px; color: var(--accent); }
+.bot-side-btn span:not(.bot-dot) { flex: 1; text-align: left; }
+.bot-side-btn:hover { background: var(--hover); color: var(--text); }
+.bot-side-btn.is-active { background: var(--active); color: var(--text); }
+
+/* awatar: emoji na tle w kolorze bota */
+.bot-avatar {
+  display: inline-grid; place-items: center; flex: none; border-radius: 50%;
+  background: color-mix(in srgb, var(--bot, var(--accent)) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bot, var(--accent)) 45%, transparent);
+  color: var(--text); font-weight: 700; line-height: 1;
+}
+.bot-avatar.is-sm { width: 26px; height: 26px; font-size: 14px; }
+.bot-avatar.is-lg { width: 72px; height: 72px; font-size: 36px; }
+
+/* powitanie i nagłówek */
+.bot-hello { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; max-width: 560px; animation: chatRise 0.5s var(--ease) both; }
+.bot-hello-name { margin: 6px 0 0; font-family: var(--display); font-size: clamp(26px, 3vw, 34px); font-weight: 600; letter-spacing: -0.02em; }
+.bot-hello-text { margin: 0; font-size: 15.5px; line-height: 1.55; color: var(--muted); }
+.bot-note { margin: 0; font-size: 12px; color: var(--warn-text); }
+.bot-head {
+  flex: none; display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 20px;
+  border-bottom: 1px solid var(--line); background: var(--bg);
+}
+.bot-head-name { font-weight: 700; font-size: 14px; }
+.bot-head-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); font-size: 13px; }
+
+/* odpowiedź z narzędziami */
+.bot-body { display: flex; flex-direction: column; gap: 12px; }
+.bot-tools { display: flex; flex-direction: column; gap: 4px; }
+.bot-tool { border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--pane) 60%, transparent); overflow: hidden; }
+.bot-tool-head {
+  width: 100%; display: flex; align-items: center; gap: 9px; min-height: 34px; padding: 0 10px;
+  border: 0; background: transparent; color: var(--muted); font-size: 13px; text-align: left;
+}
+.bot-tool-head:hover { background: var(--hover); color: var(--text); }
+.bot-tool-icon { width: 15px; height: 15px; flex: none; color: var(--faint); }
+.bot-tool-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bot-tool-label code, .bot-approval-title code {
+  font-family: var(--mono); font-size: 0.92em; padding: 1px 5px; border-radius: 5px;
+  background: var(--active); color: var(--text);
+}
+.bot-tool-approval { flex: none; font-size: 11px; color: var(--faint); }
+.bot-tool-approval.is-deny { color: var(--warn-text); }
+.bot-tool-state { display: grid; place-items: center; width: 16px; flex: none; }
+.bot-tool-state svg { width: 14px; height: 14px; }
+.bot-tool.is-ok .bot-tool-state { color: var(--ok); }
+.bot-tool.is-error .bot-tool-state { color: var(--warn-text); }
+.bot-tool.is-running .bot-tool-label { color: var(--text); }
+.bot-tool-chev { width: 14px; height: 14px; flex: none; color: var(--faint); transition: transform 0.2s var(--ease); }
+.bot-tool.is-open .bot-tool-chev { transform: rotate(90deg); }
+.bot-tool-body { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px 10px; border-top: 1px solid var(--line); }
+.bot-tool-caption { font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); margin-bottom: 4px; }
+.bot-tool-body pre, .bot-approval-detail {
+  margin: 0; max-height: 260px; overflow: auto; padding: 8px 10px; border-radius: 8px;
+  background: var(--bg); color: var(--muted); font-family: var(--mono); font-size: 12px; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word;
+}
+.bot-tool-body pre.is-error { color: var(--warn-text); }
+
+/* zgoda */
+.bot-approval {
+  margin-top: 18px; padding: 14px 16px; border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+  background: color-mix(in srgb, var(--accent) 7%, var(--pane));
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); animation: chatRise 0.25s var(--ease) both;
+}
+.bot-approval.is-write { border-color: color-mix(in srgb, var(--warn-text) 55%, var(--line-strong)); background: color-mix(in srgb, var(--warn-text) 6%, var(--pane)); }
+.bot-approval-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.bot-approval-head svg { width: 15px; height: 15px; color: var(--warn-text); }
+.bot-approval-title { margin: 8px 0 10px; font-size: 15px; font-weight: 600; color: var(--text); }
+.bot-approval-detail { color: var(--text); }
+.bot-approval-detail .is-add { color: var(--ok); }
+.bot-approval-detail .is-del { color: var(--warn-text); }
+.bot-approval-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.bot-btn {
+  display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px;
+  border: 1px solid var(--line-strong); border-radius: 9px; background: transparent; color: var(--text);
+  font-size: 13px; font-weight: 600; transition: background 0.15s, transform 0.15s var(--ease);
+}
+.bot-btn:hover { background: var(--hover); }
+.bot-btn:active { transform: scale(0.98); }
+.bot-btn.is-primary { background: var(--accent); border-color: transparent; color: var(--on-accent); }
+.bot-btn.is-primary:hover { background: color-mix(in srgb, var(--accent) 88%, white); }
+.bot-btn.is-deny { color: var(--warn-text); }
+.bot-btn kbd {
+  font-family: var(--mono); font-size: 10.5px; padding: 1px 5px; border-radius: 5px;
+  color: inherit; background: transparent; border: 1px solid currentColor; opacity: 0.7;
+}

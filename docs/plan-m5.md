@@ -110,7 +110,7 @@ Nowe zależności dozwolone tylko w etapie, który je wymienia.
 - [x] Etap 3 (C) – rejestr narzędzi i potwierdzenia
 - [x] Etap 4 (C) – pętla tool-calling dla dostawców HTTP
 - [x] Etap 5 (C) – serwer MCP `bot` dla claude i codex
-- [ ] Etap 6 (C) – zakładka Bot: lista, rozmowa, karty narzędzi i zgody
+- [x] Etap 6 (C) – zakładka Bot: lista, rozmowa, karty narzędzi i zgody
 - [ ] Etap 7 (C) – karta bota: osobowość, pamięć, skille, ustawienia
 - [ ] Etap 8 (C) – Kreator: bot z opisu
 - [ ] Etap 9 (L) – harmonogram w procesie głównym

@@ -23,6 +23,17 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 6: zakładka Bot – 2026-10-01 (Claude, master)
+
+- Trzecia karta **Bot** (`ModeTabs`, `ui.mode = "bot"`, Ctrl+Alt+C po kolei Code → Czat → Bot przez `nextMode`); Czat i Bot montowane przy pierwszym wejściu i zostają. `src/bot/BotView.tsx`: lista botów z kropką (pracuje / czeka na zgodę), pod wybranym jego rozmowy, na dole „Nowy bot” (tworzy domyślnego – edycja w etapie 7) i Kreator; powitanie z awatarem i `botGreeting`; nagłówek z awatarem i imieniem. Kilka botów może odpowiadać naraz (trwające odpowiedzi po id rozmowy).
+- Wątek i pole z Czatu: `Thread` dostał `renderBody` (tekst pocięty `messageSegments` + karty narzędzi), `Composer` – `searchToggle`/`placeholder`. Dostawcy i wykrywanie modeli wydzielone do `chat/useProviders.ts` (Czat używa tego samego). Model wybrany w zakładce zapisuje się w bocie.
+- `src/bot/Cards.tsx`: karta narzędzia (wiersz z `toolLabel`, stan, decyzja o zgodzie; rozwinięta: argumenty i wynik) i karta zgody (polecenie / diff `edit_file` w kolorach, trzy przyciski, Enter = raz, Esc = odrzuć – tylko na widocznej zakładce i nie gdy w polu jest tekst).
+- Proces główny: `electron/src/bot/service.ts` (`BotService`: prompt bota jako migawka z pierwszej odpowiedzi w rozmowie, zgody „w rozmowie” per rozmowa, HTTP → `runBotTurn` z FreeToken, claude/codex → most MCP startowany przy pierwszym użyciu, `cwd` = `work/` bota), IPC `bot_send`/`bot_abort`/`bot_event`, `bot_approval` w preload. Typ `ApprovalRequest` przeniesiony do `src/bot.ts`.
+- Mock: skryptowana odpowiedź (read_file → bash z prośbą o zgodę → wynik) i zgody bez procesu głównego.
+- Zrzuty (Electron offscreen, podgląd z mockiem) w motywach D i Kreślarnia: rozmowa z narzędziami (karta rozwinięta), czekająca zgoda, po Enter („zezwolono raz”, 12/12), pusta lista z Kreatorem; Czat z menu modeli bez zmian. 0 błędów konsoli.
+- Sprawdzenia: `pnpm typecheck`, `pnpm test` (53 pliki, 535 testów + 4 na żywo pominięte), `electron` typecheck + build – przechodzą.
+- Niesprawdzone: prawdziwa rozmowa z botem w oknie (claude/codex przez most, llama przez pętlę) – etap 11; awatar z obrazka (pokazuje emoji albo pierwszą literę).
+
 ## M5 Etap 5: narzędzia bota w claude i codex – 2026-10-01 (Claude, master)
 
 - `electron/src/bot/mcp.ts` (JSON-RPC po liniach: `initialize`, `ping`, `tools/list`, `tools/call`; błąd narzędzia = `isError`) i `mcp-server.ts` → `out/mcp-server.cjs` (nowe wejście w `vite.config.ts`). Serwer odpowiada bez kolejki, więc `ping` przechodzi w trakcie czekania na zgodę; koniec stdin albo zamknięte gniazdo = wyjście.

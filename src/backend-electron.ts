@@ -1,11 +1,11 @@
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
-import type { Backend, BotSkillMeta, ExitInfo, KeyState, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
+import type { Backend, BotApprovalChange, BotSkillMeta, ExitInfo, KeyState, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
 import type { SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
 import { buildChatConfig, parseChat, type ChatEvent, type ChatMeta, type ChatRequest } from "./chat";
 import { parseSttConfig, sttConfigJson, sttKeyId } from "./stt";
-import { parseBotChat, parseRoutines, serializeBot, type BotDef } from "./bot";
+import { parseBotChat, parseRoutines, serializeBot, type ApprovalRequest, type BotDef } from "./bot";
 
 /** Most wystawiony przez `electron/src/preload.ts`. */
 type ElectronBridge = {
@@ -15,6 +15,8 @@ type ElectronBridge = {
   /** Bez odpowiedzi (kolejne wywołania w kolejności); do zdarzeń co klatkę. */
   send(name: string, ...args: unknown[]): void;
   chatSend(reqId: string, req: ChatRequest, onEvent: (e: ChatEvent) => void): void;
+  botSend(reqId: string, chatJson: string, req: ChatRequest, onEvent: (e: ChatEvent) => void): void;
+  onBotApproval(cb: (e: BotApprovalChange) => void): () => void;
   /** Krawędzie, które proces główny umie przesunąć (Wayland: tylko te bez przesuwania okna). */
   edges: ResizeEdge[];
 };
@@ -168,5 +170,13 @@ export const electronBackend: Backend = {
   },
   botChatSave: (chat) => call<void>("bot_chat_save", JSON.stringify(chat)),
   botChatDelete: (id, kind, chatId) => call<void>("bot_chat_delete", id, kind, chatId),
+  botSend(chat, req, onEvent) {
+    const reqId = crypto.randomUUID();
+    bridge().botSend(reqId, JSON.stringify(chat), req, (e) => onEvent(e.type === "error" ? { ...e, message: remoteMessage(e.message) } : e));
+    return () => void call("bot_abort", reqId).catch(ignore);
+  },
+  botApprovals: () => call<ApprovalRequest[]>("bot_approvals"),
+  botApprove: (id, decision) => call<void>("bot_approve", id, decision).then(ignore),
+  onBotApproval: (cb) => bridge().onBotApproval(cb),
   window: electronWindow,
 };

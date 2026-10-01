@@ -5,7 +5,7 @@ import type { ContextKind, SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
 import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
-import type { BotChat, BotDef, Routine } from "./bot";
+import type { ApprovalDecision, ApprovalRequest, BotChat, BotDef, Routine } from "./bot";
 import type { SttConfig, SttProvider } from "./stt";
 
 export type KeyState = "stored" | "env" | null;
@@ -117,6 +117,14 @@ export interface Backend {
   /** Katalog z `chat.bot`, rodzaj z `chat.routine`. */
   botChatSave(chat: BotChat): Promise<void>;
   botChatDelete(id: string, kind: BotChatKind, chatId: string): Promise<void>;
+  /** Odpowiedź bota: `chat` z ostatnim pytaniem, `req` jak w Czacie (dostawca, model, sesja CLI,
+   *  `prompt`); prompt systemowy i narzędzia dokłada proces główny. Zwraca Stop. */
+  botSend(chat: BotChat, req: ChatRequest, onEvent: (e: ChatEvent) => void): () => void;
+  /** Czekające prośby o zgodę (po przeładowaniu strony). */
+  botApprovals(): Promise<ApprovalRequest[]>;
+  botApprove(id: string, decision: ApprovalDecision): Promise<void>;
+  /** Nowa prośba o zgodę albo rozstrzygnięta; zwraca wyrejestrowanie. */
+  onBotApproval(cb: (e: BotApprovalChange) => void): () => void;
   /** Dyktowanie (mikrofon w panelu): silniki transkrypcji z `stt.json`. Błędy pliku w `errors`. */
   sttConfig(): Promise<{ config: SttConfig; errors: string[] }>;
   sttSaveConfig(config: SttConfig): Promise<void>;
@@ -131,6 +139,7 @@ export interface Backend {
 }
 
 export type BotMemoryTarget = "memory" | "user";
+export type BotApprovalChange = { type: "request"; req: ApprovalRequest } | { type: "resolved"; id: string; decision: ApprovalDecision };
 export type BotChatKind = "chats" | "runs";
 export type BotSkillMeta = { name: string; description: string; updated: number; error?: string };
 

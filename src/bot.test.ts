@@ -10,6 +10,7 @@ import {
   creatorBot,
   isInside,
   matchesPrefix,
+  messageSegments,
   MEMORY_LIMIT,
   MEMORY_SEP,
   memoryEdit,
@@ -24,6 +25,7 @@ import {
   scheduleLabel,
   serializeBot,
   skillMarkdown,
+  toolLabel,
   type ApprovalContext,
   type BotChat,
   type BotDef,
@@ -398,5 +400,28 @@ describe("applyBotEvent i botTurns", () => {
       { role: "tool", id: "s1", content: "przerwane (Stop)", error: true },
       { role: "user", content: "A teraz?\n\nJeszcze raz" },
     ]);
+  });
+});
+
+describe("karty narzędzi", () => {
+  it("toolLabel: ścieżka skrócona, polecenie w jednej linii, strona po domenie", () => {
+    expect(toolLabel("read_file", { path: "/home/majke/kod/src/main.rs" })).toBe("Czyta `…/src/main.rs`");
+    expect(toolLabel("read_file", { path: "notatki.md" })).toBe("Czyta `notatki.md`");
+    expect(toolLabel("bash", { command: "cargo test\necho x" })).toBe("Uruchamia `cargo test`");
+    expect(toolLabel("web_fetch", { url: "https://www.rust-lang.org/learn" })).toBe("Czyta stronę rust-lang.org");
+    expect(toolLabel("list_dir", {})).toBe("Przegląda folder `.`");
+    expect(toolLabel("memory", { target: "user", text: "x" })).toBe("Zapisuje coś o tobie");
+    expect(toolLabel("cos", {})).toBe("Używa cos");
+  });
+
+  it("messageSegments: tekst, krok z wywołaniami, dalszy tekst; puste części pominięte", () => {
+    const c = (id: string, at?: number) => ({ id, message: "m", name: "bash", args: {}, ...(at === undefined ? {} : { at }) });
+    expect(messageSegments("Sprawdzę.\n\nGotowe.", [c("a", 9), c("b", 9)])).toEqual([
+      { kind: "text", text: "Sprawdzę." },
+      { kind: "calls", calls: [c("a", 9), c("b", 9)] },
+      { kind: "text", text: "\n\nGotowe." },
+    ]);
+    expect(messageSegments("", [c("a")])).toEqual([{ kind: "calls", calls: [c("a")] }]);
+    expect(messageSegments("", [])).toEqual([{ kind: "text", text: "" }]);
   });
 });
