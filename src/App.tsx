@@ -22,6 +22,8 @@ import { Grid } from "./Grid";
 import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
+import { VoiceDialog } from "./VoiceDialog";
+import { activeStt, DEFAULT_STT, type SttConfig } from "./stt";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
 import { ChatView } from "./chat/ChatView";
@@ -77,6 +79,10 @@ export function App() {
   const [dialog, setDialog] = useState(false);
   const [presetMenu, setPresetMenu] = useState(false);
   const [appearance, setAppearance] = useState(false);
+  const [voice, setVoice] = useState(false);
+  const [stt, setStt] = useState<SttConfig>(DEFAULT_STT);
+  const sttRef = useRef(stt);
+  sttRef.current = stt;
   const [lastAgentId, setLastAgentId] = useState<string | null>(null);
   // false do końca startu: zapis `ws` na dysk musi ruszyć dopiero po wczytaniu pliku.
   const [loaded, setLoaded] = useState(false);
@@ -208,7 +214,27 @@ export function App() {
     });
   };
 
+  useEffect(() => {
+    void backend
+      .sttConfig()
+      .then((r) => {
+        setStt(r.config);
+        if (r.errors.length > 0) setNotice(r.errors.join(" · "));
+      })
+      .catch(() => undefined);
+  }, []);
+
   const paneActions: PaneActions = {
+    voiceReady: () => activeStt(sttRef.current) !== null,
+    openVoice: () => setVoice(true),
+    voiceMic: () => sttRef.current.mic,
+    dictated: (paneId, text) => {
+      const term = terms.current.get(paneId);
+      if (!term) return;
+      term.paste(text);
+      dispatch({ type: "focus", id: paneId });
+    },
+    voiceError: (message) => setNotice(`Dyktowanie: ${message}`),
     focus: (paneId) => dispatch({ type: "focus", id: paneId }),
     restart: (paneId) => {
       forget([paneId]);
@@ -771,6 +797,7 @@ export function App() {
           dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } })
         }
         onOpenAppearance={() => setAppearance(true)}
+        onOpenVoice={() => setVoice(true)}
       />
       <main className="area">
         {errors.length > 0 && (
@@ -878,6 +905,16 @@ export function App() {
           ui={ws.ui}
           onSet={(patch) => dispatch({ type: "setUi", patch })}
           onClose={() => setAppearance(false)}
+        />
+      )}
+      {voice && (
+        <VoiceDialog
+          config={stt}
+          onSave={async (next) => {
+            await backend.sttSaveConfig(next);
+            setStt(next);
+          }}
+          onClose={() => setVoice(false)}
         />
       )}
       {presetMenu && active && (

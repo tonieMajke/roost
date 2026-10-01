@@ -6,6 +6,7 @@ import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
 import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
 import type { BotChat, BotDef, Routine } from "./bot";
+import type { SttConfig, SttProvider } from "./stt";
 
 export type KeyState = "stored" | "env" | null;
 
@@ -116,6 +117,15 @@ export interface Backend {
   /** Katalog z `chat.bot`, rodzaj z `chat.routine`. */
   botChatSave(chat: BotChat): Promise<void>;
   botChatDelete(id: string, kind: BotChatKind, chatId: string): Promise<void>;
+  /** Dyktowanie (mikrofon w panelu): silniki transkrypcji z `stt.json`. Błędy pliku w `errors`. */
+  sttConfig(): Promise<{ config: SttConfig; errors: string[] }>;
+  sttSaveConfig(config: SttConfig): Promise<void>;
+  /** Klucz silnika (sejf systemowy / zmienna środowiskowa) po id silnika. */
+  sttKeyStatus(providers: SttProvider[]): Promise<Record<string, KeyState>>;
+  /** `null` usuwa klucz; odrzuca, gdy sejfu nie ma. */
+  sttSetKey(providerId: string, key: string | null): Promise<void>;
+  /** Nagranie → tekst z wybranego silnika; odrzuca z powodem po polsku. */
+  sttTranscribe(audio: Uint8Array, mime: string): Promise<string>;
   /** Własny pasek tytułu; brak = podgląd w przeglądarce, bez okna. */
   window?: WindowControls;
 }

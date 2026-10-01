@@ -14,6 +14,8 @@ import { claudeSummary, piSummary } from "./summary";
 import { ChatStore } from "./chat/store";
 import { chatConfigLoad, chatConfigSave, defaultChatService } from "./chat/service";
 import { KeyStore, passwordStore } from "./chat/keys";
+import { sttConfigLoad, sttConfigSave, transcribe } from "./stt";
+import { activeStt, parseSttConfig, sttKeyId, type SttProvider } from "../../src/stt";
 import { BotStore, type ChatKind, type MemoryTarget } from "./bot/store";
 import { ApprovalBroker } from "./bot/approvals";
 import type { ApprovalDecision } from "../../src/bot";
@@ -109,6 +111,17 @@ ipcMain.handle("chat_send", (event, reqId: string, req: ChatRequest) => {
   void chat.send(reqId, req, (e) => {
     if (!sender.isDestroyed()) sender.send("chat_event", reqId, e);
   });
+});
+// Dyktowanie: silnik i język z `stt.json`, klucz z sejfu; do strony wraca sam tekst.
+handle("stt_config", () => sttConfigLoad(config.configDir()));
+handle("stt_config_save", (json: string) => sttConfigSave(config.configDir(), json));
+handle("stt_key_status", (ps: SttProvider[]) => keys.status(ps.map((p) => ({ id: sttKeyId(p.id), keyEnv: p.keyEnv }))));
+handle("stt_set_key", (id: string, key: string | null) => keys.set(sttKeyId(id), key));
+handle("stt_transcribe", (audio: Uint8Array, mime: string) => {
+  const { config: cfg } = parseSttConfig(sttConfigLoad(config.configDir()));
+  const p = activeStt(cfg);
+  if (!p) throw new Error("nie wybrano silnika transkrypcji (Ustawienia głosu)");
+  return transcribe(p, keys.get(sttKeyId(p.id), p.keyEnv), audio, mime, cfg.language);
 });
 // Zakładka Bot (M5): boty, pamięć, skille, harmonogram i rozmowy na dysku.
 handle("bot_list", () => bots.list());

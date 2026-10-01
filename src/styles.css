@@ -284,6 +284,12 @@ kbd {
 .tools { margin-left: auto; display: flex; gap: 1px; opacity: 0.3; transition: opacity 0.2s; flex: none; }
 .pane.is-focused .tools, .pane:hover .tools, .tools:focus-within { opacity: 1; }
 .tools .icon.is-confirm { width: 64px; }
+/* dyktowanie: w trakcie nagrania i transkrypcji pasek zostaje widoczny, a mikrofon pulsuje */
+.tools.has-rec { opacity: 1; }
+.icon.is-rec { color: var(--warn-text); background: var(--warn-bg); animation: rec-pulse 1.4s ease-in-out infinite; }
+.icon.is-busy svg { animation: spin 0.9s linear infinite; }
+@keyframes rec-pulse { 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .icon.is-rec, .icon.is-busy svg { animation: none; } }
 .pane-body { flex: 1; min-height: 0; padding: 4px; background: var(--term-bg); }
 .pane.st-exited .pane-body { opacity: 0.6; }
 .terminal-wrap { position: relative; width: 100%; height: 100%; }

@@ -308,7 +308,11 @@
   flex: 1; min-width: 200px; height: 28px; padding: 0 8px; border-radius: var(--r-ctl); border: 1px solid var(--line-strong);
   background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 12px;
 }
-.prov-field input:focus { outline: 0; border-color: var(--accent); }
+.prov-field select {
+  height: 28px; padding: 0 8px; border-radius: var(--r-ctl); border: 1px solid var(--line-strong);
+  background: var(--bg); color: var(--text); font-size: 12px;
+}
+.prov-field input:focus, .prov-field select:focus { outline: 0; border-color: var(--accent); }
 .prov-field em { flex-basis: 100%; font-style: normal; }
 .prov-add { display: flex; flex-wrap: wrap; gap: 8px; }
 .prov-error { margin-bottom: 10px; padding: 8px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-text); font-size: 12.5px; }

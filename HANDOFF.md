@@ -2,6 +2,14 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Dyktowanie głosem (2026-10-01, poza planem M5)
+
+- Mikrofon w nagłówku każdego panelu (`Pane.tsx`, `useDictation.ts`): klik = nagrywa, drugi klik = transkrypcja, tekst wchodzi do terminala wklejką **bez Entera**. Rail → „Dyktowanie” (`VoiceDialog.tsx`) wybiera silnik.
+- Silnik = serwer z `POST {baseUrl}/audio/transcriptions` (`electron/src/stt.ts`): szablony OpenRouter, cortecs.ai, OpenAI i „Lokalny serwer” (whisper.cpp / speaches), adres i model edytowalne. Konfiguracja w `stt.json`, klucze w sejfie jako `stt-<id>`.
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (508), `(cd electron && npm run typecheck && npm run build)`. Testy z prawdziwym serwerem HTTP w `electron/src/stt.test.ts`.
+- **Niesprawdzone** (AGENTS.md zabrania uruchamiania Electrona): prawdziwy mikrofon w Electronie na Wayland/KDE, wygląd przycisku w motywach, żywe API.
+- Mowa Wszędzie nie jest zależnością: jej lokalny faster-whisper to demon D-Bus bez HTTP, więc lokalnie trzeba postawić serwer zgodny z OpenAI.
+
 ## Do sprawdzenia przez użytkownika (w oknie Tauri, po etapie 11)
 
 - [ ] TUI claude i pi: kolory, ramki, polskie znaki (ąęśćżźół), Shift+Tab, Esc, Ctrl+C

@@ -4,6 +4,7 @@ import type { SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
 import { buildChatConfig, parseChat, type ChatEvent, type ChatMeta, type ChatRequest } from "./chat";
+import { parseSttConfig, sttConfigJson, sttKeyId } from "./stt";
 import { parseBotChat, parseRoutines, serializeBot, type BotDef } from "./bot";
 
 /** Most wystawiony przez `electron/src/preload.ts`. */
@@ -124,6 +125,16 @@ export const electronBackend: Backend = {
   chatSaveConfig: (json) => call<void>("chat_config_save", json),
   chatKeyStatus: (ps) => call<Record<string, KeyState>>("chat_key_status", ps),
   chatSetKey: (id, key) => call<void>("chat_set_key", id, key),
+  async sttConfig() {
+    return parseSttConfig(await call<string | null>("stt_config"));
+  },
+  sttSaveConfig: (config) => call<void>("stt_config_save", sttConfigJson(config)),
+  async sttKeyStatus(ps) {
+    const raw = await call<Record<string, KeyState>>("stt_key_status", ps);
+    return Object.fromEntries(ps.map((p) => [p.id, raw[sttKeyId(p.id)] ?? null]));
+  },
+  sttSetKey: (id, key) => call<void>("stt_set_key", id, key),
+  sttTranscribe: (audio, mime) => call<string>("stt_transcribe", audio, mime),
   chatList: () => call<ChatMeta[]>("chat_list"),
   async chatLoad(id) {
     const text = await call<string | null>("chat_load", id);
