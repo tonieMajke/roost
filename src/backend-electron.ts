@@ -138,6 +138,8 @@ export const electronBackend: Backend = {
     return buildChatConfig(raw.chat, raw.pi);
   },
   openExternal: (url) => call<void>("open_external", url),
+  resolveFiles: (cwd, paths) => call<(string | null)[]>("resolve_files", cwd, paths),
+  openFile: (file, line, col) => call<void>("open_file", file, line, col),
   chatModels: (p) => call<string[]>("chat_models", p),
   chatSaveConfig: (json) => call<void>("chat_config_save", json),
   chatKeyStatus: (ps) => call<Record<string, KeyState>>("chat_key_status", ps),

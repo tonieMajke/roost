@@ -99,6 +99,10 @@ export interface Backend {
   chatDelete(id: string): Promise<void>;
   /** Link z odpowiedzi w przeglądarce systemowej (tylko http/https). */
   openExternal(url: string): Promise<void>;
+  /** Ścieżki z terminala względem `cwd`: bezwzględna ścieżka istniejącego pliku albo `null`. */
+  resolveFiles(cwd: string, paths: string[]): Promise<(string | null)[]>;
+  /** Plik w edytorze ($VISUAL/$EDITOR z GUI) albo `xdg-open`, w linii/kolumnie, gdy edytor to umie. */
+  openFile(file: string, line?: number, col?: number): Promise<void>;
   /** Odpowiedź modelu strumieniem; ostatnie zdarzenie to `done` albo `error`. Zwraca Stop. */
   chatSend(req: ChatRequest, onEvent: (e: ChatEvent) => void): () => void;
   /** Wynik narzędzia z `tool_request` (claude/codex CLI w rozmowie głosowej). */

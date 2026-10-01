@@ -300,6 +300,10 @@ export const mockBackend: Backend = {
     if (p.kind === "openai") return ["Qwen-3.8-27B (podgląd)"];
     return [];
   },
+  async resolveFiles(_cwd, paths) {
+    return paths.map(() => null); // podgląd w przeglądarce nie ma dysku
+  },
+  async openFile() {},
   async openExternal(url) {
     globalThis.open?.(url, "_blank", "noopener");
   },
