@@ -1,5 +1,5 @@
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
-import type { Backend, BotApprovalChange, BotSkillMeta, ExitInfo, KeyState, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
+import type { Backend, BotApprovalChange, BotSkillMeta, BotSkillSource, ExitInfo, KeyState, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
 import type { SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
@@ -104,6 +104,7 @@ export const electronBackend: Backend = {
   claudeLimits: () => call<ClaudeLimits | null>("claude_limits"),
   dirExists: (path) => call<boolean>("dir_exists", path),
   pickDir: () => call<string | null>("pick_dir"),
+  pickImage: () => call<string | null>("pick_image"),
   homeDir: () => call<string>("home_dir"),
 
   loadWorkspace: () => call<string | null>("workspace_load"),
@@ -159,6 +160,10 @@ export const electronBackend: Backend = {
   botSkill: (id, name) => call<string | null>("bot_skill", id, name),
   botSkillSave: (id, md) => call<string>("bot_skill_save", id, md),
   botSkillDelete: (id, name) => call<void>("bot_skill_delete", id, name),
+  botSkillSources: () => call<BotSkillSource[]>("bot_skill_sources"),
+  botSkillImport: (id, name) => call<string>("bot_skill_import", id, name),
+  botAvatarImport: (id, file) => call<string>("bot_avatar_import", id, file),
+  botAvatar: (id, name) => call<string | null>("bot_avatar", id, name),
   async botRoutines(id) {
     return parseRoutines(JSON.parse(await call<string>("bot_routines", id)));
   },

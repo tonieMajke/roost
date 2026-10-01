@@ -23,7 +23,29 @@ import { ChatStore } from "../chat/store";
 
 export type MemoryTarget = "memory" | "user";
 export type ChatKind = "chats" | "runs";
-export type SkillMeta = { name: string; description: string; updated: number; error?: string };
+/** Kto utworzył skill: bot narzędziem, użytkownik w karcie bota, import z `~/.claude/skills`. */
+export type SkillAuthor = "bot" | "user" | "import";
+export type SkillMeta = { name: string; description: string; updated: number; by?: SkillAuthor; error?: string };
+export type SkillSource = { name: string; description: string; error?: string };
+
+const AUTHOR_FILE = ".author";
+const AUTHORS: SkillAuthor[] = ["bot", "user", "import"];
+const IMPORT_MAX = 5 * 1024 * 1024;
+const AVATAR_MAX = 2 * 1024 * 1024;
+const AVATAR_TYPES: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif" };
+const AVATAR_RE = /^avatar\.(png|jpe?g|webp|gif)$/;
+
+/** Rozmiar drzewa katalogów (dowiązania liczone po celu, jak przy kopiowaniu). */
+function treeSize(dir: string, limit: number): number {
+  let total = 0;
+  for (const e of fs.readdirSync(dir)) {
+    const p = path.join(dir, e);
+    const st = fs.statSync(p);
+    total += st.isDirectory() ? treeSize(p, limit - total) : st.size;
+    if (total > limit) return total;
+  }
+  return total;
+}
 
 const MEMORY_FILES: Record<MemoryTarget, { file: string; limit: number }> = {
   memory: { file: "memory.md", limit: MEMORY_LIMIT },
@@ -190,10 +212,12 @@ export class BotStore {
       } catch {
         continue;
       }
+      const a = readOr(path.join(dir, name, AUTHOR_FILE), "").trim() as SkillAuthor;
+      const by = AUTHORS.includes(a) ? { by: a } : {};
       const s = parseSkill(text);
-      if ("error" in s) out.push({ name, description: "", updated, error: s.error });
-      else if (s.name !== name) out.push({ name, description: s.description, updated, error: `\`name: ${s.name}\` ≠ katalog \`${name}\`` });
-      else out.push({ name, description: s.description, updated });
+      if ("error" in s) out.push({ name, description: "", updated, ...by, error: s.error });
+      else if (s.name !== name) out.push({ name, description: s.description, updated, ...by, error: `\`name: ${s.name}\` ≠ katalog \`${name}\`` });
+      else out.push({ name, description: s.description, updated, ...by });
     }
     return out;
   }
@@ -203,14 +227,73 @@ export class BotStore {
     return readOr(this.skillFile(id, name), "") || null;
   }
 
-  /** Zapis skilla; nazwa z frontmattera wyznacza katalog. */
-  skillSave(id: string, md: string): string {
+  /** Zapis skilla; nazwa z frontmattera wyznacza katalog. `by` zapisuje się tylko przy tworzeniu. */
+  skillSave(id: string, md: string, by: SkillAuthor = "user"): string {
     const s = parseSkill(md);
     if ("error" in s) throw new Error(`SKILL.md: ${s.error}`);
     const file = this.skillFile(id, s.name);
+    const isNew = !fs.existsSync(file);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     writeAtomic(file, md);
+    if (isNew) writeAtomic(path.join(path.dirname(file), AUTHOR_FILE), by);
     return s.name;
+  }
+
+  /** Skille do importu z `dir` (np. `~/.claude/skills`): tylko odczyt. */
+  static skillSources(dir: string): SkillSource[] {
+    let names: string[];
+    try {
+      names = fs.readdirSync(dir).sort();
+    } catch {
+      return [];
+    }
+    const out: SkillSource[] = [];
+    for (const name of names) {
+      const text = readOr(path.join(dir, name, "SKILL.md"), "");
+      if (!text) continue;
+      const s = parseSkill(text);
+      if ("error" in s) out.push({ name, description: "", error: s.error });
+      else out.push({ name: s.name, description: s.description, ...(s.name !== name ? { error: `\`name: ${s.name}\` ≠ katalog \`${name}\`` } : {}) });
+    }
+    return out;
+  }
+
+  /** Kopia katalogu skilla (z plikami obok `SKILL.md`, dowiązania jako zwykłe pliki); źródło bez zmian. */
+  skillImport(id: string, srcDir: string): string {
+    const s = parseSkill(readOr(path.join(srcDir, "SKILL.md"), ""));
+    if ("error" in s) throw new Error(`SKILL.md: ${s.error}`);
+    const file = this.skillFile(id, s.name);
+    if (fs.existsSync(file)) throw new Error(`skill „${s.name}” już jest u tego bota`);
+    const size = treeSize(srcDir, IMPORT_MAX);
+    if (size > IMPORT_MAX) throw new Error(`skill „${s.name}” ma ponad ${IMPORT_MAX / 1024 / 1024} MB`);
+    const dest = path.dirname(file);
+    fs.cpSync(srcDir, dest, { recursive: true, dereference: true });
+    writeAtomic(path.join(dest, AUTHOR_FILE), "import");
+    return s.name;
+  }
+
+  /** Obrazek awatara: kopia do folderu bota jako `avatar.<ext>`; zwraca nazwę do `avatar.image`. */
+  avatarImport(id: string, src: string): string {
+    const dir = this.mustExist(id);
+    const ext = path.extname(src).slice(1).toLowerCase();
+    if (!AVATAR_TYPES[ext]) throw new Error("awatar: tylko PNG, JPG, WebP albo GIF");
+    if (fs.statSync(src).size > AVATAR_MAX) throw new Error(`awatar: plik większy niż ${AVATAR_MAX / 1024 / 1024} MB`);
+    for (const f of fs.readdirSync(dir)) if (AVATAR_RE.test(f)) fs.rmSync(path.join(dir, f));
+    const name = `avatar.${ext}`;
+    fs.copyFileSync(src, path.join(dir, name));
+    return name;
+  }
+
+  /** Awatar jako data URL (strona nie czyta plików); `null` = nie ma. */
+  avatar(id: string, name: string): string | null {
+    const m = AVATAR_RE.exec(name);
+    if (!m) return null;
+    try {
+      const data = fs.readFileSync(path.join(this.mustExist(id), name));
+      return `data:${AVATAR_TYPES[m[1]]};base64,${data.toString("base64")}`;
+    } catch {
+      return null;
+    }
   }
 
   skillDelete(id: string, name: string): void {

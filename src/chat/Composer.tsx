@@ -24,14 +24,16 @@ type Props = {
 
 const GROUPS: ProviderGroup[] = ["sub", "api", "local"];
 
-function ModelMenu({ providers, offline, model, onModel, onProviders, onClose }: Pick<Props, "providers" | "offline" | "model" | "onModel" | "onProviders"> & { onClose(): void }) {
+export function ModelMenu({ providers, offline, model, onModel, onProviders, onClose }: Pick<Props, "providers" | "offline" | "model" | "onModel" | "onProviders"> & { onClose(): void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const down = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) onClose();
     };
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      e.stopPropagation(); // Esc zamyka samo menu, nie okno pod nim (karta bota)
+      onClose();
     };
     window.addEventListener("pointerdown", down, true);
     window.addEventListener("keydown", key, true);

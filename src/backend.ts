@@ -61,6 +61,8 @@ export interface Backend {
   dirExists(path: string): Promise<boolean>;
   /** Folder wybrany przez użytkownika; `null` = anulowanie. */
   pickDir(): Promise<string | null>;
+  /** Obrazek (PNG/JPG/WebP/GIF) wybrany przez użytkownika; `null` = anulowanie. */
+  pickImage(): Promise<string | null>;
   /** Katalog domowy, żeby zapisywać ścieżki jako `~/...` (patrz `src/paths.ts`). */
   homeDir(): Promise<string>;
   /** Treść `workspace.json`; `null` = pierwszy start aplikacji. */
@@ -109,6 +111,14 @@ export interface Backend {
   /** Zapis `SKILL.md`; zwraca nazwę z frontmattera. */
   botSkillSave(id: string, md: string): Promise<string>;
   botSkillDelete(id: string, name: string): Promise<void>;
+  /** Skille z `~/.claude/skills` do importu (tylko odczyt). */
+  botSkillSources(): Promise<BotSkillSource[]>;
+  /** Kopia skilla z `~/.claude/skills/<name>` do bota; zwraca nazwę. */
+  botSkillImport(id: string, name: string): Promise<string>;
+  /** Kopia obrazka do folderu bota; zwraca nazwę pliku do `avatar.image`. */
+  botAvatarImport(id: string, file: string): Promise<string>;
+  /** Awatar jako data URL; `null` = brak pliku. */
+  botAvatar(id: string, name: string): Promise<string | null>;
   botRoutines(id: string): Promise<{ routines: Routine[]; errors: string[] }>;
   botRoutinesSave(id: string, routines: Routine[]): Promise<void>;
   /** Rozmowy (`chats`) albo przebiegi z harmonogramu (`runs`). */
@@ -141,7 +151,8 @@ export interface Backend {
 export type BotMemoryTarget = "memory" | "user";
 export type BotApprovalChange = { type: "request"; req: ApprovalRequest } | { type: "resolved"; id: string; decision: ApprovalDecision };
 export type BotChatKind = "chats" | "runs";
-export type BotSkillMeta = { name: string; description: string; updated: number; error?: string };
+export type BotSkillMeta = { name: string; description: string; updated: number; by?: "bot" | "user" | "import"; error?: string };
+export type BotSkillSource = { name: string; description: string; error?: string };
 
 export const inElectron = typeof window !== "undefined" && "agentsElectron" in window;
 

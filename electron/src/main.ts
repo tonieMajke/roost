@@ -21,7 +21,7 @@ import { ApprovalBroker } from "./bot/approvals";
 import { ToolBridge } from "./bot/bridge";
 import { BotService } from "./bot/service";
 import { ensureFreeToken, freetokenInstance } from "./chat/freetoken";
-import { parseBotChat, type ApprovalDecision } from "../../src/bot";
+import { isSkillName, parseBotChat, type ApprovalDecision } from "../../src/bot";
 import type { ChatRequest, ProviderDef } from "../../src/chat";
 
 // Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
@@ -159,6 +159,15 @@ handle("bot_chat_load", (id: string, kind: ChatKind, chatId: string) => bots.cha
 handle("bot_chat_save", (json: string) => bots.chatSave(json));
 handle("bot_approvals", () => approvals.list());
 handle("bot_approve", (id: string, decision: ApprovalDecision) => approvals.decide(id, decision));
+// Import skilli z claude: tylko odczyt `~/.claude/skills`, kopia do folderu bota.
+const claudeSkills = () => path.join(app.getPath("home"), ".claude", "skills");
+handle("bot_skill_sources", () => BotStore.skillSources(claudeSkills()));
+handle("bot_skill_import", (id: string, name: string) => {
+  if (!isSkillName(name)) throw new Error(`zła nazwa skilla: ${name}`);
+  return bots.skillImport(id, path.join(claudeSkills(), name));
+});
+handle("bot_avatar_import", (id: string, file: string) => bots.avatarImport(id, file));
+handle("bot_avatar", (id: string, name: string) => bots.avatar(id, name));
 handle("bot_abort", (reqId: string) => botService.abort(reqId));
 // Odpowiedź bota płynie zdarzeniami `bot_event` (reqId, ChatEvent), jak `chat_event`.
 ipcMain.handle("bot_send", (event, reqId: string, chatJson: string, req: ChatRequest) => {
@@ -173,6 +182,16 @@ ipcMain.handle("bot_send", (event, reqId: string, chatJson: string, req: ChatReq
 handle("bot_chat_delete", (id: string, kind: ChatKind, chatId: string) => bots.chats(id, kind).delete(chatId));
 handle("pick_dir", async () => {
   const opts: Electron.OpenDialogOptions = { title: "Katalog projektu", properties: ["openDirectory"] };
+  const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+  return res.canceled ? null : (res.filePaths[0] ?? null);
+});
+
+handle("pick_image", async () => {
+  const opts: Electron.OpenDialogOptions = {
+    title: "Obrazek awatara",
+    properties: ["openFile"],
+    filters: [{ name: "Obrazy", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
+  };
   const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
   return res.canceled ? null : (res.filePaths[0] ?? null);
 });

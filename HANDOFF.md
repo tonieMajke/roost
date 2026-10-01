@@ -23,6 +23,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 7: karta bota – 2026-10-01 (Claude, master)
+
+- `src/bot/BotCard.tsx`: przycisk „Karta bota” w nagłówku (nagłówek widać teraz też przy pustej rozmowie; „Nowy bot” otwiera kartę od razu). Zakładki: **Osobowość** (imię, emoji z listy albo własne, obrazek, kolor, charakter, styl, czego unika, suwak tonu 3 poziomy, podgląd „Tak się przedstawi” z `botGreeting`), **Pamięć** (dwa pola z licznikiem / limitem, zapis każdego osobno), **Skille** (nazwa, opis, kto utworzył, data; podgląd treści w markdownie; usuń z potwierdzeniem; import z `~/.claude/skills`), **Ustawienia** (menu modeli z Czatu – `ModelMenu` wyeksportowane, Esc zamyka samo menu; foldery z okna wyboru; przełączniki 6 grup narzędzi; „Usuń bota” z potwierdzeniem, nie dla Kreatora). Osobowość i ustawienia zapisuje „Zapisz” w stopce.
+- `BotStore`: autor skilla w `skills/<nazwa>/.author` (`bot` z `skill_create`/`bot_create`, `user` z karty, `import`), ustawiany tylko przy tworzeniu; `skillSources(dir)` i `skillImport` (kopia całego katalogu, dowiązania jako pliki, ≤ 5 MB, źródło bez zmian); `avatarImport` (PNG/JPG/WebP/GIF ≤ 2 MB → `avatar.<ext>`, poprzedni usunięty) i `avatar` → data URL. IPC: `bot_skill_sources`, `bot_skill_import` (nazwa sprawdzona `isSkillName`), `bot_avatar_import`, `bot_avatar`, `pick_image`.
+- `src/bot/Avatar.tsx`: obrazek, emoji albo pierwsza litera; data URL raz na plik.
+- Zrzuty (Electron offscreen, mock) w motywach D i Kreślarnia: cztery zakładki, otwarte menu modeli, podgląd skilla i lista importu. Na żywo w podglądzie: zapis zmienia awatar na liście, Esc w menu nie zamyka karty, usunięcie bota zostawia pozostałe. 0 błędów konsoli.
+- Sprawdzenia: `pnpm typecheck`, `pnpm test` (53 pliki, 538 testów + 4 na żywo pominięte), `electron` typecheck + build – przechodzą.
+- Niesprawdzone: okna wyboru obrazka i folderu (natywne, w podglądzie ich nie ma) i import z prawdziwego `~/.claude/skills` – etap 11.
+
 ## M5 Etap 6: zakładka Bot – 2026-10-01 (Claude, master)
 
 - Trzecia karta **Bot** (`ModeTabs`, `ui.mode = "bot"`, Ctrl+Alt+C po kolei Code → Czat → Bot przez `nextMode`); Czat i Bot montowane przy pierwszym wejściu i zostają. `src/bot/BotView.tsx`: lista botów z kropką (pracuje / czeka na zgodę), pod wybranym jego rozmowy, na dole „Nowy bot” (tworzy domyślnego – edycja w etapie 7) i Kreator; powitanie z awatarem i `botGreeting`; nagłówek z awatarem i imieniem. Kilka botów może odpowiadać naraz (trwające odpowiedzi po id rozmowy).

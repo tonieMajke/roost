@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { MessageSquarePlus, PanelLeft, Plug, Plus, SlidersHorizontal, Wand2, X } from "lucide-react";
+import { MessageSquarePlus, PanelLeft, Plug, Plus, Settings2, SlidersHorizontal, Wand2, X } from "lucide-react";
 import { backend } from "../backend";
 import {
   applyBotEvent,
@@ -40,6 +40,8 @@ import { ModeTabs, type Mode } from "../chat/ModeTabs";
 import { ProvidersDialog } from "../chat/ProvidersDialog";
 import { Thread, type RenderBody } from "../chat/Thread";
 import { useProviders } from "../chat/useProviders";
+import { Avatar } from "./Avatar";
+import { BotCard, type CardTab } from "./BotCard";
 import { ApprovalCard, ToolCard } from "./Cards";
 import "../chat/chat.css";
 import "./bot.css";
@@ -59,14 +61,6 @@ type Props = {
   onOpenAppearance(): void;
 };
 
-export function Avatar({ bot, size = "sm" }: { bot: BotDef; size?: "sm" | "lg" }) {
-  return (
-    <span className={`bot-avatar is-${size}`} style={{ "--bot": bot.color } as CSSProperties} aria-hidden>
-      {bot.avatar.emoji ?? bot.name.slice(0, 1).toUpperCase()}
-    </span>
-  );
-}
-
 export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail, onOpenAppearance }: Props) {
   const { providers, offline, errors, setErrors, discovered, reload } = useProviders();
   const [bots, setBots] = useState<BotDef[]>([]);
@@ -81,6 +75,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
   const [chat, setChat] = useState<BotChat | null>(null);
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [providersOpen, setProvidersOpen] = useState(false);
+  const [card, setCard] = useState<CardTab | null>(null);
   const [inject, setInject] = useState<{ text: string; seq: number } | null>(null);
   const [armedId, setArmedId] = useState<string | null>(null);
   const armRef = useRef<Arm>(null);
@@ -318,6 +313,7 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
       .then((created) => {
         setBots((prev) => [...prev.filter((b) => !b.builtin), created, ...prev.filter((b) => b.builtin)]);
         pickBot(created.id);
+        setCard("persona");
       })
       .catch((e: unknown) => setErrors((prev) => [...prev, `nowy bot: ${String(e)}`]));
   };
@@ -453,6 +449,18 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
             <IconButton icon={X} label="Zamknij błędy" onClick={() => setErrors([])} />
           </div>
         )}
+        {bot && (
+          <header className="bot-head">
+            <Avatar bot={bot} />
+            <span className="bot-head-name">{bot.name}</span>
+            <span className="bot-head-title">{chat && !empty ? displayTitle(chat) : ""}</span>
+            {chat?.toolsUnsupported && <span className="bot-note">bez narzędzi (model ich nie obsługuje)</span>}
+            <button type="button" className="bot-head-card" onClick={() => setCard("persona")} title="Osobowość, pamięć, skille i ustawienia">
+              <Settings2 aria-hidden />
+              <span>Karta bota</span>
+            </button>
+          </header>
+        )}
         {!bot ? (
           <div className="chat-welcome">
             <p className="chat-list-empty">Wczytuję boty…</p>
@@ -469,12 +477,6 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
           </div>
         ) : (
           <>
-            <header className="bot-head">
-              <Avatar bot={bot} />
-              <span className="bot-head-name">{bot.name}</span>
-              <span className="bot-head-title">{chat ? displayTitle(chat) : ""}</span>
-              {chat?.toolsUnsupported && <span className="bot-note">bez narzędzi (model ich nie obsługuje)</span>}
-            </header>
             <div className="chat-scroll" ref={scroller} onScroll={onScroll}>
               <div className="chat-column">
                 <Thread messages={messages} providers={providers} liveId={live ? live.msgId : null} onRetry={retry} onEdit={edit} renderBody={renderBody} />
@@ -490,6 +492,25 @@ export function BotView({ mode, onMode, active, onTitle, railOpen, onToggleRail,
           </>
         )}
       </main>
+      {card && bot && (
+        <BotCard
+          key={bot.id}
+          bot={bot}
+          providers={providers}
+          offline={offline}
+          tab={card}
+          onSaved={(b) => setBots((prev) => prev.map((x) => (x.id === b.id ? b : x)))}
+          onDeleted={(id) => {
+            for (const l of lives.current.values()) if (l.chat.bot === id) l.stop();
+            setCard(null);
+            setChat(null);
+            setBots((prev) => prev.filter((b) => b.id !== id));
+            setSelected(null);
+          }}
+          onProviders={() => setProvidersOpen(true)}
+          onClose={() => setCard(null)}
+        />
+      )}
       {providersOpen && (
         <ProvidersDialog
           providers={providers}

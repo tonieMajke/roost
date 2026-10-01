@@ -28,11 +28,17 @@ type MockBot = {
   def: BotDef;
   memory: string;
   user: string;
-  skills: Record<string, { md: string; updated: number }>;
+  skills: Record<string, { md: string; updated: number; by?: "bot" | "user" | "import" }>;
   routines: Routine[];
   chats: Record<string, BotChat>;
   runs: Record<string, BotChat>;
 };
+
+/** Udawane `~/.claude/skills` w podglądzie. */
+const MOCK_SOURCES = [
+  { name: "pdf", description: "Czytanie, łączenie i wypełnianie plików PDF.", body: "# PDF\n\nUżyj `pdftotext`, a do łączenia `qpdf`.\n" },
+  { name: "commit-message", description: "Komunikat commita w stylu repozytorium: krótko, po polsku.", body: "# Commit\n\n1. `git diff --cached`\n2. Jedno zdanie, czas przeszły.\n" },
+];
 
 const RUSTY_TEXT =
   "Arr! Przejrzałem notatki wydania. Najważniejsze:\n\n- **async closures** stabilne,\n- szybszy `cargo check` przy dużych workspace'ach." +
@@ -104,6 +110,7 @@ function seed(now: number): Record<string, MockBot> {
             body: "# Kroki\n\n1. `web_search`: „Rust release”, „This Week in Rust”.\n2. Przeczytaj 2–3 źródła.\n3. Podsumuj w ≤ 5 punktach z linkami.\n",
           }),
           updated: now - 2 * 3_600_000,
+          by: "bot",
         },
       },
       routines: [
@@ -171,6 +178,10 @@ type BotApi = Pick<
   | "botSkill"
   | "botSkillSave"
   | "botSkillDelete"
+  | "botSkillSources"
+  | "botSkillImport"
+  | "botAvatarImport"
+  | "botAvatar"
   | "botRoutines"
   | "botRoutinesSave"
   | "botChatList"
@@ -293,7 +304,8 @@ export const mockBotBackend: BotApi = {
       .sort(([a], [c]) => a.localeCompare(c))
       .map(([name, s]) => {
         const p = parseSkill(s.md);
-        return "error" in p ? { name, description: "", updated: s.updated, error: p.error } : { name, description: p.description, updated: s.updated };
+        const by = s.by ? { by: s.by } : {};
+        return "error" in p ? { name, description: "", updated: s.updated, ...by, error: p.error } : { name, description: p.description, updated: s.updated, ...by };
       });
   },
   async botSkill(id, name) {
@@ -303,9 +315,29 @@ export const mockBotBackend: BotApi = {
     const p = parseSkill(md);
     if ("error" in p) throw new Error(`SKILL.md: ${p.error}`);
     const all = load();
-    get(all, id).skills[p.name] = { md, updated: Date.now() };
+    const b = get(all, id);
+    b.skills[p.name] = { md, updated: Date.now(), by: b.skills[p.name]?.by ?? "user" };
     save(all);
     return p.name;
+  },
+  async botSkillSources() {
+    return MOCK_SOURCES.map(({ name, description }) => ({ name, description }));
+  },
+  async botSkillImport(id, name) {
+    const src = MOCK_SOURCES.find((s) => s.name === name);
+    if (!src) throw new Error(`nie ma skilla „${name}” w ~/.claude/skills`);
+    const all = load();
+    const b = get(all, id);
+    if (b.skills[name]) throw new Error(`skill „${name}” już jest u tego bota`);
+    b.skills[name] = { md: skillMarkdown({ name, description: src.description, body: src.body }), updated: Date.now(), by: "import" };
+    save(all);
+    return name;
+  },
+  async botAvatarImport() {
+    throw new Error("obrazek awatara działa tylko w oknie aplikacji");
+  },
+  async botAvatar() {
+    return null;
   },
   async botSkillDelete(id, name) {
     const all = load();

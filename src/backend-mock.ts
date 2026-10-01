@@ -229,6 +229,7 @@ export const mockBackend: Backend = {
     const path = ask?.trim();
     return path ? path : null;
   },
+  pickImage: async () => null, // podgląd nie czyta plików z dysku
   homeDir: async () => "/home/podglad",
 
   // Preview: the workspace lives in localStorage (private mode can throw -> treat as empty).
