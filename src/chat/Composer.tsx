@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowUp, Check, ChevronDown, Globe, Square } from "lucide-react";
-import { GROUP_LABELS, findModel, modelLabel, supportsSearch, type ModelRef, type ProviderDef, type ProviderGroup } from "../chat";
+import { ArrowUp, Check, ChevronDown, FolderOpen, Globe, Square, X } from "lucide-react";
+import { GROUP_LABELS, findModel, isCli, modelLabel, supportsSearch, type ModelRef, type ProviderDef, type ProviderGroup } from "../chat";
 
 type Props = {
   providers: ProviderDef[];
@@ -20,6 +20,10 @@ type Props = {
   /** Przełącznik wyszukiwania (Bot: nie – sieć to narzędzie bota). */
   searchToggle?: boolean;
   placeholder?: string;
+  /** Folder do czytania przez agenta; `onFolder` brak = bez przycisku (np. Bot). */
+  folder?: string;
+  onFolder?(): void;
+  onClearFolder?(): void;
 };
 
 const GROUPS: ProviderGroup[] = ["sub", "api", "local"];
@@ -120,12 +124,13 @@ export function ModelMenu({ providers, offline, model, onModel, onProviders, onC
   );
 }
 
-export function Composer({ providers, offline, model, onModel, search, onSearch, busy, onSend, onStop, inject, big, onProviders, searchToggle = true, placeholder }: Props) {
+export function Composer({ providers, offline, model, onModel, search, onSearch, busy, onSend, onStop, inject, big, onProviders, searchToggle = true, placeholder, folder, onFolder, onClearFolder }: Props) {
   const [text, setText] = useState("");
   const [menu, setMenu] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
   const provider = model ? providers.find((p) => p.id === model.provider) : undefined;
   const canSearch = supportsSearch(provider);
+  const canFolder = provider ? isCli(provider) : false;
   const known = model ? findModel(providers, model) !== null : false;
 
   useEffect(() => {
@@ -189,6 +194,25 @@ export function Composer({ providers, offline, model, onModel, search, onSearch,
             <Globe aria-hidden />
             <span>Szukaj w sieci</span>
           </button>
+        )}
+        {onFolder && (
+          <span className={`chat-folder${folder ? " is-on" : ""}`}>
+            <button
+              type="button"
+              className="chat-search-btn chat-folder-btn"
+              disabled={!canFolder}
+              title={canFolder ? (folder ? `Folder: ${folder}` : "Daj agentowi dostęp (tylko do odczytu) do folderu") : "Folder działa z Claude i ChatGPT z subskrypcji (CLI)"}
+              onClick={onFolder}
+            >
+              <FolderOpen aria-hidden />
+              <span>{folder && canFolder ? folder.split("/").filter(Boolean).pop() || folder : "Folder"}</span>
+            </button>
+            {folder && (
+              <button type="button" className="chat-folder-clear" title="Odepnij folder" aria-label="Odepnij folder" onClick={onClearFolder}>
+                <X aria-hidden />
+              </button>
+            )}
+          </span>
         )}
         <span className="chat-composer-gap" />
         {busy ? (

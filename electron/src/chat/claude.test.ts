@@ -45,6 +45,13 @@ describe("claudeArgs", () => {
     expect(a.slice(a.indexOf("--allowedTools"), a.indexOf("--allowedTools") + 2)).toEqual(["--allowedTools", "WebSearch,WebFetch"]);
     expect(a.slice(-2)).toEqual(["--resume", "s1"]);
   });
+  it("folder: tylko czytanie (Read/Grep/Glob), z wyszukiwaniem dochodzi sieć", () => {
+    const a = claudeArgs(req({ folder: "/tmp/x" }));
+    expect(a.slice(a.indexOf("--tools"), a.indexOf("--tools") + 2)).toEqual(["--tools", "Read,Grep,Glob"]);
+    expect(a).toContain("--allowedTools");
+    expect(claudeArgs(req({ folder: "/tmp/x", search: true }))).toContain("Read,Grep,Glob,WebSearch,WebFetch");
+    expect(a.join(" ")).not.toMatch(/Bash|Edit|Write/);
+  });
 });
 
 describe("ClaudeParser (nagrane wyjście claude 2.1)", () => {

@@ -9,8 +9,12 @@ import type { ChatEvent, ChatRequest } from "../../../src/chat";
 import { runCli, type LineParser } from "./cli";
 
 const SEARCH_TOOLS = "WebSearch,WebFetch";
+/** Folder użytkownika: tylko czytanie i szukanie, bez Bash/Edit/Write. */
+const FOLDER_TOOLS = "Read,Grep,Glob";
 /** Narzędzie czeka na zgodę użytkownika: claude nie może zerwać wywołania po domyślnym limicie. */
 export const MCP_TOOL_TIMEOUT_MS = 6 * 60 * 60 * 1000;
+
+const tools = (req: ChatRequest) => [...(req.folder ? [FOLDER_TOOLS] : []), ...(req.search ? [SEARCH_TOOLS] : [])].join(",");
 
 /** `mcpConfig`: plik z serwerem `bot` (tryb bota). */
 export function claudeArgs(req: ChatRequest, mcpConfig?: string): string[] {
@@ -18,10 +22,10 @@ export function claudeArgs(req: ChatRequest, mcpConfig?: string): string[] {
     "-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
     "--strict-mcp-config", "--disable-slash-commands", "--setting-sources", "",
     "--system-prompt", req.system,
-    "--tools", req.search ? SEARCH_TOOLS : "",
+    "--tools", tools(req),
   ];
   if (mcpConfig) args.push("--mcp-config", mcpConfig);
-  const allowed = [...(mcpConfig ? ["mcp__bot__*"] : []), ...(req.search ? [SEARCH_TOOLS] : [])];
+  const allowed = [...(mcpConfig ? ["mcp__bot__*"] : []), ...(tools(req) ? [tools(req)] : [])];
   if (allowed.length) args.push("--allowedTools", allowed.join(","));
   if (req.model) args.push("--model", req.model);
   if (req.session) args.push(req.session.resume ? "--resume" : "--session-id", req.session.id);
@@ -104,6 +108,7 @@ export class ClaudeParser implements LineParser {
 
 export async function streamClaude(req: ChatRequest, cwd: string, signal: AbortSignal, emit: (e: ChatEvent) => void): Promise<void> {
   const program = req.provider.command || "claude";
+  cwd = req.folder ?? cwd;
   if (!req.mcp) return runCli(program, claudeArgs(req), req.prompt, cwd, new ClaudeParser(), signal, emit);
   // Konfiguracja z tokenem sesji: prywatny katalog, plik 0600, usuwany po odpowiedzi.
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agents-mcp-"));
