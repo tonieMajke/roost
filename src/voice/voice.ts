@@ -16,6 +16,8 @@ export type TtsProvider = {
   /** Tylko `speech`; bez końcowego `/`. */
   baseUrl?: string;
   model: string;
+  /** Tylko `piper`: program (ścieżka albo nazwa z PATH); domyślnie `piper`. */
+  command?: string;
   /** Głos, gdy w `voice.json` nie wybrano innego (`alloy`; Piper: pusty). */
   voice: string;
   keyEnv?: string;
@@ -71,7 +73,7 @@ export function parseTtsConfig(text: string | null): { config: TtsConfig; errors
   list.forEach((p, i) => {
     const where = `tts.json: silnik ${i + 1}`;
     if (!p || typeof p !== "object") return void errors.push(`${where}: nie jest obiektem`);
-    const { id, name, kind, baseUrl, model, voice, keyEnv, key } = p;
+    const { id, name, kind, baseUrl, model, command, voice, keyEnv, key } = p;
     if (typeof id !== "string" || !ID_RE.test(id)) return void errors.push(`${where}: złe \`id\``);
     if (seen.has(id)) return void errors.push(`${where}: powtórzone id \`${id}\``);
     if (kind !== "speech" && kind !== "piper") return void errors.push(`${where}: \`kind\` musi być \`speech\` albo \`piper\``);
@@ -85,6 +87,7 @@ export function parseTtsConfig(text: string | null): { config: TtsConfig; errors
       kind,
       ...(kind === "speech" ? { baseUrl: (baseUrl as string).trim().replace(/\/+$/, "") } : {}),
       model: model.trim(),
+      ...(kind === "piper" && typeof command === "string" && command.trim() ? { command: command.trim() } : {}),
       voice: typeof voice === "string" ? voice.trim() : "",
       ...(typeof keyEnv === "string" && keyEnv ? { keyEnv } : {}),
       // Piper jest procesem lokalnym: klucz nie ma sensu, nawet gdy ktoś go wpisał.

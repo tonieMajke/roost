@@ -2,6 +2,15 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Głos Etap 2: silniki TTS – 2026-10-01 (Claude, gałąź `glos`)
+
+- `electron/src/voice/tts.ts`: `speakHttp` (`POST {baseUrl}/audio/speech`, JSON, `response_format: "wav"`, tekst w jednej linii, limit 4000 znaków), `Piper` (jeden proces `--output_dir` na rozmowę: linia → ścieżka WAV na stdout, odpowiedzi po kolei; przerwane zdanie czeka i jest wyrzucane; śmierć procesu odrzuca czekające z ostatnią linią stderr), `TtsService` (silnik i głos czytane z `tts.json`/`voice.json` przy każdym zdaniu, Piper wymieniany po zmianie programu/modelu/głosu).
+- Silnik Piper ma pole `command` (domyślnie `piper` z PATH, `~` rozwijane); głos liczbowy = `--speaker`.
+- IPC w `main.ts`: `tts_config(_save)`, `tts_key_status`, `tts_set_key` (sejf `tts-<id>`), `voice_config(_save)`, `voice_speak(reqId, text)` → bajty audio, `voice_cancel`, `voice_end`. Przeładowanie strony i wyjście zamykają Pipera.
+- Testy: serwer HTTP i atrapa `fixtures/fake-piper.mjs` (kolejność, abort w środku kolejki, śmierć procesu, brak programu/modelu, `close` zabija proces). `tts-live.test.ts` z prawdziwym Piperem przy `AW_PIPER` + `AW_PIPER_MODEL`: przeszedł na wydaniu 2023.11.14-2 z `pl_PL-gosia-medium` (199 ms ze startem, 154 ms drugie zdanie).
+- Sprawdzenia: typecheck, `pnpm test` (551 + 1 pominięty na żywo), electron typecheck + build – przechodzą.
+- Niesprawdzone: `/audio/speech` na żywo (OpenAI, speaches, Kokoro); strona jeszcze nie woła `voice_*` (etap 3). Piper nie jest zainstalowany w systemie (test na wydaniu w katalogu tymczasowym).
+
 ## Głos Etap 1: logika rozmowy – 2026-10-01 (Claude, gałąź `glos`, eksperyment z `docs/plan-glos.md`)
 
 - `src/voice/voice.ts`: `parseTtsConfig` (`tts.json`, silniki `speech` = `/audio/speech` i `piper`, szablony OpenAI / lokalny / Piper, klucze `tts-<id>`), `parseVoiceConfig` (`voice.json`: mózg `ModelRef`, silnik TTS, głos, słuchawki).

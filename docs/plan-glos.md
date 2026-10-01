@@ -41,9 +41,10 @@ STT strumieniowane w trakcie mówienia, głos w zakładce Bot.
 - **Silniki TTS** (`tts.json`, klucze w sejfie jako `tts-<id>`, wzór jak `stt.json`):
   - `kind: "speech"`: `POST {baseUrl}/audio/speech` w formacie OpenAI. Szablony: OpenAI
     i „Lokalny serwer” (speaches / Kokoro-FastAPI mówią tym samym API).
-  - `kind: "piper"`: lokalny proces `piper --model <plik.onnx> --output-raw`, tekst na
-    stdin i surowe PCM 16-bit na stdout (częstotliwość z `<model>.onnx.json`).
-    Uruchamiany raz na rozmowę i trzymany przy życiu, bo start modelu kosztuje.
+  - `kind: "piper"`: lokalny proces `piper --model <plik.onnx> --output_dir <tmp>`: zdanie
+    jako linia na stdin, ścieżka gotowego WAV-a na stdout, w kolejności (`--output_raw` nie
+    ma granic między zdaniami). Uruchamiany raz na rozmowę i trzymany przy życiu.
+    Zmierzone (etap 2, wydanie 2023.11.14-2, `pl_PL-gosia-medium`): ~0,15–0,2 s na zdanie.
 - **Mózg = ta sama droga co Czat** (`chatSend` / `chat_send`, `ChatRequest`). Prompt
   systemowy rozmówcy (`voicePrompt`) każe odpowiadać krótko, mową, bez list i kodu,
   i pytać, gdy coś jest niejasne.
@@ -105,7 +106,7 @@ Nowa zależność: tylko `@ricky0123/vad-web` (z `onnxruntime-web`), w etapie 3.
 ## Postęp
 
 - [x] Etap 1 (L) – logika rozmowy bez UI
-- [ ] Etap 2 (C) – silniki TTS w procesie głównym
+- [x] Etap 2 (C) – silniki TTS w procesie głównym
 - [ ] Etap 3 (C) – kuleczka: rozmowa na żywo bez narzędzi
 - [ ] Etap 4 (C) – ustawienia rozmowy
 - [ ] Etap 5 (C) – narzędzia: panele i „deploy”

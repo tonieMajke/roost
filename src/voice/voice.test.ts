@@ -25,13 +25,13 @@ describe("parseTtsConfig", () => {
         { id: "b", kind: "speech", baseUrl: "ftp://x", model: "m" },
         { id: "c", kind: "glos", model: "m" },
         { id: "d", kind: "piper", model: " " },
-        { id: "e", kind: "piper", model: "/m.onnx", key: true },
+        { id: "e", kind: "piper", model: "/m.onnx", key: true, command: " /opt/piper/piper " },
       ],
     }));
     expect(errors).toHaveLength(4);
     expect(config.providers.map((p) => p.id)).toEqual(["a", "e"]);
     expect(config.providers[0]).toMatchObject({ baseUrl: "https://x.example/v1", key: true, voice: "" });
-    expect(config.providers[1]).toMatchObject({ key: false });
+    expect(config.providers[1]).toMatchObject({ key: false, command: "/opt/piper/piper" });
     expect(config.providers[1].baseUrl).toBeUndefined();
   });
 });
