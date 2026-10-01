@@ -27,6 +27,8 @@ import { ContinueDialog } from "./ContinueDialog";
 import { continueTargets, type ContinueTarget } from "./continue";
 import { NO_ACCOUNTS, accountById, accountKind, pickAccountId, type Accounts } from "./accounts";
 import { VoiceDialog } from "./VoiceDialog";
+import { VoiceOrb } from "./voice/VoiceOrb";
+import type { VoiceTab } from "./voice/TalkSettings";
 import { activeStt, DEFAULT_STT, type SttConfig } from "./stt";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
@@ -93,6 +95,8 @@ export function App() {
   const [presetMenu, setPresetMenu] = useState(false);
   const [appearance, setAppearance] = useState(false);
   const [voice, setVoice] = useState(false);
+  const [talk, setTalk] = useState(false);
+  const [voiceTab, setVoiceTab] = useState<VoiceTab>("dictation");
   const [stt, setStt] = useState<SttConfig>(DEFAULT_STT);
   const sttRef = useRef(stt);
   sttRef.current = stt;
@@ -244,7 +248,10 @@ export function App() {
 
   const paneActions: PaneActions = {
     voiceReady: () => activeStt(sttRef.current) !== null,
-    openVoice: () => setVoice(true),
+    openVoice: () => {
+      setVoiceTab("dictation");
+      setVoice(true);
+    },
     voiceMic: () => sttRef.current.mic,
     dictated: (paneId, text) => {
       const term = terms.current.get(paneId);
@@ -873,7 +880,12 @@ export function App() {
           dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } })
         }
         onOpenAppearance={() => setAppearance(true)}
-        onOpenVoice={() => setVoice(true)}
+        onOpenVoice={() => {
+          setVoiceTab("dictation");
+          setVoice(true);
+        }}
+        talking={talk}
+        onToggleTalk={() => setTalk((t) => !t)}
       />
       <main className="area">
         {errors.length > 0 && (
@@ -1035,8 +1047,18 @@ export function App() {
           onClose={() => setAccountsDialog(false)}
         />
       )}
+      {talk && (
+        <VoiceOrb
+          onClose={() => setTalk(false)}
+          onOpenSettings={(tab) => {
+            setVoiceTab(tab);
+            setVoice(true);
+          }}
+        />
+      )}
       {voice && (
         <VoiceDialog
+          tab={voiceTab}
           config={stt}
           onSave={async (next) => {
             await backend.sttSaveConfig(next);

@@ -16,6 +16,8 @@ import { chatConfigLoad, chatConfigSave, defaultChatService } from "./chat/servi
 import { KeyStore, passwordStore } from "./chat/keys";
 import { sttConfigLoad, sttConfigSave, transcribe } from "./stt";
 import { activeStt, parseSttConfig, sttKeyId, type SttProvider } from "../../src/stt";
+import { TtsService, ttsConfigLoad, ttsConfigSave, voiceConfigLoad, voiceConfigSave } from "./voice/tts";
+import { ttsKeyId, type TtsProvider } from "../../src/voice/voice";
 import { BotStore, type ChatKind, type MemoryTarget } from "./bot/store";
 import { ApprovalBroker } from "./bot/approvals";
 import { ToolBridge } from "./bot/bridge";
@@ -48,6 +50,7 @@ const keys = new KeyStore(config.configDir(), {
 const chat = defaultChatService(path.join(config.configDir(), "chat-cwd"), path.join(config.configDir(), "pi-agent"), (p) =>
   keys.get(p.id, p.keyEnv),
 );
+const tts = new TtsService(() => config.configDir(), (id, env) => keys.get(id, env));
 let win: BrowserWindow | null = null;
 // Prośby botów o zgodę idą do okna (`bot_approval`); decyzja wraca przez `bot_approve`.
 const approvals = new ApprovalBroker((e) => {
@@ -143,6 +146,17 @@ handle("stt_transcribe", (audio: Uint8Array, mime: string) => {
   if (!p) throw new Error("nie wybrano silnika transkrypcji (Ustawienia głosu)");
   return transcribe(p, keys.get(sttKeyId(p.id), p.keyEnv), audio, mime, cfg.language);
 });
+// Rozmowa głosowa (eksperyment, `docs/plan-glos.md`): mózg i silnik mowy z `voice.json`/`tts.json`;
+// `voice_speak` zwraca bajty audio jednego zdania, `voice_cancel` je przerywa, `voice_end` zamyka Pipera.
+handle("tts_config", () => ttsConfigLoad(config.configDir()));
+handle("tts_config_save", (json: string) => ttsConfigSave(config.configDir(), json));
+handle("tts_key_status", (ps: TtsProvider[]) => keys.status(ps.map((p) => ({ id: ttsKeyId(p.id), keyEnv: p.keyEnv }))));
+handle("tts_set_key", (id: string, key: string | null) => keys.set(ttsKeyId(id), key));
+handle("voice_config", () => voiceConfigLoad(config.configDir()));
+handle("voice_config_save", (json: string) => voiceConfigSave(config.configDir(), json));
+handle("voice_speak", (reqId: string, text: string) => tts.speak(reqId, text));
+handle("voice_cancel", (reqId: string) => tts.cancel(reqId));
+handle("voice_end", () => tts.end());
 // Zakładka Bot (M5): boty, pamięć, skille, harmonogram i rozmowy na dysku.
 handle("bot_list", () => bots.list());
 handle("bot_create", (json: string) => bots.create(json));
@@ -252,6 +266,7 @@ function createWindow() {
       chat.abortAll();
       botService.abortAll();
       approvals.denyAll();
+      tts.end();
     }
   });
   const dev = process.env.AGENTS_DEV_URL;
@@ -275,4 +290,5 @@ app.on("will-quit", () => {
   botService.abortAll();
   approvals.denyAll();
   void bridge?.then((b) => b.close());
+  tts.end();
 });

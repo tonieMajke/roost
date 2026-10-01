@@ -8,6 +8,7 @@ import type { Handoff } from "./handoff";
 import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
 import type { ApprovalDecision, ApprovalRequest, BotChat, BotDef, Routine } from "./bot";
 import type { SttConfig, SttProvider } from "./stt";
+import type { TtsConfig, TtsProvider, VoiceConfig } from "./voice/voice";
 
 export type KeyState = "stored" | "env" | null;
 
@@ -150,6 +151,18 @@ export interface Backend {
   sttSetKey(providerId: string, key: string | null): Promise<void>;
   /** Nagranie → tekst z wybranego silnika; odrzuca z powodem po polsku. */
   sttTranscribe(audio: Uint8Array, mime: string): Promise<string>;
+  /** Rozmowa głosowa (eksperyment): mózg i głos z `voice.json`, silniki mowy z `tts.json`. */
+  voiceConfig(): Promise<{ config: VoiceConfig; errors: string[] }>;
+  voiceSaveConfig(config: VoiceConfig): Promise<void>;
+  ttsConfig(): Promise<{ config: TtsConfig; errors: string[] }>;
+  ttsSaveConfig(config: TtsConfig): Promise<void>;
+  ttsKeyStatus(providers: TtsProvider[]): Promise<Record<string, KeyState>>;
+  ttsSetKey(providerId: string, key: string | null): Promise<void>;
+  /** Jedno zdanie → bajty audio (WAV albo format z API) do `decodeAudioData`. */
+  voiceSpeak(reqId: string, text: string): Promise<Uint8Array>;
+  voiceCancel(reqId: string): void;
+  /** Koniec rozmowy: proces główny zamyka Pipera. */
+  voiceEnd(): void;
   /** Własny pasek tytułu; brak = podgląd w przeglądarce, bez okna. */
   window?: WindowControls;
 }

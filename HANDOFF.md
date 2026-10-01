@@ -33,6 +33,63 @@ Plan: `docs/plan-konta.md` (etapy 1–5 zrobione i zacommitowane, 6 = ten wpis).
 - **Niesprawdzone:** wygląd i koszt GPU Mgławicy przy wielu panelach, czytelność radaru w Pulpicie 300 px.
 - Pominięte względem makiet: żółte fale „czeka” i bursztynowy znak CZEKA (brak stanu „czeka na odpowiedź” w aplikacji), napis „N zmian · M plików” w rdzeniu, pasek „SEKTOR/QNH”, **paski lotów** Wieży (lista paneli ze wszystkich projektów po pilności – makieta uznaje je za lepsze od samego radaru). Radar pokazuje tylko aktywny projekt.
 - Do zrobienia: **Biuro** (izometryczne SVG z biurkami – ekran powitalny projektu albo widok w Pulpicie, nie tło), reszta tabeli braków. Niezacommitowane zmiany w `electron/src/bot/*`, `main.ts`, `preload.ts`, `src/backend*.ts`, `src/bot*.ts` nie pochodzą z tej pracy.
+## Głos: do wdrożenia przez następnego agenta – 2026-10-01 (stan po rozmowie z użytkownikiem, gałąź `glos`)
+
+Użytkownik zbiera więcej zmian i zleci wdrożenie wszystkich naraz innemu agentowi. Tu jest wszystko, co ustalono o głosie. Niczego z tej listy jeszcze nie zrobiono w kodzie.
+
+**Stan środowiska (zrobione, zweryfikowane)**
+- Piper zainstalowany z AUR (`piper-tts-bin`). **Binarka nazywa się `piper-tts` (`/usr/bin/piper-tts`), nie `piper`** – `which piper` nic nie zwraca.
+- Głosy w `~/.local/share/piper/`: `pl_PL-bass-high.onnx` (+ `.onnx.json`, pobrany z `rhasspy/piper-voices`, `pl/pl_PL/bass/high/`, bo użytkownik miał sam `.onnx`) oraz `pl.onnx` (+ `.json`) = **`gosia` medium**, żeński, skopiowany ze scratchpada sesji `54c6b0d8…`.
+- Test z linii poleceń: `echo "Cześć…" | piper-tts --model ~/.local/share/piper/pl_PL-bass-high.onnx --output_file x.wav` → 2,3 s audio w 0,26 s (RTF 0,11), odtworzone `pw-play`. Czy użytkownikowi głos się podoba – **nie wiadomo**.
+- Użytkownik wybrał na razie **Piper + `pl_PL-bass-high`** („bass” to nazwa głosu). Przyznał, że głosy Pipera są „średnie” i woli żeńskie – patrz „Później”.
+
+**Do zrobienia w kodzie**
+1. **Domyślny program Pipera**: `electron/src/voice/tts.ts:198` ma `p.command ?? "piper"`, a `TalkSettings.tsx:94` placeholder „piper (z PATH)”. Na tym systemie (Arch/AUR) to `piper-tts`. Spróbować `piper-tts`, potem `piper` (albo wykrywać przez PATH), poprawić placeholder i komunikat ENOENT (`tts.ts:115`). Dodać test.
+2. **Domyślny model w szablonie** (`src/voice/voice.ts:43`): dziś `~/.local/share/piper/pl_PL-gosia-medium.onnx`, a plik leży jako `pl.onnx` i `pl_PL-bass-high.onnx`. Ustawić na `pl_PL-bass-high.onnx` (wybór użytkownika); ewentualnie wykrywać `*.onnx` w `~/.local/share/piper/` i dać listę do wyboru zamiast wpisywania ścieżki.
+3. **Etap 6 – próba na żywo** (nic z tego nie było uruchamiane z prawdziwym Piperem): `cd .claude/worktrees/glos && pnpm build && pnpm desktop`; Głos → Rozmowa → silnik Piper, program `piper-tts`, model `~/.local/share/piper/pl_PL-bass-high.onnx` → „Posłuchaj” (głos słychać, czas syntezy pokazany) → potem cała rozmowa z kuleczki (mikrofon → whisper → mózg → Piper). Sprawdzić też „Mam słuchawki” i silnik API/lokalny. AGENTS.md zabrania uruchamiania Electrona bez prośby – użytkownik poprosi o to wprost albo wskaże, kiedy wolno.
+4. Po teście: zaktualizować ten HANDOFF o wynik i scalić `glos` do `konta` (merge tylko na wyraźne polecenie użytkownika).
+
+**Później (opcjonalnie, użytkownik nie zdecydował)**
+- Lepszy głos żeński po polsku przez silnik „API” (bez zmian w kodzie, adres + model w Rozmowie): OpenAI `gpt-4o-mini-tts` (`nova`/`shimmer`/`coral`, wymaga klucza), Edge TTS `pl-PL-ZofiaNeural` przez serwer `openai-edge-tts` (darmowy, nieoficjalny, chmura), lokalnie XTTS-v2 (klonowanie głosu, najlepiej na GPU) np. przez `openedai-speech`. Użytkownik pytał, gdzie odsłuchać: `openai.fm`, demo Azure TTS, HF Space `coqui/xtts` (adresów nie sprawdzałem). Nie wiem, czy ma klucz OpenAI ani GPU – zapytać.
+- Piper ma w PL tylko głosy `darkman`, `gosia`, `mc_speech`, `bass` i inne męskie (z pamięci, nie sprawdzone).
+
+## Głos Etap 4: ustawienia rozmowy – 2026-10-01 (Claude, gałąź `glos`)
+
+- Okno „Głos” (`VoiceDialog.tsx`) ma zakładki **Dyktowanie | Rozmowa**; treść dyktowania bez zmian (dopisek: mikrofon i język obowiązują też w rozmowie). Rail → mikrofon i mikrofon panelu otwierają „Dyktowanie”, zębatka kuleczki „Rozmowę”, błąd kuleczki otwiera zakładkę, której brakuje.
+- `src/voice/TalkSettings.tsx`: mózg (modele z Czatu z wykrytymi `discover`, grupa CLI z dopiskiem „bez narzędzi, wolniejszy start”, domyślnie pierwszy model), silniki mowy (szablony OpenAI / Lokalny serwer / Piper; `speech`: adres, model, klucz; `piper`: program, plik `.onnx`), głos/mówca, „Posłuchaj” (synteza przez `voiceSpeak` + czas), „Mam słuchawki”. Zapis od razu do `voice.json`/`tts.json`.
+- `resolveBrain` (`voice.ts`): model wykryty przez `GET /models` działa także jako mózg, choć nie ma go w `chat.json`.
+- Kuleczka ma `z-index: 19` (pod `.overlay`): okno ustawień ją przykrywa.
+- Sprawdzone w ukrytym oknie Electrona na mocku: zakładka „Rozmowa”, Posłuchaj (ton z mocka, czas syntezy). Sprawdzenia: typecheck, `pnpm test` (571 + 1 pominięty), electron typecheck + build – przechodzą.
+- Niesprawdzone: „Posłuchaj” z prawdziwym Piperem/API, klucz TTS w sejfie na żywo.
+
+## Głos Etap 3: kuleczka i rozmowa na żywo – 2026-10-01 (Claude, gałąź `glos`)
+
+- Zmiana planu: VAD własny po energii (`src/voice/vad.ts`) zamiast `@ricky0123/vad-web` (ładuje `.onnx`/`.wasm` przez `fetch`, a strona stoi na `file://`). Próg = szum tła × 3, 300 ms kalibracji, start po 60 ms mowy, koniec po 600 ms ciszy, < 240 ms = szum; w trakcie odtwarzania (bez słuchawek) próg × 6 i start po 160 ms. Preroll 300 ms, wypowiedź → WAV 16 kHz → istniejące `sttTranscribe(…, "audio/wav")`.
+- `src/voice/session.ts` (`VoiceSession`, bez DOM): transkrypcja → `chatSend` (`voiceRequest`: HTTP = `messages`, CLI = `prompt` z całą rozmową, bez sesji) → `splitSentences` → `speakable` → `voiceSpeak` od razu dla każdego zdania, granie po kolei. Mowa albo klik w trakcie odpowiedzi = Stop mózgu, `voiceCancel` zdań, cisza. Bez silnika TTS odpowiedź jest tylko tekstem.
+- `src/voice/audio.ts`: `Mic` (AudioContext 16 kHz, AudioWorklet z blob, echo/szum/AGC), `Player` (`decodeAudioData`, `AnalyserNode`). `useVoiceSession.ts` czyta `stt.json`/`voice.json`/`tts.json`/`chat.json` raz na start (mózg = `voice.json.brain` albo pierwszy model z Czatu).
+- `VoiceOrb.tsx` + `voice.css`: pasek z kuleczką w prawym dolnym rogu (skala z głośności co klatkę przez `--lvl`, oddech/obrót/pierścień wg stanu, `prefers-reduced-motion` i `motion-lite`), wycisz, zapis rozmowy z czasami kroków (`exchangeTimes`), ustawienia, Zakończ (Esc). Przycisk „Rozmowa głosowa” w stopce Raila. Backend: `voiceConfig`, `ttsConfig`, `voiceSpeak`… (mock: cichy ton długości zdania).
+- Sprawdzone w ukrytym oknie Electrona poza ekranem (offscreen, wyciszone, sztuczny mikrofon z pliku WAV mowy z Pipera, podgląd na mocku): słucha → słyszy → myśli → mówi, czasy w zapisie; stan błędu bez silnika transkrypcji. Zrzuty w motywie D.
+- Sprawdzenia: typecheck, `pnpm test` (570 + 1 pominięty), electron typecheck + build – przechodzą.
+- Niesprawdzone: prawdziwy mikrofon i echo z głośników, VAD w hałasie, cała pętla z prawdziwym whisperem/Claude/Piperem, jasne motywy. Kuleczka nie jest przeciągalna (plan mówił „przeciągalna”).
+
+## Głos Etap 2: silniki TTS – 2026-10-01 (Claude, gałąź `glos`)
+
+- `electron/src/voice/tts.ts`: `speakHttp` (`POST {baseUrl}/audio/speech`, JSON, `response_format: "wav"`, tekst w jednej linii, limit 4000 znaków), `Piper` (jeden proces `--output_dir` na rozmowę: linia → ścieżka WAV na stdout, odpowiedzi po kolei; przerwane zdanie czeka i jest wyrzucane; śmierć procesu odrzuca czekające z ostatnią linią stderr), `TtsService` (silnik i głos czytane z `tts.json`/`voice.json` przy każdym zdaniu, Piper wymieniany po zmianie programu/modelu/głosu).
+- Silnik Piper ma pole `command` (domyślnie `piper` z PATH, `~` rozwijane); głos liczbowy = `--speaker`.
+- IPC w `main.ts`: `tts_config(_save)`, `tts_key_status`, `tts_set_key` (sejf `tts-<id>`), `voice_config(_save)`, `voice_speak(reqId, text)` → bajty audio, `voice_cancel`, `voice_end`. Przeładowanie strony i wyjście zamykają Pipera.
+- Testy: serwer HTTP i atrapa `fixtures/fake-piper.mjs` (kolejność, abort w środku kolejki, śmierć procesu, brak programu/modelu, `close` zabija proces). `tts-live.test.ts` z prawdziwym Piperem przy `AW_PIPER` + `AW_PIPER_MODEL`: przeszedł na wydaniu 2023.11.14-2 z `pl_PL-gosia-medium` (199 ms ze startem, 154 ms drugie zdanie).
+- Sprawdzenia: typecheck, `pnpm test` (551 + 1 pominięty na żywo), electron typecheck + build – przechodzą.
+- Niesprawdzone: `/audio/speech` na żywo (OpenAI, speaches, Kokoro); strona jeszcze nie woła `voice_*` (etap 3). Piper nie jest zainstalowany w systemie (test na wydaniu w katalogu tymczasowym).
+
+## Głos Etap 1: logika rozmowy – 2026-10-01 (Claude, gałąź `glos`, eksperyment z `docs/plan-glos.md`)
+
+- `src/voice/voice.ts`: `parseTtsConfig` (`tts.json`, silniki `speech` = `/audio/speech` i `piper`, szablony OpenAI / lokalny / Piper, klucze `tts-<id>`), `parseVoiceConfig` (`voice.json`: mózg `ModelRef`, silnik TTS, głos, słuchawki).
+- `splitSentences(buffer, final)`: zdania ze strumienia dla TTS. Granica wymaga białego znaku po sobie, skróty („np.”, „m.in.”), inicjały i liczebniki nie tną, w bloku kodu nie tnie, zdanie > 200 znaków tnie na przecinku. Test: strumień kawałkami = całość.
+- `speakable(md)`: markdown → tekst do czytania (kod pominięty, linki = opis, bez emoji).
+- `voiceReducer`: stany `idle/listening/transcribing/thinking/speaking`, przerwanie zostawia tylko zagrane zdania, zdarzenia mają numer wymiany (spóźnione z przerwanej odpowiedzi są ignorowane), transkrypt w trakcie dalszego mówienia dokleja się do następnego. Znaczniki czasu kroków w `VoiceExchange.t`.
+- `voiceTurns` / `voiceCliPrompt` / `voicePrompt` (krótkie odpowiedzi mową; z listą paneli opisuje `open_panes`).
+- Sprawdzenia: typecheck, `pnpm test` (51 plików, 544 testy; 25 nowych w `src/voice/voice.test.ts`), electron typecheck + build – przechodzą.
+- Niesprawdzone: nic z tego nie jest jeszcze podpięte (etapy 2–3).
 
 ## Dyktowanie głosem (2026-10-01, poza planem M5)
 

@@ -6,12 +6,15 @@ import { Check, Mic, Plus, Trash2 } from "lucide-react";
 import { backend, type KeyState } from "./backend";
 import { Dialog } from "./Dialog";
 import { STT_PRESETS, sttFreeId, type SttConfig, type SttProvider } from "./stt";
+import { TalkSettings, type VoiceTab } from "./voice/TalkSettings";
 
 type Props = {
   config: SttConfig;
   /** Zapis do `stt.json` i nowa konfiguracja dla reszty aplikacji. */
   onSave(config: SttConfig): Promise<void>;
   onClose(): void;
+  /** Zakładka na start: dyktowanie (mikrofon w panelu) albo rozmowa (kuleczka). */
+  tab?: VoiceTab;
 };
 
 const LANGUAGES: [string, string][] = [
@@ -138,7 +141,8 @@ async function listMics(): Promise<Mic[]> {
   return devices.filter((d) => d.deviceId !== "default" && d.deviceId !== "communications").map((d, i) => ({ id: d.deviceId, label: d.label || `Mikrofon ${i + 1}` }));
 }
 
-export function VoiceDialog({ config, onSave, onClose }: Props) {
+export function VoiceDialog({ config, onSave, onClose, tab: initialTab = "dictation" }: Props) {
+  const [tab, setTab] = useState<VoiceTab>(initialTab);
   const [keys, setKeys] = useState<Record<string, KeyState>>({});
   const [error, setError] = useState<string | null>(null);
   const [mics, setMics] = useState<Mic[]>([]);
@@ -174,63 +178,78 @@ export function VoiceDialog({ config, onSave, onClose }: Props) {
   };
 
   return (
-    <Dialog label="Dyktowanie" className="prov-dialog" onClose={onClose}>
+    <Dialog label="Głos" className="prov-dialog" onClose={onClose}>
       {() => (
         <>
-          <h2>Dyktowanie głosem</h2>
-          <p>
-            Mikrofon w nagłówku panelu nagrywa głos, wysyła go do wybranego silnika, a gotowy tekst wkleja do terminala bez Entera. Silnik to dowolny serwer z <code>/audio/transcriptions</code>: chmura albo własny, lokalny. Klucze trafiają do sejfu systemowego.
-          </p>
-          {error && <div className="prov-error">{error}</div>}
-          <div className="prov-list">
-            {config.providers.map((p) => (
-              <Row
-                key={p.id}
-                p={p}
-                active={config.active === p.id}
-                keyState={keys[p.id]}
-                onActivate={() => save({ ...config, active: p.id })}
-                onEdit={(patch) => save({ ...config, providers: config.providers.map((x) => (x.id === p.id ? { ...x, ...patch } : x)) })}
-                onRemove={() => save({ ...config, active: config.active === p.id ? null : config.active, providers: config.providers.filter((x) => x.id !== p.id) })}
-                onKey={async (k) => {
-                  await backend.sttSetKey(p.id, k);
-                  refreshKeys();
-                  if (k && config.active === null) save({ ...config, active: p.id });
-                }}
-              />
-            ))}
+          <h2>Głos</h2>
+          <div className="seg voice-tabs" role="tablist" aria-label="Ustawienia głosu">
+            <button type="button" role="tab" aria-selected={tab === "dictation"} className={tab === "dictation" ? "is-on" : undefined} onClick={() => setTab("dictation")}>
+              Dyktowanie
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "talk"} className={tab === "talk" ? "is-on" : undefined} onClick={() => setTab("talk")}>
+              Rozmowa
+            </button>
           </div>
-          <div className="rail-label">Dodaj silnik</div>
-          <div className="prov-add">
-            {STT_PRESETS.map((t) => (
-              <button key={t.id} type="button" className="btn" onClick={() => add(t)}>
-                <Plus aria-hidden /> {t.name}
-              </button>
-            ))}
-          </div>
-          <label className="prov-field" style={{ marginLeft: 0, marginTop: 16 }}>
-            <span>Mikrofon</span>
-            <select value={config.mic} onChange={(e) => save({ ...config, mic: e.target.value })}>
-              <option value="">Domyślny mikrofon systemu</option>
-              {mics.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-              {config.mic !== "" && !mics.some((m) => m.id === config.mic) && <option value={config.mic}>Zapisany mikrofon (niepodłączony)</option>}
-            </select>
-            {micErr && <em className="is-warn">{micErr}</em>}
-          </label>
-          <label className="prov-field" style={{ marginLeft: 0, marginTop: 8 }}>
-            <span>Język</span>
-            <select value={config.language} onChange={(e) => save({ ...config, language: e.target.value })}>
-              {LANGUAGES.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {tab === "talk" ? (
+            <TalkSettings />
+          ) : (
+            <>
+              <p>
+                Mikrofon w nagłówku panelu nagrywa głos, wysyła go do wybranego silnika, a gotowy tekst wkleja do terminala bez Entera. Silnik to dowolny serwer z <code>/audio/transcriptions</code>: chmura albo własny, lokalny. Klucze trafiają do sejfu systemowego.
+              </p>
+              {error && <div className="prov-error">{error}</div>}
+              <div className="prov-list">
+                {config.providers.map((p) => (
+                  <Row
+                    key={p.id}
+                    p={p}
+                    active={config.active === p.id}
+                    keyState={keys[p.id]}
+                    onActivate={() => save({ ...config, active: p.id })}
+                    onEdit={(patch) => save({ ...config, providers: config.providers.map((x) => (x.id === p.id ? { ...x, ...patch } : x)) })}
+                    onRemove={() => save({ ...config, active: config.active === p.id ? null : config.active, providers: config.providers.filter((x) => x.id !== p.id) })}
+                    onKey={async (k) => {
+                      await backend.sttSetKey(p.id, k);
+                      refreshKeys();
+                      if (k && config.active === null) save({ ...config, active: p.id });
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="rail-label">Dodaj silnik</div>
+              <div className="prov-add">
+                {STT_PRESETS.map((t) => (
+                  <button key={t.id} type="button" className="btn" onClick={() => add(t)}>
+                    <Plus aria-hidden /> {t.name}
+                  </button>
+                ))}
+              </div>
+              <label className="prov-field" style={{ marginLeft: 0, marginTop: 16 }}>
+                <span>Mikrofon</span>
+                <select value={config.mic} onChange={(e) => save({ ...config, mic: e.target.value })}>
+                  <option value="">Domyślny mikrofon systemu</option>
+                  {mics.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+                  {config.mic !== "" && !mics.some((m) => m.id === config.mic) && <option value={config.mic}>Zapisany mikrofon (niepodłączony)</option>}
+                </select>
+                {micErr && <em className="is-warn">{micErr}</em>}
+              </label>
+              <p className="prov-state">Mikrofon i język obowiązują też w rozmowie głosowej.</p>
+              <label className="prov-field" style={{ marginLeft: 0, marginTop: 8 }}>
+                <span>Język</span>
+                <select value={config.language} onChange={(e) => save({ ...config, language: e.target.value })}>
+                  {LANGUAGES.map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
         </>
       )}
     </Dialog>

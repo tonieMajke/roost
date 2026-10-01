@@ -6,6 +6,7 @@ import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
 import { buildChatConfig, parseChat, type ChatEvent, type ChatMeta, type ChatRequest } from "./chat";
 import { parseSttConfig, sttConfigJson, sttKeyId } from "./stt";
+import { parseTtsConfig, parseVoiceConfig, ttsConfigJson, ttsKeyId, voiceConfigJson } from "./voice/voice";
 import { parseBotChat, parseRoutines, serializeBot, type ApprovalRequest, type BotDef } from "./bot";
 
 /** Most wystawiony przez `electron/src/preload.ts`. */
@@ -149,6 +150,22 @@ export const electronBackend: Backend = {
   },
   sttSetKey: (id, key) => call<void>("stt_set_key", id, key),
   sttTranscribe: (audio, mime) => call<string>("stt_transcribe", audio, mime),
+  async voiceConfig() {
+    return parseVoiceConfig(await call<string | null>("voice_config"));
+  },
+  voiceSaveConfig: (config) => call<void>("voice_config_save", voiceConfigJson(config)),
+  async ttsConfig() {
+    return parseTtsConfig(await call<string | null>("tts_config"));
+  },
+  ttsSaveConfig: (config) => call<void>("tts_config_save", ttsConfigJson(config)),
+  async ttsKeyStatus(ps) {
+    const raw = await call<Record<string, KeyState>>("tts_key_status", ps);
+    return Object.fromEntries(ps.map((p) => [p.id, raw[ttsKeyId(p.id)] ?? null]));
+  },
+  ttsSetKey: (id, key) => call<void>("tts_set_key", id, key),
+  voiceSpeak: (reqId, text) => call<Uint8Array>("voice_speak", reqId, text),
+  voiceCancel: (reqId) => void call("voice_cancel", reqId).catch(ignore),
+  voiceEnd: () => void call("voice_end").catch(ignore),
   chatList: () => call<ChatMeta[]>("chat_list"),
   async chatLoad(id) {
     const text = await call<string | null>("chat_load", id);

@@ -2,6 +2,8 @@ import { NO_ACCOUNTS, type Accounts } from "./accounts";
 import { DEFAULT_AGENTS } from "./agents";
 import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
 import { parseSttConfig, sttConfigJson, sttKeyId } from "./stt";
+import { parseTtsConfig, parseVoiceConfig, ttsConfigJson, ttsKeyId, voiceConfigJson } from "./voice/voice";
+import { encodeWav } from "./voice/vad";
 import { mockBotBackend } from "./bot-mock";
 import { buildChatConfig, chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, type Chat, type ChatEvent, type ChatMeta } from "./chat";
 
@@ -354,6 +356,33 @@ export const mockBackend: Backend = {
     await new Promise((r) => setTimeout(r, 700));
     return "To jest podgląd dyktowania, bez prawdziwej transkrypcji.";
   },
+  // Podgląd rozmowy: ustawienia w localStorage, „mowa” to cichy ton tak długi jak zdanie.
+  async voiceConfig() {
+    return parseVoiceConfig(readMock("aw-voice-config"));
+  },
+  async voiceSaveConfig(config) {
+    writeMock("aw-voice-config", voiceConfigJson(config));
+  },
+  async ttsConfig() {
+    return parseTtsConfig(readMock("aw-tts-config"));
+  },
+  async ttsSaveConfig(config) {
+    writeMock("aw-tts-config", ttsConfigJson(config));
+  },
+  async ttsKeyStatus(ps) {
+    const keys = mockKeys();
+    return Object.fromEntries(ps.map((p) => [p.id, keys.includes(ttsKeyId(p.id)) ? ("stored" as const) : null]));
+  },
+  async ttsSetKey(id, key) {
+    const keys = mockKeys().filter((k) => k !== ttsKeyId(id));
+    writeMock("aw-chat-keys", JSON.stringify(key ? [...keys, ttsKeyId(id)] : keys));
+  },
+  async voiceSpeak(_reqId, text) {
+    await new Promise((r) => setTimeout(r, 150));
+    return mockTone(Math.min(4, 0.3 + text.length * 0.05));
+  },
+  voiceCancel() {},
+  voiceEnd() {},
   async chatList(): Promise<ChatMeta[]> {
     return sortChats(Object.values(mockChats()).map(chatMeta));
   },
@@ -406,3 +435,28 @@ export const mockBackend: Backend = {
     console.info(`[powiadomienie] ${title}: ${body}`);
   },
 };
+
+function readMock(key: string): string | null {
+  try {
+    return globalThis.localStorage?.getItem(key) ?? null;
+  } catch {
+    return null; // brak localStorage: domyślna konfiguracja
+  }
+}
+
+function writeMock(key: string, value: string) {
+  try {
+    globalThis.localStorage?.setItem(key, value);
+  } catch {
+    // j.w.
+  }
+}
+
+/** Cichy ton 220 Hz z wyciszeniem na brzegach: słychać, że „mówi”, bez prawdziwej syntezy. */
+function mockTone(seconds: number): Uint8Array {
+  const rate = 16_000;
+  const n = Math.round(seconds * rate);
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) out[i] = 0.05 * Math.sin((2 * Math.PI * 220 * i) / rate) * Math.min(1, i / 800, (n - i) / 800);
+  return encodeWav(out, rate);
+}

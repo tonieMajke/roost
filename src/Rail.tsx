@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import { agentColor, type AgentDef } from "./agents";
 import { IconButton } from "./IconButton";
-import { FolderPlus, Mic, PanelLeft, SlidersHorizontal, X } from "lucide-react";
+import { AudioLines, FolderPlus, Mic, PanelLeft, SlidersHorizontal, X } from "lucide-react";
 import { paneStatus, projectState, type PaneState } from "./activity";
 import type { Workspace } from "./workspace";
 import { ModeTabs, type Mode } from "./chat/ModeTabs";
@@ -27,6 +27,9 @@ type Props = {
   onOpenAppearance(): void;
   /** Okno „Dyktowanie”: silnik transkrypcji dla mikrofonu w panelach. */
   onOpenVoice(): void;
+  /** Rozmowa głosowa (kuleczka) włączona. */
+  talking: boolean;
+  onToggleTalk(): void;
 };
 
 /** Treść title dla kropki projektu — sama kropka nie mówi, który panel. */
@@ -50,6 +53,8 @@ export function Rail({
   onToggleRail,
   onOpenAppearance,
   onOpenVoice,
+  talking,
+  onToggleTalk,
 }: Props) {
   const keyOf = (id: string) => `p:${id}`;
   const armRef = useRef<Arm>(null);
@@ -183,6 +188,12 @@ export function Rail({
       <footer className="rail-foot">
         <IconButton icon={FolderPlus} label="Dodaj projekt" shortcut="Ctrl+Alt+P" onClick={onAddProject} />
         <IconButton icon={Mic} label="Dyktowanie" onClick={onOpenVoice} />
+        <IconButton
+          icon={AudioLines}
+          label={talking ? "Zakończ rozmowę głosową" : "Rozmowa głosowa"}
+          className={talking ? "is-on" : undefined}
+          onClick={onToggleTalk}
+        />
         <IconButton icon={SlidersHorizontal} label="Wygląd" onClick={onOpenAppearance} />
       </footer>
     </aside>
