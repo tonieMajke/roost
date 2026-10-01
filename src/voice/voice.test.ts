@@ -242,11 +242,11 @@ describe("voicePrompt", () => {
     expect(p).not.toContain("open_panes");
   });
 
-  it("z panelami opisuje narzędzia", () => {
-    const p = voicePrompt(now, [{ id: "p1", agent: "claude", title: "backend", busy: true }]);
+  it("z przeglądem opisuje narzędzia i stan aplikacji", () => {
+    const p = voicePrompt(now, "Projekt abc „demo” (aktywny): 0 panel(i), pracuje 0");
     expect(p).toContain("open_panes");
-    expect(p).toContain("- p1: claude, „backend”, pracuje");
-    expect(voicePrompt(now, [])).toContain("Projekt nie ma teraz paneli.");
+    expect(p).toContain("ask_bot");
+    expect(p).toContain("Projekt abc „demo” (aktywny)");
   });
 });
 

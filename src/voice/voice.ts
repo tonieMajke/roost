@@ -252,8 +252,10 @@ export type VoiceState = {
   /** Koniec ostatniej wypowiedzi (VAD), czeka na transkrypt. */
   heardAt?: number;
   error?: string;
-  /** Karta deploy czeka na decyzję (narzędzie `open_panes` / `send_to_pane`). */
+  /** Karta czeka na decyzję (narzędzia z potwierdzeniem). */
   card?: DeployCard;
+  /** Komunikaty aplikacji („claude skończył pracę”); `after` = tyle wymian było przed nim. */
+  notes?: { text: string; after: number }[];
 };
 
 /** `n` = numer wymiany, której dotyczy zdarzenie: spóźnione zdarzenia z przerwanej odpowiedzi
@@ -271,6 +273,7 @@ export type VoiceEvent =
   | { type: "interrupt" }
   | { type: "tool"; n: number; label: string; ok: boolean }
   | { type: "card"; card: DeployCard | null }
+  | { type: "note"; text: string }
   | { type: "error"; message: string; n?: number };
 
 export const VOICE_IDLE: VoiceState = { phase: "idle", hearing: false, history: [], carry: "" };
@@ -333,6 +336,9 @@ export function voiceReducer(s: VoiceState, ev: VoiceEvent): VoiceState {
     case "tool":
       if (!current(ev.n)) return s;
       return { ...s, history: replaceLast(s.history, (e) => ({ ...e, tools: [...(e.tools ?? []), { label: ev.label, ok: ev.ok }] })) };
+    case "note":
+      if (s.phase === "idle") return s;
+      return { ...s, notes: [...(s.notes ?? []), { text: ev.text, after: s.history.length }] };
     case "card":
       if (!ev.card && !s.card) return s;
       return { ...s, card: ev.card ?? undefined };
@@ -397,11 +403,8 @@ export function voiceRequest(provider: ProviderDef, model: string, history: Voic
   return { provider, model, system, messages: voiceTurns(history), prompt: voiceCliPrompt(history), search: false };
 }
 
-/** Panel widziany przez rozmówcę (narzędzia, etap 5); `id` = krótki prefiks id panelu (`shortId`). */
-export type VoicePane = { id: string; agent: string; title: string; busy: boolean };
-
 /** Prompt systemowy rozmówcy. Ten sam stan daje ten sam tekst (bez sekund w dacie). */
-export function voicePrompt(now: Date, panes?: VoicePane[]): string {
+export function voicePrompt(now: Date, overview?: string): string {
   const date = new Intl.DateTimeFormat("pl-PL", {
     timeZone: "Europe/Warsaw", weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit",
   }).format(now);
@@ -414,17 +417,22 @@ export function voicePrompt(now: Date, panes?: VoicePane[]): string {
     "- Transkrypcja mowy bywa niedokładna: domyśl się sensu przekręconych słów.",
     `Teraz jest ${date}.`,
   ];
-  if (panes) {
+  if (overview !== undefined) {
     lines.push(
       "",
-      "Masz narzędzia do paneli z agentami (claude, pi) w aktywnym projekcie. Gdy użytkownik zatwierdzi plan",
-      "(„OK, deploy”, „zaczynajmy”), podziel go na niezależne zadania i wywołaj open_panes. Każde zadanie",
-      "opisz tak, żeby agent mógł je wykonać bez tej rozmowy. Użytkownik zobaczy kartę i potwierdzi.",
-      "Przed wywołaniem open_panes albo send_to_pane powiedz jednym zdaniem, co proponujesz – karta pokaże szczegóły.",
-      "read_pane pokazuje ekran agenta: gdy użytkownik pyta, co agenci robią, przeczytaj i streść to krótko.",
-      "Nie czytaj na głos id paneli ani poleceń dla agentów – mów o agencie i tytule zadania.",
-      panes.length ? "Panele teraz:" : "Projekt nie ma teraz paneli.",
-      ...panes.map((p) => `- ${p.id}: ${p.agent}, „${p.title}”, ${p.busy ? "pracuje" : "czeka"}`),
+      "Jesteś też asystentem aplikacji Agents: użytkownik ma w niej projekty, a w nich panele z agentami (claude, pi)",
+      "pracującymi w terminalach. Masz narzędzia, żeby sprawdzać ich postępy i nimi sterować.",
+      "- Pytany o postępy albo „co się dzieje”: overview, a po szczegóły read_pane; streść krótko, najpierw to, co wymaga uwagi.",
+      "- Gdy użytkownik zatwierdzi plan („OK, deploy”, „zaczynajmy”): podziel go na niezależne zadania i wywołaj open_panes.",
+      "  Każde zadanie opisz tak, żeby agent mógł je wykonać bez tej rozmowy.",
+      "- „Pokaż”, „przełącz”, „otwórz zakładkę”: show – działa od razu.",
+      "- Wysyłka, zatrzymanie, restart, zamknięcie, kontynuacja, preset: użytkownik zatwierdza kartą. Zanim wywołasz takie",
+      "  narzędzie, powiedz jednym zdaniem, co proponujesz – karta pokaże szczegóły.",
+      "- Boty z zakładki Bot pytasz przez ask_bot (bez nazwy dostaniesz listę).",
+      "- Nie czytaj na głos id paneli ani poleceń dla agentów – mów o agencie, tytule i projekcie.",
+      "",
+      "Stan teraz (odśwież przez overview, gdy minęło trochę czasu):",
+      overview,
     );
   }
   return lines.join("\n");

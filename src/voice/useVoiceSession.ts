@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import type { ChatRequest } from "../chat";
 import { backend } from "../backend";
 import { activeStt, cleanTranscript } from "../stt";
 import { Mic, micError, Player } from "./audio";
 import { VoiceSession } from "./session";
 import type { VoiceTab } from "./TalkSettings";
-import { runVoiceTool, voiceTools, type CardDecision, type PaneHost } from "./tools";
+import { overviewText, runVoiceTool, voiceTools, type CardDecision, type PaneHost } from "./tools";
 import { encodeWav, Utterances, VAD_DEFAULT, VAD_PLAYING } from "./vad";
 import { activeTts, resolveBrain, VOICE_IDLE, voicePrompt, voiceRequest, voiceTurns, type VoiceState } from "./voice";
 
@@ -21,7 +21,7 @@ export type VoiceLevels = { mic: number; out: number };
  * Rozmowa na żywo, póki kuleczka jest otwarta: mikrofon cały czas, VAD tnie wypowiedzi, sesja
  * prowadzi resztę. Ustawienia czyta raz na start; zmiana wymaga ponownego otwarcia.
  */
-export function useVoiceSession(host?: PaneHost) {
+export function useVoiceSession(host?: PaneHost, noteRef?: MutableRefObject<((text: string) => void) | null>) {
   const hostRef = useRef(host);
   hostRef.current = host;
   const [setup, setSetup] = useState<VoiceSetup>({ status: "loading" });
@@ -64,7 +64,7 @@ export function useVoiceSession(host?: PaneHost) {
             const h = hostRef.current;
             if (!tools || !h) return backend.chatSend(voiceRequest(found.provider, found.model.id, history, voicePrompt(new Date())), onEvent);
             const req: ChatRequest = {
-              ...voiceRequest(found.provider, found.model.id, history, voicePrompt(new Date(), h.panes() ?? [])),
+              ...voiceRequest(found.provider, found.model.id, history, voicePrompt(new Date(), overviewText(h.projects()))),
               turns: [...voiceTurns(history), ...extra],
               tools: voiceTools(h.agents().map((a) => a.id)),
             };
@@ -99,7 +99,7 @@ export function useVoiceSession(host?: PaneHost) {
         mic = await Mic.open(stt.config.mic, (frame) => {
           if (mutedRef.current) return;
           // Echo z głośników nie może przerywać: w trakcie mowy wyższy próg (chyba że słuchawki).
-          const playing = !headphones && session.state.phase === "speaking";
+          const playing = !headphones && (session.state.phase === "speaking" || session.speakingNote);
           levels.current.mic = utt.push(frame, playing ? VAD_PLAYING : VAD_DEFAULT);
         });
       } catch (e) {
@@ -109,6 +109,12 @@ export function useVoiceSession(host?: PaneHost) {
       if (closed) return void mic.close();
       cleanup.push(() => mic.close());
       live.current = { session, mic, player, utt };
+      if (noteRef) {
+        noteRef.current = (text) => session.note(text);
+        cleanup.push(() => {
+          if (noteRef.current) noteRef.current = null;
+        });
+      }
       const loop = () => {
         levels.current.out = player.level();
         raf = requestAnimationFrame(loop);

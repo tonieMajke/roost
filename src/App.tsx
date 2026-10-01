@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { backend, inElectron } from "./backend";
-import type { AgentDef } from "./agents";
+import { agentModels, type AgentDef } from "./agents";
 import { accentHex, nextMode, stepFontSize, uiClasses } from "./ui";
 import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";
 import type { TermLook } from "./Terminal";
@@ -25,21 +25,22 @@ import { AppearanceDialog } from "./AppearanceDialog";
 import { AccountsDialog } from "./AccountsDialog";
 import { ContinueDialog } from "./ContinueDialog";
 import { continueTargets, type ContinueTarget } from "./continue";
-import { NO_ACCOUNTS, accountById, accountKind, pickAccountId, type Accounts } from "./accounts";
+import { NO_ACCOUNTS, accountById, accountKind, accountsFor, pickAccountId, type Accounts } from "./accounts";
 import { VoiceDialog } from "./VoiceDialog";
 import { VoiceOrb } from "./voice/VoiceOrb";
 import type { VoiceTab } from "./voice/TalkSettings";
-import { shortId, type DeployTask, type PaneHost } from "./voice/tools";
+import { askBot } from "./voice/askBot";
+import { finishedNote, shortId, type DeployTask, type PaneHost, type VoiceProject } from "./voice/tools";
 import { activeStt, DEFAULT_STT, type SttConfig } from "./stt";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
 import { ChatView } from "./chat/ChatView";
 import { BotView } from "./bot/BotView";
 import type { Mode } from "./chat/ModeTabs";
-import { CONTEXT_POLL_MS, cleanTermTitle, contextKind, contextTargets, paneTitles, sessionTitles, type SessionContext } from "./context";
+import { CONTEXT_POLL_MS, cleanTermTitle, contextKind, contextTargets, paneMeter, paneTitles, sessionTitles, type SessionContext } from "./context";
 import { FALLBACK_MAX_CHARS, SUMMARY_SYSTEM, digestText, handoffText, summaryText } from "./handoff";
 import { FINISHED_TEXT, STARTED_TEXT, exitedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
-import { LIMITS_POLL_MS, type ClaudeLimits } from "./limits";
+import { LIMITS_POLL_MS, limitHit, type ClaudeLimits } from "./limits";
 import { TOAST_MS, toastText } from "./toast";
 import { PANE_OUT_MS } from "./Pane";
 import { planPreset } from "./presets";
@@ -416,6 +417,8 @@ export function App() {
     [ws.projects, contexts, ephemeral],
   );
   // Okno (pasek zadań, przełącznik okien) nosi temat panelu w fokusie, jak zwykła konsola z claude.
+  const titlesRef = useRef(titles);
+  titlesRef.current = titles;
   const focusedTitle = focusedId ? titles[focusedId] : undefined;
   const [chatTitle, setChatTitle] = useState("");
   const [botTitle, setBotTitle] = useState("");
@@ -551,21 +554,65 @@ export function App() {
   const activeRef = useRef(ws.active);
   activeRef.current = ws.active;
 
-  // Rozmowa głosowa (etap 5 planu głosu): panele aktywnego projektu dla narzędzi rozmówcy.
-  const fullPaneId = (short: string) => active?.panes.find((p) => shortId(p.id) === short)?.id ?? null;
+  // Rozmowa głosowa (etapy 5 i 7 planu głosu): projekty i panele dla narzędzi rozmówcy.
+  // Id dla modelu to 6 pierwszych znaków UUID (`shortId`).
+  const allPanes = ws.projects.flatMap((p) => p.panes);
+  const fullPaneId = (short: string) => allPanes.find((p) => shortId(p.id) === short)?.id ?? null;
+  const projectByShort = (short: string) => ws.projects.find((p) => shortId(p.id) === short) ?? null;
+  const voiceNote = useRef<((text: string) => void) | null>(null);
+  const newPane = (agent: AgentDef, accountName?: string, model?: string): Pane => {
+    const pane: Pane = { id: crypto.randomUUID(), agentId: agent.id, run: 1 };
+    if (agent.session) pane.sessionId = crypto.randomUUID();
+    const named = accountName ? accountsFor(accounts, accountKind(agent)).find((x) => x.name === accountName)?.id : undefined;
+    const account = named ?? pickAccountId(accounts, accountKind(agent), null);
+    if (account) pane.account = account;
+    if (model) pane.model = model;
+    return pane;
+  };
   const voiceHost: PaneHost = {
-    panes: () =>
-      active === null
-        ? null
-        : active.panes.map((p) => ({
-            id: shortId(p.id),
-            agent: paneInfo.get(p.id)?.agent ?? p.agentId,
-            title: titles[p.id] ?? "",
-            busy: ephemeral[p.id]?.working ?? false,
-          })),
-    agents: () => agents.map((a) => ({ id: a.id, name: a.name })),
-    free: () => (active === null ? 0 : MAX_PANES - active.panes.length),
-    open: (tasks) => openVoicePanes(tasks),
+    projects: () => {
+      const now = Date.now();
+      return ws.projects.map(
+        (p): VoiceProject => ({
+          id: shortId(p.id),
+          name: p.name,
+          active: p.id === ws.active,
+          panes: p.panes.map((pane) => {
+            const agent = agents.find((a) => a.id === pane.agentId);
+            const eph = ephemeral[pane.id];
+            const meter = paneMeter(pane, agent, contexts);
+            const hit = agent?.command.split("/").pop() === "claude" ? limitHit(limits[pane.account ?? ""], now) : null;
+            const last = activity.current.get(pane.id)?.lastOutput ?? 0;
+            const account = accountById(accounts, pane.account)?.name;
+            return {
+              id: shortId(pane.id),
+              agent: agent?.name ?? pane.agentId,
+              ...(account ? { account } : {}),
+              title: titles[pane.id] ?? "",
+              working: eph?.working ?? false,
+              unread: eph?.unread ?? false,
+              ...(eph?.exited ? { exited: eph.exited.code } : {}),
+              ...(hit ? { limit: hit.text } : {}),
+              ...(meter?.known ? { ctx: meter.pct } : {}),
+              ...(last > 0 ? { idleMs: now - last } : {}),
+            };
+          }),
+        }),
+      );
+    },
+    agents: () =>
+      agents.map((a) => ({
+        id: a.id,
+        name: a.name,
+        accounts: accountsFor(accounts, accountKind(a)).map((x) => x.name),
+        models: agentModels(a).map((m) => m.id),
+      })),
+    presets: () => ws.presets,
+    free: (short) => {
+      const p = projectByShort(short);
+      return p ? MAX_PANES - p.panes.length : 0;
+    },
+    open: (short, tasks) => openVoicePanes(short, tasks),
     send: (short, text) => {
       const id = fullPaneId(short);
       const term = id ? terms.current.get(id) : undefined;
@@ -582,19 +629,87 @@ export function App() {
       const term = id ? terms.current.get(id) : undefined;
       return term ? term.tail(lines) : null;
     },
+    show: ({ project, pane, tab, maximize }) => {
+      if (tab && tab !== mode) setMode(tab);
+      const pr = project ? projectByShort(project) : null;
+      if (pr) dispatch({ type: "selectProject", id: pr.id });
+      const id = pane ? fullPaneId(pane) : null;
+      if (!id) return;
+      dispatch({ type: "focus", id }); // aktywuje też projekt panelu
+      const owner = ws.projects.find((p) => p.panes.some((x) => x.id === id));
+      if (maximize && owner?.maximized !== id) dispatch({ type: "toggleMaximize", id });
+    },
+    control: (short, action) => {
+      const id = fullPaneId(short);
+      if (!id) return `nie ma panelu ${short}`;
+      const pane = allPanes.find((p) => p.id === id)!;
+      switch (action) {
+        case "stop": {
+          const term = terms.current.get(id);
+          if (!term) return `panel ${short} nie ma terminala`;
+          term.type("\x1b"); // Esc przerywa turę w claude i pi
+          return null;
+        }
+        case "restart":
+          paneActions.restart(id);
+          return null;
+        case "new_conversation":
+          if (!agents.find((a) => a.id === pane.agentId)?.session) return "ten agent nie ma rozmów do zaczęcia od nowa – użyj restart";
+          paneActions.newConversation(id);
+          return null;
+        case "close":
+          paneActions.close(id);
+          return null;
+      }
+    },
+    continueTargets: (short) => {
+      const pane = allPanes.find((p) => p.id === fullPaneId(short));
+      return pane?.sessionId ? continueTargets(pane, agents, accounts).map((t) => t.label) : [];
+    },
+    continueTo: (short, label) => {
+      const id = fullPaneId(short);
+      const pane = allPanes.find((p) => p.id === id);
+      const target = pane ? continueTargets(pane, agents, accounts).find((t) => t.label === label) : undefined;
+      if (!id || !target) return `nie ma celu „${label}”`;
+      const owner = ws.projects.find((p) => p.panes.some((x) => x.id === id));
+      if (owner && owner.panes.length >= MAX_PANES) return `projekt „${owner.name}” ma już ${MAX_PANES} paneli`;
+      dispatch({ type: "focus", id }); // nowy panel trafia do projektu źródła
+      void continueTo(id, target);
+      return null;
+    },
+    applyPreset: (short, name) => {
+      const pr = projectByShort(short);
+      const preset = ws.presets.find((p) => p.name === name);
+      if (!pr || !preset) return "nie ma takiego projektu albo presetu";
+      if (pr.id !== ws.active) dispatch({ type: "selectProject", id: pr.id });
+      const plan = planPreset(preset, agents.map((a) => a.id), MAX_PANES - pr.panes.length);
+      for (const agentId of plan.agents) {
+        const agent = agents.find((a) => a.id === agentId);
+        if (agent) dispatch({ type: "add", pane: newPane(agent) });
+      }
+      const skipped = [...plan.skipped, ...(plan.dropped ? [`${plan.dropped} ponad limit`] : [])];
+      return plan.agents.length === 0 ? `nic nie dodano (${skipped.join(", ") || "pusty preset"})` : null;
+    },
+    bots: async () =>
+      (await backend.botList()).bots.map((b) => ({ id: b.id, name: b.name, about: b.persona.split("\n")[0].slice(0, 160) })),
+    askBot: (id, question, signal) => askBot(backend, id, question, signal),
   };
 
   // „OK, deploy”: panele dla zadań, a gdy agent wstanie (bracketed paste), polecenie i Enter.
-  const openVoicePanes = async (tasks: DeployTask[]): Promise<string> => {
+  const openVoicePanes = async (short: string, tasks: DeployTask[]): Promise<string> => {
+    const pr = projectByShort(short);
+    if (!pr) return "nie ma takiego projektu";
+    // Akcja „add” działa na aktywnym projekcie: najpierw przełączamy (użytkownik widzi nowe panele).
+    if (pr.id !== ws.active) dispatch({ type: "selectProject", id: pr.id });
     const panes: { pane: Pane; task: DeployTask }[] = [];
-    for (const task of tasks.slice(0, Math.max(0, MAX_PANES - paneCount))) {
+    for (const task of tasks.slice(0, Math.max(0, MAX_PANES - pr.panes.length))) {
       const agent = agents.find((a) => a.id === task.agent);
       if (!agent) continue;
-      const pane: Pane = { id: crypto.randomUUID(), agentId: agent.id, run: 1 };
-      if (agent.session) pane.sessionId = crypto.randomUUID();
+      const pane = newPane(agent, task.account, task.model);
       dispatch({ type: "add", pane });
       panes.push({ pane, task });
     }
+    if (mode !== "code") setMode("code");
     if (panes.length === 0) return "nie otwarto żadnego panelu (limit albo nieznany agent)";
     setNotice(`Rozmowa głosowa: uruchamiam ${panes.length} panel(e)…`);
     const results = await Promise.all(
@@ -759,6 +874,11 @@ export function App() {
         void readContexts.current(finished).then(() => {
           for (const id of finished) addFeed(id, [FINISHED_TEXT]);
         });
+        // Rozmowa głosowa trwa: mówi, kto skończył (w chwili ciszy).
+        for (const id of finished) {
+          const info = paneInfoRef.current.get(id);
+          if (info) voiceNote.current?.(finishedNote({ agent: info.agent, title: titlesRef.current[id] ?? "", project: info.project }));
+        }
       }
       for (const u of updates) {
         if (!u.finished) continue;
@@ -1119,6 +1239,7 @@ export function App() {
       {talk && (
         <VoiceOrb
           host={voiceHost}
+          noteRef={voiceNote}
           onClose={() => setTalk(false)}
           onOpenSettings={(tab) => {
             setVoiceTab(tab);

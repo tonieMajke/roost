@@ -30,6 +30,10 @@ export class VoiceSession {
   private epoch = 0;
   /** Karta deploy czekająca na decyzję. */
   private card: { resolve: (d: CardDecision) => void } | null = null;
+  /** Komunikaty czekające na ciszę (w trakcie odpowiedzi nie wchodzimy w słowo) i ten, który gra. */
+  private queued: string[] = [];
+  private notePlaying: { ac: AbortController; id: string } | null = null;
+  private noteSeq = 0;
 
   constructor(
     private deps: VoiceDeps,
@@ -41,6 +45,45 @@ export class VoiceSession {
     if (next === this.state) return;
     this.state = next;
     this.onChange(next);
+    if (this.queued.length && next.phase === "listening" && !next.hearing && !this.card) this.flushNotes();
+  }
+
+  /** Gra komunikat aplikacji (np. agent skończył pracę) — gdy jest cisza; jak odpowiedź, przerywa go mowa. */
+  get speakingNote(): boolean {
+    return this.notePlaying !== null;
+  }
+
+  note(text: string) {
+    if (this.state.phase === "idle") return;
+    this.emit({ type: "note", text });
+    this.queued.push(text);
+    if (this.state.phase === "listening" && !this.state.hearing && !this.card) this.flushNotes();
+  }
+
+  private flushNotes() {
+    const speak = this.deps.speak;
+    const text = speakable(this.queued.splice(0).join(" "));
+    if (!speak || !text || this.notePlaying) return;
+    const ac = new AbortController();
+    const id = `note-${this.noteSeq++}`;
+    const playing = { ac, id };
+    this.notePlaying = playing;
+    const done = () => {
+      if (this.notePlaying === playing) this.notePlaying = null;
+    };
+    speak(id, text)
+      .then((bytes) => (ac.signal.aborted || this.state.phase !== "listening" ? undefined : this.deps.play(bytes, ac.signal)))
+      .catch(() => undefined) // komunikat to dodatek: błąd mowy widać przy następnej odpowiedzi
+      .finally(done);
+  }
+
+  private stopNote() {
+    this.queued = [];
+    const n = this.notePlaying;
+    if (!n) return;
+    this.notePlaying = null;
+    n.ac.abort();
+    this.deps.cancelSpeak(n.id);
   }
 
   start() {
@@ -49,12 +92,20 @@ export class VoiceSession {
 
   stop() {
     this.epoch++;
+    this.stopNote();
     this.cancelReply();
     this.emit({ type: "stop" });
   }
 
   /** VAD: użytkownik zaczął mówić — w trakcie odpowiedzi to przerwanie. */
   speechStart() {
+    // Komunikat milknie, ale nie przepada z zapisu; nie ponawiamy go.
+    const n = this.notePlaying;
+    if (n) {
+      this.notePlaying = null;
+      n.ac.abort();
+      this.deps.cancelSpeak(n.id);
+    }
     if (this.card) return this.emit({ type: "speech_start" }); // odpowiedź na kartę, nie przerwanie
     if (this.state.phase === "thinking" || this.state.phase === "speaking") this.cancelReply();
     this.emit({ type: "speech_start" });

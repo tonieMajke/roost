@@ -180,12 +180,12 @@ describe("VoiceSession", () => {
     r.s.start();
     await r.say();
     r.send({ type: "text", text: "Sprawdzam." });
-    r.send({ type: "tool_call", id: "t1", name: "list_panes", args: {} });
+    r.send({ type: "tool_call", id: "t1", name: "overview", args: {} });
     r.send({ type: "done" });
     await flush();
-    expect(calls).toEqual(["list_panes"]);
+    expect(calls).toEqual(["overview"]);
     expect(r.extras[1]).toEqual([
-      { role: "assistant", content: "Sprawdzam.", calls: [{ id: "t1", name: "list_panes", args: {} }] },
+      { role: "assistant", content: "Sprawdzam.", calls: [{ id: "t1", name: "overview", args: {} }] },
       { role: "tool", id: "t1", content: "a1b2c3: claude, „testy”, pracuje" },
     ]);
     expect(r.s.state.phase).toBe("thinking");
@@ -193,7 +193,7 @@ describe("VoiceSession", () => {
     r.send({ type: "done" });
     await flush();
     expect(r.s.state.phase).toBe("listening");
-    expect(r.s.state.history[0]).toMatchObject({ reply: "Sprawdzam. Claude robi testy.", done: true, tools: [{ label: "sprawdza panele", ok: true }] });
+    expect(r.s.state.history[0]).toMatchObject({ reply: "Sprawdzam. Claude robi testy.", done: true, tools: [{ label: "sprawdza projekty i panele", ok: true }] });
   });
 
   it("karta: „tak” głosem zatwierdza bez przerywania odpowiedzi", async () => {
@@ -201,7 +201,7 @@ describe("VoiceSession", () => {
     const r = rig({
       tts: false,
       tool: async (_n, _a, signal) => {
-        decided = await r.s.confirm({ kind: "open", tasks: [{ agent: "claude", title: "testy", prompt: "napisz testy" }] }, signal);
+        decided = await r.s.confirm({ head: "Otworzyć panel?", action: "Uruchom", tasks: [{ agent: "claude", title: "testy", prompt: "napisz testy" }] }, signal);
         return { ok: decided.kind === "run", text: decided.kind };
       },
     });
@@ -225,7 +225,7 @@ describe("VoiceSession", () => {
     const r = rig({
       tts: false,
       tool: async (_n, _a, signal) => {
-        const d = await r.s.confirm({ kind: "send", tasks: [{ agent: "pi", title: "x", prompt: "y" }] }, signal);
+        const d = await r.s.confirm({ head: "Wysłać?", action: "Wyślij", tasks: [{ agent: "pi", title: "x", prompt: "y" }] }, signal);
         decisions.push(d);
         return { ok: false, text: d.kind };
       },
@@ -246,5 +246,32 @@ describe("VoiceSession", () => {
     await flush();
     expect(decisions[1]).toEqual({ kind: "cancel" });
     expect(r.s.state.card).toBeUndefined();
+  });
+
+  it("komunikat aplikacji: w ciszy gra od razu, w trakcie odpowiedzi czeka; mowa go ucisza", async () => {
+    const r = rig();
+    r.s.start();
+    r.s.note("Claude skończył pracę.");
+    await flush();
+    expect(r.log).toEqual(["play note-0:Claude skończył pracę."]);
+    expect(r.s.speakingNote).toBe(true);
+    r.s.speechStart();
+    expect(r.s.speakingNote).toBe(false);
+    expect(r.cancelled).toEqual(["note-0"]);
+    await r.s.speechEnd(new Uint8Array([1]));
+    await flush();
+    r.s.note("pi skończył pracę.");
+    await flush();
+    expect(r.log).toHaveLength(1); // myśli: komunikat czeka
+    r.send({ type: "text", text: "Hej." });
+    r.send({ type: "done" });
+    await flush();
+    await r.finishPlaying(); // przerwany note-0 (atrapa trzyma go w kolejce)
+    await r.finishPlaying(); // „Hej.”
+    expect(r.log.at(-1)).toBe("play note-1:pi skończył pracę.");
+    expect(r.s.state.notes?.map((n) => [n.text, n.after])).toEqual([
+      ["Claude skończył pracę.", 0],
+      ["pi skończył pracę.", 1],
+    ]);
   });
 });
