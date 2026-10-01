@@ -2,12 +2,19 @@
 //! OpenRouter, OpenAI. Sam `fetch`, bez SDK. Z `req.tools` także function calling (pętla bota).
 
 import type { ChatEvent, ChatRequest, ToolCall, Turn } from "../../../src/chat";
+import { tokenCount } from "../../../src/usage";
 import { CallParts, httpError, networkError } from "./http";
 import { sseEvents } from "./sse";
 
 type CallDelta = { index?: number; id?: string; function?: { name?: string; arguments?: string } };
 type Delta = { content?: string | null; reasoning_content?: string | null; reasoning?: string | null; tool_calls?: CallDelta[] };
-type Chunk = { choices?: { delta?: Delta }[]; error?: { message?: string } | string };
+type OpenAiUsage = {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  prompt_tokens_details?: { cached_tokens?: number };
+  completion_tokens_details?: { reasoning_tokens?: number };
+};
+type Chunk = { choices?: { delta?: Delta }[]; error?: { message?: string } | string; usage?: OpenAiUsage | null; model?: string };
 
 /** Rozmowa z wywołaniami w formacie OpenAI: `tool_calls` przy odpowiedzi, wynik jako `role: tool`. */
 export function openaiMessages(turns: Turn[]): Record<string, unknown>[] {
@@ -32,6 +39,7 @@ export function openaiBody(req: ChatRequest): Record<string, unknown> {
   return {
     model: req.model,
     stream: true,
+    stream_options: { include_usage: true }, // końcowy chunk z `usage` (bez tego brak statystyk)
     messages: [{ role: "system", content: req.system }, ...history],
     ...(req.tools?.length
       ? { tools: req.tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } })) }
@@ -48,9 +56,25 @@ export function openaiEvents(data: string, calls?: CallParts): ChatEvent[] {
     const message = typeof chunk.error === "string" ? chunk.error : (chunk.error.message ?? "błąd modelu");
     return [{ type: "error", message }];
   }
-  const d = chunk.choices?.[0]?.delta;
-  if (!d) return [];
   const out: ChatEvent[] = [];
+  const u = chunk.usage;
+  if (u && typeof u === "object") {
+    // `prompt_tokens` obejmuje tokeny z cache; w statystykach wejście jest bez cache.
+    const cached = tokenCount(u.prompt_tokens_details?.cached_tokens);
+    out.push({
+      type: "usage",
+      usage: {
+        input: Math.max(0, tokenCount(u.prompt_tokens) - cached),
+        output: tokenCount(u.completion_tokens),
+        cacheRead: cached,
+        cacheWrite: 0,
+        reasoning: tokenCount(u.completion_tokens_details?.reasoning_tokens),
+      },
+      ...(chunk.model ? { model: chunk.model } : {}),
+    });
+  }
+  const d = chunk.choices?.[0]?.delta;
+  if (!d) return out;
   const thinking = d.reasoning_content ?? d.reasoning;
   if (thinking) out.push({ type: "thinking", text: thinking });
   if (d.content) out.push({ type: "text", text: d.content });

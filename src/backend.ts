@@ -4,6 +4,7 @@ import type { AgentDef } from "./agents";
 import type { ContextKind, SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Accounts } from "./accounts";
+import type { UsageStats } from "./usage";
 import type { Handoff } from "./handoff";
 import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
 import type { ApprovalDecision, ApprovalRequest, BotChat, BotDef, Routine, RunInfo } from "./bot";
@@ -66,6 +67,8 @@ export interface Backend {
   claudeSettingsArg(account?: { id: string; dir: string }): Promise<string | null>;
   /** Ostatnie limity subskrypcji z linii statusu claude; `null` = jeszcze żadnych. */
   claudeLimits(accountId?: string): Promise<ClaudeLimits | null>;
+  /** Statystyki zużycia tokenów. Bez `rescan` od razu to, co już policzone; z `rescan` najpierw doczytuje nowe logi. */
+  usageStats(rescan: boolean): Promise<UsageStats>;
   dirExists(path: string): Promise<boolean>;
   /** Folder wybrany przez użytkownika; `null` = anulowanie. */
   pickDir(): Promise<string | null>;

@@ -2,6 +2,7 @@ import { NO_ACCOUNTS, parseAccounts } from "./accounts";
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
 import type { Backend, BotApprovalChange, BotSkillMeta, BotSkillSource, ExitInfo, KeyState, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
 import type { SessionContext } from "./context";
+import type { UsageStats } from "./usage";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
 import type { GitStatus } from "./git";
@@ -122,6 +123,7 @@ export const electronBackend: Backend = {
   piSummary: (command, system, input) => call<string>("pi_summary", command, system, input),
   claudeSettingsArg: (account) => call<string | null>("claude_settings_arg", account),
   claudeLimits: (accountId) => call<ClaudeLimits | null>("claude_limits", accountId),
+  usageStats: (rescan) => call<UsageStats>("usage_stats", rescan),
   gitStatus: (cwd) => call<GitStatus | null>("git_status", cwd),
   gitFiles: (cwd) => call<string[]>("git_files", cwd),
   gitDiff: (cwd, path, mode) => call<string>("git_diff", cwd, path, mode),

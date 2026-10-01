@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { ChatEvent, ChatRequest } from "../../../src/chat";
+import { tokenCount } from "../../../src/usage";
 import { writeAtomic } from "../config";
 import { runCli, type LineParser } from "./cli";
 
@@ -63,7 +64,7 @@ type Line = {
   toolName?: string;
   args?: { query?: string; queries?: string[]; url?: string; urls?: string[] };
   entry?: { customType?: string; data?: { queries?: { results?: { url?: string; title?: string }[] }[] } };
-  message?: { role?: string; stopReason?: string; errorMessage?: string };
+  message?: { role?: string; stopReason?: string; errorMessage?: string; usage?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number; reasoning?: number } };
 };
 
 export class PiParser implements LineParser {
@@ -89,9 +90,16 @@ export class PiParser implements LineParser {
           for (const q of d.entry.data?.queries ?? [])
             for (const r of q.results ?? []) if (r.url) out.push({ type: "found", url: r.url, title: r.title ?? "" });
         break;
-      case "message_end":
+      case "message_end": {
+        const u = d.message?.usage;
+        if (d.message?.role === "assistant" && u)
+          out.push({
+            type: "usage",
+            usage: { input: tokenCount(u.input), output: tokenCount(u.output), cacheRead: tokenCount(u.cacheRead), cacheWrite: tokenCount(u.cacheWrite), reasoning: tokenCount(u.reasoning) },
+          });
         if (d.message?.role === "assistant" && d.message.stopReason === "error") this.error = d.message.errorMessage ?? "błąd modelu";
         break;
+      }
     }
     return out;
   }

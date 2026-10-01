@@ -15,6 +15,10 @@ import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
 import { claudeSummary, piSummary } from "./summary";
 import { ChatStore } from "./chat/store";
+import { UsageLedger } from "./usage-store";
+import { logRoots, UsageScanner } from "./usage-logs";
+import { parseAccounts, type AccountDef } from "../../src/accounts";
+import { mergeRows, type UsageStats } from "../../src/usage";
 import { chatConfigLoad, chatConfigSave, defaultChatService } from "./chat/service";
 import { WindowTools } from "./chat/window-tools";
 import { KeyStore, passwordStore } from "./chat/keys";
@@ -52,8 +56,27 @@ const keys = new KeyStore(config.configDir(), {
   encrypt: (s) => safeStorage.encryptString(s),
   decrypt: (b) => safeStorage.decryptString(b),
 });
-const chat = defaultChatService(path.join(config.configDir(), "chat-cwd"), path.join(config.configDir(), "pi-agent"), (p) =>
-  keys.get(p.id, p.keyEnv),
+const ledger = new UsageLedger(config.configDir());
+const usageScanner = new UsageScanner(
+  config.configDir(),
+  () => {
+    let accounts: AccountDef[] = [];
+    try {
+      const text = config.accountsLoad();
+      if (text) accounts = parseAccounts(JSON.parse(text)).value.accounts;
+    } catch {
+      // zepsute accounts.json: tylko konta domyślne
+    }
+    return logRoots(accounts);
+  },
+  // Czat i Boty przez claude/codex też zostawiają logi sesji, ale liczy je dziennik (bez podwójnego liczenia).
+  [path.join(config.configDir(), "chat-cwd"), path.join(config.configDir(), "bots")],
+);
+const chat = defaultChatService(
+  path.join(config.configDir(), "chat-cwd"),
+  path.join(config.configDir(), "pi-agent"),
+  (p) => keys.get(p.id, p.keyEnv),
+  (r) => ledger.record({ ts: Date.now(), source: "chat", ...r }),
 );
 const tts = new TtsService(() => config.configDir(), (id, env) => keys.get(id, env));
 let win: BrowserWindow | null = null;
@@ -73,6 +96,7 @@ const botService = new BotService({
   execPath: process.execPath,
   mcpScript: path.join(__dirname, "mcp-server.cjs"),
   key: (p) => keys.get(p.id, p.keyEnv),
+  onUsage: ({ bot, ...r }) => ledger.record({ ts: Date.now(), source: "bot", ref: bot, ...r }),
   beforeOpenAI: async (req, signal, emit) => {
     const ft = freetokenInstance(req.provider.baseUrl, req.model);
     const status = (text: string) => emit({ type: "thinking", text: `${text}\n` });
@@ -161,6 +185,14 @@ handle("pi_summary", (command: string, system: string, input: string) => piSumma
 handle("claude_settings_arg", (account?: { id: string; dir: string }) =>
   claudeSettingsArg(process.execPath, path.join(__dirname, "statusline.cjs"), config.configDir(), account),
 );
+handle("usage_stats", async (rescan: boolean): Promise<UsageStats> => {
+  const scan = rescan ? await usageScanner.scan() : undefined;
+  return {
+    rows: mergeRows([...ledger.rows(), ...usageScanner.rows()]),
+    ...(scan ? { scan: { files: scan.files, parsed: scan.parsed, skipped: scan.skipped } } : {}),
+    at: Date.now(),
+  };
+});
 handle("claude_limits", (accountId?: string) => claudeLimits(config.configDir(), accountId));
 handle("notify", (title: string, body: string) => notify(title, body));
 handle("copy_text", (text: string) => clipboard.writeText(text));

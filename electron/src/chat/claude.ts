@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { ChatEvent, ChatRequest } from "../../../src/chat";
+import { tokenCount } from "../../../src/usage";
 import { runCli, type LineParser } from "./cli";
 
 const SEARCH_TOOLS = "WebSearch,WebFetch";
@@ -39,7 +40,43 @@ type Line = {
   result?: string;
   errors?: string[];
   rate_limit_info?: { status?: string; resetsAt?: number };
+  total_cost_usd?: number;
+  usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number; output_tokens_details?: { thinking_tokens?: number } };
+  modelUsage?: Record<string, { inputTokens?: number; outputTokens?: number; cacheReadInputTokens?: number; cacheCreationInputTokens?: number; thinkingTokens?: number; costUSD?: number }>;
 };
+
+/** Zużycie z linii `result`: osobno dla każdego modelu (`modelUsage`), a bez niego sumarycznie. */
+export function claudeUsage(d: Line): ChatEvent[] {
+  const per = Object.entries(d.modelUsage ?? {});
+  if (per.length > 0)
+    return per.map(([model, m]) => ({
+      type: "usage" as const,
+      model,
+      usage: {
+        input: tokenCount(m.inputTokens),
+        output: tokenCount(m.outputTokens),
+        cacheRead: tokenCount(m.cacheReadInputTokens),
+        cacheWrite: tokenCount(m.cacheCreationInputTokens),
+        reasoning: tokenCount(m.thinkingTokens),
+      },
+      ...(typeof m.costUSD === "number" && m.costUSD > 0 ? { costUsd: m.costUSD } : {}),
+    }));
+  const u = d.usage;
+  if (!u) return [];
+  return [
+    {
+      type: "usage",
+      usage: {
+        input: tokenCount(u.input_tokens),
+        output: tokenCount(u.output_tokens),
+        cacheRead: tokenCount(u.cache_read_input_tokens),
+        cacheWrite: tokenCount(u.cache_creation_input_tokens),
+        reasoning: tokenCount(u.output_tokens_details?.thinking_tokens),
+      },
+      ...(typeof d.total_cost_usd === "number" && d.total_cost_usd > 0 ? { costUsd: d.total_cost_usd } : {}),
+    },
+  ];
+}
 
 /** „Links: [{title, url}, …]” z wyniku narzędzia WebSearch. */
 export function searchLinks(content: unknown): { url: string; title: string }[] {
@@ -91,6 +128,7 @@ export class ClaudeParser implements LineParser {
         }
         break;
       case "result":
+        out.push(...claudeUsage(d));
         if (d.is_error) this.error ??= d.errors?.[0] ?? d.result ?? `błąd claude (${d.subtype ?? "?"})`;
         break;
     }

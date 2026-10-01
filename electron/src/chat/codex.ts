@@ -3,6 +3,7 @@
 //! `exec` nie strumieniuje tekstu: odpowiedź przychodzi w całości w `item.completed`.
 
 import type { ChatEvent, ChatRequest } from "../../../src/chat";
+import { tokenCount } from "../../../src/usage";
 import { runCli, type LineParser } from "./cli";
 
 /** Wartość `-c klucz=wartość` jako napis TOML (JSON escaping jest poprawnym TOML basic string). */
@@ -36,7 +37,27 @@ export function codexArgs(req: ChatRequest): string[] {
 }
 
 type Item = { type?: string; text?: string; query?: string; action?: { type?: string; query?: string; url?: string } };
-type Line = { type?: string; thread_id?: string; item?: Item; error?: { message?: string }; message?: string };
+type CodexUsage = { input_tokens?: number; cached_input_tokens?: number; cache_write_input_tokens?: number; output_tokens?: number; reasoning_output_tokens?: number };
+type Line = { type?: string; thread_id?: string; item?: Item; error?: { message?: string }; message?: string; usage?: CodexUsage };
+
+/** `input_tokens` Codexa obejmuje tokeny z cache, więc „świeże” wejście to różnica. */
+export function codexUsage(u: CodexUsage | undefined): ChatEvent[] {
+  if (!u) return [];
+  const cached = tokenCount(u.cached_input_tokens);
+  const write = tokenCount(u.cache_write_input_tokens);
+  return [
+    {
+      type: "usage",
+      usage: {
+        input: Math.max(0, tokenCount(u.input_tokens) - cached - write),
+        output: tokenCount(u.output_tokens),
+        cacheRead: cached,
+        cacheWrite: write,
+        reasoning: tokenCount(u.reasoning_output_tokens),
+      },
+    },
+  ];
+}
 
 export class CodexParser implements LineParser {
   private pending: string | null = null; // ostatnia wiadomość: odpowiedź albo zapowiedź przed narzędziem
@@ -67,6 +88,7 @@ export class CodexParser implements LineParser {
       case "turn.completed":
         if (this.pending) out.push({ type: "text", text: this.pending });
         this.pending = null;
+        out.push(...codexUsage(d.usage));
         break;
       case "turn.failed":
         this.error = d.error?.message ?? "codex: nieudana tura";
