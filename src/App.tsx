@@ -23,7 +23,7 @@ import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { AccountsDialog } from "./AccountsDialog";
-import { NO_ACCOUNTS, type Accounts } from "./accounts";
+import { NO_ACCOUNTS, accountById, accountKind, pickAccountId, type Accounts } from "./accounts";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
 import { ChatView } from "./chat/ChatView";
@@ -310,7 +310,7 @@ export function App() {
       if (active === null || paneCount >= MAX_PANES) return; // no project to add a pane to
       setDialog(true);
     },
-    addPane: (agentId, model) => {
+    addPane: (agentId, model, account) => {
       const agent = agents.find((a) => a.id === agentId);
       if (!agent || paneCount >= MAX_PANES) return;
       setDialog(false);
@@ -318,6 +318,7 @@ export function App() {
       const pane: Pane = { id: crypto.randomUUID(), agentId: agent.id, run: 1 };
       if (agent.session) pane.sessionId = crypto.randomUUID();
       if (model) pane.model = model;
+      if (account) pane.account = account;
       dispatch({ type: "add", pane });
     },
     applyPreset: (preset) => {
@@ -330,6 +331,8 @@ export function App() {
         if (!agent) continue; // planPreset zostawia tylko znanych
         const pane: Pane = { id: crypto.randomUUID(), agentId, run: 1 };
         if (agent.session) pane.sessionId = crypto.randomUUID();
+        const account = pickAccountId(accounts, accountKind(agent), null);
+        if (account) pane.account = account;
         dispatch({ type: "add", pane });
         setLastAgentId(agentId);
       }
@@ -485,7 +488,7 @@ export function App() {
       const mine = ++seq.sent;
       readSeq.current.set(t.sessionId, seq);
       return backend
-        .sessionContext(t.kind, t.sessionId)
+        .sessionContext(t.kind, t.sessionId, accountById(accounts, all.find((p) => p.id === t.paneId)?.account)?.dir)
         .then((c) => {
           if (mine > seq.done) {
             seq.done = mine;
@@ -841,6 +844,7 @@ export function App() {
                 projects={ws.projects}
                 activeId={ws.active}
                 agents={agents}
+                accounts={accounts}
                 look={termLook}
                 fontSize={ws.ui.fontSize}
                 motion={ws.ui.motion}
@@ -896,6 +900,13 @@ export function App() {
         <AccountsDialog
           value={accounts}
           pickDir={() => backend.pickDir()}
+          canLogin={active !== null && paneCount < MAX_PANES}
+          onLogin={(account) => {
+            const agent = agents.find((x) => accountKind(x) === account.kind);
+            if (!agent) return;
+            setAccountsDialog(false);
+            projectActions.addPane(agent.id, undefined, account.id);
+          }}
           onChange={(next) => {
             setAccounts(next);
             void backend.saveAccounts(next).catch((e) => setErrors((prev) => [...prev, `accounts.json: ${String(e)}`]));
@@ -918,10 +929,11 @@ export function App() {
         <NewPaneDialog
           projectName={active.name}
           agents={agents}
+          accounts={accounts}
           startIndex={lastIndex}
-          onPick={(i, model) => {
+          onPick={(i, model, account) => {
             const agent = agents[i];
-            if (agent) projectActions.addPane(agent.id, model);
+            if (agent) projectActions.addPane(agent.id, model, account);
           }}
           onClose={() => setDialog(false)}
         />

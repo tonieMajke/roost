@@ -8,6 +8,9 @@ type Props = {
   value: Accounts;
   /** Wybór folderu systemowym oknem; `null` = anulowanie. */
   pickDir(): Promise<string | null>;
+  /** Zaloguj = nowy panel agenta na tym koncie; agent sam pokaże ekran logowania. */
+  canLogin: boolean;
+  onLogin(account: AccountDef): void;
   onChange(next: Accounts): void;
   onClose(): void;
 };
@@ -20,7 +23,7 @@ const KINDS: { kind: AccountKind; name: string; hint: string }[] = [
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 /** Okno „Konta”: osobne foldery logowania Claude / Codex; konto domyślne agenta (bez wpisu) zawsze istnieje. */
-export function AccountsDialog({ value, pickDir, onChange, onClose }: Props) {
+export function AccountsDialog({ value, pickDir, canLogin, onLogin, onChange, onClose }: Props) {
   const [kind, setKind] = useState<AccountKind>("claude");
   const [name, setName] = useState("");
   const [dir, setDir] = useState("");
@@ -73,6 +76,15 @@ export function AccountsDialog({ value, pickDir, onChange, onClose }: Props) {
                         <button type="button" className="pm-row" onClick={() => setDefault(a, k.kind)}>
                           <span className="pm-name">{current === a.id ? "● " : "○ "}{a.name}</span>
                           <span className="pm-agents">{a.dir}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn acc-login"
+                          disabled={!canLogin}
+                          title="Otwiera panel agenta na tym koncie (zaloguj się w nim)"
+                          onClick={() => onLogin(a)}
+                        >
+                          Zaloguj
                         </button>
                         <IconButton icon={X} label={`Usuń konto ${a.name}`} className="pm-del" onClick={() => remove(a)} />
                       </li>

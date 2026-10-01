@@ -3,6 +3,7 @@ import { gridShape, type Project } from "./workspace";
 import { Plus } from "lucide-react";
 import { BUILT_IN_PRESETS } from "./presets";
 import type { AgentDef } from "./agents";
+import { accountById, type Accounts } from "./accounts";
 import type { PaneState } from "./activity";
 import { contextKind, paneMeter, type SessionContext } from "./context";
 import type { PaneActions, ProjectActions } from "./handlers";
@@ -26,6 +27,7 @@ type Props = {
   projects: Project[];
   activeId: string | null;
   agents: AgentDef[];
+  accounts: Accounts;
   /** Kolory i font xtermu (motyw + akcent) — zmiana bez restartu procesu. */
   look: TermLook;
   /** Rozmiar czcionki terminali (px, `ui.fontSize`). */
@@ -72,6 +74,7 @@ export function Grid({
   projects,
   activeId,
   agents,
+  accounts,
   look,
   fontSize,
   motion,
@@ -233,6 +236,8 @@ export function Grid({
                       pane={pane}
                       path={project.path}
                       agent={agentById(agents, pane.agentId)}
+                      account={accountById(accounts, pane.account)}
+                      showAccount={accounts.accounts.length > 0}
                       look={look}
                       fontSize={fontSize}
                       focused={isActive && pane.id === project.focused}

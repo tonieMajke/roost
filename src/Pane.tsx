@@ -4,6 +4,7 @@ import { agentColor, buildArgs, withModel, type AgentDef } from "./agents";
 import { exitText, paneStatus, type PaneState } from "./activity";
 import type { ContextMeter } from "./context";
 import { withClaudeSettings } from "./limits";
+import { accountEnv, type AccountDef } from "./accounts";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
@@ -15,6 +16,10 @@ type Props = {
   pane: PaneModel;
   path: string; // folder of the project: cwd of the process
   agent?: AgentDef;
+  /** Konto agenta panelu (`pane.account`); `undefined` = jego własny folder logowania. */
+  account?: AccountDef;
+  /** Plakietka z nazwą konta w nagłówku (gdy użytkownik ma więcej niż jedno). */
+  showAccount?: boolean;
   /** Kolory i font xtermu (motyw + akcent). */
   look: TermLook;
   /** Rozmiar czcionki terminala (px). */
@@ -41,7 +46,7 @@ const claudeSettingsArg = () => (settingsArg ??= backend.claudeSettingsArg().cat
 export const PANE_OUT_MS = 190;
 
 /** Frame around one terminal: header with agent, state and controls. */
-export function Pane({ pane, path, agent, look, fontSize, focused, maximized, state, meter, title, closing, armed, actions }: Props) {
+export function Pane({ pane, path, agent, account, showAccount, look, fontSize, focused, maximized, state, meter, title, closing, armed, actions }: Props) {
   const key = `x:${pane.id}`;
   const armRef = useRef<Arm>(null);
   const [armedClick, setArmedClick] = useState(false);
@@ -62,18 +67,19 @@ export function Pane({ pane, path, agent, look, fontSize, focused, maximized, st
     if (!agent) return;
     const known: Promise<boolean> =
       agent.session?.check === "claude" && pane.sessionId
-        ? backend.claudeSessionExists(pane.sessionId).catch(() => false)
+        ? backend.claudeSessionExists(pane.sessionId, account?.dir).catch(() => false)
         : Promise.resolve(false);
     void Promise.all([known, claudeSettingsArg()]).then(([exists, settings]) => {
       if (!live) return;
       // claude: linia statusu z limitami subskrypcji dla pulpitu (Rust `limits.rs`).
-      const args = withClaudeSettings(agent, withModel(buildArgs(agent, pane.sessionId, exists), pane.model), settings);
+      // Limity idą do jednego pliku, więc panel konta (inny abonament) ich nie dopisuje – do Etapu 4 w planie kont.
+      const args = withClaudeSettings(agent, withModel(buildArgs(agent, pane.sessionId, exists), pane.model), account ? null : settings);
       setArgsFor({ run: pane.run, sessionId: pane.sessionId, args });
     });
     return () => {
       live = false;
     };
-  }, [agent, pane.sessionId, pane.run]);
+  }, [agent, pane.sessionId, pane.run, account?.dir]);
 
   const args =
     argsFor && argsFor.run === pane.run && argsFor.sessionId === pane.sessionId ? argsFor.args : null;
@@ -113,6 +119,11 @@ export function Pane({ pane, path, agent, look, fontSize, focused, maximized, st
         {title && (
           <span className="pane-title" title={title}>
             {title}
+          </span>
+        )}
+        {account && showAccount && (
+          <span className="pane-account" title={`Konto: ${account.name} (${account.dir})`}>
+            {account.name}
           </span>
         )}
         <span className="pane-state">{status.text}</span>
@@ -157,6 +168,7 @@ export function Pane({ pane, path, agent, look, fontSize, focused, maximized, st
             command={agent.command}
             args={args}
             cwd={path}
+            env={accountEnv(account)}
             look={look}
             fontSize={fontSize}
             focused={focused}

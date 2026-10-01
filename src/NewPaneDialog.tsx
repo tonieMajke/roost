@@ -1,31 +1,44 @@
 import { useState, type CSSProperties } from "react";
 import { agentColor, agentModels, type AgentDef } from "./agents";
+import { accountKind, accountsFor, pickAccountId, type Accounts } from "./accounts";
 import { Dialog } from "./Dialog";
 import { dialogKey, stepModel, tileDelayMs } from "./new-pane";
 
 type Props = {
   projectName: string;
   agents: AgentDef[];
+  accounts: Accounts;
   /** Zaznaczony na starcie: ostatnio użyty agent (stan ulotny, nie plik). */
   startIndex: number;
   /** `model`: id wybranego modelu (`--model`), `undefined` = domyślny agenta. */
-  onPick(index: number, model?: string): void;
+  onPick(index: number, model?: string, account?: string): void;
   onClose(): void;
 };
 
 /** Okno „Nowy panel” (wzór D): kafelki agentów, 1–9 / strzałki / Enter / Esc; ←/→ model. */
-export function NewPaneDialog({ projectName, agents, startIndex, onPick, onClose }: Props) {
+export function NewPaneDialog({ projectName, agents, accounts, startIndex, onPick, onClose }: Props) {
   const [index, setIndex] = useState(Math.min(Math.max(startIndex, 0), Math.max(agents.length - 1, 0)));
   // Model dotyczy zaznaczonego agenta; zmiana agenta wraca do domyślnego.
   const [model, setModel] = useState<string | undefined>(undefined);
+  // Konto: `null` = nie ruszano (domyślne konto rodzaju), `""` = własny folder agenta, inaczej id.
+  const [account, setAccount] = useState<string | null>(null);
   const selected = agents[index];
+  const kind = accountKind(selected);
+  const accountList = accountsFor(accounts, kind);
+  const accountId = pickAccountId(accounts, kind, account);
   const models = selected ? agentModels(selected) : [];
   const select = (i: number) => {
-    if (i !== index) setModel(undefined);
+    if (i !== index) {
+      setModel(undefined);
+      setAccount(null);
+    }
     setIndex(i);
   };
   // Model tylko dla agenta, dla którego go wybrano (cyfra może wskazać innego).
-  const pick = (i: number) => onPick(i, i === index ? model : undefined);
+  const pick = (i: number) => {
+    const k = accountKind(agents[i]);
+    onPick(i, i === index ? model : undefined, i === index ? accountId : pickAccountId(accounts, k, null));
+  };
 
   return (
     <Dialog label={`Nowy panel w ${projectName}`} onClose={onClose} onKey={(e, cancel) => {
@@ -84,6 +97,28 @@ export function NewPaneDialog({ projectName, agents, startIndex, onPick, onClose
                   onClick={() => setModel(m.id)}
                 >
                   {m.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {selected && accountList.length > 0 && (
+            <div
+              className="models"
+              role="radiogroup"
+              aria-label={`Konto: ${selected.name}`}
+              style={{ "--ag": agentColor(selected) } as CSSProperties}
+            >
+              <span className="models-label">Konto</span>
+              {[{ id: "", name: "domyślne" }, ...accountList].map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={(accountId ?? "") === a.id}
+                  className={`model-chip${(accountId ?? "") === a.id ? " is-active" : ""}`}
+                  onClick={() => setAccount(a.id)}
+                >
+                  {a.name}
                 </button>
               ))}
             </div>

@@ -103,8 +103,8 @@ export const electronBackend: Backend = {
   },
   saveAccounts: (value) => call<void>("accounts_save", JSON.stringify(value, null, 2)),
 
-  claudeSessionExists: (id) => call<boolean>("claude_session_exists", id),
-  sessionContext: (kind, sessionId) => call<SessionContext | null>("session_context", kind, sessionId),
+  claudeSessionExists: (id, dir) => call<boolean>("claude_session_exists", id, dir),
+  sessionContext: (kind, sessionId, dir) => call<SessionContext | null>("session_context", kind, sessionId, dir),
   sessionHandoff: (kind, sessionId) => call<Handoff | null>("session_handoff", kind, sessionId),
   claudeSummary: (command, system, input) => call<string>("claude_summary", command, system, input),
   piSummary: (command, system, input) => call<string>("pi_summary", command, system, input),

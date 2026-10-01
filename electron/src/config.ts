@@ -79,8 +79,9 @@ export function isFile(p: string): boolean {
   }
 }
 
-export function claudeSessionExists(id: string): boolean {
-  return sessionExistsIn(path.join(os.homedir(), ".claude", "projects"), id);
+/** `dir`: folder logowania konta; brak = `~/.claude`. */
+export function claudeSessionExists(id: string, dir?: string): boolean {
+  return sessionExistsIn(path.join(dir ? expand(dir) : path.join(os.homedir(), ".claude"), "projects"), id);
 }
 
 export function dirExists(p: string): boolean {

@@ -12,7 +12,8 @@ export type KeyState = "stored" | "env" | null;
 
 export type ExitInfo = { code: number; signal: string | null };
 
-export type SpawnSpec = { command: string; args?: string[]; cwd?: string; cols: number; rows: number };
+/** `env`: dodatkowe zmienne dla procesu (konto agenta, `src/accounts.ts`). */
+export type SpawnSpec = { command: string; args?: string[]; cwd?: string; env?: [string, string][]; cols: number; rows: number };
 
 export const ALL_EDGES: readonly ResizeEdge[] = ["North", "South", "East", "West", "NorthWest", "NorthEast", "SouthWest", "SouthEast"];
 
@@ -48,9 +49,10 @@ export interface Backend {
   /** Konta agentów z `accounts.json`; pusta lista, gdy pliku nie ma albo jest zepsuty (błędy w `errors`). */
   loadAccounts(): Promise<{ value: Accounts; errors: string[] }>;
   saveAccounts(value: Accounts): Promise<void>;
-  claudeSessionExists(id: string): Promise<boolean>;
+  /** `dir`: folder logowania konta (`CLAUDE_CONFIG_DIR`); brak = `~/.claude`. */
+  claudeSessionExists(id: string, dir?: string): Promise<boolean>;
   /** Rozmiar kontekstu z pliku sesji agenta (tylko odczyt); `null` = brak pliku albo danych. */
-  sessionContext(kind: ContextKind, sessionId: string): Promise<SessionContext | null>;
+  sessionContext(kind: ContextKind, sessionId: string, dir?: string): Promise<SessionContext | null>;
   /** Wyciąg rozmowy do przekazania innemu panelowi (M4); `null` = brak pliku albo pusta rozmowa. */
   sessionHandoff(kind: ContextKind, sessionId: string): Promise<Handoff | null>;
   /** Streszczenie `input` przez jednorazowe `claude -p --model haiku` (`command` = program claude); odrzuca z powodem. */

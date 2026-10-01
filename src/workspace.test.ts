@@ -418,3 +418,26 @@ describe("parseWorkspace", () => {
     expect(workspace).toEqual(w);
   });
 });
+
+describe("pane account", () => {
+  it("survives a save and load, bad values are dropped", () => {
+    const raw = {
+      version: 1,
+      active: "p",
+      projects: [
+        {
+          id: "p",
+          name: "p",
+          path: "/a",
+          panes: [
+            { id: "1", agentId: "claude", run: 1, account: "praca" },
+            { id: "2", agentId: "claude", run: 1, account: 5 },
+            { id: "3", agentId: "claude", run: 1, account: "" },
+          ],
+        },
+      ],
+    };
+    const panes = parseWorkspace(JSON.parse(JSON.stringify(raw)), ["claude"]).workspace.projects[0].panes;
+    expect(panes.map((p) => p.account)).toEqual(["praca", undefined, undefined]);
+  });
+});

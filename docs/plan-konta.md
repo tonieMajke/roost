@@ -43,8 +43,11 @@ więc funkcja jest opcjonalna: bez dodanych kont aplikacja zachowuje się jak do
   test na walidację i na to, że domyślne konto nie ustawia zmiennej.
 - [x] **Etap 2 – dysk i IPC.** `electron/src/accounts.ts` (`accounts.json`), `accounts_load/save`, (przycisk „Zaloguj” przeniesiony do Etapu 3: to nowy panel agenta na koncie.)
   `backend*.ts` + mock. Okno „Konta” (lista, dodaj, usuń) i przycisk „Zaloguj”.
-- [ ] **Etap 3 – konto w panelu.** Pole `account` w zapisie panelu (`workspace.json`, wstecznie
-  zgodne), wybór w „Nowy panel”, `env` przy `pty_spawn`, plakietka w nagłówku.
+- [x] **Etap 3 – konto w panelu.** Pole `account` w zapisie panelu (`workspace.json`, wstecznie
+  zgodne), wybór w „Nowy panel”, `env` przy `pty_spawn`, plakietka w nagłówku. Konto jest zapisywane w panelu
+  przy tworzeniu (zmiana domyślnego nie przesuwa działających paneli, bo sesje leżą w folderze konta);
+  panele konta nie dostają jeszcze `--settings` z limitami do Etapu 4; nadpisanie konta per projekt
+  odłożone (panel + domyślne wystarczają). „Zaloguj” w oknie Kont = nowy panel agenta na tym koncie.
 - [ ] **Etap 4 – limity per konto.** `--settings` z plikiem limitów konta, `claude_limits(accountId)`,
   dok i `limits.ts` z kontem.
 - [ ] **Etap 5 – Kontynuuj.** Pasek przy limicie + pozycja w menu panelu; nowy panel z kontem/agentem
