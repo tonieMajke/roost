@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { MessageSquareText, Mic, MicOff, PhoneOff, Settings } from "lucide-react";
 import { IconButton } from "../IconButton";
 import type { VoiceTab } from "./TalkSettings";
+import type { CardDecision, DeployCard, PaneHost } from "./tools";
 import { useVoiceSession } from "./useVoiceSession";
 import { exchangeTimes, fmtMs, INTERRUPTED, type VoiceExchange, type VoiceState } from "./voice";
 import "./voice.css";
@@ -10,6 +11,10 @@ type Props = {
   onClose(): void;
   /** Okno głosu na zakładce: rozmowa (mózg, mowa) albo dyktowanie (silnik transkrypcji, mikrofon). */
   onOpenSettings(tab: VoiceTab): void;
+  /** Projekty i panele dla narzędzi rozmówcy (etapy 5 i 7). */
+  host?: PaneHost;
+  /** Aplikacja wpisuje tu funkcję, którą mówi komunikaty („claude skończył pracę”). */
+  noteRef?: MutableRefObject<((text: string) => void) | null>;
 };
 
 function statusText(s: VoiceState, muted: boolean): string {
@@ -33,8 +38,8 @@ function statusText(s: VoiceState, muted: boolean): string {
 const norm = (rms: number) => Math.min(1, Math.sqrt(rms * 8));
 
 /** Kuleczka rozmowy na żywo w prawym dolnym rogu; transkrypt z czasami kroków po rozwinięciu. */
-export function VoiceOrb({ onClose, onOpenSettings }: Props) {
-  const { setup, state, muted, setMuted, interrupt, levels } = useVoiceSession();
+export function VoiceOrb({ onClose, onOpenSettings, host, noteRef }: Props) {
+  const { setup, state, muted, setMuted, interrupt, decide, levels } = useVoiceSession(host, noteRef);
   const [showLog, setShowLog] = useState(false);
   const orb = useRef<HTMLButtonElement>(null);
   const phaseRef = useRef(state);
@@ -74,6 +79,7 @@ export function VoiceOrb({ onClose, onOpenSettings }: Props) {
   return (
     <div className="vorb-wrap" role="region" aria-label="Rozmowa głosowa">
       {showLog && setup.status === "ready" && <Transcript state={state} />}
+      {state.card && <Card card={state.card} onDecide={decide} />}
       <div className="vorb-bar">
         <div className="vorb-info">
           {setup.status === "loading" && <span className="vorb-status">Uruchamiam…</span>}
@@ -94,6 +100,7 @@ export function VoiceOrb({ onClose, onOpenSettings }: Props) {
               </span>
               <span className="vorb-meta" title="Mózg · głos">
                 {setup.brain} · {setup.tts ?? "bez głosu"}
+                {!setup.tools && host && " · bez paneli"}
               </span>
               {state.error && <span className="vorb-status is-error">{state.error}</span>}
             </>
@@ -143,13 +150,27 @@ function Transcript({ state }: { state: VoiceState }) {
     <div className="vorb-log">
       {state.history.length === 0 && <p className="vorb-empty">Zapis pojawi się po pierwszej wypowiedzi.</p>}
       {state.history.map((e, i) => (
-        <Exchange key={i} e={e} />
+        <Fragment key={i}>
+          {notes(state, i)}
+          <Exchange e={e} />
+        </Fragment>
       ))}
+      {notes(state, state.history.length)}
       {state.carry && <p className="vorb-user is-pending">{state.carry}…</p>}
       <div ref={end} />
     </div>
   );
 }
+
+/** Komunikaty aplikacji, które przyszły przed wymianą `i`. */
+const notes = (s: VoiceState, i: number) =>
+  s.notes
+    ?.filter((n) => n.after === i)
+    .map((n, k) => (
+      <p key={`n${k}`} className="vorb-note">
+        {n.text}
+      </p>
+    ));
 
 function Exchange({ e }: { e: VoiceExchange }) {
   const t = exchangeTimes(e);
@@ -171,8 +192,58 @@ function Exchange({ e }: { e: VoiceExchange }) {
           {unsaid && <span className="vorb-unsaid">{unsaid}</span>}
         </p>
       )}
+      {e.tools?.map((t, i) => (
+        <p key={i} className={`vorb-tool${t.ok ? "" : " is-fail"}`}>
+          {t.label}
+          {t.ok ? "" : " – nie wyszło"}
+        </p>
+      ))}
       {e.error && <p className="vorb-status is-error">{e.error}</p>}
       {parts.length > 0 && <p className="vorb-times">{parts.join(" · ")}</p>}
+    </div>
+  );
+}
+
+/** Pierwsze linie polecenia dla agenta: pełne jest w panelu po uruchomieniu. */
+const preview = (text: string) => {
+  const lines = text.split("\n").filter((l) => l.trim());
+  const head = lines.slice(0, 3).join("\n");
+  return lines.length > 3 || head.length > 280 ? `${head.slice(0, 280)}…` : head;
+};
+
+/** Karta deploy: zadania czekają na klik albo „tak” / „nie” / „popraw…” głosem. */
+function Card({ card, onDecide }: { card: DeployCard; onDecide(d: CardDecision): void }) {
+  const run = useRef<HTMLButtonElement>(null);
+  useEffect(() => run.current?.focus(), [card]);
+  const head = card.head;
+  return (
+    <div className="vorb-card" role="alertdialog" aria-label={head}>
+      <p className="vorb-card-head">{head}</p>
+      <ol className="vorb-tasks">
+        {card.tasks.map((t, i) => (
+          <li key={i}>
+            <span className="vorb-agent">
+              {t.agent}
+              {t.account && ` · ${t.account}`}
+              {t.model && ` · ${t.model}`}
+            </span>{" "}
+            <b>{t.title}</b>
+            {t.prompt && <pre>{preview(t.prompt)}</pre>}
+          </li>
+        ))}
+      </ol>
+      <div className="vorb-card-actions">
+        <span className="vorb-hint">albo powiedz „tak”, „nie” lub co zmienić</span>
+        <button type="button" className="btn" onClick={() => onDecide({ kind: "cancel" })}>
+          Anuluj
+        </button>
+        <button type="button" className="btn" onClick={() => onDecide({ kind: "fix" })}>
+          Popraw
+        </button>
+        <button ref={run} type="button" className="btn primary" onClick={() => onDecide({ kind: "run" })}>
+          {card.action}
+        </button>
+      </div>
     </div>
   );
 }

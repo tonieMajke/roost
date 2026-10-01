@@ -111,8 +111,9 @@ Bez nowych zależności (VAD własny, patrz „Decyzje”).
 - [x] Etap 2 (C) – silniki TTS w procesie głównym
 - [x] Etap 3 (C) – kuleczka: rozmowa na żywo bez narzędzi
 - [x] Etap 4 (C) – ustawienia rozmowy
-- [ ] Etap 5 (C) – narzędzia: panele i „deploy”
-- [ ] Etap 6 (C + użytkownik) – próba w oknie i decyzja: zostaje albo wycinamy
+- [x] Etap 5 (C) – narzędzia: panele i „deploy”
+- [x] Etap 6 (C + użytkownik) – próba w oknie i decyzja: zostaje albo wycinamy (2026-10-01: działa, zostaje)
+- [x] Etap 7 (C) – rozmówca jako asystent całej aplikacji
 
 ---
 
@@ -206,6 +207,21 @@ Użytkownik w oknie sprawdza i zapisuje w HANDOFF:
 - [ ] scenariusz: omówienie pomysłu → „OK, deploy” → 2 panele claude dostają zadania.
 
 Decyzja: **zostaje** (plan na poprawki) albo **wycinamy**.
+
+## Etap 7 (C) – rozmówca jako asystent całej aplikacji
+
+Dopisane 2026-10-01 po próbie: „działa, brakuje możliwości działania w Agents”. Użytkownik wybrał
+sterowanie panelami, projekty, konta i modele, boty i Czat oraz informacje o postępach („co robią
+agenci, które wymagają uwagi”). Akcje bez skutków (pokaż, przełącz) działają od razu, reszta przez kartę.
+
+- Narzędzia (`src/voice/tools.ts`): `overview` (wszystkie projekty, stan paneli, „wymaga uwagi”),
+  `read_pane`, `show` (projekt / panel / zakładka, bez karty), `list_agents` (konta, modele, presety),
+  `open_panes` (projekt, konto, model), `send_to_pane`, `pane_control` (stop/restart/nowa rozmowa/
+  zamknij), `continue_elsewhere`, `apply_preset`, `ask_bot` (`src/voice/askBot.ts`).
+- Prompt rozmówcy zawiera przegląd aplikacji z chwili pytania.
+- Komunikat głosem, gdy agent skończy pracę w trakcie rozmowy (w ciszy; mowa użytkownika go ucisza).
+
+Commit: `Głos Etap 7: rozmówca steruje aplikacją`.
 
 ## Jak wyciąć
 

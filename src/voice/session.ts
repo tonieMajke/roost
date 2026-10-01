@@ -2,13 +2,17 @@
 // odtwarzanie, z przerywaniem. Mikrofon, VAD i głośnik podaje hook (`useVoiceSession`), więc
 // tutaj wszystko da się sprawdzić atrapami.
 
-import type { ChatEvent } from "../chat";
+import type { ChatEvent, ToolCall, Turn } from "../chat";
+import { cardAnswer, VOICE_MAX_STEPS, voiceToolLabel, type CardDecision, type DeployCard, type VoiceToolResult } from "./tools";
 import { speakable, splitSentences, VOICE_IDLE, voiceReducer, type VoiceEvent, type VoiceExchange, type VoiceState } from "./voice";
 
 export type VoiceDeps = {
   transcribe(wav: Uint8Array): Promise<string>;
-  /** Odpowiedź mózgu na całą historię (ostatnia wymiana bez odpowiedzi); zwraca Stop. */
-  ask(history: VoiceExchange[], onEvent: (e: ChatEvent) => void): () => void;
+  /** Jeden krok mózgu na całą historię (ostatnia wymiana bez odpowiedzi) plus `extra`: wywołania
+   *  narzędzi i ich wyniki z poprzednich kroków tej odpowiedzi. Zwraca Stop. */
+  ask(history: VoiceExchange[], extra: Turn[], onEvent: (e: ChatEvent) => void): () => void;
+  /** Narzędzia rozmówcy (etap 5); brak = mózg bez narzędzi (CLI). `signal`: odpowiedź przerwana. */
+  tool?: (name: string, args: Record<string, unknown>, signal: AbortSignal) => Promise<VoiceToolResult>;
   /** `null` = bez silnika mowy: odpowiedź tylko tekstem w transkrypcie. */
   speak: ((id: string, text: string) => Promise<Uint8Array>) | null;
   cancelSpeak(id: string): void;
@@ -24,6 +28,12 @@ export class VoiceSession {
   private reply: Reply | null = null;
   /** Rośnie przy `stop`: spóźniona transkrypcja ze starej rozmowy nie trafia do nowej. */
   private epoch = 0;
+  /** Karta deploy czekająca na decyzję. */
+  private card: { resolve: (d: CardDecision) => void } | null = null;
+  /** Komunikaty czekające na ciszę (w trakcie odpowiedzi nie wchodzimy w słowo) i ten, który gra. */
+  private queued: string[] = [];
+  private notePlaying: { ac: AbortController; id: string } | null = null;
+  private noteSeq = 0;
 
   constructor(
     private deps: VoiceDeps,
@@ -35,6 +45,45 @@ export class VoiceSession {
     if (next === this.state) return;
     this.state = next;
     this.onChange(next);
+    if (this.queued.length && next.phase === "listening" && !next.hearing && !this.card) this.flushNotes();
+  }
+
+  /** Gra komunikat aplikacji (np. agent skończył pracę) — gdy jest cisza; jak odpowiedź, przerywa go mowa. */
+  get speakingNote(): boolean {
+    return this.notePlaying !== null;
+  }
+
+  note(text: string) {
+    if (this.state.phase === "idle") return;
+    this.emit({ type: "note", text });
+    this.queued.push(text);
+    if (this.state.phase === "listening" && !this.state.hearing && !this.card) this.flushNotes();
+  }
+
+  private flushNotes() {
+    const speak = this.deps.speak;
+    const text = speakable(this.queued.splice(0).join(" "));
+    if (!speak || !text || this.notePlaying) return;
+    const ac = new AbortController();
+    const id = `note-${this.noteSeq++}`;
+    const playing = { ac, id };
+    this.notePlaying = playing;
+    const done = () => {
+      if (this.notePlaying === playing) this.notePlaying = null;
+    };
+    speak(id, text)
+      .then((bytes) => (ac.signal.aborted || this.state.phase !== "listening" ? undefined : this.deps.play(bytes, ac.signal)))
+      .catch(() => undefined) // komunikat to dodatek: błąd mowy widać przy następnej odpowiedzi
+      .finally(done);
+  }
+
+  private stopNote() {
+    this.queued = [];
+    const n = this.notePlaying;
+    if (!n) return;
+    this.notePlaying = null;
+    n.ac.abort();
+    this.deps.cancelSpeak(n.id);
   }
 
   start() {
@@ -43,12 +92,21 @@ export class VoiceSession {
 
   stop() {
     this.epoch++;
+    this.stopNote();
     this.cancelReply();
     this.emit({ type: "stop" });
   }
 
   /** VAD: użytkownik zaczął mówić — w trakcie odpowiedzi to przerwanie. */
   speechStart() {
+    // Komunikat milknie, ale nie przepada z zapisu; nie ponawiamy go.
+    const n = this.notePlaying;
+    if (n) {
+      this.notePlaying = null;
+      n.ac.abort();
+      this.deps.cancelSpeak(n.id);
+    }
+    if (this.card) return this.emit({ type: "speech_start" }); // odpowiedź na kartę, nie przerwanie
     if (this.state.phase === "thinking" || this.state.phase === "speaking") this.cancelReply();
     this.emit({ type: "speech_start" });
   }
@@ -71,9 +129,39 @@ export class VoiceSession {
       return;
     }
     if (epoch !== this.epoch) return;
+    if (this.card) {
+      const d = cardAnswer(text);
+      if (d) this.decide(d);
+      return;
+    }
     const before = this.state.history.length;
     this.emit({ type: "transcript", text, at: this.deps.now() });
     if (this.state.history.length > before) this.answer(this.state.history.length - 1);
+  }
+
+  /** Karta nad kuleczką; rozstrzyga ją klik (`decide`), głos albo przerwanie odpowiedzi (= anuluj). */
+  confirm(card: DeployCard, signal: AbortSignal): Promise<CardDecision> {
+    this.card?.resolve({ kind: "cancel" });
+    if (signal.aborted) return Promise.resolve({ kind: "cancel" });
+    return new Promise((resolve) => {
+      const entry = {
+        resolve: (d: CardDecision) => {
+          if (this.card !== entry) return;
+          this.card = null;
+          signal.removeEventListener("abort", onAbort);
+          this.emit({ type: "card", card: null });
+          resolve(d);
+        },
+      };
+      const onAbort = () => entry.resolve({ kind: "cancel" });
+      signal.addEventListener("abort", onAbort, { once: true });
+      this.card = entry;
+      this.emit({ type: "card", card });
+    });
+  }
+
+  decide(d: CardDecision) {
+    this.card?.resolve(d);
   }
 
   private cancelReply() {
@@ -130,24 +218,63 @@ export class VoiceSession {
       ready.forEach(say);
     };
 
-    r.stop = this.deps.ask(this.state.history, (e) => {
-      if (!live()) return;
-      if (e.type === "text") {
-        this.emit({ type: "delta", n, text: e.text, at: this.deps.now() });
-        buffer += e.text;
-        feed(false);
-      } else if (e.type === "done") {
-        feed(true);
-        this.emit({ type: "reply_done", n });
-        void played.then(() => {
-          if (!live()) return;
-          this.reply = null;
-          this.emit({ type: "audio_idle", n });
-        });
-      } else if (e.type === "error") {
-        fail(e.message);
+    const extra: Turn[] = [];
+    let steps = 0;
+
+    const finish = () => {
+      feed(true);
+      this.emit({ type: "reply_done", n });
+      void played.then(() => {
+        if (!live()) return;
+        this.reply = null;
+        this.emit({ type: "audio_idle", n });
+      });
+    };
+
+    const runTools = async (text: string, calls: ToolCall[]) => {
+      extra.push({ role: "assistant", content: text, calls });
+      for (const c of calls) {
+        const out: VoiceToolResult =
+          c.bad !== undefined
+            ? { ok: false, text: `argumenty nie są poprawnym obiektem JSON: ${c.bad.slice(0, 200)}` }
+            : await this.deps.tool!(c.name, c.args, ac.signal).catch((e: unknown) => ({ ok: false, text: message(e) }));
+        if (!live()) return;
+        this.emit({ type: "tool", n, label: voiceToolLabel(c.name, c.args), ok: out.ok });
+        extra.push({ role: "tool", id: c.id, content: out.text, ...(out.ok ? {} : { error: true }) });
       }
-    });
+      step();
+    };
+
+    const step = () => {
+      if (steps++ >= VOICE_MAX_STEPS) {
+        this.emit({ type: "delta", n, text: " Przerwałem, za dużo kroków z panelami.", at: this.deps.now() });
+        buffer += " Przerwałem, za dużo kroków z panelami.";
+        return finish();
+      }
+      let text = "";
+      const calls: ToolCall[] = [];
+      r.stop = this.deps.ask(this.state.history, extra, (e) => {
+        if (!live()) return;
+        if (e.type === "text") {
+          // Tekst kolejnego kroku (po narzędziach) to nowe zdanie, nie ciąg poprzedniego.
+          const chunk = text === "" && extra.length > 0 && this.state.history[n]?.reply ? ` ${e.text}` : e.text;
+          text += e.text;
+          this.emit({ type: "delta", n, text: chunk, at: this.deps.now() });
+          buffer += chunk;
+          feed(false);
+        } else if (e.type === "tool_call") {
+          calls.push({ id: e.id, name: e.name, args: e.args, ...(e.bad !== undefined ? { bad: e.bad } : {}) });
+        } else if (e.type === "done") {
+          if (calls.length === 0 || !this.deps.tool) return finish();
+          feed(true); // to, co powiedział przed narzędziem, gra, zanim pojawi się karta
+          void runTools(text, calls);
+        } else if (e.type === "error") {
+          fail(e.message);
+        }
+      });
+    };
+
+    step();
   }
 }
 

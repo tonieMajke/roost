@@ -33,6 +33,24 @@ Plan: `docs/plan-konta.md` (etapy 1–5 zrobione i zacommitowane, 6 = ten wpis).
 - **Niesprawdzone:** wygląd i koszt GPU Mgławicy przy wielu panelach, czytelność radaru w Pulpicie 300 px.
 - Pominięte względem makiet: żółte fale „czeka” i bursztynowy znak CZEKA (brak stanu „czeka na odpowiedź” w aplikacji), napis „N zmian · M plików” w rdzeniu, pasek „SEKTOR/QNH”, **paski lotów** Wieży (lista paneli ze wszystkich projektów po pilności – makieta uznaje je za lepsze od samego radaru). Radar pokazuje tylko aktywny projekt.
 - Do zrobienia: **Biuro** (izometryczne SVG z biurkami – ekran powitalny projektu albo widok w Pulpicie, nie tło), reszta tabeli braków. Niezacommitowane zmiany w `electron/src/bot/*`, `main.ts`, `preload.ts`, `src/backend*.ts`, `src/bot*.ts` nie pochodzą z tej pracy.
+## Głos Etap 7: rozmówca steruje aplikacją – 2026-10-01 (Claude, gałąź `glos`)
+
+- Użytkownik przetestował etap 5 w oknie: działa; brakowało działania w całej aplikacji. Wybrał: panele, projekty, konta/modele, boty i Czat, postępy („co wymaga uwagi”). Akcje bez skutków bez karty.
+- `src/voice/tools.ts` przepisany: `overview` (wszystkie projekty; stan z `ephemeral`, `limitHit`, `paneMeter`, `activity`; „Wymaga uwagi”: padł / limit / skończył i nieprzeczytany / kontekst ≥ 80%), `read_pane`, `show`, `list_agents`, `open_panes` (+ `project`, `account`, `model`), `send_to_pane`, `pane_control` (Esc / restart / nowa rozmowa / zamknij), `continue_elsewhere`, `apply_preset`, `ask_bot` (`askBot.ts`: nowa rozmowa bota zapisana w zakładce Bot, czekanie ≤ 120 s). Usunięte `list_panes`.
+- Karta ma `head`/`action` zamiast `kind`. Gospodarz w `App.tsx` (`voiceHost`, `openVoicePanes` przełącza projekt przed dodaniem paneli). Prompt rozmówcy dostaje `overviewText` przy każdym kroku.
+- Komunikat „X skończył pracę” (`session.note`): gra w ciszy, w trakcie odpowiedzi czeka; widać go w zapisie rozmowy; echo-ochrona VAD działa też w trakcie komunikatu.
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (645 + 9 pominiętych), electron typecheck i build.
+- **Niesprawdzone w oknie:** nowe narzędzia z prawdziwym modelem, Esc jako „stop” w pi, `ask_bot` z botem, który prosi o zgodę (czeka w zakładce Bot), wygląd komunikatów w zapisie.
+
+## Głos Etap 5: panele i deploy z rozmowy – 2026-10-01 (Claude, gałąź `glos`)
+
+- `src/voice/tools.ts`: `list_panes`, `open_panes`, `send_to_pane`, `read_pane` na gospodarzu `PaneHost` (w `App.tsx`: panele aktywnego projektu, id = 6 znaków UUID). `open_panes` i `send_to_pane` zawsze przez kartę; odmowa = „użytkownik odmówił”, „Popraw”/inna wypowiedź = poprawka z treścią wraca do modelu.
+- Pętla w oknie (`session.ts`, ≤ 8 kroków): `ChatService` przy `req.tools` oddaje wywołania jako `tool_call` przed `done`; drugi krok idzie z `turns`. Tylko dostawcy HTTP (openai/anthropic); przy claude/codex CLI pasek pokazuje „bez paneli”.
+- Karta nad kuleczką (`VoiceOrb.tsx`): Uruchom/Popraw/Anuluj. Przy widocznej karcie mowa nie przerywa odpowiedzi, a transkrypt idzie do `cardAnswer` („tak/ok/uruchom”, „nie/anuluj”, reszta = poprawka). Klik w kuleczkę/Esc = anulowanie.
+- Deploy: panel → czekanie na bracketed paste (≤ 20 s) → 1,5 s → wklejka → Enter (`TerminalHandle.type("\r")`). `TerminalHandle.tail(n)` czyta bufor xterm.
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (637 + 9 pominiętych), electron typecheck i build.
+- **Niesprawdzone:** nic nie uruchomione z prawdziwym modelem ani w oknie – czy Qwen/Claude rozpisuje zadania, czy Enter po wklejce startuje claude/pi, wygląd karty.
+
 ## Głos: do wdrożenia przez następnego agenta – 2026-10-01 (stan po rozmowie z użytkownikiem, gałąź `glos`)
 
 Użytkownik zbiera więcej zmian i zleci wdrożenie wszystkich naraz innemu agentowi. Tu jest wszystko, co ustalono o głosie. Niczego z tej listy jeszcze nie zrobiono w kodzie.

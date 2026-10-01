@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ChatEvent } from "../chat";
+import type { ChatEvent, Turn } from "../chat";
+import type { CardDecision } from "./tools";
 import { VoiceSession, type VoiceDeps } from "./session";
 import type { VoiceExchange, VoiceState } from "./voice";
 
@@ -9,9 +10,10 @@ const flush = async () => {
 };
 
 /** Atrapy z ręcznym sterowaniem: odpowiedź mózgu, synteza i odtwarzanie kończą się na żądanie. */
-function rig(opts: { tts?: boolean; transcript?: string | Error } = {}) {
+function rig(opts: { tts?: boolean; transcript?: string | Error; tool?: VoiceDeps["tool"] } = {}) {
   const log: string[] = [];
   const asked: VoiceExchange[][] = [];
+  const extras: Turn[][] = [];
   let send: ((e: ChatEvent) => void) | null = null;
   let stops = 0;
   const playing: { text: string; done: () => void }[] = [];
@@ -23,8 +25,9 @@ function rig(opts: { tts?: boolean; transcript?: string | Error } = {}) {
       if (t instanceof Error) throw t;
       return t;
     },
-    ask: (history, onEvent) => {
+    ask: (history, extra, onEvent) => {
       asked.push(history);
+      extras.push([...extra]);
       send = onEvent;
       return () => void stops++;
     },
@@ -39,6 +42,7 @@ function rig(opts: { tts?: boolean; transcript?: string | Error } = {}) {
         signal.addEventListener("abort", () => resolve(), { once: true });
       }),
     now: () => ++clock,
+    ...(opts.tool ? { tool: opts.tool } : {}),
   };
   const states: VoiceState[] = [];
   const s = new VoiceSession(deps, (st) => states.push(st));
@@ -46,7 +50,10 @@ function rig(opts: { tts?: boolean; transcript?: string | Error } = {}) {
     s,
     log,
     asked,
+    extras,
     cancelled,
+    /** Następne wypowiedzi rozpoznają się jako ten tekst. */
+    hear: (t: string) => void (opts.transcript = t),
     states,
     stops: () => stops,
     send: (e: ChatEvent) => send!(e),
@@ -165,5 +172,106 @@ describe("VoiceSession", () => {
     r.s.interrupt();
     expect(r.s.state.phase).toBe("listening");
     expect(r.stops()).toBe(1);
+  });
+
+  it("narzędzie: wywołanie → wynik → drugi krok mózgu z wynikiem → odpowiedź", async () => {
+    const calls: string[] = [];
+    const r = rig({ tts: false, tool: async (name) => (calls.push(name), { ok: true, text: "a1b2c3: claude, „testy”, pracuje" }) });
+    r.s.start();
+    await r.say();
+    r.send({ type: "text", text: "Sprawdzam." });
+    r.send({ type: "tool_call", id: "t1", name: "overview", args: {} });
+    r.send({ type: "done" });
+    await flush();
+    expect(calls).toEqual(["overview"]);
+    expect(r.extras[1]).toEqual([
+      { role: "assistant", content: "Sprawdzam.", calls: [{ id: "t1", name: "overview", args: {} }] },
+      { role: "tool", id: "t1", content: "a1b2c3: claude, „testy”, pracuje" },
+    ]);
+    expect(r.s.state.phase).toBe("thinking");
+    r.send({ type: "text", text: "Claude robi testy." });
+    r.send({ type: "done" });
+    await flush();
+    expect(r.s.state.phase).toBe("listening");
+    expect(r.s.state.history[0]).toMatchObject({ reply: "Sprawdzam. Claude robi testy.", done: true, tools: [{ label: "sprawdza projekty i panele", ok: true }] });
+  });
+
+  it("karta: „tak” głosem zatwierdza bez przerywania odpowiedzi", async () => {
+    let decided: CardDecision | null = null;
+    const r = rig({
+      tts: false,
+      tool: async (_n, _a, signal) => {
+        decided = await r.s.confirm({ head: "Otworzyć panel?", action: "Uruchom", tasks: [{ agent: "claude", title: "testy", prompt: "napisz testy" }] }, signal);
+        return { ok: decided.kind === "run", text: decided.kind };
+      },
+    });
+    r.s.start();
+    await r.say();
+    r.send({ type: "tool_call", id: "t1", name: "open_panes", args: { tasks: [] } });
+    r.send({ type: "done" });
+    await flush();
+    expect(r.s.state.card?.tasks[0].title).toBe("testy");
+    r.hear("Tak, uruchom.");
+    await r.say();
+    expect(r.stops()).toBe(0);
+    expect(decided).toEqual({ kind: "run" });
+    expect(r.s.state.card).toBeUndefined();
+    expect(r.asked).toHaveLength(2); // drugi krok mózgu z wynikiem, a nie nowe pytanie „tak”
+    expect(r.s.state.history).toHaveLength(1);
+  });
+
+  it("karta: inna wypowiedź to poprawka z treścią, przerwanie to anulowanie", async () => {
+    const decisions: CardDecision[] = [];
+    const r = rig({
+      tts: false,
+      tool: async (_n, _a, signal) => {
+        const d = await r.s.confirm({ head: "Wysłać?", action: "Wyślij", tasks: [{ agent: "pi", title: "x", prompt: "y" }] }, signal);
+        decisions.push(d);
+        return { ok: false, text: d.kind };
+      },
+    });
+    r.s.start();
+    await r.say();
+    r.send({ type: "tool_call", id: "t1", name: "send_to_pane", args: {} });
+    r.send({ type: "done" });
+    await flush();
+    r.hear("zamiast pi daj claude");
+    await r.say();
+    expect(decisions).toEqual([{ kind: "fix", note: "zamiast pi daj claude" }]);
+    r.send({ type: "tool_call", id: "t2", name: "send_to_pane", args: {} });
+    r.send({ type: "done" });
+    await flush();
+    expect(r.s.state.card).toBeDefined();
+    r.s.interrupt();
+    await flush();
+    expect(decisions[1]).toEqual({ kind: "cancel" });
+    expect(r.s.state.card).toBeUndefined();
+  });
+
+  it("komunikat aplikacji: w ciszy gra od razu, w trakcie odpowiedzi czeka; mowa go ucisza", async () => {
+    const r = rig();
+    r.s.start();
+    r.s.note("Claude skończył pracę.");
+    await flush();
+    expect(r.log).toEqual(["play note-0:Claude skończył pracę."]);
+    expect(r.s.speakingNote).toBe(true);
+    r.s.speechStart();
+    expect(r.s.speakingNote).toBe(false);
+    expect(r.cancelled).toEqual(["note-0"]);
+    await r.s.speechEnd(new Uint8Array([1]));
+    await flush();
+    r.s.note("pi skończył pracę.");
+    await flush();
+    expect(r.log).toHaveLength(1); // myśli: komunikat czeka
+    r.send({ type: "text", text: "Hej." });
+    r.send({ type: "done" });
+    await flush();
+    await r.finishPlaying(); // przerwany note-0 (atrapa trzyma go w kolejce)
+    await r.finishPlaying(); // „Hej.”
+    expect(r.log.at(-1)).toBe("play note-1:pi skończył pracę.");
+    expect(r.s.state.notes?.map((n) => [n.text, n.after])).toEqual([
+      ["Claude skończył pracę.", 0],
+      ["pi skończył pracę.", 1],
+    ]);
   });
 });

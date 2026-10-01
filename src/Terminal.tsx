@@ -52,6 +52,10 @@ export type TerminalHandle = {
    * `paste` wysyła nowe linie jako Enter, więc wieloliniowy tekst wykonałby się linia po linii.
    */
   bracketedPaste(): boolean;
+  /** Surowe wejście jak z klawiatury (np. `"\r"` = Enter, którego `paste` nie wyśle). */
+  type(data: string): void;
+  /** Ostatnie `lines` niepustych od końca linii bufora (ekran + przewinięte), bez pustego ogona. */
+  tail(lines: number): string;
 };
 
 /**
@@ -88,6 +92,18 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
       copySelection: () => term.current?.getSelection() ?? "",
       paste: (text: string) => term.current?.paste(text),
       bracketedPaste: () => term.current?.modes.bracketedPasteMode ?? false,
+      type: (data: string) => term.current?.input(data, true),
+      tail: (lines: number) => {
+        const b = term.current?.buffer.active;
+        if (!b) return "";
+        const out: string[] = [];
+        for (let y = b.length - 1; y >= 0 && out.length < lines; y--) {
+          const text = b.getLine(y)?.translateToString(true) ?? "";
+          if (out.length === 0 && !text.trim()) continue; // pusty dół ekranu pod kursorem
+          out.push(text);
+        }
+        return out.reverse().join("\n");
+      },
     }),
     [],
   );

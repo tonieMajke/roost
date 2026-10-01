@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DEFAULT_PROVIDERS, type ChatEvent, type ChatRequest, type ProviderDef } from "../../../src/chat";
+import { DEFAULT_PROVIDERS, type ChatEvent, type ChatRequest, type ProviderDef, type ToolCall } from "../../../src/chat";
 import { writeAtomic } from "../config";
 import { isAbort } from "./http";
 import { openaiModels, streamOpenAI } from "./openai";
@@ -58,9 +58,12 @@ export class ChatService {
     this.running.get(reqId)?.abort();
     this.running.set(reqId, ctl);
     try {
-      await adapter(req, ctl.signal, (e) => {
+      const calls = await adapter(req, ctl.signal, (e) => {
         if (!ctl.signal.aborted) emit(e);
       });
+      // Z `req.tools` wywołania wracają do strony, która wykonuje narzędzia i pyta dalej (rozmowa głosowa).
+      if (req.tools?.length && Array.isArray(calls) && !ctl.signal.aborted)
+        for (const c of calls as ToolCall[]) emit({ type: "tool_call", id: c.id, name: c.name, args: c.args, ...(c.bad !== undefined ? { bad: c.bad } : {}) });
       emit({ type: "done" });
     } catch (e) {
       if (ctl.signal.aborted || isAbort(e)) emit({ type: "done" });
