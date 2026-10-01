@@ -7,6 +7,7 @@ import type { Accounts } from "./accounts";
 import type { Handoff } from "./handoff";
 import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
 import type { ApprovalDecision, ApprovalRequest, BotChat, BotDef, Routine, RunInfo } from "./bot";
+import type { DiffMode, GitStatus } from "./git";
 import type { SttConfig, SttProvider } from "./stt";
 import type { TtsConfig, TtsProvider, VoiceConfig } from "./voice/voice";
 
@@ -176,6 +177,19 @@ export interface Backend {
   voiceCancel(reqId: string): void;
   /** Koniec rozmowy: proces główny zamyka Pipera. */
   voiceEnd(): void;
+  /** Panel plików z gitem (`docs/plan-pliki-git.md`). `cwd` = folder projektu (może być z `~`). `null` = nie repozytorium. */
+  gitStatus(cwd: string): Promise<GitStatus | null>;
+  /** Ścieżki śledzone i nieśledzone (bez ignorowanych) do drzewa. */
+  gitFiles(cwd: string): Promise<string[]>;
+  gitDiff(cwd: string, path: string, mode: DiffMode): Promise<string>;
+  gitStage(cwd: string, paths: string[]): Promise<void>;
+  gitUnstage(cwd: string, paths: string[]): Promise<void>;
+  /** Destrukcyjne: `tracked` wraca do indeksu, `untracked` znika z dysku. Zgodę zbiera UI. */
+  gitDiscard(cwd: string, tracked: string[], untracked: string[]): Promise<void>;
+  /** Pierwsza linia wyniku, np. „[main 3f2a9c1] komunikat”. */
+  gitCommit(cwd: string, message: string): Promise<string>;
+  /** Pull tylko fast-forward; push bez force (bez upstreamu: `-u origin HEAD`). Zwraca ostatnią linię wyniku. */
+  gitSync(cwd: string, op: "pull" | "push"): Promise<string>;
   /** Własny pasek tytułu; brak = podgląd w przeglądarce, bez okna. */
   window?: WindowControls;
 }
