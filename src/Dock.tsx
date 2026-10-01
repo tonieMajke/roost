@@ -6,6 +6,9 @@ import { FEED_CLOCK_MS, feedFor, relativeTime, type FeedItem } from "./feed";
 import { limitMeters, type ClaudeLimits } from "./limits";
 import type { Project } from "./workspace";
 import { IconButton } from "./IconButton";
+import { Radar } from "./Radar";
+import { blips, type BlipInput } from "./radar";
+import type { PaneState } from "./activity";
 
 type Props = {
   project: Project | null; // aktywny: sekcja „Kontekst” pokazuje jego panele
@@ -20,10 +23,12 @@ type Props = {
   limits: ClaudeLimits | null; // z linii statusu paneli claude
   onRefreshLimits: () => void;
   onClose: () => void;
+  /** Motyw „Wieża”: radar paneli na górze pulpitu (cisza z `activity.ts`). */
+  radar?: { quietMs: (paneId: string) => number | null; state: Record<string, PaneState> };
 };
 
 /** Pulpit po prawej (wzór D `.dock`): limity Claude (etap 10), kontekst, na żywo (etap 9). */
-export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPickFeed, feedScope, onFeedScope, limits, onRefreshLimits, onClose }: Props) {
+export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPickFeed, feedScope, onFeedScope, limits, onRefreshLimits, onClose, radar }: Props) {
   // „40 s temu” musi się starzeć także bez nowych zdarzeń.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -42,12 +47,39 @@ export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPi
     return [{ pane, agent, meter, model }];
   });
 
+  const radarBlips = radar
+    ? blips(
+        (project?.panes ?? []).map((pane): BlipInput => {
+          const agent = agents.find((a) => a.id === pane.agentId);
+          const st = radar.state[pane.id];
+          return {
+            id: pane.id,
+            agentName: agent?.name ?? pane.agentId,
+            color: agentColor(agent),
+            quietMs: radar.quietMs(pane.id),
+            level: paneMeter(pane, agent, contexts)?.pct ?? null,
+            working: st?.working === true,
+            done: st?.done === true || st?.exited !== undefined,
+          };
+        }),
+      )
+    : null;
+
   return (
     <aside className="dock">
       <div className="dock-head">
         <span className="dock-title">Pulpit</span>
         <IconButton icon={X} label="Zamknij pulpit" shortcut="Ctrl+Alt+D" onClick={onClose} />
       </div>
+      {radarBlips && (
+        <section className="dock-sec dock-radar">
+          <h3>
+            Radar <span>{project?.name}</span>
+          </h3>
+          <Radar blips={radarBlips} onPick={onPickPane} />
+          <span className="meter-note">odległość od środka = czas od ostatniego wyjścia · liczba = kontekst w %</span>
+        </section>
+      )}
       <section className="dock-sec">
         <h3>
           Limity Claude

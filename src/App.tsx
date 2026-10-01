@@ -49,6 +49,8 @@ import {
 import { commandFor, type Command } from "./keys";
 import { CONFIRM_MS, confirmClick, type Arm } from "./confirm";
 import type { TerminalHandle } from "./Terminal";
+import { Nebula } from "./Nebula";
+import { motionAllowed } from "./motion";
 import type { PaneActions, ProjectActions } from "./handlers";
 
 export function App() {
@@ -852,6 +854,9 @@ export function App() {
               </button>
             </header>
             <div className="grids">
+              {theme.id === "mglawica" && (
+                <Nebula still={!motionAllowed(ws.ui.motion, window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false)} />
+              )}
               <Grid
                 projects={ws.projects}
                 activeId={ws.active}
@@ -893,6 +898,17 @@ export function App() {
             )
           }
           onClose={() => dispatch({ type: "setUi", patch: { dock: false } })}
+          radar={
+            theme.id === "wieza"
+              ? {
+                  state: ephemeral,
+                  quietMs: (id) => {
+                    const last = activity.current.get(id)?.lastOutput ?? 0;
+                    return last === 0 ? null : Date.now() - last;
+                  },
+                }
+              : undefined
+          }
         />
       )}
       {notice && (
