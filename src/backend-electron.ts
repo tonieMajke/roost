@@ -124,6 +124,8 @@ export const electronBackend: Backend = {
   loadWorkspace: () => call<string | null>("workspace_load"),
   saveWorkspace: (json) => call<void>("workspace_save", json),
   backupWorkspace: (date) => call<void>("workspace_backup", date),
+  scratchpadLoad: (projectId) => call<string>("scratchpad_load", projectId),
+  scratchpadSave: (projectId, text) => call<void>("scratchpad_save", projectId, text),
 
   copyText: (text) => call<void>("copy_text", text),
   async pasteText() {

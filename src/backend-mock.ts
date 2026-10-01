@@ -255,6 +255,20 @@ export const mockBackend: Backend = {
       // private mode: the preview simply does not persist
     }
   },
+  async scratchpadLoad(projectId) {
+    try {
+      return globalThis.localStorage?.getItem(`agents.scratchpad.${projectId}`) ?? "";
+    } catch {
+      return "";
+    }
+  },
+  async scratchpadSave(projectId, text) {
+    try {
+      globalThis.localStorage?.setItem(`agents.scratchpad.${projectId}`, text);
+    } catch {
+      // private mode: the preview simply does not persist
+    }
+  },
   async backupWorkspace(date) {
     try {
       const key = `${WORKSPACE_KEY}.${date}`;

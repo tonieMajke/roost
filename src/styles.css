@@ -724,3 +724,36 @@ button.feed-item {
 .meter-block + .meter-block { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
 .meter-account { font-size: 11px; font-weight: 600; color: var(--muted); }
 .pane-limit { color: var(--text); border-top-color: var(--accent); }
+
+/* Scratchpad: notatki projektu (src/Scratchpad.tsx) – panel po prawej, tylko tokeny motywu */
+.scratch {
+  width: 320px; flex: none; display: flex; flex-direction: column; min-height: 0;
+  border-left: 1px solid var(--line); background: var(--rail); overflow: hidden;
+}
+.app:is(.mode-chat, .mode-bot) > .scratch { display: none; }
+.scratch-head {
+  height: var(--pane-head-h); flex: none; display: flex; align-items: center; gap: 2px;
+  padding: 0 8px 0 14px; border-bottom: 1px solid var(--line);
+}
+.scratch-title {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-weight: 600;
+}
+.scratch-edit, .scratch-preview { flex: 1; min-height: 0; margin: 0; padding: 12px 14px; box-sizing: border-box; }
+.scratch-edit {
+  resize: none; border: 0; outline: 0; background: transparent; color: var(--text);
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.6; tab-size: 2;
+}
+.scratch-edit::placeholder { color: var(--muted); }
+.scratch-edit:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
+.scratch-preview { overflow-y: auto; }
+.scratch-preview.chat-md { font-size: 13.5px; line-height: 1.6; }
+.scratch-preview input[type="checkbox"] { accent-color: var(--accent); margin-right: 6px; }
+.scratch-preview li:has(> input[type="checkbox"]) { list-style: none; margin-left: -20px; }
+.scratch-empty { margin: 0; padding: 12px 14px; font-size: 12.5px; color: var(--muted); }
+.scratch-foot {
+  flex: none; padding: 6px 14px; border-top: 1px solid var(--line); font-family: var(--mono);
+  font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.scratch-foot.is-error { color: var(--accent); font-weight: 600; }
+@media (max-width: 1100px) { .scratch { width: 240px; } }
