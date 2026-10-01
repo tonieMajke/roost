@@ -11,6 +11,7 @@ import { streamClaude } from "./claude";
 import { streamCodex } from "./codex";
 import { anthropicModels, streamAnthropic } from "./anthropic";
 import { streamPi } from "./pi";
+import { ensureFreeToken, freetokenInstance } from "./freetoken";
 
 const CONFIG_FILE = "chat.json";
 
@@ -90,7 +91,12 @@ export function defaultChatService(cwd: string, piDir: string, key: (p: Provider
   return new ChatService(
     {
       pi: (req, signal, emit) => streamPi(req, key(req.provider), piDir, cwd, signal, emit),
-      openai: (req, signal, emit) => streamOpenAI(req, key(req.provider), signal, emit),
+      openai: async (req, signal, emit) => {
+        // FreeToken sam wstaje na żądanie (jedna instancja na dwóch kartach, port 1919)
+        const ft = freetokenInstance(req.provider.baseUrl, req.model);
+        if (ft) await ensureFreeToken(req.model, ft, signal, (text) => emit({ type: "thinking", text: `${text}\n` }));
+        return streamOpenAI(req, key(req.provider), signal, emit);
+      },
       anthropic: (req, signal, emit) => streamAnthropic(req, key(req.provider), signal, emit),
       "claude-cli": (req, signal, emit) => streamClaude(req, cwd, signal, emit),
       "codex-cli": (req, signal, emit) => streamCodex(req, cwd, signal, emit),
