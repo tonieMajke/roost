@@ -2,6 +2,16 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Głos Etap 3: kuleczka i rozmowa na żywo – 2026-10-01 (Claude, gałąź `glos`)
+
+- Zmiana planu: VAD własny po energii (`src/voice/vad.ts`) zamiast `@ricky0123/vad-web` (ładuje `.onnx`/`.wasm` przez `fetch`, a strona stoi na `file://`). Próg = szum tła × 3, 300 ms kalibracji, start po 60 ms mowy, koniec po 600 ms ciszy, < 240 ms = szum; w trakcie odtwarzania (bez słuchawek) próg × 6 i start po 160 ms. Preroll 300 ms, wypowiedź → WAV 16 kHz → istniejące `sttTranscribe(…, "audio/wav")`.
+- `src/voice/session.ts` (`VoiceSession`, bez DOM): transkrypcja → `chatSend` (`voiceRequest`: HTTP = `messages`, CLI = `prompt` z całą rozmową, bez sesji) → `splitSentences` → `speakable` → `voiceSpeak` od razu dla każdego zdania, granie po kolei. Mowa albo klik w trakcie odpowiedzi = Stop mózgu, `voiceCancel` zdań, cisza. Bez silnika TTS odpowiedź jest tylko tekstem.
+- `src/voice/audio.ts`: `Mic` (AudioContext 16 kHz, AudioWorklet z blob, echo/szum/AGC), `Player` (`decodeAudioData`, `AnalyserNode`). `useVoiceSession.ts` czyta `stt.json`/`voice.json`/`tts.json`/`chat.json` raz na start (mózg = `voice.json.brain` albo pierwszy model z Czatu).
+- `VoiceOrb.tsx` + `voice.css`: pasek z kuleczką w prawym dolnym rogu (skala z głośności co klatkę przez `--lvl`, oddech/obrót/pierścień wg stanu, `prefers-reduced-motion` i `motion-lite`), wycisz, zapis rozmowy z czasami kroków (`exchangeTimes`), ustawienia, Zakończ (Esc). Przycisk „Rozmowa głosowa” w stopce Raila. Backend: `voiceConfig`, `ttsConfig`, `voiceSpeak`… (mock: cichy ton długości zdania).
+- Sprawdzone w ukrytym oknie Electrona poza ekranem (offscreen, wyciszone, sztuczny mikrofon z pliku WAV mowy z Pipera, podgląd na mocku): słucha → słyszy → myśli → mówi, czasy w zapisie; stan błędu bez silnika transkrypcji. Zrzuty w motywie D.
+- Sprawdzenia: typecheck, `pnpm test` (570 + 1 pominięty), electron typecheck + build – przechodzą.
+- Niesprawdzone: prawdziwy mikrofon i echo z głośników, VAD w hałasie, cała pętla z prawdziwym whisperem/Claude/Piperem, jasne motywy. Kuleczka nie jest przeciągalna (plan mówił „przeciągalna”).
+
 ## Głos Etap 2: silniki TTS – 2026-10-01 (Claude, gałąź `glos`)
 
 - `electron/src/voice/tts.ts`: `speakHttp` (`POST {baseUrl}/audio/speech`, JSON, `response_format: "wav"`, tekst w jednej linii, limit 4000 znaków), `Piper` (jeden proces `--output_dir` na rozmowę: linia → ścieżka WAV na stdout, odpowiedzi po kolei; przerwane zdanie czeka i jest wyrzucane; śmierć procesu odrzuca czekające z ostatnią linią stderr), `TtsService` (silnik i głos czytane z `tts.json`/`voice.json` przy każdym zdaniu, Piper wymieniany po zmianie programu/modelu/głosu).

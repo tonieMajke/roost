@@ -23,6 +23,7 @@ import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { VoiceDialog } from "./VoiceDialog";
+import { VoiceOrb } from "./voice/VoiceOrb";
 import { activeStt, DEFAULT_STT, type SttConfig } from "./stt";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
@@ -80,6 +81,7 @@ export function App() {
   const [presetMenu, setPresetMenu] = useState(false);
   const [appearance, setAppearance] = useState(false);
   const [voice, setVoice] = useState(false);
+  const [talk, setTalk] = useState(false);
   const [stt, setStt] = useState<SttConfig>(DEFAULT_STT);
   const sttRef = useRef(stt);
   sttRef.current = stt;
@@ -798,6 +800,8 @@ export function App() {
         }
         onOpenAppearance={() => setAppearance(true)}
         onOpenVoice={() => setVoice(true)}
+        talking={talk}
+        onToggleTalk={() => setTalk((t) => !t)}
       />
       <main className="area">
         {errors.length > 0 && (
@@ -907,6 +911,7 @@ export function App() {
           onClose={() => setAppearance(false)}
         />
       )}
+      {talk && <VoiceOrb onClose={() => setTalk(false)} onOpenSettings={() => setVoice(true)} />}
       {voice && (
         <VoiceDialog
           config={stt}

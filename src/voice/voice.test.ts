@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  activeTts, DEFAULT_TTS, DEFAULT_VOICE, INTERRUPTED, MAX_SENTENCE, parseTtsConfig, parseVoiceConfig, speakable, splitSentences,
+  activeTts, DEFAULT_TTS, exchangeTimes, fmtMs, DEFAULT_VOICE, INTERRUPTED, MAX_SENTENCE, parseTtsConfig, parseVoiceConfig, speakable, splitSentences,
   TTS_PRESETS, VOICE_IDLE, voiceCliPrompt, voicePrompt, voiceReducer, voiceTurns, type VoiceEvent, type VoiceExchange, type VoiceState,
 } from "./voice";
 
@@ -247,5 +247,13 @@ describe("voicePrompt", () => {
     expect(p).toContain("open_panes");
     expect(p).toContain("- p1: claude, „backend”, pracuje");
     expect(voicePrompt(now, [])).toContain("Projekt nie ma teraz paneli.");
+  });
+});
+
+describe("exchangeTimes", () => {
+  it("różnice znaczników, brakujące pomija", () => {
+    expect(exchangeTimes(ex("a", "b", { t: { heard: 1000, text: 1400, first: 2100, audio: 2350.6 } }))).toEqual({ stt: 400, model: 700, voice: 251, total: 1351 });
+    expect(exchangeTimes(ex("a", "b", { t: { heard: 1000, text: 1400 } }))).toEqual({ stt: 400, model: undefined, voice: undefined, total: undefined });
+    expect([fmtMs(350), fmtMs(1351)]).toEqual(["350 ms", "1,4 s"]);
   });
 });

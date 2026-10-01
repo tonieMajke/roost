@@ -1,7 +1,7 @@
 // Rozmowa głosowa (eksperyment, `docs/plan-glos.md`): konfiguracja, cięcie odpowiedzi na zdania
 // dla TTS, tekst do czytania i stan rozmowy. Czyste funkcje — mikrofon, VAD i IPC są w hooku.
 
-import type { ModelRef, WireMessage } from "../chat";
+import type { ChatRequest, ModelRef, ProviderDef, WireMessage } from "../chat";
 
 // ── konfiguracja ────────────────────────────────────────────────────────────
 
@@ -330,6 +330,16 @@ export function voiceReducer(s: VoiceState, ev: VoiceEvent): VoiceState {
   }
 }
 
+/** Czasy kroków wymiany (ms): transkrypcja, pierwsze słowo modelu, synteza pierwszego zdania,
+ *  razem od końca mowy do pierwszego dźwięku. Brak znacznika = brak liczby. */
+export function exchangeTimes(e: VoiceExchange): { stt?: number; model?: number; voice?: number; total?: number } {
+  const d = (a?: number, b?: number) => (a !== undefined && b !== undefined ? Math.max(0, Math.round(b - a)) : undefined);
+  return { stt: d(e.t.heard, e.t.text), model: d(e.t.text, e.t.first), voice: d(e.t.first, e.t.audio), total: d(e.t.heard, e.t.audio) };
+}
+
+/** „1,4 s” / „350 ms” */
+export const fmtMs = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1).replace(".", ",")} s`);
+
 /** Najwięcej wymian wysyłanych modelowi; starsze odpadają. */
 export const MAX_EXCHANGES = 30;
 export const INTERRUPTED = "[przerwano]";
@@ -353,6 +363,12 @@ export function voiceCliPrompt(history: VoiceExchange[]): string {
   const turns = voiceTurns(history);
   if (turns.length === 1) return turns[0].content;
   return turns.map((m) => `${m.role === "user" ? "Użytkownik" : "Asystent"}: ${m.content}`).join("\n\n");
+}
+
+/** Żądanie do mózgu: dostawcy HTTP biorą `messages`, CLI `prompt` z całą rozmową (bez sesji:
+ *  przerwana odpowiedź ma zostać w historii tylko w tej części, którą użytkownik usłyszał). */
+export function voiceRequest(provider: ProviderDef, model: string, history: VoiceExchange[], system: string): ChatRequest {
+  return { provider, model, system, messages: voiceTurns(history), prompt: voiceCliPrompt(history), search: false };
 }
 
 /** Panel widziany przez rozmówcę (narzędzia, etap 5). */

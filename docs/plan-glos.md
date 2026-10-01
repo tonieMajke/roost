@@ -52,7 +52,11 @@ STT strumieniowane w trakcie mówienia, głos w zakładce Bot.
   - `claude-cli` / `codex-cli`: działa, ale tylko rozmowa, bez narzędzi (serwer MCP
     z M5 etapu 5 jeszcze nie istnieje), z większym opóźnieniem na start procesu.
     UI to mówi.
-- **VAD w przeglądarce:** `@ricky0123/vad-web` (Silero na onnxruntime-web, działa offline).
+- **VAD własny, po energii** (`src/voice/vad.ts`; zmiana w etapie 3, wcześniej `@ricky0123/vad-web`):
+  tamta biblioteka ładuje `.onnx`/`.wasm` przez `fetch`, a strona Electrona stoi na `file://`.
+  Ramki 20 ms przy 16 kHz z AudioWorkleta (moduł z adresu blob), próg = szum tła × 3 (szum
+  uczony z ciszy, 300 ms kalibracji na start), koniec po 600 ms ciszy. Bez nowej zależności.
+  Silero można dołożyć później, wymiana dotyczy tylko `vad.ts`.
   Mikrofon z `echoCancellation`, `noiseSuppression` i `autoGainControl`. Gdy rozmówca mówi,
   próg wykrycia mowy idzie w górę, żeby nie przerywał sam sobie przez głośniki.
   Przełącznik „mam słuchawki” wyłącza tę ochronę i daje szybsze przerywanie.
@@ -87,8 +91,6 @@ Bez tych liczb nie da się zdecydować, czy eksperyment zostaje.
 
 ## Ryzyka do sprawdzenia na początku etapów
 
-- `@ricky0123/vad-web` ładuje pliki `.onnx` i `.wasm`. W Vite i w Electronie (`file://`)
-  trzeba je skopiować do `public/` i podać ścieżki. Sprawdzić najpierw w `pnpm dev`.
 - Echo przez głośniki mimo `echoCancellation` (Chromium na PipeWire). Jeśli przerywa
   sam siebie, domyślnie włączamy „mam słuchawki = nie” z wyższym progiem albo
   half-duplex (podczas jego mowy przerwanie tylko klikiem).
@@ -101,13 +103,13 @@ Bez tych liczb nie da się zdecydować, czy eksperyment zostaje.
 
 Jak w M5: **L** – lokalny model, **C** – Claude. Zasady z `AGENTS.md` bez zmian.
 Praca na osobnej gałęzi `glos` (od `konta` po zacommitowaniu dyktowania).
-Nowa zależność: tylko `@ricky0123/vad-web` (z `onnxruntime-web`), w etapie 3.
+Bez nowych zależności (VAD własny, patrz „Decyzje”).
 
 ## Postęp
 
 - [x] Etap 1 (L) – logika rozmowy bez UI
 - [x] Etap 2 (C) – silniki TTS w procesie głównym
-- [ ] Etap 3 (C) – kuleczka: rozmowa na żywo bez narzędzi
+- [x] Etap 3 (C) – kuleczka: rozmowa na żywo bez narzędzi
 - [ ] Etap 4 (C) – ustawienia rozmowy
 - [ ] Etap 5 (C) – narzędzia: panele i „deploy”
 - [ ] Etap 6 (C + użytkownik) – próba w oknie i decyzja: zostaje albo wycinamy
@@ -151,7 +153,8 @@ Commit: `Głos Etap 2: silniki TTS`.
 
 ## Etap 3 (C) – kuleczka: rozmowa na żywo bez narzędzi
 
-- Zależność `@ricky0123/vad-web`; pliki modelu i wasm w `public/vad/`.
+- `src/voice/vad.ts` (VAD i WAV), `src/voice/session.ts` (przebieg bez DOM), `src/voice/audio.ts`
+  (mikrofon przez AudioWorklet, głośnik z `AnalyserNode`).
 - `src/voice/useVoiceSession.ts`: VAD → `transcribe` (istniejące IPC dyktowania) →
   `chatSend` ze strumieniem → `splitSentences` → `voice_speak` → kolejka odtwarzania
   w Web Audio (`AnalyserNode` daje głośność do animacji). Przerwanie zgodnie z „Decyzjami”.
@@ -206,11 +209,11 @@ Decyzja: **zostaje** (plan na poprawki) albo **wycinamy**.
 
 ## Jak wyciąć
 
-1. Usuń `src/voice/`, `electron/src/voice/`, `public/vad/`, `docs/plan-glos.md`.
+1. Usuń `src/voice/`, `electron/src/voice/`, `docs/plan-glos.md`.
 2. Cofnij punkty zaczepienia: przycisk w `Rail.tsx`, `<VoiceOrb>` w `App.tsx`, metody
    głosu w `backend*.ts`, IPC w `main.ts`/`preload.ts`, zakładkę „Rozmowa” w
    `VoiceDialog.tsx`, `TerminalHandle.tail`.
-3. `pnpm remove @ricky0123/vad-web`. Pliki `voice.json` i `tts.json` w `configDir()`
+3. Pliki `voice.json` i `tts.json` w `configDir()`
    można zostawić albo skasować ręcznie.
 
 Prościej: nie scalać gałęzi `glos`.
