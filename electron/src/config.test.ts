@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { DEFAULT_AGENTS, parseAgents } from "../../src/agents";
-import { accountsLoad, accountsSave, agentsLoad, claudeSessionExists, defaultAgentsJson, migrateLegacyConfig, sessionExistsIn, workspaceBackup, workspaceLoad, workspaceSave, writeAtomic } from "./config";
+import { accountsLoad, accountsSave, agentsLoad, claudeSessionExists, defaultAgentsJson, legacyCwdFor, migrateLegacyConfig, resolveClaudeResume, sessionExistsIn, workspaceBackup, workspaceLoad, workspaceSave, writeAtomic } from "./config";
 
 const dirs: string[] = [];
 const tempDir = () => {
@@ -118,5 +118,116 @@ describe("config", () => {
     expect(migrateLegacyConfig(dir, legacy)).toBe(false);
     expect(fs.readFileSync(path.join(dir, "workspace.json"), "utf8")).toBe("nowy");
     expect(migrateLegacyConfig(path.join(root, "x"), path.join(root, "brak"))).toBe(false);
+  });
+
+  describe("migrateLegacyConfig", () => {
+    const legacyWith = () => {
+      const legacy = tempDir();
+      fs.writeFileSync(path.join(legacy, "workspace.json"), "old");
+      fs.mkdirSync(path.join(legacy, "bots", "b"), { recursive: true });
+      return legacy;
+    };
+
+    it("kopiuje przez .migrating i jest idempotentna", () => {
+      const legacy = legacyWith();
+      const dir = path.join(tempDir(), "roost");
+      expect(migrateLegacyConfig(dir, legacy)).toBe(true);
+      expect(fs.readFileSync(path.join(dir, "workspace.json"), "utf8")).toBe("old");
+      expect(fs.existsSync(`${dir}.migrating`)).toBe(false);
+      fs.writeFileSync(path.join(dir, "workspace.json"), "new");
+      expect(migrateLegacyConfig(dir, legacy)).toBe(false);
+      expect(fs.readFileSync(path.join(dir, "workspace.json"), "utf8")).toBe("new");
+      expect(fs.readFileSync(path.join(legacy, "workspace.json"), "utf8")).toBe("old");
+    });
+
+    it("przerwana kopia (.migrating z resztkami) nie blokuje kolejnej próby", () => {
+      const legacy = legacyWith();
+      const dir = path.join(tempDir(), "roost");
+      fs.mkdirSync(`${dir}.migrating`);
+      fs.writeFileSync(path.join(`${dir}.migrating`, "junk"), "x");
+      expect(migrateLegacyConfig(dir, legacy)).toBe(true);
+      expect(fs.existsSync(path.join(dir, "junk"))).toBe(false);
+      expect(fs.existsSync(path.join(dir, "workspace.json"))).toBe(true);
+    });
+
+    it("pusty albo szczątkowy katalog docelowy nie blokuje, szczątki zostają", () => {
+      const legacy = legacyWith();
+      const dir = tempDir();
+      fs.writeFileSync(path.join(dir, "usage-index.json"), "cache");
+      expect(migrateLegacyConfig(dir, legacy)).toBe(true);
+      expect(fs.readFileSync(path.join(dir, "workspace.json"), "utf8")).toBe("old");
+      expect(fs.readFileSync(path.join(dir, "usage-index.json"), "utf8")).toBe("cache");
+      const empty = tempDir();
+      expect(migrateLegacyConfig(empty, legacy)).toBe(true);
+      expect(fs.existsSync(path.join(empty, "bots", "b"))).toBe(true);
+    });
+
+    it("katalog z danymi nigdy nie jest ruszany", () => {
+      const legacy = legacyWith();
+      for (const name of ["workspace.json", "agents.json", "accounts.json", "chat-keys.json", "bots", "chats"]) {
+        const dir = tempDir();
+        fs.mkdirSync(path.join(dir, name), { recursive: true }); // plik lub katalog: liczy się istnienie
+        expect(migrateLegacyConfig(dir, legacy)).toBe(false);
+        expect(fs.readdirSync(dir)).toEqual([name]);
+      }
+    });
+
+    it("brak starego katalogu: nic się nie dzieje", () => {
+      expect(migrateLegacyConfig(path.join(tempDir(), "x"), path.join(tempDir(), "nope"))).toBe(false);
+    });
+  });
+
+  it("writeAtomic z mode: plik 0600, także gdy stary .tmp był szerszy", () => {
+    const dir = tempDir();
+    const file = path.join(dir, "k.json");
+    fs.writeFileSync(`${file}.tmp`, "stare", { mode: 0o644 });
+    writeAtomic(file, "tajne", 0o600);
+    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    expect(fs.readFileSync(file, "utf8")).toBe("tajne");
+    expect(fs.readdirSync(dir)).toEqual(["k.json"]);
+  });
+
+  it("accountsSave zapisuje z 0600", () => {
+    const dir = tempDir();
+    accountsSave("{}", dir);
+    expect(fs.statSync(path.join(dir, "accounts.json")).mode & 0o777).toBe(0o600);
+  });
+
+  describe("resolveClaudeResume", () => {
+    const id = "3f2a1b0c-0000-4000-8000-000000000001";
+    const put = (root: string, cwd: string) => {
+      const d = path.join(root, cwd.replace(/[^a-zA-Z0-9]/g, "-"));
+      fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, `${id}.jsonl`), "{}\n");
+    };
+    const cur = "/home/u/.config/dev.majke.roost/chat-cwd";
+    const old = "/home/u/.config/dev.majke.agents/chat-cwd";
+
+    it("sesja pod bieżącym cwd: resume tam", () => {
+      const root = tempDir();
+      put(root, cur);
+      put(root, old);
+      expect(resolveClaudeResume(id, cur, old, root)).toEqual({ cwd: cur, resume: true });
+    });
+    it("tylko pod starym cwd: stary cwd", () => {
+      const root = tempDir();
+      put(root, old);
+      expect(resolveClaudeResume(id, cur, old, root)).toEqual({ cwd: old, resume: true });
+    });
+    it("nigdzie: nowa sesja zamiast resume", () => {
+      expect(resolveClaudeResume(id, cur, old, tempDir())).toEqual({ cwd: cur, resume: false });
+      expect(resolveClaudeResume("../x", cur, old, tempDir())).toEqual({ cwd: cur, resume: false });
+    });
+    it("bez starego cwd (folder użytkownika) nie szuka go", () => {
+      const root = tempDir();
+      put(root, old);
+      expect(resolveClaudeResume(id, "/home/u/proj", null, root)).toEqual({ cwd: "/home/u/proj", resume: false });
+    });
+    it("legacyCwdFor mapuje ścieżki pod configDir", () => {
+      expect(legacyCwdFor("/c/roost/bots/b/work", "/c/roost", "/c/agents")).toBe("/c/agents/bots/b/work");
+      expect(legacyCwdFor("/c/roost", "/c/roost", "/c/agents")).toBe("/c/agents");
+      expect(legacyCwdFor("/home/u/proj", "/c/roost", "/c/agents")).toBeNull();
+      expect(legacyCwdFor("/c/roost-x", "/c/roost", "/c/agents")).toBeNull();
+    });
   });
 });

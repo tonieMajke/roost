@@ -22,14 +22,40 @@ export function legacyConfigDir(): string {
   return path.join(os.homedir(), ".config", "dev.majke.agents");
 }
 
+const DATA_NAMES = ["workspace.json", "agents.json", "accounts.json", "chat-keys.json", "bots", "chats"];
+
+/** Czy katalog ma dane użytkownika (a nie jest pusty albo szczątkowy). */
+function hasUserData(dir: string): boolean {
+  return DATA_NAMES.some((n) => fs.existsSync(path.join(dir, n)));
+}
+
 /**
- * Pierwszy start po zmianie nazwy: gdy nowego katalogu nie ma, a stary jest, kopiuje go w całości
- * (workspace, konta, boty, czaty, klucze). Stary zostaje nietknięty jako kopia zapasowa.
+ * Pierwszy start po zmianie nazwy: gdy nowy katalog nie istnieje albo nie ma w nim żadnych danych
+ * (workspace/agents/accounts/chat-keys, bots/, chats/), a stary jest, kopiuje stary w całości.
+ * Kopia powstaje w `<dir>.migrating` i dopiero po sukcesie trafia pod docelową nazwę (rename),
+ * więc przerwana kopia nie zostawia półkatalogu, który blokowałby kolejną próbę. Katalogu z danymi
+ * nie ruszamy nigdy. Stary katalog zostaje nietknięty. Błąd kopiowania jest rzucany (main.ts go loguje).
  * Zwraca true, gdy skopiowano.
  */
 export function migrateLegacyConfig(dir = configDir(), legacy = legacyConfigDir()): boolean {
-  if (fs.existsSync(dir) || !fs.existsSync(legacy)) return false;
-  fs.cpSync(legacy, dir, { recursive: true });
+  if (!fs.existsSync(legacy)) return false;
+  if (fs.existsSync(dir) && hasUserData(dir)) return false;
+  const tmp = `${dir}.migrating`;
+  fs.rmSync(tmp, { recursive: true, force: true });
+  try {
+    fs.cpSync(legacy, tmp, { recursive: true });
+    if (fs.existsSync(dir)) {
+      // Szczątki w docelowym katalogu (np. cache) przenosimy do kopii, o ile stary katalog ich nie ma.
+      for (const n of fs.readdirSync(dir)) {
+        if (!fs.existsSync(path.join(tmp, n))) fs.renameSync(path.join(dir, n), path.join(tmp, n));
+      }
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    fs.renameSync(tmp, dir);
+  } catch (e) {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    throw e;
+  }
   return true;
 }
 
@@ -54,10 +80,19 @@ export function defaultAgentsJson(): string {
   );
 }
 
-/** Zapis przez `<plik>.tmp` + rename: awaria nigdy nie zostawia pół pliku. */
-export function writeAtomic(file: string, contents: string): void {
+/** Zapis przez `<plik>.tmp` + fsync + rename: awaria nigdy nie zostawia pół pliku.
+ *  `mode`: uprawnienia pliku (sekrety: 0o600), ustawiane już na pliku tymczasowym, więc nigdy
+ *  nie jest on czytelny dla innych. Bez `mode` zostają domyślne (umask). */
+export function writeAtomic(file: string, contents: string, mode?: number): void {
   const tmp = `${file}.tmp`;
-  fs.writeFileSync(tmp, contents);
+  if (mode !== undefined) fs.rmSync(tmp, { force: true }); // stary .tmp mógł mieć szersze uprawnienia
+  const fd = fs.openSync(tmp, "w", mode);
+  try {
+    fs.writeFileSync(fd, contents);
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
   fs.renameSync(tmp, file);
 }
 
@@ -149,5 +184,36 @@ export function accountsLoad(dir = configDir()): string | null {
 
 export function accountsSave(json: string, dir = configDir()): void {
   fs.mkdirSync(dir, { recursive: true });
-  writeAtomic(path.join(dir, ACCOUNTS_FILE), json);
+  writeAtomic(path.join(dir, ACCOUNTS_FILE), json, 0o600);
+}
+
+/** Kodowanie ścieżki cwd na nazwę katalogu projektu Claude'a (`/home/x/.y` → `-home-x--y`). */
+export function claudeProjectDirName(cwd: string): string {
+  return cwd.replace(/[^a-zA-Z0-9]/g, "-");
+}
+
+/**
+ * Wznawianie sesji Claude'a: sesja leży pod projektem zakodowanym z cwd, w którym powstała.
+ * Po zmianie nazwy katalogu konfiguracji (`dev.majke.agents` → `dev.majke.roost`) stare sesje są
+ * pod starym cwd. Zwraca cwd i flagę resume: nowy cwd, gdy sesja tam jest; stary, gdy jest tylko tam;
+ * a gdy nie ma jej nigdzie, `resume: false` (nowa sesja zamiast `--resume`, które by padło).
+ */
+export function resolveClaudeResume(
+  id: string,
+  cwd: string,
+  legacyCwd: string | null,
+  projectsRoot: string,
+): { cwd: string; resume: boolean } {
+  if (!validId(id)) return { cwd, resume: false };
+  const has = (c: string) => isFile(path.join(projectsRoot, claudeProjectDirName(c), `${id}.jsonl`));
+  if (has(cwd)) return { cwd, resume: true };
+  if (legacyCwd && has(legacyCwd)) return { cwd: legacyCwd, resume: true };
+  return { cwd, resume: false };
+}
+
+/** Stary odpowiednik cwd pod `configDir()` (pod `legacyConfigDir()`), albo null poza nim. */
+export function legacyCwdFor(cwd: string, dir = configDir(), legacy = legacyConfigDir()): string | null {
+  const rel = path.relative(dir, cwd);
+  if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) return rel === "" ? legacy : null;
+  return path.join(legacy, rel);
 }

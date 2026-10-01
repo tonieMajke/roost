@@ -378,3 +378,8 @@ export class UsageScanner {
     return { rows: this.rows(), files, parsed, skipped };
   }
 }
+
+/** Katalogi robocze Czatu i Botów (nowe i sprzed zmiany nazwy): ich logi sesji liczy dziennik, nie skaner. */
+export function chatLogExcludes(dir: string, legacy: string): string[] {
+  return [dir, legacy].flatMap((d) => [path.join(d, "chat-cwd"), path.join(d, "bots")]);
+}

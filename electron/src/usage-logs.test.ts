@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { logRoots, parseLogText, UsageScanner } from "./usage-logs";
+import { chatLogExcludes, logRoots, parseLogText, UsageScanner } from "./usage-logs";
 
 const jl = (...lines: unknown[]) => lines.map((l) => JSON.stringify(l)).join("\n");
 
@@ -168,5 +168,11 @@ describe("UsageScanner", () => {
     const cfg = tmp();
     const r = await new UsageScanner(cfg, () => [{ kind: "claude", dir: path.join(cfg, "nie-ma") }]).scan();
     expect(r).toMatchObject({ files: 0, rows: [] });
+  });
+});
+
+describe("chatLogExcludes", () => {
+  it("obejmuje chat-cwd i bots w nowym i starym katalogu", () => {
+    expect(chatLogExcludes("/c/roost", "/c/agents")).toEqual(["/c/roost/chat-cwd", "/c/roost/bots", "/c/agents/chat-cwd", "/c/agents/bots"]);
   });
 });

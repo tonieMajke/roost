@@ -3,6 +3,7 @@
 import { t } from "./i18n";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { app, BrowserWindow, clipboard, dialog, ipcMain, powerMonitor, safeStorage, shell } from "electron";
 import * as config from "./config";
 import * as scratchpad from "./scratchpad";
@@ -15,10 +16,11 @@ import { resolveMainLang, setMainLang } from "./i18n";
 import { openFile, resolveFiles } from "./open-path";
 import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
+import { allowNavigation, buildCsp, shouldApplyCsp } from "./security";
 import { claudeSummary, piSummary } from "./summary";
 import { ChatStore } from "./chat/store";
 import { UsageLedger } from "./usage-store";
-import { logRoots, UsageScanner } from "./usage-logs";
+import { chatLogExcludes, logRoots, UsageScanner } from "./usage-logs";
 import { parseAccounts, type AccountDef } from "../../src/accounts";
 import { mergeRows, type UsageStats } from "../../src/usage";
 import { chatConfigLoad, chatConfigSave, defaultChatService } from "./chat/service";
@@ -87,7 +89,7 @@ const usageScanner = new UsageScanner(
     return logRoots(accounts);
   },
   // Czat i Boty przez claude/codex też zostawiają logi sesji, ale liczy je dziennik (bez podwójnego liczenia).
-  [path.join(config.configDir(), "chat-cwd"), path.join(config.configDir(), "bots")],
+  chatLogExcludes(config.configDir(), config.legacyConfigDir()),
 );
 const chat = defaultChatService(
   path.join(config.configDir(), "chat-cwd"),
@@ -376,7 +378,7 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
-      sandbox: false,
+      sandbox: true, // preload używa tylko contextBridge/ipcRenderer/webUtils
       additionalArguments: usesWayland(process.env, app.commandLine.getSwitchValue("ozone-platform")) ? ["--aw-wayland"] : [],
     },
   });
@@ -385,6 +387,18 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
     return { action: "deny" };
+  });
+  // Strona nie wychodzi poza własny adres ani nie osadza <webview>.
+  const appFile = path.join(__dirname, "..", "dist-web", "index.html");
+  const appUrl = { dev: process.env.AGENTS_DEV_URL, file: pathToFileURL(appFile).href };
+  win.webContents.on("will-navigate", (e, url) => {
+    if (!allowNavigation(url, appUrl)) e.preventDefault();
+  });
+  win.webContents.on("will-attach-webview", (e) => e.preventDefault());
+  // CSP z nagłówka (nie z <meta>, żeby nie psuć HMR Vite); tylko dla file://.
+  win.webContents.session.webRequest.onHeadersReceived((details, cb) => {
+    if (!shouldApplyCsp(details.url)) return cb({});
+    cb({ responseHeaders: { ...details.responseHeaders, "Content-Security-Policy": [buildCsp()] } });
   });
   // Przeładowana strona (Ctrl+R, przeładowanie Vite) nie posprzątała po sobie: bez tego jej agenci
   // żyliby niewidoczni obok kopii tych samych rozmów w nowej stronie.

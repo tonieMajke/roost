@@ -125,4 +125,13 @@ describe("runCli", () => {
     await p;
     expect(Date.now() - t0).toBeLessThan(3000);
   });
+
+  it("signal już przerwany: proces nie startuje", async () => {
+    const ctl = new AbortController();
+    ctl.abort();
+    const marker = path.join(cwd, "started");
+    await runCli("sh", sh(`touch ${marker}`), "", cwd, echo, ctl.signal, () => {});
+    await new Promise((r) => setTimeout(r, 100));
+    expect(fs.existsSync(marker)).toBe(false);
+  });
 });

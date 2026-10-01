@@ -45,8 +45,7 @@ export class KeyStore {
       all[providerId] = this.cipher.encrypt(key.trim()).toString("base64");
     }
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    writeAtomic(this.file, JSON.stringify(all, null, 2));
-    fs.chmodSync(this.file, 0o600);
+    writeAtomic(this.file, JSON.stringify(all, null, 2), 0o600);
     this.cache = all;
   }
 

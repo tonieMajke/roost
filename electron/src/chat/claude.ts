@@ -9,6 +9,8 @@ import path from "node:path";
 import type { ChatEvent, ChatRequest } from "../../../src/chat";
 import { tokenCount } from "../../../src/usage";
 import { runCli, type LineParser } from "./cli";
+import { legacyCwdFor, resolveClaudeResume } from "../config";
+import { expand } from "../env";
 
 const SEARCH_TOOLS = "WebSearch,WebFetch";
 /** Folder użytkownika: tylko czytanie i szukanie, bez Bash/Edit/Write. */
@@ -145,9 +147,19 @@ export class ClaudeParser implements LineParser {
   }
 }
 
+/** `--resume` tylko dla sesji, która istnieje (pod bieżącym cwd albo pod starym, sprzed zmiany nazwy
+ *  katalogu konfiguracji); inaczej nowa sesja o tym samym id. Folder użytkownika nie ma starego cwd. */
+function resolveResumeCwd(req: ChatRequest, cwd: string): { req: ChatRequest; cwd: string } {
+  if (!req.session?.resume) return { req, cwd };
+  const root = path.join(process.env.CLAUDE_CONFIG_DIR ? expand(process.env.CLAUDE_CONFIG_DIR) : path.join(os.homedir(), ".claude"), "projects");
+  const r = resolveClaudeResume(req.session.id, cwd, req.folder ? null : legacyCwdFor(cwd), root);
+  return { req: { ...req, session: { id: req.session.id, resume: r.resume } }, cwd: r.cwd };
+}
+
 export async function streamClaude(req: ChatRequest, cwd: string, signal: AbortSignal, emit: (e: ChatEvent) => void): Promise<void> {
   const program = req.provider.command || "claude";
   cwd = req.folder ?? cwd;
+  ({ req, cwd } = resolveResumeCwd(req, cwd));
   if (!req.mcp) return runCli(program, claudeArgs(req), req.prompt, cwd, new ClaudeParser(), signal, emit);
   // Konfiguracja z tokenem sesji: prywatny katalog, plik 0600, usuwany po odpowiedzi.
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agents-mcp-"));

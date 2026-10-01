@@ -26,6 +26,7 @@ export function runCli(
   emit: (e: ChatEvent) => void,
   env: Record<string, string> = {},
 ): Promise<void> {
+  if (signal.aborted) return Promise.resolve(); // przerwane przed startem: procesu nie uruchamiamy
   fs.mkdirSync(cwd, { recursive: true });
   return new Promise((resolve, reject) => {
     const child = spawn(program, args, { cwd, env: childEnv(env), stdio: ["pipe", "pipe", "pipe"] });
