@@ -93,9 +93,10 @@ zamkniętej aplikacji (usługa systemd).
   bot działa bez narzędzi i mówi to w nagłówku rozmowy.
 - `codex exec` w `-s read-only` nadal ma własną powłokę do odczytu. Akceptujemy to
   (odczyt), ale sprawdzamy, czy MCP z `-c` w ogóle się ładuje.
-- Wyszukiwanie dla dostawców HTTP: narzędzie `web_search` woła jednorazowo
-  `pi -p` z pi-web-access (jak etap 7b M3) i zwraca listę wyników. `web_fetch` jest własne
-  (fetch + HTML→tekst, ≤ 30 KB).
+- Wyszukiwanie dla dostawców HTTP: narzędzie `web_search` czyta wersję HTML DuckDuckGo
+  (`html.duckduckgo.com/html/?q=`, bez klucza i bez wywołania modelu; zmienione w etapie 3,
+  wcześniej było przez `pi -p`). `web_fetch` jest własne (fetch + HTML→tekst, ≤ 30 KB).
+  Gdy DuckDuckGo zacznie odrzucać zapytania, zapasem jest pi-web-access.
 
 ## Kto robi
 
@@ -106,7 +107,7 @@ Nowe zależności dozwolone tylko w etapie, który je wymienia.
 
 - [x] Etap 1 (L) – model bota bez UI
 - [x] Etap 2 (L) – magazyn botów, pamięć i skille na dysku
-- [ ] Etap 3 (C) – rejestr narzędzi i potwierdzenia
+- [x] Etap 3 (C) – rejestr narzędzi i potwierdzenia
 - [ ] Etap 4 (C) – pętla tool-calling dla dostawców HTTP
 - [ ] Etap 5 (C) – serwer MCP `bot` dla claude i codex
 - [ ] Etap 6 (C) – zakładka Bot: lista, rozmowa, karty narzędzi i zgody

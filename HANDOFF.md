@@ -15,6 +15,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 3: narzędzia bota i zgody – 2026-10-01 (Claude, master)
+
+- `electron/src/bot/tools.ts`: rejestr 15 narzędzi (`toolDefs(bot)` = włączone grupy, Kreator dodatkowo `bot_create`/`bot_update`) i `runTool(name, args, ctx)`, który nigdy nie rzuca – błąd i odmowa wracają do modelu jako `ok: false`. Ścieżki: względne od `work/`, `~` rozwinięte, zawsze `realpath` (też dla nieistniejącego pliku przez najbliższego przodka) przed `needsApproval`, więc dowiązanie z folderu bota na zewnątrz pyta o zgodę.
+- `approvals.ts` (`ApprovalBroker`): prośba czeka na `once`/`chat`/`deny`; Stop (abort) = odmowa, „w tej rozmowie” dla bash bez prostego prefiksu (`;`, `|`, `$()`…) liczy się jako „raz”. W `main.ts`: zdarzenie `bot_approval` do okna, `bot_approve`, `bot_approvals`; przeładowanie strony i zamknięcie = odmowa wszystkich.
+- `proc.ts`: `bash` i `rg` we własnej grupie procesów, limit 120 s / 30 s, wyjście ≤ 64 KB, Stop i limit zabijają całą grupę (procesy w tle po zakończeniu polecenia też – opisane modelowi). Środowisko bez `AW_CHAT_API_KEY`, `AW_BOT_*` i zmiennych Electrona.
+- `web.ts`: `web_search` z HTML DuckDuckGo (bez klucza, bez modelu – zmiana względem planu, plan poprawiony), `web_fetch` = HTML→tekst ≤ 30 KB, tylko http(s), ≤ 2 MB pobrania. Sprawdzone na żywo: wyszukiwanie „Vintage Story modding wiki” (trafne wyniki z wiki), blog Rusta jako tekst. Odpowiedzi DDG zapisane w `fixtures/`.
+- Harmonogram: `bash` z prefiksem z góry przechodzi tylko w `work/` i folderach bota; gdzie indziej pyta.
+- Sprawdzenia: typecheck (frontend i electron), vitest 463/463 (nowe: tools 24, approvals 4, proc 6, web 6), build electron – OK.
+- Niesprawdzone: zdarzenie `bot_approval` w oknie (UI w etapie 6); nikt jeszcze nie woła `runTool` z modelu (etapy 4–5).
+
 ## M5 Etap 2: boty na dysku – 2026-10-01 (Claude, master)
 
 - `electron/src/bot/store.ts` (`BotStore`): `~/.config/dev.majke.agents/bots/<id>/` z `bot.json`, `memory.md`, `user.md`, `skills/<nazwa>/SKILL.md`, `routines.json`, `chats/`, `runs/`, `work/`. Kreator powstaje przy pierwszym `list()`, nie da się go usunąć, a zapis nie zdejmie ani nie nada `builtin`. Usunięcie = przeniesienie do `bots-trash/<id>-RRRR-MM-DD-GGMMSS`.

@@ -15,6 +15,8 @@ import { ChatStore } from "./chat/store";
 import { chatConfigLoad, chatConfigSave, defaultChatService } from "./chat/service";
 import { KeyStore, passwordStore } from "./chat/keys";
 import { BotStore, type ChatKind, type MemoryTarget } from "./bot/store";
+import { ApprovalBroker } from "./bot/approvals";
+import type { ApprovalDecision } from "../../src/bot";
 import type { ChatRequest, ProviderDef } from "../../src/chat";
 
 // Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
@@ -42,6 +44,10 @@ const chat = defaultChatService(path.join(config.configDir(), "chat-cwd"), path.
   keys.get(p.id, p.keyEnv),
 );
 let win: BrowserWindow | null = null;
+// Prośby botów o zgodę idą do okna (`bot_approval`); decyzja wraca przez `bot_approve`.
+const approvals = new ApprovalBroker((e) => {
+  if (win && !win.isDestroyed()) win.webContents.send("bot_approval", e);
+});
 
 /** Każde wywołanie z `backend-electron.ts` to `invoke(name, ...args)`; błąd wraca jako odrzucenie. */
 function handle(name: string, fn: (...args: never[]) => unknown) {
@@ -120,6 +126,8 @@ handle("bot_routines_save", (id: string, json: string) => bots.routinesSave(id, 
 handle("bot_chat_list", (id: string, kind: ChatKind) => bots.chats(id, kind).list());
 handle("bot_chat_load", (id: string, kind: ChatKind, chatId: string) => bots.chats(id, kind).load(chatId));
 handle("bot_chat_save", (json: string) => bots.chatSave(json));
+handle("bot_approvals", () => approvals.list());
+handle("bot_approve", (id: string, decision: ApprovalDecision) => approvals.decide(id, decision));
 handle("bot_chat_delete", (id: string, kind: ChatKind, chatId: string) => bots.chats(id, kind).delete(chatId));
 handle("pick_dir", async () => {
   const opts: Electron.OpenDialogOptions = { title: "Katalog projektu", properties: ["openDirectory"] };
@@ -179,6 +187,7 @@ function createWindow() {
     if (details.isMainFrame && !details.isSameDocument) {
       ptys.killAllAsync();
       chat.abortAll();
+      approvals.denyAll();
     }
   });
   const dev = process.env.AGENTS_DEV_URL;
@@ -199,4 +208,5 @@ app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
   ptys.killAll();
   chat.abortAll();
+  approvals.denyAll();
 });

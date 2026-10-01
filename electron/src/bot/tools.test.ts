@@ -1,0 +1,273 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { creatorBot, MEMORY_SEP, newBot, newBotChat, serializeBot, type ApprovalDecision, type BotDef } from "../../../src/bot";
+import { ApprovalBroker, type ApprovalRequest } from "./approvals";
+import { BotStore } from "./store";
+import { resolvePath, runTool, toolDefs, type Grant, type ToolContext } from "./tools";
+
+let dir = "";
+let store: BotStore;
+let home = ""; // folder użytkownika, który bot czyta bez pytania
+let outside = ""; // folder spoza bota
+let asked: ApprovalRequest[] = [];
+let answer: ApprovalDecision = "once";
+let broker: ApprovalBroker;
+
+beforeEach(() => {
+  dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "aw-tools-")));
+  store = new BotStore(path.join(dir, "bots"), path.join(dir, "trash"), () => 1000);
+  home = path.join(dir, "kod");
+  outside = path.join(dir, "obcy");
+  fs.mkdirSync(path.join(home, "src"), { recursive: true });
+  fs.mkdirSync(outside);
+  fs.writeFileSync(path.join(home, "src", "main.rs"), "fn main() {\n    println!(\"hej\");\n}\n");
+  fs.writeFileSync(path.join(outside, "sekret.txt"), "hasło");
+  fs.symlinkSync(outside, path.join(home, "link"));
+  store.create(serializeBot(newBot("rust", 1, { name: "Rust", folders: [home] })));
+  asked = [];
+  answer = "once";
+  broker = new ApprovalBroker((e) => {
+    if (e.type !== "request") return;
+    asked.push(e.req);
+    queueMicrotask(() => broker.decide(e.req.id, answer));
+  });
+});
+afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+const ctx = (extra: Partial<ToolContext> = {}): ToolContext => ({
+  store,
+  bot: store.load("rust")!,
+  chat: "chat-1",
+  broker,
+  grants: [],
+  signal: new AbortController().signal,
+  web: { search: async (q) => `wyniki: ${q}`, fetch: async (u) => `strona: ${u}` },
+  ...extra,
+});
+const work = () => path.join(dir, "bots", "rust", "work");
+
+describe("resolvePath", () => {
+  it("względna = w katalogu roboczym, dowiązanie rozwinięte, nieistniejący plik pod istniejącym przodkiem", () => {
+    expect(resolvePath("a.txt", work())).toBe(path.join(work(), "a.txt"));
+    expect(resolvePath(path.join(home, "link", "sekret.txt"), work())).toBe(path.join(outside, "sekret.txt"));
+    expect(resolvePath(path.join(home, "link", "nowy", "x.txt"), work())).toBe(path.join(outside, "nowy", "x.txt"));
+    expect(resolvePath(`${home}/src/../../obcy/sekret.txt`, work())).toBe(path.join(outside, "sekret.txt"));
+    expect(resolvePath("~", work())).toBe(fs.realpathSync(os.homedir()));
+  });
+});
+
+describe("toolDefs", () => {
+  it("tylko włączone grupy; Kreator ma swoje", () => {
+    const quiet: BotDef = newBot("q", 0, { tools: { web: true, read: false, write: false, bash: false, memory: false, skills: false } });
+    expect(toolDefs(quiet).map((t) => t.name)).toEqual(["web_search", "web_fetch"]);
+    expect(toolDefs(creatorBot(0)).map((t) => t.name)).toContain("bot_create");
+    expect(toolDefs(newBot("a", 0)).map((t) => t.name)).not.toContain("bot_create");
+  });
+});
+
+describe("pliki", () => {
+  it("odczyt w folderze bota bez pytania, z numerami linii", async () => {
+    const r = await runTool("read_file", { path: path.join(home, "src", "main.rs") }, ctx());
+    expect(r).toEqual({ ok: true, text: '1\tfn main() {\n2\t    println!("hej");\n3\t}', approval: "auto" });
+    expect(asked).toEqual([]);
+  });
+
+  it("offset i limit", async () => {
+    const r = await runTool("read_file", { path: path.join(home, "src", "main.rs"), offset: 2, limit: 1 }, ctx());
+    expect(r.text).toBe('2\t    println!("hej");\n[linie 2–2 z 3]');
+  });
+
+  it("odczyt przez dowiązanie na zewnątrz pyta o zgodę, odmowa wraca do modelu", async () => {
+    answer = "deny";
+    const r = await runTool("read_file", { path: path.join(home, "link", "sekret.txt") }, ctx());
+    expect(r.ok).toBe(false);
+    expect(r.approval).toBe("deny");
+    expect(r.text).toContain("odmówił");
+    expect(asked[0].title).toContain(path.join(outside, "sekret.txt"));
+  });
+
+  it("zgoda „w tej rozmowie” na odczyt: drugi raz bez pytania", async () => {
+    answer = "chat";
+    const grants: Grant[] = [];
+    const c = ctx({ grants });
+    expect((await runTool("read_file", { path: path.join(outside, "sekret.txt") }, c)).text).toBe("1\thasło");
+    expect(await runTool("list_dir", { path: outside }, c)).toMatchObject({ ok: true });
+    expect(asked).toHaveLength(2); // list_dir to osobne narzędzie
+    expect((await runTool("read_file", { path: path.join(outside, "sekret.txt") }, c)).approval).toBe("auto");
+    expect(asked).toHaveLength(2);
+    expect(grants).toEqual([{ tool: "read_file" }, { tool: "list_dir" }]);
+  });
+
+  it("list_dir: domyślnie katalog roboczy, foldery z /", async () => {
+    expect((await runTool("list_dir", {}, ctx())).text).toContain("pusty folder");
+    const r = await runTool("list_dir", { path: home }, ctx());
+    expect(r.text.split("\n").slice(1)).toEqual(["link/", "src/"]);
+  });
+
+  it("zapis w katalogu roboczym bez pytania, poza nim z pytaniem i podglądem treści", async () => {
+    expect(await runTool("write_file", { path: "notatki/a.md", content: "# A" }, ctx())).toMatchObject({ ok: true, approval: "auto" });
+    expect(fs.readFileSync(path.join(work(), "notatki", "a.md"), "utf8")).toBe("# A");
+    const r = await runTool("write_file", { path: path.join(home, "README.md"), content: "treść" }, ctx());
+    expect(r).toMatchObject({ ok: true, approval: "once" });
+    expect(asked[0]).toMatchObject({ title: `Utworzyć plik \`${path.join(home, "README.md")}\`?`, detail: "treść" });
+  });
+
+  it("edit_file: unikalny fragment, diff w prośbie", async () => {
+    const p = path.join(home, "src", "main.rs");
+    const r = await runTool("edit_file", { path: p, old: '"hej"', new: '"cześć"' }, ctx());
+    expect(r.ok).toBe(true);
+    expect(fs.readFileSync(p, "utf8")).toContain('"cześć"');
+    expect(asked[0].detail).toBe('- "hej"\n+ "cześć"');
+    expect((await runTool("edit_file", { path: p, old: "nie ma", new: "x" }, ctx())).text).toContain("nie znaleziono");
+    fs.writeFileSync(p, "a a a");
+    expect((await runTool("edit_file", { path: p, old: "a", new: "b" }, ctx())).text).toContain("3 razy");
+    expect(await runTool("edit_file", { path: p, old: "a", new: "$&b", all: true }, ctx())).toMatchObject({ ok: true });
+    expect(fs.readFileSync(p, "utf8")).toBe("$&b $&b $&b");
+  });
+
+  it("grep przez ripgrep", async () => {
+    const r = await runTool("grep", { pattern: "println", path: home }, ctx());
+    expect(r.ok).toBe(true);
+    expect(r.text).toContain("main.rs:2:");
+    expect((await runTool("grep", { pattern: "zzz", path: home }, ctx())).text).toContain("brak dopasowań");
+  });
+
+  it("błędy jako wynik, nie wyjątek", async () => {
+    expect(await runTool("read_file", {}, ctx())).toMatchObject({ ok: false, text: "brak argumentu `path`" });
+    expect((await runTool("read_file", { path: home }, ctx())).text).toContain("to folder");
+    expect((await runTool("read_file", { path: "nie-ma.txt" }, ctx())).text).toContain("nie ma pliku");
+    expect((await runTool("nieznane", {}, ctx())).text).toContain("nieznane narzędzie");
+    expect((await runTool("read_file", "zły", ctx())).ok).toBe(false);
+    fs.writeFileSync(path.join(work(), "bin"), Buffer.from([1, 0, 2]));
+    expect((await runTool("read_file", { path: "bin" }, ctx())).text).toBe("plik binarny");
+  });
+});
+
+describe("bash", () => {
+  it("zawsze pyta; wynik z kodem wyjścia, w katalogu roboczym", async () => {
+    const r = await runTool("bash", { command: "pwd; exit 2" }, ctx());
+    expect(r).toMatchObject({ ok: true, approval: "once" });
+    expect(r.text).toBe(`${work()}\n\n[kod wyjścia 2]`);
+    expect(asked[0].detail).toBe(`pwd; exit 2\n\nw: ${work()}`);
+    expect(asked[0].canGrant).toBe(false); // `;` = bez prefiksu
+  });
+
+  it("zgoda w rozmowie na prefiks", async () => {
+    answer = "chat";
+    const grants: Grant[] = [];
+    await runTool("bash", { command: "echo raz" }, ctx({ grants }));
+    expect(grants).toEqual([{ tool: "bash", prefix: "echo raz" }]);
+    expect((await runTool("bash", { command: "echo raz dwa" }, ctx({ grants }))).approval).toBe("auto");
+    expect((await runTool("bash", { command: "echo inne" }, ctx({ grants }))).approval).toBe("chat");
+  });
+
+  it("harmonogram: prefiks z góry tylko w folderach bota", async () => {
+    const routine = { writeWork: false, bash: ["echo"] };
+    expect((await runTool("bash", { command: "echo a" }, ctx({ routine }))).approval).toBe("auto");
+    expect((await runTool("bash", { command: "echo a", cwd: home }, ctx({ routine }))).approval).toBe("auto");
+    expect((await runTool("bash", { command: "echo a", cwd: outside }, ctx({ routine }))).approval).toBe("once");
+    expect((await runTool("bash", { command: "ls" }, ctx({ routine }))).approval).toBe("once");
+  });
+
+  it("Stop w trakcie czekania na zgodę = odmowa bez uruchomienia", async () => {
+    const slow = new ApprovalBroker(); // nikt nie odpowiada
+    const ctl = new AbortController();
+    const p = runTool("bash", { command: "touch zrobione" }, ctx({ broker: slow, signal: ctl.signal }));
+    setTimeout(() => ctl.abort(), 20);
+    expect(await p).toMatchObject({ ok: false, approval: "deny" });
+    expect(fs.existsSync(path.join(work(), "zrobione"))).toBe(false);
+  });
+
+  it("brak folderu", async () => {
+    expect((await runTool("bash", { command: "ls", cwd: path.join(dir, "nie-ma") }, ctx())).text).toContain("nie ma folderu");
+  });
+});
+
+describe("pamięć, historia, skille, sieć", () => {
+  it("memory add/replace/remove i limit", async () => {
+    expect(await runTool("memory", { action: "add", target: "user", text: "Lubi Rusta" }, ctx())).toMatchObject({ ok: true });
+    await runTool("memory", { action: "add", target: "user", text: "Mieszka w Polsce" }, ctx());
+    await runTool("memory", { action: "replace", target: "user", old: "Rusta", text: "Lubi Rusta i Zig" }, ctx());
+    expect(store.memory("rust").user).toBe(`Lubi Rusta i Zig${MEMORY_SEP}Mieszka w Polsce`);
+    expect((await runTool("memory", { action: "add", target: "memory", text: "x".repeat(3000) }, ctx())).text).toContain("za dużo");
+    expect((await runTool("memory", { action: "zgadnij", target: "user" }, ctx())).ok).toBe(false);
+    expect(asked).toEqual([]);
+  });
+
+  it("history_search pomija bieżącą rozmowę", async () => {
+    const m = { provider: "claude", model: "haiku" };
+    const old = { ...newBotChat("aaaaaaaa-1", "rust", 1, m), title: "Stara", messages: [{ id: "1", role: "user" as const, text: "Jak działa borrow checker?", at: 0 }] };
+    const cur = { ...newBotChat("bbbbbbbb-2", "rust", 2, m), messages: [{ id: "2", role: "user" as const, text: "borrow checker znowu", at: 0 }] };
+    store.chatSave(JSON.stringify(old));
+    store.chatSave(JSON.stringify(cur));
+    const r = await runTool("history_search", { query: "BORROW" }, ctx({ chat: "bbbbbbbb-2" }));
+    expect(r.text).toContain("Stara");
+    expect(r.text).not.toContain("znowu");
+  });
+
+  it("skill_create, skill_view, skill_patch", async () => {
+    expect(await runTool("skill_create", { name: "deploy", description: "Wdrożenie", body: "1. build" }, ctx())).toMatchObject({ ok: true });
+    expect((await runTool("skill_create", { name: "deploy", description: "x", body: "y" }, ctx())).text).toContain("już jest");
+    expect((await runTool("skill_view", { name: "deploy" }, ctx())).text).toContain("1. build");
+    expect(await runTool("skill_patch", { name: "deploy", old: "1. build", new: "1. test\n2. build" }, ctx())).toMatchObject({ ok: true });
+    expect(store.skill("rust", "deploy")).toContain("1. test\n2. build");
+    expect((await runTool("skill_patch", { name: "deploy", old: "name: deploy", new: "name: inna" }, ctx())).text).toContain("zmiana nazwy");
+    expect((await runTool("skill_view", { name: "nie-ma" }, ctx())).text).toContain("Są: deploy");
+    expect((await runTool("skill_view", { name: "../x" }, ctx())).text).toContain("zła nazwa");
+  });
+
+  it("sieć bez pytania", async () => {
+    expect(await runTool("web_search", { query: "rust" }, ctx())).toEqual({ ok: true, text: "wyniki: rust", approval: "auto" });
+    expect((await runTool("web_fetch", { url: "https://x" }, ctx())).text).toBe("strona: https://x");
+  });
+
+  it("wyłączona grupa", async () => {
+    const bot = { ...store.load("rust")!, tools: { ...store.load("rust")!.tools, bash: false } };
+    expect((await runTool("bash", { command: "ls" }, ctx({ bot }))).text).toContain("wyłączone");
+    expect(asked).toEqual([]);
+  });
+});
+
+describe("Kreator", () => {
+  const creator = () => ({ bot: store.list().bots.find((b) => b.builtin)! });
+
+  it("bot_create: pyta, tworzy z id z imienia, skille i wyłączone zadania", async () => {
+    const r = await runTool(
+      "bot_create",
+      {
+        name: "Żeglarz",
+        emoji: "⛵",
+        persona: "Prognozy dla żeglarzy.",
+        tone: "playful",
+        tools: ["web", "memory"],
+        skills: [{ name: "pogoda", description: "Prognoza", body: "1. Szukaj" }],
+        routines: [{ name: "Rano", prompt: "Prognoza na dziś", schedule: { kind: "daily", at: "07:00" } }],
+      },
+      ctx(creator()),
+    );
+    expect(r).toMatchObject({ ok: true, approval: "once" });
+    expect(asked[0].title).toBe("Utworzyć bota „Żeglarz”?");
+    const b = store.load("zeglarz")!;
+    expect(b).toMatchObject({ name: "Żeglarz", avatar: { emoji: "⛵" }, tone: "playful", tools: { web: true, memory: true, bash: false } });
+    expect(store.skills("zeglarz").map((s) => s.name)).toEqual(["pogoda"]);
+    expect(JSON.parse(store.routines("zeglarz")).routines[0]).toMatchObject({ id: "r1", enabled: false });
+  });
+
+  it("odmowa = nic nie powstaje; złe pola wracają do modelu", async () => {
+    answer = "deny";
+    await runTool("bot_create", { name: "X", persona: "x" }, ctx(creator()));
+    expect(store.load("x")).toBeNull();
+    answer = "once";
+    expect((await runTool("bot_create", { name: "Y", persona: "y", color: "czerwony" }, ctx(creator()))).text).toContain("color");
+    expect((await runTool("bot_create", { name: "Z", persona: "z", routines: [{ name: "a", prompt: "b", schedule: { kind: "every", minutes: 1 } }] }, ctx(creator()))).text).toContain("minutes");
+    expect(store.load("z")).toBeNull();
+  });
+
+  it("bot_update zmienia tylko podane pola; zwykły bot nie ma tych narzędzi", async () => {
+    expect(await runTool("bot_update", { id: "rust", style: "Krócej." }, ctx(creator()))).toMatchObject({ ok: true });
+    expect(store.load("rust")).toMatchObject({ style: "Krócej.", name: "Rust", folders: [home] });
+    expect((await runTool("bot_update", { id: "rust", style: "x" }, ctx())).text).toContain("wyłączone");
+  });
+});

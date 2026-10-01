@@ -1,0 +1,640 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<!--[if IE 6]><html class="ie6" xmlns="http://www.w3.org/1999/xhtml"><![endif]-->
+<!--[if IE 7]><html class="lt-ie8 lt-ie9" xmlns="http://www.w3.org/1999/xhtml"><![endif]-->
+<!--[if IE 8]><html class="lt-ie9" xmlns="http://www.w3.org/1999/xhtml"><![endif]-->
+<!--[if gt IE 8]><!--><html xmlns="http://www.w3.org/1999/xhtml"><!--<![endif]-->
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=1" />
+  <meta name="referrer" content="origin" />
+  <meta name="HandheldFriendly" content="true" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>rust 1.92 release at DuckDuckGo</title>
+  <link title="DuckDuckGo (HTML)" type="application/opensearchdescription+xml" rel="search" href="//duckduckgo.com/opensearch_html_v2.xml" />
+  <link href="//duckduckgo.com/favicon.ico" rel="shortcut icon" />
+  <link rel="icon" href="//duckduckgo.com/favicon.ico" type="image/x-icon" />
+  <link id="icon60" rel="apple-touch-icon" href="//duckduckgo.com/assets/icons/meta/DDG-iOS-icon_60x60.png?v=2"/>
+  <link id="icon76" rel="apple-touch-icon" sizes="76x76" href="//duckduckgo.com/assets/icons/meta/DDG-iOS-icon_76x76.png?v=2"/>
+  <link id="icon120" rel="apple-touch-icon" sizes="120x120" href="//duckduckgo.com/assets/icons/meta/DDG-iOS-icon_120x120.png?v=2"/>
+  <link id="icon152" rel="apple-touch-icon" sizes="152x152" href="//duckduckgo.com/assets/icons/meta/DDG-iOS-icon_152x152.png?v=2"/>
+  <link rel="image_src" href="//duckduckgo.com/assets/icons/meta/DDG-icon_256x256.png">
+  <link rel="stylesheet" media="handheld, all" href="//duckduckgo.com/dist/h.12e359033b8c1146e5f7.css" type="text/css"/>
+</head>
+
+<body class="body--html">
+  <a name="top" id="top"></a>
+
+  <form action="/html/" method="post">
+    <input type="text" name="state_hidden" id="state_hidden" />
+  </form>
+
+  <div>
+    <div class="site-wrapper-border"></div>
+
+    <div id="header" class="header cw header--html">
+      <a title="DuckDuckGo" href="/html/" class="header__logo-wrap"></a>
+
+      <form name="x" class="header__form" action="/html/" method="post">
+        <div class="search search--header">
+          <input name="q" autocomplete="off" class="search__input" id="search_form_input_homepage" type="text" value="rust 1.92 release" />
+          <input name="b" id="search_button_homepage" class="search__button search__button--html" value="" title="Search" alt="Search" type="submit" />
+        </div>
+
+        
+        
+        
+        
+
+        <div class="frm__select">
+          <select name="kl">
+            
+              <option value="" >All Regions</option>
+            
+              <option value="ar-es" >Argentina</option>
+            
+              <option value="au-en" >Australia</option>
+            
+              <option value="at-de" >Austria</option>
+            
+              <option value="be-fr" >Belgium (fr)</option>
+            
+              <option value="be-nl" >Belgium (nl)</option>
+            
+              <option value="br-pt" >Brazil</option>
+            
+              <option value="bg-bg" >Bulgaria</option>
+            
+              <option value="ca-en" >Canada (en)</option>
+            
+              <option value="ca-fr" >Canada (fr)</option>
+            
+              <option value="ct-ca" >Catalonia</option>
+            
+              <option value="cl-es" >Chile</option>
+            
+              <option value="cn-zh" >China</option>
+            
+              <option value="co-es" >Colombia</option>
+            
+              <option value="hr-hr" >Croatia</option>
+            
+              <option value="cz-cs" >Czech Republic</option>
+            
+              <option value="dk-da" >Denmark</option>
+            
+              <option value="ee-et" >Estonia</option>
+            
+              <option value="fi-fi" >Finland</option>
+            
+              <option value="fr-fr" >France</option>
+            
+              <option value="de-de" >Germany</option>
+            
+              <option value="gr-el" >Greece</option>
+            
+              <option value="hk-tzh" >Hong Kong</option>
+            
+              <option value="hu-hu" >Hungary</option>
+            
+              <option value="is-is" >Iceland</option>
+            
+              <option value="in-en" >India (en)</option>
+            
+              <option value="id-en" >Indonesia (en)</option>
+            
+              <option value="ie-en" >Ireland</option>
+            
+              <option value="il-en" >Israel (en)</option>
+            
+              <option value="it-it" >Italy</option>
+            
+              <option value="jp-jp" >Japan</option>
+            
+              <option value="kr-kr" >Korea</option>
+            
+              <option value="lv-lv" >Latvia</option>
+            
+              <option value="lt-lt" >Lithuania</option>
+            
+              <option value="my-en" >Malaysia (en)</option>
+            
+              <option value="mx-es" >Mexico</option>
+            
+              <option value="nl-nl" >Netherlands</option>
+            
+              <option value="nz-en" >New Zealand</option>
+            
+              <option value="no-no" >Norway</option>
+            
+              <option value="pk-en" >Pakistan (en)</option>
+            
+              <option value="pe-es" >Peru</option>
+            
+              <option value="ph-en" >Philippines (en)</option>
+            
+              <option value="pl-pl" >Poland</option>
+            
+              <option value="pt-pt" >Portugal</option>
+            
+              <option value="ro-ro" >Romania</option>
+            
+              <option value="ru-ru" >Russia</option>
+            
+              <option value="xa-ar" >Saudi Arabia</option>
+            
+              <option value="sg-en" >Singapore</option>
+            
+              <option value="sk-sk" >Slovakia</option>
+            
+              <option value="sl-sl" >Slovenia</option>
+            
+              <option value="za-en" >South Africa</option>
+            
+              <option value="es-ca" >Spain (ca)</option>
+            
+              <option value="es-es" >Spain (es)</option>
+            
+              <option value="se-sv" >Sweden</option>
+            
+              <option value="ch-de" >Switzerland (de)</option>
+            
+              <option value="ch-fr" >Switzerland (fr)</option>
+            
+              <option value="tw-tzh" >Taiwan</option>
+            
+              <option value="th-en" >Thailand (en)</option>
+            
+              <option value="tr-tr" >Turkey</option>
+            
+              <option value="us-en" >US (English)</option>
+            
+              <option value="us-es" >US (Spanish)</option>
+            
+              <option value="ua-uk" >Ukraine</option>
+            
+              <option value="uk-en" >United Kingdom</option>
+            
+              <option value="vn-en" >Vietnam (en)</option>
+            
+          </select>
+        </div>
+
+        <div class="frm__select frm__select--last">
+          <select class="" name="df">
+            
+              <option value="" selected>Any Time</option>
+            
+              <option value="d" >Past Day</option>
+            
+              <option value="w" >Past Week</option>
+            
+              <option value="m" >Past Month</option>
+            
+              <option value="y" >Past Year</option>
+            
+          </select>
+        </div>
+      </form>
+    </div>
+
+    
+
+    
+      <!-- Web results are present -->
+      <div>
+        <div class="serp__results">
+          <div id="links" class="results">
+            
+
+            
+              
+                <div class="result results_links results_links_deep web-result ">
+                  <div class="links_main links_deep result__body"> <!-- This is the visible part -->
+                    
+                      <h2 class="result__title">
+                        <a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freleases.rs%2Fdocs%2F1.92.0%2F&amp;rut=b8d095c45b40ceeb76e33bc5d5eb2c3c66260f90355b0051322317919f4b0fa9">1.92.0 | Rust Changelogs - releases.rs</a>
+                      </h2>
+
+                    
+
+                    
+                      <div class="result__extras">
+                        <div class="result__extras__url">
+                          <span class="result__icon">
+                            <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freleases.rs%2Fdocs%2F1.92.0%2F&amp;rut=b8d095c45b40ceeb76e33bc5d5eb2c3c66260f90355b0051322317919f4b0fa9">
+                              <img class="result__icon__img" width="16" height="16" alt="" src="//external-content.duckduckgo.com/ip3/releases.rs.ico" name="i15" />
+                            </a>
+                          </span>
+                          <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freleases.rs%2Fdocs%2F1.92.0%2F&amp;rut=b8d095c45b40ceeb76e33bc5d5eb2c3c66260f90355b0051322317919f4b0fa9">
+                            releases.rs/docs/1.92.0/
+                          </a>
+                          
+                            <span>&nbsp; &nbsp; 2025-10-24T00:00:00.0000000</span>
+                          
+                        </div>
+                      </div>
+                    
+
+                    
+                      
+                        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freleases.rs%2Fdocs%2F1.92.0%2F&amp;rut=b8d095c45b40ceeb76e33bc5d5eb2c3c66260f90355b0051322317919f4b0fa9">1.92.0 # Released on: 11 December, 2025 Branched from master on: 24 October, 2025 Language # Document MaybeUninit representation and validity Allow &amp;raw [mut | const] for union field in safe code Prefer item bounds of associated types over where-bounds for auto-traits and Sized Do not materialize X in [X; 0] when X is unsizing a const Support combining # [track_caller] and # [no_mangle ...</a>
+                      
+                    
+
+                    <div class="clear"></div>
+                  </div>
+                </div>
+              
+            
+              
+                <div class="result results_links results_links_deep web-result ">
+                  <div class="links_main links_deep result__body"> <!-- This is the visible part -->
+                    
+                      <h2 class="result__title">
+                        <a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.rust%2Dlang.org%2F2025%2F12%2F11%2FRust%2D1.92.0%2F&amp;rut=e75adb9a781e161d04fe0a3db0f8ea496255554065ab73ea0ba42798f2049e91">Announcing Rust 1.92.0 | Rust Blog</a>
+                      </h2>
+
+                    
+
+                    
+                      <div class="result__extras">
+                        <div class="result__extras__url">
+                          <span class="result__icon">
+                            <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.rust%2Dlang.org%2F2025%2F12%2F11%2FRust%2D1.92.0%2F&amp;rut=e75adb9a781e161d04fe0a3db0f8ea496255554065ab73ea0ba42798f2049e91">
+                              <img class="result__icon__img" width="16" height="16" alt="" src="//external-content.duckduckgo.com/ip3/blog.rust-lang.org.ico" name="i15" />
+                            </a>
+                          </span>
+                          <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.rust%2Dlang.org%2F2025%2F12%2F11%2FRust%2D1.92.0%2F&amp;rut=e75adb9a781e161d04fe0a3db0f8ea496255554065ab73ea0ba42798f2049e91">
+                            blog.rust-lang.org/2025/12/11/Rust-1.92.0/
+                          </a>
+                          
+                            <span>&nbsp; &nbsp; 2025-12-11T00:00:00.0000000</span>
+                          
+                        </div>
+                      </div>
+                    
+
+                    
+                      
+                        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.rust%2Dlang.org%2F2025%2F12%2F11%2FRust%2D1.92.0%2F&amp;rut=e75adb9a781e161d04fe0a3db0f8ea496255554065ab73ea0ba42798f2049e91">The <b>Rust</b> team is happy to announce a new version of <b>Rust</b>, 1.92.0. <b>Rust</b> is a programming language empowering everyone to build reliable and efficient software. If you have a previous version of <b>Rust</b> installed via rustup, you can get 1.92.0 with: $ rustup update stable If you don&#x27;t have it already, you can get rustup from the appropriate page on our website, and check out the detailed <b>release</b> ...</a>
+                      
+                    
+
+                    <div class="clear"></div>
+                  </div>
+                </div>
+              
+            
+              
+                <div class="result results_links results_links_deep web-result ">
+                  <div class="links_main links_deep result__body"> <!-- This is the visible part -->
+                    
+                      <h2 class="result__title">
+                        <a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freleases.rs%2F&amp;rut=bc2c6a88a3c37bb3b849047481058a2a72f9fe494df61ad14be2df448e17d39d">Rust Versions | Rust Changelogs</a>
+                      </h2>
+
+                    
+
+                    
+                      <div class="result__extras">
+                        <div class="result__extras__url">
+                          <span class="result__icon">
+                            <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freleases.rs%2F&amp;rut=bc2c6a88a3c37bb3b849047481058a2a72f9fe494df61ad14be2df448e17d39d">
+                              <img class="result__icon__img" width="16" height="16" alt="" src="//external-content.duckduckgo.com/ip3/releases.rs.ico" name="i15" />
+                            </a>
+                          </span>
+                          <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freleases.rs%2F&amp;rut=bc2c6a88a3c37bb3b849047481058a2a72f9fe494df61ad14be2df448e17d39d">
+                            releases.rs
+                          </a>
+                          
+                        </div>
+                      </div>
+                    
+
+                    
+                      
+                        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freleases.rs%2F&amp;rut=bc2c6a88a3c37bb3b849047481058a2a72f9fe494df61ad14be2df448e17d39d"><b>Rust</b> Versions # Stable: 1.98.1 Beta: 1.99.0 (1 October, 2026, 8 days left) Nightly: 1.100.0 (12 November, 2026, 50 days left) Ongoing Stabilization PRs # Stabilize std::os::unix::process::CommandExt::chroot (process_chroot) (2 days old) relnotes - Marks issues that should be documented in the <b>release</b> notes of the next <b>release</b>. S-waiting-on-review - Status: Awaiting review from the assignee but ...</a>
+                      
+                    
+
+                    <div class="clear"></div>
+                  </div>
+                </div>
+              
+            
+              
+                <div class="result results_links results_links_deep web-result ">
+                  <div class="links_main links_deep result__body"> <!-- This is the visible part -->
+                    
+                      <h2 class="result__title">
+                        <a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.rust.dev%2Fnews%2Frust%2D1%2D92%2D0%2Dreleased&amp;rut=38410bb3e9b6111133c2c732796732ff7bf7cb649ae210b0eca7de8519ca3c16">Rust 1.92.0 released — rust.dev</a>
+                      </h2>
+
+                    
+
+                    
+                      <div class="result__extras">
+                        <div class="result__extras__url">
+                          <span class="result__icon">
+                            <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.rust.dev%2Fnews%2Frust%2D1%2D92%2D0%2Dreleased&amp;rut=38410bb3e9b6111133c2c732796732ff7bf7cb649ae210b0eca7de8519ca3c16">
+                              <img class="result__icon__img" width="16" height="16" alt="" src="//external-content.duckduckgo.com/ip3/www.rust.dev.ico" name="i15" />
+                            </a>
+                          </span>
+                          <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.rust.dev%2Fnews%2Frust%2D1%2D92%2D0%2Dreleased&amp;rut=38410bb3e9b6111133c2c732796732ff7bf7cb649ae210b0eca7de8519ca3c16">
+                            www.rust.dev/news/rust-1-92-0-released
+                          </a>
+                          
+                            <span>&nbsp; &nbsp; 2025-12-11T00:00:00.0000000</span>
+                          
+                        </div>
+                      </div>
+                    
+
+                    
+                      
+                        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.rust.dev%2Fnews%2Frust%2D1%2D92%2D0%2Dreleased&amp;rut=38410bb3e9b6111133c2c732796732ff7bf7cb649ae210b0eca7de8519ca3c16"><b>Rust</b> 1.92.0 is a stable toolchain <b>release</b>. Use this as a canonical news anchor for version-specific documentation updates, migrations, and &#x27;what&#x27;s new&#x27; content.</a>
+                      
+                    
+
+                    <div class="clear"></div>
+                  </div>
+                </div>
+              
+            
+              
+                <div class="result results_links results_links_deep web-result ">
+                  <div class="links_main links_deep result__body"> <!-- This is the visible part -->
+                    
+                      <h2 class="result__title">
+                        <a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fversionlog.com%2Frust%2F1.92%2F&amp;rut=9ddca44561ccbc5bd3d746d8c5a914d029d38167b99b6b4d8f3726aac2b7f92d">Rust 1.92 - What&#x27;s New, Support Lifecycle &amp; EOL - VersionLog</a>
+                      </h2>
+
+                    
+
+                    
+                      <div class="result__extras">
+                        <div class="result__extras__url">
+                          <span class="result__icon">
+                            <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fversionlog.com%2Frust%2F1.92%2F&amp;rut=9ddca44561ccbc5bd3d746d8c5a914d029d38167b99b6b4d8f3726aac2b7f92d">
+                              <img class="result__icon__img" width="16" height="16" alt="" src="//external-content.duckduckgo.com/ip3/versionlog.com.ico" name="i15" />
+                            </a>
+                          </span>
+                          <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fversionlog.com%2Frust%2F1.92%2F&amp;rut=9ddca44561ccbc5bd3d746d8c5a914d029d38167b99b6b4d8f3726aac2b7f92d">
+                            versionlog.com/rust/1.92/
+                          </a>
+                          
+                            <span>&nbsp; &nbsp; 2025-12-11T00:00:00.0000000</span>
+                          
+                        </div>
+                      </div>
+                    
+
+                    
+                      
+                        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fversionlog.com%2Frust%2F1.92%2F&amp;rut=9ddca44561ccbc5bd3d746d8c5a914d029d38167b99b6b4d8f3726aac2b7f92d">Discover what&#x27;s new in <b>Rust</b> <b>1.92</b>. Complete <b>release</b> history, support lifecycle, <b>release</b> dates, LTS schedule and End of Life (EOL) status. <b>Rust</b> is a moder...</a>
+                      
+                    
+
+                    <div class="clear"></div>
+                  </div>
+                </div>
+              
+            
+              
+                <div class="result results_links results_links_deep web-result ">
+                  <div class="links_main links_deep result__body"> <!-- This is the visible part -->
+                    
+                      <h2 class="result__title">
+                        <a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.rust%2Dlang.org%2Freleases%2F&amp;rut=bbac59279a88bfab7ad61f21e5f54aaad5038716a4d1f78feeadaa7213f360d9">The Rust Release Announcements</a>
+                      </h2>
+
+                    
+
+                    
+                      <div class="result__extras">
+                        <div class="result__extras__url">
+                          <span class="result__icon">
+                            <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.rust%2Dlang.org%2Freleases%2F&amp;rut=bbac59279a88bfab7ad61f21e5f54aaad5038716a4d1f78feeadaa7213f360d9">
+                              <img class="result__icon__img" width="16" height="16" alt="" src="//external-content.duckduckgo.com/ip3/blog.rust-lang.org.ico" name="i15" />
+                            </a>
+                          </span>
+                          <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.rust%2Dlang.org%2Freleases%2F&amp;rut=bbac59279a88bfab7ad61f21e5f54aaad5038716a4d1f78feeadaa7213f360d9">
+                            blog.rust-lang.org/releases/
+                          </a>
+                          
+                            <span>&nbsp; &nbsp; 2025-04-16T00:00:00.0000000</span>
+                          
+                        </div>
+                      </div>
+                    
+
+                    
+                      
+                        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fblog.rust%2Dlang.org%2Freleases%2F&amp;rut=bbac59279a88bfab7ad61f21e5f54aaad5038716a4d1f78feeadaa7213f360d9">This is a subset of the main <b>Rust</b> blog listing only official <b>release</b> announcement posts. Did you know? There are convenient redirects for the latest and specific <b>release</b> posts: • /<b>releases</b>/latest • /releases/1.85.0</a>
+                      
+                    
+
+                    <div class="clear"></div>
+                  </div>
+                </div>
+              
+            
+              
+                <div class="result results_links results_links_deep web-result ">
+                  <div class="links_main links_deep result__body"> <!-- This is the visible part -->
+                    
+                      <h2 class="result__title">
+                        <a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fdoc.rust%2Dlang.org%2Fstable%2Freleases.html&amp;rut=87436fbc588907460ec94e463abac73400e5776b87b81ab8f8a22eee6e580e4a">Rust Release Notes</a>
+                      </h2>
+
+                    
+
+                    
+                      <div class="result__extras">
+                        <div class="result__extras__url">
+                          <span class="result__icon">
+                            <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fdoc.rust%2Dlang.org%2Fstable%2Freleases.html&amp;rut=87436fbc588907460ec94e463abac73400e5776b87b81ab8f8a22eee6e580e4a">
+                              <img class="result__icon__img" width="16" height="16" alt="" src="//external-content.duckduckgo.com/ip3/doc.rust-lang.org.ico" name="i15" />
+                            </a>
+                          </span>
+                          <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fdoc.rust%2Dlang.org%2Fstable%2Freleases.html&amp;rut=87436fbc588907460ec94e463abac73400e5776b87b81ab8f8a22eee6e580e4a">
+                            doc.rust-lang.org/stable/releases.html
+                          </a>
+                          
+                        </div>
+                      </div>
+                    
+
+                    
+                      
+                        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fdoc.rust%2Dlang.org%2Fstable%2Freleases.html&amp;rut=87436fbc588907460ec94e463abac73400e5776b87b81ab8f8a22eee6e580e4a">If linking C/C++ object files with <b>Rust</b> objects, -fwasm-exceptions must be passed to the linker now. On nightly <b>Rust</b>, it is possible to get the old behavior with -Zwasm-emscripten-eh=false -Zbuild-std, but it will be removed in a future <b>release</b>.</a>
+                      
+                    
+
+                    <div class="clear"></div>
+                  </div>
+                </div>
+              
+            
+              
+                <div class="result results_links results_links_deep web-result ">
+                  <div class="links_main links_deep result__body"> <!-- This is the visible part -->
+                    
+                      <h2 class="result__title">
+                        <a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fdev.to%2Fjames_miller_8dc58a89cb9e%2Frust%2D1920%2Dreleased%2Dnever%2Dtype%2Dstability%2Dadvances%2D2mcf&amp;rut=1656a7d1887c8917ce2935aa7da54784c71d6dec9433b5b004ebccc4c02b84b9">Rust 1.92.0 Released: Never Type Stability Advances</a>
+                      </h2>
+
+                    
+
+                    
+                      <div class="result__extras">
+                        <div class="result__extras__url">
+                          <span class="result__icon">
+                            <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fdev.to%2Fjames_miller_8dc58a89cb9e%2Frust%2D1920%2Dreleased%2Dnever%2Dtype%2Dstability%2Dadvances%2D2mcf&amp;rut=1656a7d1887c8917ce2935aa7da54784c71d6dec9433b5b004ebccc4c02b84b9">
+                              <img class="result__icon__img" width="16" height="16" alt="" src="//external-content.duckduckgo.com/ip3/dev.to.ico" name="i15" />
+                            </a>
+                          </span>
+                          <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fdev.to%2Fjames_miller_8dc58a89cb9e%2Frust%2D1920%2Dreleased%2Dnever%2Dtype%2Dstability%2Dadvances%2D2mcf&amp;rut=1656a7d1887c8917ce2935aa7da54784c71d6dec9433b5b004ebccc4c02b84b9">
+                            dev.to/james_miller_8dc58a89cb9e/rust-1920-released-never-type-stability-advances-2mcf
+                          </a>
+                          
+                            <span>&nbsp; &nbsp; 2025-12-30T00:00:00.0000000</span>
+                          
+                        </div>
+                      </div>
+                    
+
+                    
+                      
+                        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fdev.to%2Fjames_miller_8dc58a89cb9e%2Frust%2D1920%2Dreleased%2Dnever%2Dtype%2Dstability%2Dadvances%2D2mcf&amp;rut=1656a7d1887c8917ce2935aa7da54784c71d6dec9433b5b004ebccc4c02b84b9">The <b>Rust</b> team has released version 1.92.0, focusing on language consistency, stricter compiler checks, and improved debugging experience. Here are the key technical highlights from this <b>release</b>.</a>
+                      
+                    
+
+                    <div class="clear"></div>
+                  </div>
+                </div>
+              
+            
+              
+                <div class="result results_links results_links_deep web-result ">
+                  <div class="links_main links_deep result__body"> <!-- This is the visible part -->
+                    
+                      <h2 class="result__title">
+                        <a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fversiontrack.dev%2Flanguages%2Fversion%2Frust%2D1%2D92%2D0%2F&amp;rut=5dc05bdebc03767be1eae1f7eaaddadab4fddd192ed2527d60b2dcff8090dd12">Rust 1.92.0 · VersionTrack</a>
+                      </h2>
+
+                    
+
+                    
+                      <div class="result__extras">
+                        <div class="result__extras__url">
+                          <span class="result__icon">
+                            <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fversiontrack.dev%2Flanguages%2Fversion%2Frust%2D1%2D92%2D0%2F&amp;rut=5dc05bdebc03767be1eae1f7eaaddadab4fddd192ed2527d60b2dcff8090dd12">
+                              <img class="result__icon__img" width="16" height="16" alt="" src="//external-content.duckduckgo.com/ip3/versiontrack.dev.ico" name="i15" />
+                            </a>
+                          </span>
+                          <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fversiontrack.dev%2Flanguages%2Fversion%2Frust%2D1%2D92%2D0%2F&amp;rut=5dc05bdebc03767be1eae1f7eaaddadab4fddd192ed2527d60b2dcff8090dd12">
+                            versiontrack.dev/languages/version/rust-1-92-0/
+                          </a>
+                          
+                        </div>
+                      </div>
+                    
+
+                    
+                      
+                        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fversiontrack.dev%2Flanguages%2Fversion%2Frust%2D1%2D92%2D0%2F&amp;rut=5dc05bdebc03767be1eae1f7eaaddadab4fddd192ed2527d60b2dcff8090dd12"><b>Rust</b> 1.92.0 — released Dec. 11, 2025. &lt;a id=&quot;1.92.0 Language&quot; &lt;/a Language Document MaybeUninit representation and validity [Allow &amp;raw [mut | const] for uni…</a>
+                      
+                    
+
+                    <div class="clear"></div>
+                  </div>
+                </div>
+              
+            
+              
+                <div class="result results_links results_links_deep web-result ">
+                  <div class="links_main links_deep result__body"> <!-- This is the visible part -->
+                    
+                      <h2 class="result__title">
+                        <a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ftechlife.blog%2Fposts%2Frust%2D1%2D92%2D0%2Dreleased%2F&amp;rut=a92944d3e6a4eb3cece67aed62f742f680f55fefa09fd9e3d6958e63124974c1">Rust 1.92.0 Released: Empowering Reliable Software Development</a>
+                      </h2>
+
+                    
+
+                    
+                      <div class="result__extras">
+                        <div class="result__extras__url">
+                          <span class="result__icon">
+                            <a rel="nofollow" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ftechlife.blog%2Fposts%2Frust%2D1%2D92%2D0%2Dreleased%2F&amp;rut=a92944d3e6a4eb3cece67aed62f742f680f55fefa09fd9e3d6958e63124974c1">
+                              <img class="result__icon__img" width="16" height="16" alt="" src="//external-content.duckduckgo.com/ip3/techlife.blog.ico" name="i15" />
+                            </a>
+                          </span>
+                          <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ftechlife.blog%2Fposts%2Frust%2D1%2D92%2D0%2Dreleased%2F&amp;rut=a92944d3e6a4eb3cece67aed62f742f680f55fefa09fd9e3d6958e63124974c1">
+                            techlife.blog/posts/rust-1-92-0-released/
+                          </a>
+                          
+                            <span>&nbsp; &nbsp; 2025-12-12T00:00:00.0000000</span>
+                          
+                        </div>
+                      </div>
+                    
+
+                    
+                      
+                        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ftechlife.blog%2Fposts%2Frust%2D1%2D92%2D0%2Dreleased%2F&amp;rut=a92944d3e6a4eb3cece67aed62f742f680f55fefa09fd9e3d6958e63124974c1">The <b>Rust</b> team announces the <b>release</b> of <b>Rust</b> 1.92.0, bringing significant updates to the programming language.</a>
+                      
+                    
+
+                    <div class="clear"></div>
+                  </div>
+                </div>
+              
+            
+
+            
+              
+              
+                <div class="nav-link">
+                  <form action="/html/" method="post">
+                    <input type="submit" class='btn btn--alt' value="Next" />
+                    <input type="hidden" name="q" value="rust 1.92 release" />
+                    <input type="hidden" name="s" value="10" />
+                    <input type="hidden" name="nextParams" value="" />
+                    <input type="hidden" name="v" value="l" />
+                    <input type="hidden" name="o" value="json" />
+                    <input type="hidden" name="dc" value="11" />
+                    <input type="hidden" name="api" value="d.js" />
+                    <input type="hidden" name="vqd" value="4-238314190488444584029318592317771549299" />
+
+                    
+                    
+                    
+                      <input name="kl" value="wt-wt" type="hidden" />
+                    
+                    
+                    
+                    
+                  </form>
+                </div>
+              
+            
+
+            <div class="feedback-btn">
+              <a rel="nofollow" href="//duckduckgo.com/feedback.html" target="_new">Feedback</a>
+            </div>
+            <div class="clear"></div>
+          </div>
+        </div>
+      </div> <!-- links wrapper //-->
+    
+  </div>
+
+  <div id="bottom_spacing2"></div>
+
+  
+    <img src="//duckduckgo.com/t/sl_h"/>
+  
+</body>
+</html>
