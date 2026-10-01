@@ -2,6 +2,26 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Głos: do wdrożenia przez następnego agenta – 2026-10-01 (stan po rozmowie z użytkownikiem, gałąź `glos`)
+
+Użytkownik zbiera więcej zmian i zleci wdrożenie wszystkich naraz innemu agentowi. Tu jest wszystko, co ustalono o głosie. Niczego z tej listy jeszcze nie zrobiono w kodzie.
+
+**Stan środowiska (zrobione, zweryfikowane)**
+- Piper zainstalowany z AUR (`piper-tts-bin`). **Binarka nazywa się `piper-tts` (`/usr/bin/piper-tts`), nie `piper`** – `which piper` nic nie zwraca.
+- Głosy w `~/.local/share/piper/`: `pl_PL-bass-high.onnx` (+ `.onnx.json`, pobrany z `rhasspy/piper-voices`, `pl/pl_PL/bass/high/`, bo użytkownik miał sam `.onnx`) oraz `pl.onnx` (+ `.json`) = **`gosia` medium**, żeński, skopiowany ze scratchpada sesji `54c6b0d8…`.
+- Test z linii poleceń: `echo "Cześć…" | piper-tts --model ~/.local/share/piper/pl_PL-bass-high.onnx --output_file x.wav` → 2,3 s audio w 0,26 s (RTF 0,11), odtworzone `pw-play`. Czy użytkownikowi głos się podoba – **nie wiadomo**.
+- Użytkownik wybrał na razie **Piper + `pl_PL-bass-high`** („bass” to nazwa głosu). Przyznał, że głosy Pipera są „średnie” i woli żeńskie – patrz „Później”.
+
+**Do zrobienia w kodzie**
+1. **Domyślny program Pipera**: `electron/src/voice/tts.ts:198` ma `p.command ?? "piper"`, a `TalkSettings.tsx:94` placeholder „piper (z PATH)”. Na tym systemie (Arch/AUR) to `piper-tts`. Spróbować `piper-tts`, potem `piper` (albo wykrywać przez PATH), poprawić placeholder i komunikat ENOENT (`tts.ts:115`). Dodać test.
+2. **Domyślny model w szablonie** (`src/voice/voice.ts:43`): dziś `~/.local/share/piper/pl_PL-gosia-medium.onnx`, a plik leży jako `pl.onnx` i `pl_PL-bass-high.onnx`. Ustawić na `pl_PL-bass-high.onnx` (wybór użytkownika); ewentualnie wykrywać `*.onnx` w `~/.local/share/piper/` i dać listę do wyboru zamiast wpisywania ścieżki.
+3. **Etap 6 – próba na żywo** (nic z tego nie było uruchamiane z prawdziwym Piperem): `cd .claude/worktrees/glos && pnpm build && pnpm desktop`; Głos → Rozmowa → silnik Piper, program `piper-tts`, model `~/.local/share/piper/pl_PL-bass-high.onnx` → „Posłuchaj” (głos słychać, czas syntezy pokazany) → potem cała rozmowa z kuleczki (mikrofon → whisper → mózg → Piper). Sprawdzić też „Mam słuchawki” i silnik API/lokalny. AGENTS.md zabrania uruchamiania Electrona bez prośby – użytkownik poprosi o to wprost albo wskaże, kiedy wolno.
+4. Po teście: zaktualizować ten HANDOFF o wynik i scalić `glos` do `konta` (merge tylko na wyraźne polecenie użytkownika).
+
+**Później (opcjonalnie, użytkownik nie zdecydował)**
+- Lepszy głos żeński po polsku przez silnik „API” (bez zmian w kodzie, adres + model w Rozmowie): OpenAI `gpt-4o-mini-tts` (`nova`/`shimmer`/`coral`, wymaga klucza), Edge TTS `pl-PL-ZofiaNeural` przez serwer `openai-edge-tts` (darmowy, nieoficjalny, chmura), lokalnie XTTS-v2 (klonowanie głosu, najlepiej na GPU) np. przez `openedai-speech`. Użytkownik pytał, gdzie odsłuchać: `openai.fm`, demo Azure TTS, HF Space `coqui/xtts` (adresów nie sprawdzałem). Nie wiem, czy ma klucz OpenAI ani GPU – zapytać.
+- Piper ma w PL tylko głosy `darkman`, `gosia`, `mc_speech`, `bass` i inne męskie (z pamięci, nie sprawdzone).
+
 ## Głos Etap 4: ustawienia rozmowy – 2026-10-01 (Claude, gałąź `glos`)
 
 - Okno „Głos” (`VoiceDialog.tsx`) ma zakładki **Dyktowanie | Rozmowa**; treść dyktowania bez zmian (dopisek: mikrofon i język obowiązują też w rozmowie). Rail → mikrofon i mikrofon panelu otwierają „Dyktowanie”, zębatka kuleczki „Rozmowę”, błąd kuleczki otwiera zakładkę, której brakuje.
