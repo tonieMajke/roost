@@ -743,3 +743,16 @@ button.feed-item {
 .meter-block + .meter-block { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
 .meter-account { font-size: 11px; font-weight: 600; color: var(--muted); }
 .pane-limit { color: var(--text); border-top-color: var(--accent); }
+
+/* sekcja „Panele” w pulpicie: szukanie i Close idle */
+.board-search { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--faint); }
+.board-search .pm-input { flex: 1; min-width: 0; }
+.board-idle {
+  width: 100%; margin-bottom: 10px; padding: 5px 8px; font-size: 11.5px; cursor: pointer;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm, 6px); background: none; color: var(--muted);
+}
+.board-idle:hover:not(:disabled) { color: var(--text); background: var(--hover); }
+.board-idle:disabled { opacity: 0.45; cursor: default; }
+.board-idle.is-armed { border-color: var(--accent); color: var(--accent); }
+.board-row { margin-bottom: 8px; }
+.board-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

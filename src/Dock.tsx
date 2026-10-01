@@ -1,5 +1,5 @@
-import { useEffect, useState, type CSSProperties } from "react";
-import { RotateCw, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { RotateCw, Search, X } from "lucide-react";
 import { agentColor, type AgentDef } from "./agents";
 import { paneMeter, type SessionContext } from "./context";
 import { FEED_CLOCK_MS, feedFor, relativeTime, type FeedItem } from "./feed";
@@ -8,7 +8,9 @@ import type { Project } from "./workspace";
 import { IconButton } from "./IconButton";
 import { Radar } from "./Radar";
 import { blips, type BlipInput } from "./radar";
-import type { PaneState } from "./activity";
+import { paneStatus, type PaneState } from "./activity";
+import { filterBoard, idlePaneIds, type BoardRow } from "./board";
+import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 
 type Props = {
   project: Project | null; // aktywny: sekcja „Kontekst” pokazuje jego panele
@@ -26,12 +28,16 @@ type Props = {
   limitSources: { id: string; name: string }[];
   onRefreshLimits: () => void;
   onClose: () => void;
+  /** Sekcja „Panele”: wszystkie projekty, stan ulotny paneli i zamknięcie wielu naraz („Close idle”). */
+  projects: Project[];
+  state: Record<string, PaneState>;
+  onCloseIdle: (paneIds: string[]) => void;
   /** Motyw „Wieża”: radar paneli na górze pulpitu (cisza z `activity.ts`). */
   radar?: { quietMs: (paneId: string) => number | null; state: Record<string, PaneState> };
 };
 
 /** Pulpit po prawej (wzór D `.dock`): limity Claude (etap 10), kontekst, na żywo (etap 9). */
-export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPickFeed, feedScope, onFeedScope, limits, limitSources, onRefreshLimits, onClose, radar }: Props) {
+export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPickFeed, feedScope, onFeedScope, limits, limitSources, onRefreshLimits, onClose, projects, state, onCloseIdle, radar }: Props) {
   // „40 s temu” musi się starzeć także bez nowych zdarzeń.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -50,6 +56,49 @@ export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPi
     const model = pane.sessionId ? contexts[pane.sessionId]?.model : null;
     return [{ pane, agent, meter, model }];
   });
+
+  // Sekcja „Panele”: szukanie po tytule, agencie, projekcie, branchu i ostatniej wiadomości.
+  const [query, setQuery] = useState("");
+  const [armed, setArmed] = useState(false);
+  const armRef = useRef<Arm>(null);
+  const board = useMemo(() => {
+    const lastMessage = new Map<string, string>();
+    for (const item of feed) if (!lastMessage.has(item.paneId)) lastMessage.set(item.paneId, item.text); // najnowsze pierwsze
+    return projects.flatMap((p) =>
+      p.panes.map((pane): BoardRow => {
+        const name = agents.find((a) => a.id === pane.agentId)?.name ?? pane.agentId;
+        return {
+          paneId: pane.id,
+          projectId: p.id,
+          title: titles[pane.id] ?? name,
+          agent: name,
+          project: p.name,
+          lastMessage: lastMessage.get(pane.id),
+          state: state[pane.id] ?? {},
+        };
+      }),
+    );
+  }, [projects, agents, titles, feed, state]);
+  const visible = useMemo(() => filterBoard(board, query), [board, query]);
+  const idleIds = useMemo(() => idlePaneIds(visible), [visible]);
+  const idleKey = `idle:${idleIds.join(",")}`;
+  // „Zamknąć N?” trwa CONFIRM_MS albo do zmiany zbioru bezczynnych.
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), CONFIRM_MS);
+    return () => clearTimeout(t);
+  }, [armed, idleKey]);
+  useEffect(() => {
+    if (armed && !isArmed(armRef.current, idleKey, Date.now())) setArmed(false);
+  }, [armed, idleKey]);
+  const closeIdle = () => {
+    const r = confirmClick(armRef.current, idleKey, Date.now());
+    armRef.current = r.arm;
+    if (r.fire) {
+      setArmed(false);
+      onCloseIdle(idleIds);
+    } else setArmed(true);
+  };
 
   const radarBlips = radar
     ? blips(
@@ -84,6 +133,67 @@ export function Dock({ project, agents, contexts, titles, onPickPane, feed, onPi
           <span className="meter-note">odległość od środka = czas od ostatniego wyjścia · liczba = kontekst w %</span>
         </section>
       )}
+      <section className="dock-sec dock-board">
+        <h3>
+          Panele
+          <span>{query.trim() ? `${visible.length} z ${board.length}` : board.length}</span>
+        </h3>
+        <label className="board-search">
+          <Search size={13} aria-hidden />
+          <input
+            type="search"
+            className="pm-input"
+            placeholder="Szukaj: tytuł, agent, projekt, ostatnia wiadomość"
+            aria-label="Szukaj paneli"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && query !== "") {
+                e.preventDefault();
+                e.stopPropagation();
+                setQuery("");
+              }
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          className={`board-idle${armed ? " is-armed" : ""}`}
+          disabled={idleIds.length === 0}
+          onClick={closeIdle}
+          title="Zamyka tylko bezczynne panele (nie pracują, bez nowego wyjścia); pracujące i z nowym wyjściem zostają"
+        >
+          {armed ? `Zamknąć ${idleIds.length}? Kliknij ponownie` : `Close idle (${idleIds.length})`}
+        </button>
+        {board.length === 0 && <span className="meter-note">Brak paneli</span>}
+        {board.length > 0 && visible.length === 0 && <span className="meter-note">Nic nie pasuje</span>}
+        {visible.map((r) => {
+          const agent = agents.find((a) => a.name === r.agent || a.id === r.agent);
+          const st = paneStatus(r.state);
+          return (
+            <button
+              type="button"
+              key={r.paneId}
+              className="ctx-row board-row"
+              data-ag={agent?.id}
+              style={{ "--ag": agentColor(agent) } as CSSProperties}
+              title={[r.title, `${r.agent} · ${r.project}`, r.lastMessage].filter(Boolean).join("\n")}
+              onClick={() => onPickPane(r.paneId)}
+            >
+              <span className="ag-badge" aria-hidden>
+                {r.agent.charAt(0).toUpperCase()}
+              </span>
+              <div className="ctx-main">
+                <div className="ctx-line">
+                  <span>{r.title}</span>
+                  <b className={st.cls}>{st.text}</b>
+                </div>
+                <span className="meter-note board-sub">{[r.project, r.lastMessage].filter(Boolean).join(" · ")}</span>
+              </div>
+            </button>
+          );
+        })}
+      </section>
       <section className="dock-sec">
         <h3>
           Limity Claude

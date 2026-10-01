@@ -1198,6 +1198,9 @@ export function App() {
             )
           }
           onClose={() => dispatch({ type: "setUi", patch: { dock: false } })}
+          projects={ws.projects}
+          state={ephemeral}
+          onCloseIdle={(ids) => ids.forEach((id) => paneActions.close(id))}
           radar={
             theme.id === "wieza"
               ? {
