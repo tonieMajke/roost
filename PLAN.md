@@ -129,7 +129,7 @@ utworzeniu, zapisany w układzie. Po restarcie aplikacji panel startuje z tym sa
 ### Pomysły z BridgeMind One (changelog v0.1.69 i strona, obejrzane 2026-10-01)
 
 Na początek, małe:
-- **Klikalne ścieżki w terminalu.** Ctrl-klik na `src/foo.ts:41` otwiera plik w linii
+- **Klikalne ścieżki w terminalu.** [x] Zrobione (`src/term-links.ts`, `electron/src/open-path.ts`; do sprawdzenia w oknie). Ctrl-klik na `src/foo.ts:41` otwiera plik w linii
   (xterm.js `registerLinkProvider`). Na start `$EDITOR` albo `xdg-open`, bez wbudowanego edytora.
 - **Szukanie w terminalu.** Ctrl+F, Ctrl+G / Ctrl+Shift+G między trafieniami (xterm-addon-search).
 - **Dashboard agentów z wyszukiwaniem i „Close idle”.** Szukanie po tytule, agencie, projekcie,

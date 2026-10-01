@@ -10,6 +10,7 @@ import { sessionHandoff } from "./handoff";
 import * as git from "./git";
 import { claudeLimits, claudeSettingsArg } from "./limits";
 import { notify } from "./notify";
+import { openFile, resolveFiles } from "./open-path";
 import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
 import { claudeSummary, piSummary } from "./summary";
@@ -169,6 +170,9 @@ handle("open_external", (url: string) => {
   if (!/^https?:\/\//i.test(url)) throw new Error("tylko adresy http(s)");
   return shell.openExternal(url);
 });
+// Ścieżki z terminala (Ctrl-klik): istnienie sprawdza proces główny, plik otwiera spawn z tablicą argumentów.
+handle("resolve_files", (cwd: string, paths: string[]) => resolveFiles(cwd, paths));
+handle("open_file", (file: string, line?: number, col?: number) => openFile(file, line, col));
 handle("chat_config", () => chatConfigLoad(config.configDir()));
 handle("chat_models", (p: ProviderDef) => chat.models(p));
 handle("chat_config_save", (json: string) => chatConfigSave(config.configDir(), json));

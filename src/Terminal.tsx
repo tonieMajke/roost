@@ -9,6 +9,7 @@ import { searchAction } from "./term-search";
 import { ResizeThrottle } from "./resize-throttle";
 import { WriteQueue, peakQueueBytes } from "./write-queue";
 import { DEFAULT_TERM_FONT } from "./themes";
+import { findPathRefs } from "./term-links";
 
 // Ręczny pomiar w oknie (test 16 × 20 MB): w konsoli devtools `awPeakQueueMB()`.
 (globalThis as { awPeakQueueMB?: () => number }).awPeakQueueMB = () =>
@@ -188,6 +189,43 @@ export function Terminal({ command, args, cwd, env, look = DEFAULT_LOOK, fontSiz
       x.onData((d) => {
         if (d === "\x1b[I" || d === "\x1b[O") return;
         pty?.write(d);
+      });
+      // Ctrl-klik na `src/foo.ts:41`: tylko pliki, które istnieją (sprawdza proces główny, wynik w pamięci
+      // podręcznej: provider pyta o każdą widoczną linię przy każdym ruchu myszy).
+      const known = new Map<string, Promise<string | null>>();
+      const resolveAll = (paths: string[]) => {
+        const missing = [...new Set(paths)].filter((p) => !known.has(p));
+        if (missing.length > 0) {
+          const batch = backend.resolveFiles(spec0.cwd ?? "", missing).catch(() => missing.map(() => null));
+          missing.forEach((p, i) => known.set(p, batch.then((r) => r[i] ?? null)));
+          if (known.size > 500) known.clear();
+        }
+        return Promise.all(paths.map((p) => known.get(p) ?? Promise.resolve(null)));
+      };
+      x.registerLinkProvider({
+        provideLinks(y, callback) {
+          const text = x.buffer.active.getLine(y - 1)?.translateToString(true) ?? "";
+          const refs = findPathRefs(text);
+          if (refs.length === 0) return callback(undefined);
+          void resolveAll(refs.map((r) => r.path)).then((files) => {
+            const links = refs.flatMap((r, i) => {
+              const file = files[i];
+              if (!file) return [];
+              return [
+                {
+                  range: { start: { x: r.start + 1, y }, end: { x: r.end, y } },
+                  text: text.slice(r.start, r.end),
+                  decorations: { underline: true, pointerCursor: false },
+                  activate(e: MouseEvent) {
+                    if (!(e.ctrlKey || e.metaKey)) return;
+                    void backend.openFile(file, r.line, r.col).catch((err) => console.warn("[terminal] open_file:", err));
+                  },
+                },
+              ];
+            });
+            callback(links.length > 0 ? links : undefined);
+          });
+        },
       });
       const syncScrolled = () => {
         const b = x.buffer.active;
