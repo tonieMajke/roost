@@ -38,8 +38,30 @@ function ModelMenu({ providers, offline, model, onModel, onProviders, onClose }:
     };
   }, [onClose]);
 
+  // Strona i wysokość według miejsca w oknie: tam, gdzie go więcej, przycięte do krawędzi.
+  const [place, setPlace] = useState<{ up: boolean; max: number } | null>(null);
+  useLayoutEffect(() => {
+    const fit = () => {
+      const anchor = ref.current?.parentElement?.getBoundingClientRect();
+      if (!anchor) return;
+      const margin = 12 + 8; // od krawędzi okna + odstęp od przycisku
+      const below = window.innerHeight - anchor.bottom - margin;
+      const above = anchor.top - margin;
+      const up = above > below;
+      setPlace({ up, max: Math.max(120, Math.min(520, up ? above : below)) });
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
+
   return (
-    <div className="chat-menu" ref={ref} role="menu">
+    <div
+      className={`chat-menu${place?.up === false ? " is-down" : ""}`}
+      ref={ref}
+      role="menu"
+      style={place ? { maxHeight: place.max } : { visibility: "hidden" }}
+    >
       {GROUPS.map((g) => {
         const list = providers.filter((p) => p.group === g);
         if (list.length === 0) return null;

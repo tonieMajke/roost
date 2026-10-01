@@ -136,12 +136,12 @@
 
 /* menu modeli */
 .chat-menu {
-  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 50; width: 300px; max-height: min(60vh, 520px);
+  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 50; width: 300px; max-height: 520px;
   overflow-y: auto; padding: 6px; box-sizing: border-box;
   background: var(--dialog); border: 1px solid var(--line-strong); border-radius: 14px; box-shadow: var(--shadow);
   animation: chatRise 0.18s var(--ease) both;
 }
-.chat-welcome .chat-menu { bottom: auto; top: calc(100% + 8px); }
+.chat-menu.is-down { bottom: auto; top: calc(100% + 8px); }
 .chat-menu-group + .chat-menu-group { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
 .chat-menu-label { padding: 6px 10px 2px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
 .chat-menu-pname { display: flex; align-items: center; gap: 8px; padding: 6px 10px 2px; font-size: 11.5px; color: var(--faint); }
