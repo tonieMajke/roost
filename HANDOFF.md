@@ -15,6 +15,15 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
 - [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
 
+## M5 Etap 2: boty na dysku – 2026-10-01 (Claude, master)
+
+- `electron/src/bot/store.ts` (`BotStore`): `~/.config/dev.majke.agents/bots/<id>/` z `bot.json`, `memory.md`, `user.md`, `skills/<nazwa>/SKILL.md`, `routines.json`, `chats/`, `runs/`, `work/`. Kreator powstaje przy pierwszym `list()`, nie da się go usunąć, a zapis nie zdejmie ani nie nada `builtin`. Usunięcie = przeniesienie do `bots-trash/<id>-RRRR-MM-DD-GGMMSS`.
+- Pamięć ponad limit, zły `SKILL.md`, złe `routines.json` i id spoza `[a-z0-9-]` (np. `../x`) są odrzucane. Zepsuty bot/skill zostaje na liście jako błąd, pliku nie ruszamy. Rozmowy bota używają `ChatStore` z M3 (rozmowa → `chats/`, przebieg z `routine` → `runs/`).
+- IPC `bot_*` w `main.ts`, metody `bot*` w `Backend` (`backend.ts`, `backend-electron.ts`). Podgląd: `src/bot-mock.ts` w localStorage (`aw-bots`) z Rustym (pamięć, skill `rust-news`, zadanie pn–pt 08:00, rozmowa z wywołaniami narzędzi, przebieg), Olą (bez narzędzi) i Kreatorem; te same odmowy co na dysku.
+- `src/bot.ts`: `isBotId`, `isSkillName` (id ≤ 64 znaki).
+- Sprawdzenia: typecheck (frontend i electron), vitest 423/423 (nowe: store 11, mock 3), build electron – OK.
+- Niesprawdzone: IPC w działającej aplikacji (nie ma jeszcze UI, które by je wołało).
+
 ## M5 Etap 1: model bota – 2026-10-01 (Claude, master)
 
 - `src/bot.ts` (czyste funkcje): `BotDef` z osobowością (imię, awatar, kolor, persona, styl, czego unika, ton), modelem, folderami i przełącznikami **grup** narzędzi (`web`, `read`, `write`, `bash`, `memory`, `skills`; zamiast przełącznika na każde narzędzie, plan poprawiony). Kreator jako `creatorBot()` (`builtin: "creator"`).

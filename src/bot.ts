@@ -102,7 +102,9 @@ const ALL_TOOLS: Record<ToolGroup, boolean> = { web: true, read: true, write: tr
 const COLOR_RE = /^#[0-9a-f]{6}$/i;
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const SKILL_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const ID_RE = /^[a-z0-9][a-z0-9-]*$/;
+const ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+export const isBotId = (id: string) => ID_RE.test(id);
+export const isSkillName = (name: string) => SKILL_NAME_RE.test(name) && name.length <= 64;
 
 export const DEFAULT_COLOR = "#7c8cff";
 
@@ -302,7 +304,7 @@ export function parseSkill(md: string): Skill | { error: string } {
     if (kv) fields[kv[1]] = unquote(kv[2].trim());
   }
   const name = fields.name ?? "";
-  if (!SKILL_NAME_RE.test(name) || name.length > 64) return { error: "`name`: małe litery, cyfry i myślniki, ≤ 64 znaki" };
+  if (!isSkillName(name)) return { error: "`name`: małe litery, cyfry i myślniki, ≤ 64 znaki" };
   const description = fields.description ?? "";
   if (!description) return { error: "brak `description`" };
   if (description.length > 1024) return { error: "`description` dłuższe niż 1024 znaki" };

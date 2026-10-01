@@ -5,6 +5,7 @@ import type { ContextKind, SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
 import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
+import type { BotChat, BotDef, Routine } from "./bot";
 
 export type KeyState = "stored" | "env" | null;
 
@@ -90,9 +91,38 @@ export interface Backend {
   openExternal(url: string): Promise<void>;
   /** Odpowiedź modelu strumieniem; ostatnie zdarzenie to `done` albo `error`. Zwraca Stop. */
   chatSend(req: ChatRequest, onEvent: (e: ChatEvent) => void): () => void;
+  /** Zakładka Bot (M5). Lista tworzy Kreatora przy pierwszym odczycie. */
+  botList(): Promise<{ bots: BotDef[]; errors: string[] }>;
+  /** Nowy bot; zajęte id = odrzucenie (wolne id: `botId`). */
+  botCreate(bot: BotDef): Promise<BotDef>;
+  /** Zmiana bota; `builtin` i `created` zostają z dysku. */
+  botSave(bot: BotDef): Promise<BotDef>;
+  /** Do kosza (`bots-trash/`); Kreatora nie da się usunąć. */
+  botDelete(id: string): Promise<void>;
+  botMemory(id: string): Promise<Record<BotMemoryTarget, string>>;
+  /** Ponad limit znaków = odrzucenie. */
+  botMemorySave(id: string, target: BotMemoryTarget, text: string): Promise<void>;
+  botSkills(id: string): Promise<BotSkillMeta[]>;
+  /** Treść `SKILL.md`; `null` = nie ma. */
+  botSkill(id: string, name: string): Promise<string | null>;
+  /** Zapis `SKILL.md`; zwraca nazwę z frontmattera. */
+  botSkillSave(id: string, md: string): Promise<string>;
+  botSkillDelete(id: string, name: string): Promise<void>;
+  botRoutines(id: string): Promise<{ routines: Routine[]; errors: string[] }>;
+  botRoutinesSave(id: string, routines: Routine[]): Promise<void>;
+  /** Rozmowy (`chats`) albo przebiegi z harmonogramu (`runs`). */
+  botChatList(id: string, kind: BotChatKind): Promise<ChatMeta[]>;
+  botChatLoad(id: string, kind: BotChatKind, chatId: string): Promise<BotChat | null>;
+  /** Katalog z `chat.bot`, rodzaj z `chat.routine`. */
+  botChatSave(chat: BotChat): Promise<void>;
+  botChatDelete(id: string, kind: BotChatKind, chatId: string): Promise<void>;
   /** Własny pasek tytułu; brak = podgląd w przeglądarce, bez okna. */
   window?: WindowControls;
 }
+
+export type BotMemoryTarget = "memory" | "user";
+export type BotChatKind = "chats" | "runs";
+export type BotSkillMeta = { name: string; description: string; updated: number; error?: string };
 
 export const inElectron = typeof window !== "undefined" && "agentsElectron" in window;
 

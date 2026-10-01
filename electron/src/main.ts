@@ -14,6 +14,7 @@ import { claudeSummary, piSummary } from "./summary";
 import { ChatStore } from "./chat/store";
 import { chatConfigLoad, chatConfigSave, defaultChatService } from "./chat/service";
 import { KeyStore, passwordStore } from "./chat/keys";
+import { BotStore, type ChatKind, type MemoryTarget } from "./bot/store";
 import type { ChatRequest, ProviderDef } from "../../src/chat";
 
 // Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
@@ -30,6 +31,7 @@ function readOrNull(file: string): string | null {
 
 const ptys = new Ptys();
 const chats = new ChatStore(path.join(config.configDir(), "chats"));
+const bots = new BotStore(path.join(config.configDir(), "bots"), path.join(config.configDir(), "bots-trash"));
 // Sejf systemowy: „basic_text” (brak KWallet/libsecret) to prawie jawny tekst – wtedy nie zapisujemy.
 const keys = new KeyStore(config.configDir(), {
   available: () => safeStorage.isEncryptionAvailable() && safeStorage.getSelectedStorageBackend() !== "basic_text",
@@ -102,6 +104,23 @@ ipcMain.handle("chat_send", (event, reqId: string, req: ChatRequest) => {
     if (!sender.isDestroyed()) sender.send("chat_event", reqId, e);
   });
 });
+// Zakładka Bot (M5): boty, pamięć, skille, harmonogram i rozmowy na dysku.
+handle("bot_list", () => bots.list());
+handle("bot_create", (json: string) => bots.create(json));
+handle("bot_save", (json: string) => bots.save(json));
+handle("bot_delete", (id: string) => bots.delete(id));
+handle("bot_memory", (id: string) => bots.memory(id));
+handle("bot_memory_save", (id: string, target: MemoryTarget, text: string) => bots.memorySave(id, target, text));
+handle("bot_skills", (id: string) => bots.skills(id));
+handle("bot_skill", (id: string, name: string) => bots.skill(id, name));
+handle("bot_skill_save", (id: string, md: string) => bots.skillSave(id, md));
+handle("bot_skill_delete", (id: string, name: string) => bots.skillDelete(id, name));
+handle("bot_routines", (id: string) => bots.routines(id));
+handle("bot_routines_save", (id: string, json: string) => bots.routinesSave(id, json));
+handle("bot_chat_list", (id: string, kind: ChatKind) => bots.chats(id, kind).list());
+handle("bot_chat_load", (id: string, kind: ChatKind, chatId: string) => bots.chats(id, kind).load(chatId));
+handle("bot_chat_save", (json: string) => bots.chatSave(json));
+handle("bot_chat_delete", (id: string, kind: ChatKind, chatId: string) => bots.chats(id, kind).delete(chatId));
 handle("pick_dir", async () => {
   const opts: Electron.OpenDialogOptions = { title: "Katalog projektu", properties: ["openDirectory"] };
   const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);

@@ -1,5 +1,6 @@
 import { DEFAULT_AGENTS } from "./agents";
 import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
+import { mockBotBackend } from "./bot-mock";
 import { buildChatConfig, chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, type Chat, type ChatEvent, type ChatMeta } from "./chat";
 
 const PROMPT = "$ ";
@@ -97,6 +98,7 @@ function benchSpinner(onData: (b: Uint8Array) => void): ReturnType<typeof setInt
  * look at the UI: a banner, echoed keystrokes, `exit`/`fail` for the exit code paths.
  */
 export const mockBackend: Backend = {
+  ...mockBotBackend,
   async spawnPty(spec: SpawnSpec, onData: (b: Uint8Array) => void, onExit: (i: ExitInfo) => void): Promise<PtyHandle> {
     const id = nextId++;
     let line = "";

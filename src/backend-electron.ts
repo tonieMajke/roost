@@ -1,9 +1,10 @@
 import { DEFAULT_AGENTS, parseAgents } from "./agents";
-import type { Backend, ExitInfo, KeyState, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
+import type { Backend, BotSkillMeta, ExitInfo, KeyState, ResizeEdge, SpawnSpec, WindowControls } from "./backend";
 import type { SessionContext } from "./context";
 import type { ClaudeLimits } from "./limits";
 import type { Handoff } from "./handoff";
 import { buildChatConfig, parseChat, type ChatEvent, type ChatMeta, type ChatRequest } from "./chat";
+import { parseBotChat, parseRoutines, serializeBot, type BotDef } from "./bot";
 
 /** Most wystawiony przez `electron/src/preload.ts`. */
 type ElectronBridge = {
@@ -135,5 +136,26 @@ export const electronBackend: Backend = {
     bridge().chatSend(reqId, req, (e) => onEvent(e.type === "error" ? { ...e, message: remoteMessage(e.message) } : e));
     return () => void call("chat_abort", reqId).catch(ignore);
   },
+  botList: () => call<{ bots: BotDef[]; errors: string[] }>("bot_list"),
+  botCreate: (bot) => call<BotDef>("bot_create", serializeBot(bot)),
+  botSave: (bot) => call<BotDef>("bot_save", serializeBot(bot)),
+  botDelete: (id) => call<void>("bot_delete", id),
+  botMemory: (id) => call<{ memory: string; user: string }>("bot_memory", id),
+  botMemorySave: (id, target, text) => call<void>("bot_memory_save", id, target, text),
+  botSkills: (id) => call<BotSkillMeta[]>("bot_skills", id),
+  botSkill: (id, name) => call<string | null>("bot_skill", id, name),
+  botSkillSave: (id, md) => call<string>("bot_skill_save", id, md),
+  botSkillDelete: (id, name) => call<void>("bot_skill_delete", id, name),
+  async botRoutines(id) {
+    return parseRoutines(JSON.parse(await call<string>("bot_routines", id)));
+  },
+  botRoutinesSave: (id, routines) => call<void>("bot_routines_save", id, JSON.stringify({ routines }, null, 2)),
+  botChatList: (id, kind) => call<ChatMeta[]>("bot_chat_list", id, kind),
+  async botChatLoad(id, kind, chatId) {
+    const text = await call<string | null>("bot_chat_load", id, kind, chatId);
+    return text === null ? null : parseBotChat(text);
+  },
+  botChatSave: (chat) => call<void>("bot_chat_save", JSON.stringify(chat)),
+  botChatDelete: (id, kind, chatId) => call<void>("bot_chat_delete", id, kind, chatId),
   window: electronWindow,
 };

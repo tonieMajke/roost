@@ -105,7 +105,7 @@ Nowe zależności dozwolone tylko w etapie, który je wymienia.
 ## Postęp
 
 - [x] Etap 1 (L) – model bota bez UI
-- [ ] Etap 2 (L) – magazyn botów, pamięć i skille na dysku
+- [x] Etap 2 (L) – magazyn botów, pamięć i skille na dysku
 - [ ] Etap 3 (C) – rejestr narzędzi i potwierdzenia
 - [ ] Etap 4 (C) – pętla tool-calling dla dostawców HTTP
 - [ ] Etap 5 (C) – serwer MCP `bot` dla claude i codex
@@ -157,9 +157,10 @@ type BotChat = Chat & { calls: ToolCallRecord[] };
   lista botów (id, imię, awatar, kolor), tworzenie (z `work/`), usuwanie do
   `bots-trash/<id>-<data>` (nie `rm -rf`). Kreator powstaje przy pierwszym starcie.
 - Rozmowy bota: ten sam `ChatStore` z M3 z innym katalogiem.
-- IPC: `bot_list`, `bot_load`, `bot_save`, `bot_create`, `bot_delete`, `bot_memory`,
-  `bot_memory_save`, `bot_skills`, `bot_skill`, `bot_skill_delete`, `bot_chat_*`
-  (jak `chat_*`). `preload.ts`, `src/backend.ts`, `backend-electron.ts`, `backend-mock.ts`
+- IPC: `bot_list`, `bot_save`, `bot_create`, `bot_delete`, `bot_memory`,
+  `bot_memory_save`, `bot_skills`, `bot_skill`, `bot_skill_save`, `bot_skill_delete`,
+  `bot_routines`, `bot_routines_save`, `bot_chat_*` (jak `chat_*`, z rodzajem
+  `chats` | `runs`). `preload.ts`, `src/backend.ts`, `backend-electron.ts`, `backend-mock.ts`
   (mock: dwa boty i Kreator z przykładową pamięcią i skillem).
 
 **Commit:** `M5 Etap 2: boty na dysku`
