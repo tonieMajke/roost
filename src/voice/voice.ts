@@ -40,7 +40,7 @@ export type VoiceConfig = {
 export const TTS_PRESETS: TtsProvider[] = [
   { id: "openai", name: "OpenAI", kind: "speech", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini-tts", voice: "alloy", keyEnv: "OPENAI_API_KEY", key: true },
   { id: "local", name: "Lokalny serwer", kind: "speech", baseUrl: "http://127.0.0.1:8000/v1", model: "kokoro", voice: "", key: false },
-  { id: "piper", name: "Piper", kind: "piper", model: "~/.local/share/piper/pl_PL-gosia-medium.onnx", voice: "", key: false },
+  { id: "piper", name: "Piper", kind: "piper", model: "~/.local/share/piper/pl_PL-bass-high.onnx", voice: "", key: false },
 ];
 
 export const DEFAULT_TTS: TtsConfig = { providers: [] };

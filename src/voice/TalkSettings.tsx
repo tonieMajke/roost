@@ -91,7 +91,7 @@ function TtsRow({
         </>
       ) : (
         <>
-          <Field label="Program" value={p.command ?? ""} placeholder="piper (z PATH)" valid={() => true} onSave={(v) => onEdit({ command: v || undefined })} />
+          <Field label="Program" value={p.command ?? ""} placeholder="piper-tts albo piper (z PATH)" valid={() => true} onSave={(v) => onEdit({ command: v || undefined })} />
           <Field label="Głos (.onnx)" value={p.model} onSave={(model) => onEdit({ model })} />
         </>
       )}

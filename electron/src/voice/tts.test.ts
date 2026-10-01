@@ -5,7 +5,7 @@ import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { TtsProvider } from "../../../src/voice/voice";
-import { MAX_TEXT, Piper, speakHttp, ttsConfigLoad, ttsConfigSave, TtsService, voiceConfigSave } from "./tts";
+import { defaultPiperCommand, MAX_TEXT, Piper, speakHttp, ttsConfigLoad, ttsConfigSave, TtsService, voiceConfigSave } from "./tts";
 
 const FAKE = path.join(__dirname, "fixtures", "fake-piper.mjs");
 const text = (a: Uint8Array) => Buffer.from(a).toString("utf8");
@@ -216,5 +216,17 @@ describe("TtsService", () => {
     await expect(slow).rejects.toMatchObject({ name: "AbortError" });
     expect(text(await next).split("|")[1]).toBe("b");
     s.end();
+  });
+});
+
+describe("defaultPiperCommand", () => {
+  const has = (...files: string[]) => (f: string) => files.includes(f);
+  it("woli piper-tts (Arch/AUR), potem piper", () => {
+    expect(defaultPiperCommand("/a:/b", has("/b/piper", "/b/piper-tts"))).toBe("piper-tts");
+    expect(defaultPiperCommand("/a:/b", has("/a/piper"))).toBe("piper");
+  });
+  it("bez żadnego w PATH zostaje piper (komunikat ENOENT)", () => {
+    expect(defaultPiperCommand("/a", has())).toBe("piper");
+    expect(defaultPiperCommand("", has())).toBe("piper");
   });
 });

@@ -38,6 +38,22 @@ export const voiceConfigSave = (dir: string, json: string) => save(dir, "voice.j
 const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
 const expandHome = (p: string) => (p === "~" || p.startsWith("~/") ? path.join(os.homedir(), p.slice(1)) : p);
 
+/** Program Pipera, gdy ustawienia go nie podają: Arch/AUR instaluje `piper-tts`, pip – `piper`. */
+export function defaultPiperCommand(pathEnv = process.env.PATH ?? "", exists: (f: string) => boolean = isExecutable): string {
+  const dirs = pathEnv.split(path.delimiter).filter(Boolean);
+  for (const name of ["piper-tts", "piper"]) if (dirs.some((d) => exists(path.join(d, name)))) return name;
+  return "piper";
+}
+
+function isExecutable(f: string): boolean {
+  try {
+    fs.accessSync(f, fs.constants.X_OK);
+    return fs.statSync(f).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function checkText(text: string): string {
   const t = oneLine(text);
   if (!t) throw new Error("pusty tekst do przeczytania");
@@ -112,7 +128,7 @@ export class Piper {
   }
 
   private explain(e: NodeJS.ErrnoException): string {
-    return e.code === "ENOENT" ? `nie znaleziono programu „${this.command}” (zainstaluj Piper albo podaj ścieżkę w ustawieniach)` : `Piper: ${e.message}`;
+    return e.code === "ENOENT" ? `nie znaleziono programu „${this.command}” (zainstaluj Piper – „piper-tts” albo „piper” – lub podaj ścieżkę w ustawieniach)` : `Piper: ${e.message}`;
   }
 
   private onOut(d: string) {
@@ -195,7 +211,7 @@ export class TtsService {
   }
 
   private piperFor(p: TtsProvider, speaker: string): Piper {
-    const command = p.command ?? "piper";
+    const command = p.command ?? defaultPiperCommand();
     const cur = this.piper;
     if (cur?.alive && cur.command === command && cur.model === p.model && cur.speaker === speaker) return cur;
     cur?.close();
