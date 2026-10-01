@@ -2,6 +2,16 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Głos Etap 1: logika rozmowy – 2026-10-01 (Claude, gałąź `glos`, eksperyment z `docs/plan-glos.md`)
+
+- `src/voice/voice.ts`: `parseTtsConfig` (`tts.json`, silniki `speech` = `/audio/speech` i `piper`, szablony OpenAI / lokalny / Piper, klucze `tts-<id>`), `parseVoiceConfig` (`voice.json`: mózg `ModelRef`, silnik TTS, głos, słuchawki).
+- `splitSentences(buffer, final)`: zdania ze strumienia dla TTS. Granica wymaga białego znaku po sobie, skróty („np.”, „m.in.”), inicjały i liczebniki nie tną, w bloku kodu nie tnie, zdanie > 200 znaków tnie na przecinku. Test: strumień kawałkami = całość.
+- `speakable(md)`: markdown → tekst do czytania (kod pominięty, linki = opis, bez emoji).
+- `voiceReducer`: stany `idle/listening/transcribing/thinking/speaking`, przerwanie zostawia tylko zagrane zdania, zdarzenia mają numer wymiany (spóźnione z przerwanej odpowiedzi są ignorowane), transkrypt w trakcie dalszego mówienia dokleja się do następnego. Znaczniki czasu kroków w `VoiceExchange.t`.
+- `voiceTurns` / `voiceCliPrompt` / `voicePrompt` (krótkie odpowiedzi mową; z listą paneli opisuje `open_panes`).
+- Sprawdzenia: typecheck, `pnpm test` (51 plików, 544 testy; 25 nowych w `src/voice/voice.test.ts`), electron typecheck + build – przechodzą.
+- Niesprawdzone: nic z tego nie jest jeszcze podpięte (etapy 2–3).
+
 ## Dyktowanie głosem (2026-10-01, poza planem M5)
 
 - Mikrofon w nagłówku każdego panelu (`Pane.tsx`, `useDictation.ts`): klik = nagrywa, drugi klik = transkrypcja, tekst wchodzi do terminala wklejką **bez Entera**. Rail → „Dyktowanie” (`VoiceDialog.tsx`) wybiera silnik.

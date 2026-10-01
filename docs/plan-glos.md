@@ -104,7 +104,7 @@ Nowa zależność: tylko `@ricky0123/vad-web` (z `onnxruntime-web`), w etapie 3.
 
 ## Postęp
 
-- [ ] Etap 1 (L) – logika rozmowy bez UI
+- [x] Etap 1 (L) – logika rozmowy bez UI
 - [ ] Etap 2 (C) – silniki TTS w procesie głównym
 - [ ] Etap 3 (C) – kuleczka: rozmowa na żywo bez narzędzi
 - [ ] Etap 4 (C) – ustawienia rozmowy
