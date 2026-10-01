@@ -39,6 +39,16 @@ ipcRenderer.on("chat_event", (_e, reqId: string, ev: { type: string }) => {
   sink(ev);
 });
 
+const botSinks = new Map<string, (e: { type: string }) => void>();
+ipcRenderer.on("bot_event", (_e, reqId: string, ev: { type: string }) => {
+  const sink = botSinks.get(reqId);
+  if (!sink) return;
+  if (ev.type === "done" || ev.type === "error") botSinks.delete(reqId);
+  sink(ev);
+});
+const approvalListeners = new Set<(e: unknown) => void>();
+ipcRenderer.on("bot_approval", (_e, ev: unknown) => approvalListeners.forEach((cb) => cb(ev)));
+
 const resizedListeners = new Set<() => void>();
 ipcRenderer.on("win_resized", () => resizedListeners.forEach((cb) => cb()));
 
@@ -56,6 +66,17 @@ contextBridge.exposeInMainWorld("agentsElectron", {
       chatSinks.delete(reqId);
       onEvent({ type: "error", message: String(err) } as { type: string });
     });
+  },
+  botSend(reqId: string, chatJson: string, req: unknown, onEvent: (e: { type: string }) => void) {
+    botSinks.set(reqId, onEvent);
+    void ipcRenderer.invoke("bot_send", reqId, chatJson, req).catch((err: unknown) => {
+      botSinks.delete(reqId);
+      onEvent({ type: "error", message: String(err) } as { type: string });
+    });
+  },
+  onBotApproval(cb: (e: unknown) => void) {
+    approvalListeners.add(cb);
+    return () => void approvalListeners.delete(cb);
   },
   async spawnPty(spec: unknown, onData: Sinks["data"], onExit: Sinks["exit"]) {
     const id: number = await ipcRenderer.invoke("pty_spawn", spec);

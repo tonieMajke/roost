@@ -19,7 +19,6 @@ import {
   SEARCH_SYSTEM,
   sortChats,
   supportsSearch,
-  withDiscovered,
   wireHistory,
   type Chat,
   type ChatMeta,
@@ -33,6 +32,7 @@ import { IconButton } from "../IconButton";
 import { Composer } from "./Composer";
 import { Thread } from "./Thread";
 import { ProvidersDialog } from "./ProvidersDialog";
+import { useProviders } from "./useProviders";
 import { ModeTabs, type Mode } from "./ModeTabs";
 import "./chat.css";
 
@@ -68,9 +68,7 @@ type Props = {
 };
 
 export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpenAppearance }: Props) {
-  const [providers, setProviders] = useState<ProviderDef[]>([]);
-  const [offline, setOffline] = useState<Record<string, string>>({});
-  const [errors, setErrors] = useState<string[]>([]);
+  const { providers, offline, errors, setErrors, discovered, reload: loadConfig } = useProviders();
   const [list, setList] = useState<ChatMeta[]>([]);
   const [chat, setChat] = useState<Chat | null>(null);
   const [model, setModel] = useState<ModelRef | null>(() => stored<ModelRef>(MODEL_KEY));
@@ -89,42 +87,16 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
   const stick = useRef(true);
   const frame = useRef(0);
 
-  // Konfiguracja, potem wykrywanie modeli u każdego dostawcy z `discover` (równolegle).
-  // `gen` odrzuca wyniki starszego wczytania (zapis w oknie „Dostawcy” wczytuje od nowa).
-  const gen = useRef(0);
-  const discovered = useRef<Record<string, string[]>>({});
-  const loadConfig = useCallback(async () => {
-    const my = ++gen.current;
-    const cfg = await backend.chatConfig().catch((e: unknown) => ({ providers: [] as ProviderDef[], errors: [String(e)] }));
-    if (my !== gen.current) return;
-    setProviders(cfg.providers);
-    setErrors(cfg.errors);
-    setOffline({});
-    discovered.current = {};
-    for (const p of cfg.providers.filter((p) => p.discover)) {
-      backend
-        .chatModels(p)
-        .then((ids) => {
-          if (my !== gen.current) return;
-          discovered.current[p.id] = ids;
-          setProviders((prev) => prev.map((x) => (x.id === p.id ? withDiscovered(x, ids) : x)));
-        })
-        .catch((e: unknown) => my === gen.current && setOffline((prev) => ({ ...prev, [p.id]: e instanceof Error ? e.message : String(e) })));
-    }
-  }, []);
-
   useEffect(() => {
     let on = true;
-    void loadConfig();
     void backend
       .chatList()
       .then((l) => on && setList(l))
       .catch(() => undefined);
     return () => {
       on = false;
-      gen.current++;
     };
-  }, [loadConfig]);
+  }, []);
 
   // Brak zapamiętanego modelu (pierwszy start) → pierwszy dostępny, gdy lista się zapełni.
   useEffect(() => {

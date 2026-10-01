@@ -1,19 +1,28 @@
 //! Claude z subskrypcji: `claude -p` ze strumieniem JSON. Bez narzędzi poza wyszukiwaniem,
 //! bez MCP, ustawień i CLAUDE.md (własny pusty katalog roboczy, ten sam dla `--resume`).
+//! Tryb bota (`req.mcp`): dochodzi tylko serwer MCP `bot`, wbudowane Bash/Edit dalej wyłączone.
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import type { ChatEvent, ChatRequest } from "../../../src/chat";
 import { runCli, type LineParser } from "./cli";
 
 const SEARCH_TOOLS = "WebSearch,WebFetch";
+/** Narzędzie czeka na zgodę użytkownika: claude nie może zerwać wywołania po domyślnym limicie. */
+export const MCP_TOOL_TIMEOUT_MS = 6 * 60 * 60 * 1000;
 
-export function claudeArgs(req: ChatRequest): string[] {
+/** `mcpConfig`: plik z serwerem `bot` (tryb bota). */
+export function claudeArgs(req: ChatRequest, mcpConfig?: string): string[] {
   const args = [
     "-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
     "--strict-mcp-config", "--disable-slash-commands", "--setting-sources", "",
     "--system-prompt", req.system,
     "--tools", req.search ? SEARCH_TOOLS : "",
   ];
-  if (req.search) args.push("--allowedTools", SEARCH_TOOLS);
+  if (mcpConfig) args.push("--mcp-config", mcpConfig);
+  const allowed = [...(mcpConfig ? ["mcp__bot__*"] : []), ...(req.search ? [SEARCH_TOOLS] : [])];
+  if (allowed.length) args.push("--allowedTools", allowed.join(","));
   if (req.model) args.push("--model", req.model);
   if (req.session) args.push(req.session.resume ? "--resume" : "--session-id", req.session.id);
   return args;
@@ -93,6 +102,17 @@ export class ClaudeParser implements LineParser {
   }
 }
 
-export function streamClaude(req: ChatRequest, cwd: string, signal: AbortSignal, emit: (e: ChatEvent) => void): Promise<void> {
-  return runCli(req.provider.command || "claude", claudeArgs(req), req.prompt, cwd, new ClaudeParser(), signal, emit);
+export async function streamClaude(req: ChatRequest, cwd: string, signal: AbortSignal, emit: (e: ChatEvent) => void): Promise<void> {
+  const program = req.provider.command || "claude";
+  if (!req.mcp) return runCli(program, claudeArgs(req), req.prompt, cwd, new ClaudeParser(), signal, emit);
+  // Konfiguracja z tokenem sesji: prywatny katalog, plik 0600, usuwany po odpowiedzi.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agents-mcp-"));
+  const file = path.join(dir, "mcp.json");
+  try {
+    fs.writeFileSync(file, JSON.stringify({ mcpServers: { bot: { type: "stdio", ...req.mcp } } }), { mode: 0o600 });
+    const env = { MCP_TOOL_TIMEOUT: String(MCP_TOOL_TIMEOUT_MS) };
+    await runCli(program, claudeArgs(req, file), req.prompt, cwd, new ClaudeParser(), signal, emit, env);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }

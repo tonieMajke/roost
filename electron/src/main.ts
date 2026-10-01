@@ -14,9 +14,14 @@ import { claudeSummary, piSummary } from "./summary";
 import { ChatStore } from "./chat/store";
 import { chatConfigLoad, chatConfigSave, defaultChatService } from "./chat/service";
 import { KeyStore, passwordStore } from "./chat/keys";
+import { sttConfigLoad, sttConfigSave, transcribe } from "./stt";
+import { activeStt, parseSttConfig, sttKeyId, type SttProvider } from "../../src/stt";
 import { BotStore, type ChatKind, type MemoryTarget } from "./bot/store";
 import { ApprovalBroker } from "./bot/approvals";
-import type { ApprovalDecision } from "../../src/bot";
+import { ToolBridge } from "./bot/bridge";
+import { BotService } from "./bot/service";
+import { ensureFreeToken, freetokenInstance } from "./chat/freetoken";
+import { isSkillName, parseBotChat, type ApprovalDecision } from "../../src/bot";
 import type { ChatRequest, ProviderDef } from "../../src/chat";
 
 // Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
@@ -47,6 +52,21 @@ let win: BrowserWindow | null = null;
 // Prośby botów o zgodę idą do okna (`bot_approval`); decyzja wraca przez `bot_approve`.
 const approvals = new ApprovalBroker((e) => {
   if (win && !win.isDestroyed()) win.webContents.send("bot_approval", e);
+});
+
+// Most MCP dla claude/codex w trybie bota: gniazdo powstaje przy pierwszej takiej rozmowie.
+let bridge: Promise<ToolBridge> | null = null;
+const botService = new BotService({
+  store: bots,
+  broker: approvals,
+  bridge: () => (bridge ??= ToolBridge.start()),
+  execPath: process.execPath,
+  mcpScript: path.join(__dirname, "mcp-server.cjs"),
+  key: (p) => keys.get(p.id, p.keyEnv),
+  beforeOpenAI: async (req, signal, emit) => {
+    const ft = freetokenInstance(req.provider.baseUrl, req.model);
+    if (ft) await ensureFreeToken(req.model, ft, signal, (text) => emit({ type: "thinking", text: `${text}\n` }));
+  },
 });
 
 /** Każde wywołanie z `backend-electron.ts` to `invoke(name, ...args)`; błąd wraca jako odrzucenie. */
@@ -112,6 +132,17 @@ ipcMain.handle("chat_send", (event, reqId: string, req: ChatRequest) => {
     if (!sender.isDestroyed()) sender.send("chat_event", reqId, e);
   });
 });
+// Dyktowanie: silnik i język z `stt.json`, klucz z sejfu; do strony wraca sam tekst.
+handle("stt_config", () => sttConfigLoad(config.configDir()));
+handle("stt_config_save", (json: string) => sttConfigSave(config.configDir(), json));
+handle("stt_key_status", (ps: SttProvider[]) => keys.status(ps.map((p) => ({ id: sttKeyId(p.id), keyEnv: p.keyEnv }))));
+handle("stt_set_key", (id: string, key: string | null) => keys.set(sttKeyId(id), key));
+handle("stt_transcribe", (audio: Uint8Array, mime: string) => {
+  const { config: cfg } = parseSttConfig(sttConfigLoad(config.configDir()));
+  const p = activeStt(cfg);
+  if (!p) throw new Error("nie wybrano silnika transkrypcji (Ustawienia głosu)");
+  return transcribe(p, keys.get(sttKeyId(p.id), p.keyEnv), audio, mime, cfg.language);
+});
 // Zakładka Bot (M5): boty, pamięć, skille, harmonogram i rozmowy na dysku.
 handle("bot_list", () => bots.list());
 handle("bot_create", (json: string) => bots.create(json));
@@ -130,9 +161,39 @@ handle("bot_chat_load", (id: string, kind: ChatKind, chatId: string) => bots.cha
 handle("bot_chat_save", (json: string) => bots.chatSave(json));
 handle("bot_approvals", () => approvals.list());
 handle("bot_approve", (id: string, decision: ApprovalDecision) => approvals.decide(id, decision));
+// Import skilli z claude: tylko odczyt `~/.claude/skills`, kopia do folderu bota.
+const claudeSkills = () => path.join(app.getPath("home"), ".claude", "skills");
+handle("bot_skill_sources", () => BotStore.skillSources(claudeSkills()));
+handle("bot_skill_import", (id: string, name: string) => {
+  if (!isSkillName(name)) throw new Error(`zła nazwa skilla: ${name}`);
+  return bots.skillImport(id, path.join(claudeSkills(), name));
+});
+handle("bot_avatar_import", (id: string, file: string) => bots.avatarImport(id, file));
+handle("bot_avatar", (id: string, name: string) => bots.avatar(id, name));
+handle("bot_abort", (reqId: string) => botService.abort(reqId));
+// Odpowiedź bota płynie zdarzeniami `bot_event` (reqId, ChatEvent), jak `chat_event`.
+ipcMain.handle("bot_send", (event, reqId: string, chatJson: string, req: ChatRequest) => {
+  const sender = event.sender;
+  const c = parseBotChat(chatJson);
+  const emit = (e: unknown) => {
+    if (!sender.isDestroyed()) sender.send("bot_event", reqId, e);
+  };
+  if (!c) return emit({ type: "error", message: "zła rozmowa bota" });
+  void botService.send(reqId, c, req, emit);
+});
 handle("bot_chat_delete", (id: string, kind: ChatKind, chatId: string) => bots.chats(id, kind).delete(chatId));
 handle("pick_dir", async () => {
   const opts: Electron.OpenDialogOptions = { title: "Katalog projektu", properties: ["openDirectory"] };
+  const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+  return res.canceled ? null : (res.filePaths[0] ?? null);
+});
+
+handle("pick_image", async () => {
+  const opts: Electron.OpenDialogOptions = {
+    title: "Obrazek awatara",
+    properties: ["openFile"],
+    filters: [{ name: "Obrazy", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
+  };
   const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
   return res.canceled ? null : (res.filePaths[0] ?? null);
 });
@@ -189,6 +250,7 @@ function createWindow() {
     if (details.isMainFrame && !details.isSameDocument) {
       ptys.killAllAsync();
       chat.abortAll();
+      botService.abortAll();
       approvals.denyAll();
     }
   });
@@ -210,5 +272,7 @@ app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
   ptys.killAll();
   chat.abortAll();
+  botService.abortAll();
   approvals.denyAll();
+  void bridge?.then((b) => b.close());
 });

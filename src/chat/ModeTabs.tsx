@@ -1,19 +1,23 @@
-import { MessagesSquare, SquareTerminal } from "lucide-react";
+import { Bot, MessagesSquare, SquareTerminal } from "lucide-react";
 
-export type Mode = "code" | "chat";
+export type Mode = "code" | "chat" | "bot";
 
-/** Przełącznik zakładek na górze lewej kolumny (szyna projektów / lista rozmów). */
+const TABS: { mode: Mode; label: string; title: string; icon: typeof Bot }[] = [
+  { mode: "code", label: "Code", title: "Agenci (Ctrl+Alt+C)", icon: SquareTerminal },
+  { mode: "chat", label: "Czat", title: "Czat (Ctrl+Alt+C)", icon: MessagesSquare },
+  { mode: "bot", label: "Bot", title: "Boty (Ctrl+Alt+C)", icon: Bot },
+];
+
+/** Przełącznik zakładek na górze lewej kolumny (szyna projektów / lista rozmów / boty). */
 export function ModeTabs({ mode, onMode }: { mode: Mode; onMode(m: Mode): void }) {
   return (
     <div className="mode-tabs" role="tablist" aria-label="Zakładka">
-      <button type="button" role="tab" aria-selected={mode === "code"} className={mode === "code" ? "is-on" : ""} title="Agenci (Ctrl+Alt+C)" onClick={() => onMode("code")}>
-        <SquareTerminal aria-hidden />
-        <span>Code</span>
-      </button>
-      <button type="button" role="tab" aria-selected={mode === "chat"} className={mode === "chat" ? "is-on" : ""} title="Czat (Ctrl+Alt+C)" onClick={() => onMode("chat")}>
-        <MessagesSquare aria-hidden />
-        <span>Czat</span>
-      </button>
+      {TABS.map((t) => (
+        <button key={t.mode} type="button" role="tab" aria-selected={mode === t.mode} className={mode === t.mode ? "is-on" : ""} title={t.title} onClick={() => onMode(t.mode)}>
+          <t.icon aria-hidden />
+          <span>{t.label}</span>
+        </button>
+      ))}
     </div>
   );
 }

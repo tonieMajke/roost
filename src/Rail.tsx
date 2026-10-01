@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import { agentColor, type AgentDef } from "./agents";
 import { IconButton } from "./IconButton";
-import { FolderPlus, PanelLeft, SlidersHorizontal, X } from "lucide-react";
+import { FolderPlus, Mic, PanelLeft, SlidersHorizontal, X } from "lucide-react";
 import { paneStatus, projectState, type PaneState } from "./activity";
 import type { Workspace } from "./workspace";
 import { ModeTabs, type Mode } from "./chat/ModeTabs";
@@ -25,6 +25,8 @@ type Props = {
   onToggleRail(): void;
   /** Okno „Wygląd” (etap 5). */
   onOpenAppearance(): void;
+  /** Okno „Dyktowanie”: silnik transkrypcji dla mikrofonu w panelach. */
+  onOpenVoice(): void;
 };
 
 /** Treść title dla kropki projektu — sama kropka nie mówi, który panel. */
@@ -47,6 +49,7 @@ export function Rail({
   onRemove,
   onToggleRail,
   onOpenAppearance,
+  onOpenVoice,
 }: Props) {
   const keyOf = (id: string) => `p:${id}`;
   const armRef = useRef<Arm>(null);
@@ -179,6 +182,7 @@ export function Rail({
       </div>
       <footer className="rail-foot">
         <IconButton icon={FolderPlus} label="Dodaj projekt" shortcut="Ctrl+Alt+P" onClick={onAddProject} />
+        <IconButton icon={Mic} label="Dyktowanie" onClick={onOpenVoice} />
         <IconButton icon={SlidersHorizontal} label="Wygląd" onClick={onOpenAppearance} />
       </footer>
     </aside>

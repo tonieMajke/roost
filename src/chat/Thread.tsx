@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, type ReactNode } from "react";
 import { AlertTriangle, ChevronRight, Globe, Pencil, RotateCcw } from "lucide-react";
 import { domain, linkCitations, modelLabel, type Message, type ProviderDef } from "../chat";
 import { backend } from "../backend";
@@ -90,12 +90,16 @@ function Thinking({ m, live }: { m: Message; live: boolean }) {
   );
 }
 
+/** Własna treść odpowiedzi (zakładka Bot: tekst przeplatany kartami narzędzi); `null` = zwykły markdown. */
+export type RenderBody = (m: Message, live: boolean) => ReactNode | null;
+
 type Props = {
   messages: Message[];
   providers: ProviderDef[];
   liveId: string | null;
   onRetry(): void;
   onEdit(index: number): void;
+  renderBody?: RenderBody;
 };
 
 const AssistantMessage = memo(function AssistantMessage({
@@ -104,14 +108,17 @@ const AssistantMessage = memo(function AssistantMessage({
   live,
   last,
   onRetry,
+  renderBody,
 }: {
   m: Message;
   providers: ProviderDef[];
   live: boolean;
   last: boolean;
   onRetry(): void;
+  renderBody?: RenderBody;
 }) {
-  const waiting = live && m.text === "" && !m.thinking && !m.searches?.length;
+  const body = renderBody?.(m, live) ?? null;
+  const waiting = live && m.text === "" && !m.thinking && !m.searches?.length && body === null;
   return (
     <div className={`chat-msg is-assistant${live ? " is-live" : ""}`}>
       <Searches m={m} live={live} />
@@ -123,11 +130,12 @@ const AssistantMessage = memo(function AssistantMessage({
           <span />
         </div>
       )}
-      {m.text !== "" && (
-        <div className={`chat-md${live ? " is-live" : ""}`}>
-          <Markdown text={linkCitations(m.text, m.sources)} />
-        </div>
-      )}
+      {body ??
+        (m.text !== "" && (
+          <div className={`chat-md${live ? " is-live" : ""}`}>
+            <Markdown text={linkCitations(m.text, m.sources)} />
+          </div>
+        ))}
       {m.stopped && <div className="chat-note">przerwano</div>}
       {m.error && (
         <div className="chat-error">
@@ -155,7 +163,7 @@ const AssistantMessage = memo(function AssistantMessage({
   );
 });
 
-export function Thread({ messages, providers, liveId, onRetry, onEdit }: Props) {
+export function Thread({ messages, providers, liveId, onRetry, onEdit, renderBody }: Props) {
   const lastUser = messages.map((m) => m.role).lastIndexOf("user");
   return (
     <div className="chat-thread">
@@ -174,7 +182,7 @@ export function Thread({ messages, providers, liveId, onRetry, onEdit }: Props) 
             </div>
           </div>
         ) : (
-          <AssistantMessage key={m.id} m={m} providers={providers} live={m.id === liveId} last={i === messages.length - 1 && liveId === null} onRetry={onRetry} />
+          <AssistantMessage key={m.id} m={m} providers={providers} live={m.id === liveId} last={i === messages.length - 1 && liveId === null} onRetry={onRetry} renderBody={renderBody} />
         ),
       )}
     </div>

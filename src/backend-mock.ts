@@ -1,6 +1,7 @@
 import { NO_ACCOUNTS, type Accounts } from "./accounts";
 import { DEFAULT_AGENTS } from "./agents";
 import type { Backend, ExitInfo, PtyHandle, SpawnSpec } from "./backend";
+import { parseSttConfig, sttConfigJson, sttKeyId } from "./stt";
 import { mockBotBackend } from "./bot-mock";
 import { buildChatConfig, chatMeta, DEFAULT_PROVIDERS, parseChat, sortChats, type Chat, type ChatEvent, type ChatMeta } from "./chat";
 
@@ -234,6 +235,7 @@ export const mockBackend: Backend = {
     const path = ask?.trim();
     return path ? path : null;
   },
+  pickImage: async () => null, // podgląd nie czyta plików z dysku
   homeDir: async () => "/home/podglad",
 
   // Preview: the workspace lives in localStorage (private mode can throw -> treat as empty).
@@ -318,6 +320,39 @@ export const mockBackend: Backend = {
     } catch {
       // j.w.
     }
+  },
+  // Podgląd: konfiguracja i „klucze” (jest/nie ma) w localStorage; transkrypcja to stały tekst.
+  async sttConfig() {
+    let saved: string | null = null;
+    try {
+      saved = globalThis.localStorage?.getItem("aw-stt-config") ?? null;
+    } catch {
+      // brak localStorage: domyślna konfiguracja
+    }
+    return parseSttConfig(saved);
+  },
+  async sttSaveConfig(config) {
+    try {
+      globalThis.localStorage?.setItem("aw-stt-config", sttConfigJson(config));
+    } catch {
+      // j.w.
+    }
+  },
+  async sttKeyStatus(ps) {
+    const keys = mockKeys();
+    return Object.fromEntries(ps.map((p) => [p.id, keys.includes(sttKeyId(p.id)) ? ("stored" as const) : null]));
+  },
+  async sttSetKey(id, key) {
+    const keys = mockKeys().filter((k) => k !== sttKeyId(id));
+    try {
+      globalThis.localStorage?.setItem("aw-chat-keys", JSON.stringify(key ? [...keys, sttKeyId(id)] : keys));
+    } catch {
+      // j.w.
+    }
+  },
+  async sttTranscribe() {
+    await new Promise((r) => setTimeout(r, 700));
+    return "To jest podgląd dyktowania, bez prawdziwej transkrypcji.";
   },
   async chatList(): Promise<ChatMeta[]> {
     return sortChats(Object.values(mockChats()).map(chatMeta));

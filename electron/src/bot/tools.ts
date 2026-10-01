@@ -325,7 +325,7 @@ async function exec(tool: ToolName, a: Record<string, unknown>, ctx: ToolContext
       const name = need(a, "name");
       if (!isSkillName(name)) fail("`name`: małe litery, cyfry i myślniki, ≤ 64 znaki");
       if (store.skill(bot.id, name) !== null) fail(`skill „${name}” już jest – popraw go przez skill_patch`);
-      store.skillSave(bot.id, skillMarkdown({ name, description: need(a, "description"), body: need(a, "body") }));
+      store.skillSave(bot.id, skillMarkdown({ name, description: need(a, "description"), body: need(a, "body") }), "bot");
       return `zapisano skill „${name}”`;
     }
     case "skill_patch": {
@@ -488,7 +488,7 @@ function botCreate(a: Record<string, unknown>, ctx: ToolContext): string {
   });
   if (r.errors.length) fail(r.errors.join("; "));
   ctx.store.create(serializeBot(bot));
-  for (const md of mds) ctx.store.skillSave(bot.id, md);
+  for (const md of mds) ctx.store.skillSave(bot.id, md, "bot");
   if (r.routines.length) ctx.store.routinesSave(bot.id, JSON.stringify({ routines: r.routines }, null, 2));
   const extra = [mds.length ? `${mds.length} skill(e)` : "", r.routines.length ? `${r.routines.length} zadanie(a) w harmonogramie – wyłączone, użytkownik włącza je sam` : ""].filter(Boolean);
   return `utworzono bota „${bot.name}” (id: ${bot.id})${extra.length ? `, ${extra.join(", ")}` : ""}`;

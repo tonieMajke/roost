@@ -14,7 +14,7 @@ export type Command =
   | { type: "newProject" }
   | { type: "toggleRail" }
   | { type: "toggleDock" }
-  | { type: "toggleChat" } // M3: zakładka Code ↔ Czat
+  | { type: "toggleChat" } // zakładki po kolei: Code → Czat → Bot
   | { type: "fontSize"; step: 1 | -1 | 0 }; // terminal font: bigger, smaller, default
 
 const ARROWS: Partial<Record<string, Dir>> = { arrowleft: "left", arrowright: "right", arrowup: "up", arrowdown: "down" };

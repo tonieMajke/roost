@@ -133,3 +133,55 @@ describe("BotStore: harmonogram i rozmowy", () => {
     expect(() => store.chats("rust", "x" as "runs")).toThrow("nieznany");
   });
 });
+
+describe("BotStore: autor skilla, import, awatar", () => {
+  beforeEach(() => store.create(serializeBot(bot("rust"))));
+  const md = (name: string, body = "kroki") => skillMarkdown({ name, description: `opis ${name}`, body });
+
+  it("autor zapisany przy tworzeniu, poprawka go nie zmienia", () => {
+    store.skillSave("rust", md("a"), "bot");
+    store.skillSave("rust", md("b"));
+    store.skillSave("rust", md("a", "nowe kroki"), "user");
+    expect(store.skills("rust").map((s) => [s.name, s.by])).toEqual([
+      ["a", "bot"],
+      ["b", "user"],
+    ]);
+  });
+
+  it("import kopiuje katalog z plikami (dowiązanie jako plik), źródło bez zmian, drugi raz = błąd", () => {
+    const src = path.join(dir, "claude-skills");
+    fs.mkdirSync(path.join(src, "pdf", "scripts"), { recursive: true });
+    fs.writeFileSync(path.join(src, "pdf", "SKILL.md"), md("pdf"));
+    fs.writeFileSync(path.join(src, "pdf", "scripts", "run.sh"), "echo hej");
+    fs.writeFileSync(path.join(dir, "cel.txt"), "z dowiązania");
+    fs.symlinkSync(path.join(dir, "cel.txt"), path.join(src, "pdf", "link.txt"));
+    fs.mkdirSync(path.join(src, "zly"));
+    fs.writeFileSync(path.join(src, "zly", "SKILL.md"), "bez nagłówka");
+    expect(BotStore.skillSources(src)).toEqual([
+      { name: "pdf", description: "opis pdf" },
+      { name: "zly", description: "", error: expect.any(String) },
+    ]);
+    expect(store.skillImport("rust", path.join(src, "pdf"))).toBe("pdf");
+    const dest = path.join(dir, "bots", "rust", "skills", "pdf");
+    expect(fs.readFileSync(path.join(dest, "scripts", "run.sh"), "utf8")).toBe("echo hej");
+    expect(fs.lstatSync(path.join(dest, "link.txt")).isSymbolicLink()).toBe(false);
+    expect(store.skills("rust")[0]).toMatchObject({ name: "pdf", by: "import" });
+    expect(() => store.skillImport("rust", path.join(src, "pdf"))).toThrow("już jest");
+    expect(fs.lstatSync(path.join(src, "pdf", "link.txt")).isSymbolicLink()).toBe(true);
+    expect(BotStore.skillSources(path.join(dir, "nie-ma"))).toEqual([]);
+  });
+
+  it("awatar: kopia jako avatar.<ext>, poprzedni usunięty, data URL; zły typ i zła nazwa", () => {
+    const png = path.join(dir, "kot.PNG");
+    fs.writeFileSync(png, Buffer.from([1, 2, 3]));
+    expect(store.avatarImport("rust", png)).toBe("avatar.png");
+    fs.writeFileSync(path.join(dir, "pies.webp"), "x");
+    expect(store.avatarImport("rust", path.join(dir, "pies.webp"))).toBe("avatar.webp");
+    expect(fs.existsSync(path.join(dir, "bots", "rust", "avatar.png"))).toBe(false);
+    expect(store.avatar("rust", "avatar.webp")).toBe(`data:image/webp;base64,${Buffer.from("x").toString("base64")}`);
+    expect(store.avatar("rust", "../bot.json")).toBeNull();
+    expect(store.avatar("rust", "avatar.png")).toBeNull();
+    fs.writeFileSync(path.join(dir, "a.svg"), "<svg/>");
+    expect(() => store.avatarImport("rust", path.join(dir, "a.svg"))).toThrow("tylko PNG");
+  });
+});

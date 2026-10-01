@@ -6,7 +6,8 @@ import type { ClaudeLimits } from "./limits";
 import type { Accounts } from "./accounts";
 import type { Handoff } from "./handoff";
 import type { Chat, ChatConfig, ChatEvent, ChatMeta, ChatRequest, ProviderDef } from "./chat";
-import type { BotChat, BotDef, Routine } from "./bot";
+import type { ApprovalDecision, ApprovalRequest, BotChat, BotDef, Routine } from "./bot";
+import type { SttConfig, SttProvider } from "./stt";
 
 export type KeyState = "stored" | "env" | null;
 
@@ -66,6 +67,8 @@ export interface Backend {
   dirExists(path: string): Promise<boolean>;
   /** Folder wybrany przez użytkownika; `null` = anulowanie. */
   pickDir(): Promise<string | null>;
+  /** Obrazek (PNG/JPG/WebP/GIF) wybrany przez użytkownika; `null` = anulowanie. */
+  pickImage(): Promise<string | null>;
   /** Katalog domowy, żeby zapisywać ścieżki jako `~/...` (patrz `src/paths.ts`). */
   homeDir(): Promise<string>;
   /** Treść `workspace.json`; `null` = pierwszy start aplikacji. */
@@ -114,6 +117,14 @@ export interface Backend {
   /** Zapis `SKILL.md`; zwraca nazwę z frontmattera. */
   botSkillSave(id: string, md: string): Promise<string>;
   botSkillDelete(id: string, name: string): Promise<void>;
+  /** Skille z `~/.claude/skills` do importu (tylko odczyt). */
+  botSkillSources(): Promise<BotSkillSource[]>;
+  /** Kopia skilla z `~/.claude/skills/<name>` do bota; zwraca nazwę. */
+  botSkillImport(id: string, name: string): Promise<string>;
+  /** Kopia obrazka do folderu bota; zwraca nazwę pliku do `avatar.image`. */
+  botAvatarImport(id: string, file: string): Promise<string>;
+  /** Awatar jako data URL; `null` = brak pliku. */
+  botAvatar(id: string, name: string): Promise<string | null>;
   botRoutines(id: string): Promise<{ routines: Routine[]; errors: string[] }>;
   botRoutinesSave(id: string, routines: Routine[]): Promise<void>;
   /** Rozmowy (`chats`) albo przebiegi z harmonogramu (`runs`). */
@@ -122,13 +133,32 @@ export interface Backend {
   /** Katalog z `chat.bot`, rodzaj z `chat.routine`. */
   botChatSave(chat: BotChat): Promise<void>;
   botChatDelete(id: string, kind: BotChatKind, chatId: string): Promise<void>;
+  /** Odpowiedź bota: `chat` z ostatnim pytaniem, `req` jak w Czacie (dostawca, model, sesja CLI,
+   *  `prompt`); prompt systemowy i narzędzia dokłada proces główny. Zwraca Stop. */
+  botSend(chat: BotChat, req: ChatRequest, onEvent: (e: ChatEvent) => void): () => void;
+  /** Czekające prośby o zgodę (po przeładowaniu strony). */
+  botApprovals(): Promise<ApprovalRequest[]>;
+  botApprove(id: string, decision: ApprovalDecision): Promise<void>;
+  /** Nowa prośba o zgodę albo rozstrzygnięta; zwraca wyrejestrowanie. */
+  onBotApproval(cb: (e: BotApprovalChange) => void): () => void;
+  /** Dyktowanie (mikrofon w panelu): silniki transkrypcji z `stt.json`. Błędy pliku w `errors`. */
+  sttConfig(): Promise<{ config: SttConfig; errors: string[] }>;
+  sttSaveConfig(config: SttConfig): Promise<void>;
+  /** Klucz silnika (sejf systemowy / zmienna środowiskowa) po id silnika. */
+  sttKeyStatus(providers: SttProvider[]): Promise<Record<string, KeyState>>;
+  /** `null` usuwa klucz; odrzuca, gdy sejfu nie ma. */
+  sttSetKey(providerId: string, key: string | null): Promise<void>;
+  /** Nagranie → tekst z wybranego silnika; odrzuca z powodem po polsku. */
+  sttTranscribe(audio: Uint8Array, mime: string): Promise<string>;
   /** Własny pasek tytułu; brak = podgląd w przeglądarce, bez okna. */
   window?: WindowControls;
 }
 
 export type BotMemoryTarget = "memory" | "user";
+export type BotApprovalChange = { type: "request"; req: ApprovalRequest } | { type: "resolved"; id: string; decision: ApprovalDecision };
 export type BotChatKind = "chats" | "runs";
-export type BotSkillMeta = { name: string; description: string; updated: number; error?: string };
+export type BotSkillMeta = { name: string; description: string; updated: number; by?: "bot" | "user" | "import"; error?: string };
+export type BotSkillSource = { name: string; description: string; error?: string };
 
 export const inElectron = typeof window !== "undefined" && "agentsElectron" in window;
 

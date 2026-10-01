@@ -16,7 +16,7 @@ export type Ui = {
   rail: "open" | "closed"; // left rail: full width or 56 px of keys and dots
   feed: "all" | "project"; // dock „Na żywo”: every project or only the active one
   fontSize: number; // terminal font px, FONT_MIN..FONT_MAX (Ctrl+Alt+= / - / 0)
-  mode: "code" | "chat"; // zakładka: siatka terminali albo Czat (M3), Ctrl+Alt+C
+  mode: "code" | "chat" | "bot"; // zakładka: siatka terminali, Czat (M3), Bot (M5); Ctrl+Alt+C po kolei
 };
 
 export const FONT_MIN = 10;
@@ -160,8 +160,8 @@ export function parseUi(raw: unknown): { ui: Ui; errors: string[] } {
     else errors.push(`ui.feed: \`${String(r.feed)}\` is not one of all, project, using \`${DEFAULT_UI.feed}\``);
   }
   if (r.mode !== undefined) {
-    if (r.mode === "code" || r.mode === "chat") ui.mode = r.mode;
-    else errors.push(`ui.mode: \`${String(r.mode)}\` is not one of code, chat, using \`${DEFAULT_UI.mode}\``);
+    if (r.mode === "code" || r.mode === "chat" || r.mode === "bot") ui.mode = r.mode;
+    else errors.push(`ui.mode: \`${String(r.mode)}\` is not one of code, chat, bot, using \`${DEFAULT_UI.mode}\``);
   }
   if (r.dock !== undefined) {
     if (typeof r.dock === "boolean") ui.dock = r.dock;
@@ -193,3 +193,7 @@ export function uiClasses(ui: Ui): string {
     .filter(Boolean)
     .join(" ");
 }
+
+const MODES: Ui["mode"][] = ["code", "chat", "bot"];
+/** Ctrl+Alt+C: Code → Czat → Bot → Code. */
+export const nextMode = (m: Ui["mode"]): Ui["mode"] => MODES[(MODES.indexOf(m) + 1) % MODES.length];

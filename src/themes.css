@@ -701,7 +701,13 @@
     radial-gradient(1px 1px at 30% 52%, rgba(255, 255, 255, 0.6), transparent), radial-gradient(1px 1px at 90% 88%, #fff, transparent),
     #05060a;
 }
-[data-theme="mglawica"] .pane { border-color: rgba(255, 255, 255, 0.12); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
+[data-theme="mglawica"] .pane {
+  border-color: rgba(255, 255, 255, 0.12); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+}
+/* tło-animacja (Nebula.tsx) leży pod siatką; w trybie Oszczędny blur odpada (koszt GPU przy 16 panelach) */
+.nebula { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.motion-lite .nebula ~ .grid .pane { -webkit-backdrop-filter: none; backdrop-filter: none; }
 /* brzeg w kolorze agenta, gasnący po przekątnej */
 [data-theme="mglawica"] .pane::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 3;
@@ -768,3 +774,23 @@
 [data-theme="rtec"] .ctx-bar span, [data-theme="rtec"] .bar span, [data-theme="rtec"] .ctx-row .bar span {
   border-radius: 4px; background: linear-gradient(180deg, #fff, var(--ag, #c9ced6) 45%, color-mix(in srgb, var(--ag, #c9ced6) 50%, #000));
 }
+
+/* radar w pulpicie (src/Radar.tsx, makieta K): tarcza, pierścienie 1/5/15 min, obracająca się wiązka */
+[data-theme="wieza"] .dock-radar .radar { width: 100%; height: auto; display: block; margin: 4px 0 6px; }
+[data-theme="wieza"] .r-disc { fill: #0a1d18; stroke: #1f6b50; }
+[data-theme="wieza"] .r-ring { fill: none; stroke: #1f6b50; stroke-dasharray: 3 5; }
+[data-theme="wieza"] .r-axis { stroke: #123b2d; }
+[data-theme="wieza"] .r-lbl { fill: #1f6b50; font: 20px "Share Tech Mono", monospace; }
+[data-theme="wieza"] .r-wedge { fill: #49f2a8; opacity: 0.1; }
+[data-theme="wieza"] .r-beam { stroke: #49f2a8; stroke-width: 1.5; opacity: 0.7; }
+[data-theme="wieza"] .r-sweep { transform-origin: 280px 280px; animation: radarBeam 4s linear infinite; }
+@keyframes radarBeam { to { transform: rotate(360deg); } }
+[data-theme="wieza"] .r-blip { cursor: pointer; outline: none; }
+[data-theme="wieza"] .r-blip rect { fill: #49f2a8; }
+[data-theme="wieza"] .r-blip text { fill: #49f2a8; font: 20px "Share Tech Mono", monospace; }
+[data-theme="wieza"] .r-blip.is-idle rect { fill: none; stroke: #1f6b50; stroke-width: 2.5; }
+[data-theme="wieza"] .r-blip.is-idle text, [data-theme="wieza"] .r-blip.is-done text { fill: #1f6b50; }
+[data-theme="wieza"] .r-blip.is-done rect { fill: #1f6b50; }
+[data-theme="wieza"] .r-blip:hover rect, [data-theme="wieza"] .r-blip:focus-visible rect { stroke: #fff; stroke-width: 2.5; }
+[data-theme="wieza"] .motion-lite .r-sweep { animation: none; }
+@media (prefers-reduced-motion: reduce) { [data-theme="wieza"] .r-sweep { animation: none; } }

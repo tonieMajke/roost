@@ -1,7 +1,7 @@
 /** Zakładka Bot (M5): model botów, pamięci, skilli i harmonogramu. Czyste funkcje,
  *  bez Reacta i IPC. Wspólne z `electron/src/bot/`. */
 
-import { freeId, parseChat, type Chat, type ModelRef } from "./chat";
+import { applyEvent, freeId, parseChat, type Chat, type ChatEvent, type ModelRef, type Turn } from "./chat";
 
 /** Grupy narzędzi, które użytkownik włącza w ustawieniach bota. */
 export type ToolGroup = "web" | "read" | "write" | "bash" | "memory" | "skills";
@@ -80,6 +80,21 @@ export type Routine = {
 
 export type ApprovalDecision = "once" | "chat" | "deny";
 
+/** Prośba narzędzia o zgodę, czekająca na kliknięcie w UI. */
+export type ApprovalRequest = {
+  id: string;
+  bot: string;
+  chat: string;
+  tool: ToolName;
+  /** Jedna linia do karty zgody: „Uruchomić `cargo test`?”. */
+  title: string;
+  /** Szczegóły pod spodem: polecenie, treść pliku, zmiana old→new, definicja bota. */
+  detail?: string;
+  /** Czy „Zezwalaj w tej rozmowie” ma sens (bash bez prostego prefiksu: nie). */
+  canGrant: boolean;
+  at: number;
+};
+
 export type ToolCallRecord = {
   id: string;
   message: string; // id odpowiedzi, w której padło wywołanie
@@ -88,6 +103,7 @@ export type ToolCallRecord = {
   result?: string; // skrócony do 4 KB
   error?: string;
   approval?: "auto" | ApprovalDecision;
+  at?: number; // długość tekstu odpowiedzi w chwili wywołania (kolejność tekstu i kroków w historii)
 };
 
 /** Rozmowa bota albo przebieg z harmonogramu (`routine`). */
@@ -521,9 +537,156 @@ export function parseBotChat(text: string): BotChat | null {
 }
 
 export const RESULT_LIMIT = 4096;
+const STOPPED_RESULT = "przerwane (Stop)";
+
+/** Historia rozmowy bota dla pętli narzędzi: odpowiedź z wywołaniami rozpada się na kroki
+ *  (tekst do chwili wywołania + wywołania, wyniki, dalszy tekst). Odpowiedzi z błędem wypadają
+ *  razem z wywołaniami, jak w `wireHistory`; wywołanie bez wyniku dostaje „przerwane”. */
+export function botTurns(chat: BotChat): Turn[] {
+  const out: Turn[] = [];
+  const push = (t: Turn) => {
+    const last = out[out.length - 1];
+    if (t.role !== "tool" && last?.role === t.role && !(last.role === "assistant" && last.calls?.length)) {
+      last.content = [last.content, t.content].filter(Boolean).join("\n\n");
+      if (t.role === "assistant" && t.calls?.length && last.role === "assistant") last.calls = t.calls;
+    } else out.push(t);
+  };
+  for (const m of chat.messages) {
+    if (m.role === "user") {
+      push({ role: "user", content: m.text });
+      continue;
+    }
+    if (m.error) continue;
+    const steps = new Map<number, ToolCallRecord[]>();
+    for (const c of chat.calls) {
+      if (c.message !== m.id) continue;
+      const at = Math.min(c.at ?? 0, m.text.length);
+      steps.set(at, [...(steps.get(at) ?? []), c]);
+    }
+    let pos = 0;
+    for (const at of [...steps.keys()].sort((a, b) => a - b)) {
+      const calls = steps.get(at)!;
+      push({ role: "assistant", content: m.text.slice(pos, at).trim(), calls: calls.map((c) => ({ id: c.id, name: c.name, args: c.args })) });
+      for (const c of calls)
+        out.push({ role: "tool", id: c.id, content: c.error ?? c.result ?? STOPPED_RESULT, ...(c.error !== undefined || c.result === undefined ? { error: true } : {}) });
+      pos = at;
+    }
+    const rest = m.text.slice(pos).trim();
+    if (rest) push({ role: "assistant", content: rest });
+  }
+  return out;
+}
+
+/** Zdarzenie strumienia dopisane do rozmowy bota: tekst do odpowiedzi `messageId`,
+ *  wywołania i wyniki do `calls`, brak obsługi narzędzi do flagi. */
+export function applyBotEvent(chat: BotChat, messageId: string, e: ChatEvent): BotChat {
+  const msg = chat.messages.find((m) => m.id === messageId);
+  if (!msg) return chat;
+  switch (e.type) {
+    case "tool_call":
+      return { ...chat, calls: [...chat.calls, { id: e.id, message: messageId, name: e.name, args: e.args, at: msg.text.length }] };
+    case "tool_result": {
+      // Od końca: id od serwerów lokalnych potrafią się powtarzać między odpowiedziami.
+      let i = chat.calls.length - 1;
+      while (i >= 0 && !(chat.calls[i].id === e.id && chat.calls[i].message === messageId)) i--;
+      if (i < 0) return chat;
+      const rec: ToolCallRecord = { ...chat.calls[i], approval: e.approval };
+      if (e.error) rec.error = e.text;
+      else rec.result = e.text;
+      return { ...chat, calls: chat.calls.map((c, j) => (j === i ? rec : c)) };
+    }
+    case "tools_unsupported":
+      return { ...chat, toolsUnsupported: true };
+    default:
+      return { ...chat, messages: chat.messages.map((m) => (m === msg ? applyEvent(m, e) : m)) };
+  }
+}
 
 /** Wynik narzędzia do zapisu w rozmowie: ≤ 4 KB, z informacją o ucięciu. */
 export function clipResult(text: string, limit = RESULT_LIMIT): string {
   if (text.length <= limit) return text;
   return `${text.slice(0, limit)}\n… [ucięte, ${text.length - limit} znaków więcej]`;
+}
+
+/** Ścieżka do karty: ostatnie dwa człony („src/main.rs”), żeby wiersz się mieścił. */
+export function shortPath(p: string): string {
+  const parts = p.replace(/\/+$/, "").split("/").filter(Boolean);
+  if (parts.length <= 2) return p || ".";
+  return `…/${parts.slice(-2).join("/")}`;
+}
+
+const arg = (a: Record<string, unknown>, k: string) => (typeof a[k] === "string" ? (a[k] as string) : "");
+const oneLine = (t: string, max = 60) => {
+  const l = t.trim().split("\n")[0];
+  return l.length > max ? `${l.slice(0, max - 1)}…` : l;
+};
+
+/** Zwinięta karta narzędzia jednym wierszem: „Czyta `src/main.rs`”, „Uruchamia `cargo test`”.
+ *  Fragmenty w backtickach UI pokazuje jako kod. */
+export function toolLabel(name: string, args: Record<string, unknown>): string {
+  const p = shortPath(arg(args, "path"));
+  switch (name) {
+    case "read_file":
+      return `Czyta \`${p}\``;
+    case "list_dir":
+      return `Przegląda folder \`${arg(args, "path") ? p : "."}\``;
+    case "grep":
+      return `Szuka \`${oneLine(arg(args, "pattern"), 40)}\`${arg(args, "path") ? ` w \`${p}\`` : ""}`;
+    case "write_file":
+      return `Zapisuje \`${p}\``;
+    case "edit_file":
+      return `Zmienia \`${p}\``;
+    case "bash":
+      return `Uruchamia \`${oneLine(arg(args, "command"))}\``;
+    case "web_search":
+      return `Szuka w sieci: ${oneLine(arg(args, "query"))}`;
+    case "web_fetch": {
+      const u = arg(args, "url");
+      let host = u;
+      try {
+        host = new URL(u).hostname.replace(/^www\./, "");
+      } catch {
+        // nie URL: cały tekst
+      }
+      return `Czyta stronę ${host}`;
+    }
+    case "memory":
+      return arg(args, "target") === "user" ? "Zapisuje coś o tobie" : "Zapisuje w pamięci";
+    case "history_search":
+      return `Szuka w dawnych rozmowach: ${oneLine(arg(args, "query"), 40)}`;
+    case "skill_view":
+      return `Czyta skill \`${arg(args, "name")}\``;
+    case "skill_create":
+      return `Zapisuje skill \`${arg(args, "name")}\``;
+    case "skill_patch":
+      return `Poprawia skill \`${arg(args, "name")}\``;
+    case "bot_create":
+      return `Tworzy bota „${arg(args, "name")}”`;
+    case "bot_update":
+      return `Zmienia bota „${arg(args, "id")}”`;
+    default:
+      return `Używa ${name}`;
+  }
+}
+
+export type Segment = { kind: "text"; text: string } | { kind: "calls"; calls: ToolCallRecord[] };
+
+/** Odpowiedź do pokazania: tekst pocięty w miejscach wywołań (`at`), wywołania jednego kroku razem. */
+export function messageSegments(text: string, calls: ToolCallRecord[]): Segment[] {
+  const out: Segment[] = [];
+  let pos = 0;
+  const steps = new Map<number, ToolCallRecord[]>();
+  for (const c of calls) {
+    const at = Math.min(c.at ?? 0, text.length);
+    steps.set(at, [...(steps.get(at) ?? []), c]);
+  }
+  for (const at of [...steps.keys()].sort((a, b) => a - b)) {
+    const t = text.slice(pos, at);
+    if (t.trim()) out.push({ kind: "text", text: t });
+    out.push({ kind: "calls", calls: steps.get(at)! });
+    pos = at;
+  }
+  const rest = text.slice(pos);
+  if (rest.trim() || out.length === 0) out.push({ kind: "text", text: rest });
+  return out;
 }

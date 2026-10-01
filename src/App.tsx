@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { backend, inElectron } from "./backend";
 import type { AgentDef } from "./agents";
-import { accentHex, stepFontSize, uiClasses } from "./ui";
+import { accentHex, nextMode, stepFontSize, uiClasses } from "./ui";
 import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";
 import type { TermLook } from "./Terminal";
 import { IconButton } from "./IconButton";
@@ -26,9 +26,12 @@ import { AccountsDialog } from "./AccountsDialog";
 import { ContinueDialog } from "./ContinueDialog";
 import { continueTargets, type ContinueTarget } from "./continue";
 import { NO_ACCOUNTS, accountById, accountKind, pickAccountId, type Accounts } from "./accounts";
+import { VoiceDialog } from "./VoiceDialog";
+import { activeStt, DEFAULT_STT, type SttConfig } from "./stt";
 import { Dock } from "./Dock";
 import { ResizeEdges, TitleBar } from "./TitleBar";
 import { ChatView } from "./chat/ChatView";
+import { BotView } from "./bot/BotView";
 import type { Mode } from "./chat/ModeTabs";
 import { CONTEXT_POLL_MS, cleanTermTitle, contextKind, contextTargets, paneTitles, sessionTitles, type SessionContext } from "./context";
 import { FALLBACK_MAX_CHARS, SUMMARY_SYSTEM, digestText, handoffText, summaryText } from "./handoff";
@@ -51,6 +54,8 @@ import {
 import { commandFor, type Command } from "./keys";
 import { CONFIRM_MS, confirmClick, type Arm } from "./confirm";
 import type { TerminalHandle } from "./Terminal";
+import { Nebula } from "./Nebula";
+import { motionAllowed } from "./motion";
 import type { PaneActions, ProjectActions } from "./handlers";
 
 /** Ile czekamy, aż agent w nowym panelu włączy wklejanie blokiem, zanim wyślemy streszczenie. */
@@ -87,6 +92,10 @@ export function App() {
   const [dialog, setDialog] = useState(false);
   const [presetMenu, setPresetMenu] = useState(false);
   const [appearance, setAppearance] = useState(false);
+  const [voice, setVoice] = useState(false);
+  const [stt, setStt] = useState<SttConfig>(DEFAULT_STT);
+  const sttRef = useRef(stt);
+  sttRef.current = stt;
   const [lastAgentId, setLastAgentId] = useState<string | null>(null);
   // false do końca startu: zapis `ws` na dysk musi ruszyć dopiero po wczytaniu pliku.
   const [loaded, setLoaded] = useState(false);
@@ -223,7 +232,27 @@ export function App() {
     });
   };
 
+  useEffect(() => {
+    void backend
+      .sttConfig()
+      .then((r) => {
+        setStt(r.config);
+        if (r.errors.length > 0) setNotice(r.errors.join(" · "));
+      })
+      .catch(() => undefined);
+  }, []);
+
   const paneActions: PaneActions = {
+    voiceReady: () => activeStt(sttRef.current) !== null,
+    openVoice: () => setVoice(true),
+    voiceMic: () => sttRef.current.mic,
+    dictated: (paneId, text) => {
+      const term = terms.current.get(paneId);
+      if (!term) return;
+      term.paste(text);
+      dispatch({ type: "focus", id: paneId });
+    },
+    voiceError: (message) => setNotice(`Dyktowanie: ${message}`),
     focus: (paneId) => dispatch({ type: "focus", id: paneId }),
     restart: (paneId) => {
       forget([paneId]);
@@ -378,15 +407,24 @@ export function App() {
   // Okno (pasek zadań, przełącznik okien) nosi temat panelu w fokusie, jak zwykła konsola z claude.
   const focusedTitle = focusedId ? titles[focusedId] : undefined;
   const [chatTitle, setChatTitle] = useState("");
-  // Czat montowany przy pierwszym wejściu i potem zostaje (trwająca odpowiedź płynie w tle).
+  const [botTitle, setBotTitle] = useState("");
+  // Czat i Bot montowane przy pierwszym wejściu i potem zostają (trwająca odpowiedź płynie w tle).
   const [chatMounted, setChatMounted] = useState(false);
+  const [botMounted, setBotMounted] = useState(false);
   const mode = ws.ui.mode;
   useEffect(() => {
     if (mode === "chat") setChatMounted(true);
+    if (mode === "bot") setBotMounted(true);
   }, [mode]);
   const setMode = (m: Mode) => dispatch({ type: "setUi", patch: { mode: m } });
   const windowTitle =
-    mode === "chat" ? `${chatTitle || "Czat"} — Agents` : focusedTitle ? `${focusedTitle} — Agents` : "Agents";
+    mode === "chat"
+      ? `${chatTitle || "Czat"} — Agents`
+      : mode === "bot"
+        ? `${botTitle || "Boty"} — Agents`
+        : focusedTitle
+          ? `${focusedTitle} — Agents`
+          : "Agents";
   useEffect(() => {
     document.title = windowTitle; // podgląd w przeglądarce; w oknie tytuł ustawia TitleBar
   }, [windowTitle]);
@@ -736,7 +774,7 @@ export function App() {
         dispatch({ type: "setUi", patch: { dock: !ws.ui.dock } });
         break;
       case "toggleChat":
-        setMode(mode === "chat" ? "code" : "chat");
+        setMode(nextMode(mode));
         break;
       case "fontSize": {
         const size = stepFontSize(ws.ui.fontSize, cmd.step);
@@ -781,8 +819,8 @@ export function App() {
   onKey.current = (e: KeyboardEvent) => {
     const cmd = commandFor(e);
     if (cmd === null) return;
-    // W Czacie skróty siatki nie działają: Ctrl+Shift+C/V zostają dla pola tekstowego.
-    if (mode === "chat" && cmd.type !== "toggleChat" && cmd.type !== "toggleRail") return;
+    // W Czacie i Botach skróty siatki nie działają: Ctrl+Shift+C/V zostają dla pola tekstowego.
+    if (mode !== "code" && cmd.type !== "toggleChat" && cmd.type !== "toggleRail") return;
     e.preventDefault();
     runCommand(cmd);
   };
@@ -807,6 +845,17 @@ export function App() {
           onOpenAppearance={() => setAppearance(true)}
         />
       )}
+      {botMounted && (
+        <BotView
+          mode={mode}
+          onMode={setMode}
+          active={mode === "bot"}
+          onTitle={setBotTitle}
+          railOpen={ws.ui.rail === "open"}
+          onToggleRail={() => dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } })}
+          onOpenAppearance={() => setAppearance(true)}
+        />
+      )}
       <Rail
         mode={mode}
         onMode={setMode}
@@ -824,6 +873,7 @@ export function App() {
           dispatch({ type: "setUi", patch: { rail: ws.ui.rail === "open" ? "closed" : "open" } })
         }
         onOpenAppearance={() => setAppearance(true)}
+        onOpenVoice={() => setVoice(true)}
       />
       <main className="area">
         {errors.length > 0 && (
@@ -881,6 +931,9 @@ export function App() {
               </button>
             </header>
             <div className="grids">
+              {theme.id === "mglawica" && (
+                <Nebula still={!motionAllowed(ws.ui.motion, window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false)} />
+              )}
               <Grid
                 projects={ws.projects}
                 activeId={ws.active}
@@ -925,6 +978,17 @@ export function App() {
             )
           }
           onClose={() => dispatch({ type: "setUi", patch: { dock: false } })}
+          radar={
+            theme.id === "wieza"
+              ? {
+                  state: ephemeral,
+                  quietMs: (id) => {
+                    const last = activity.current.get(id)?.lastOutput ?? 0;
+                    return last === 0 ? null : Date.now() - last;
+                  },
+                }
+              : undefined
+          }
         />
       )}
       {notice && (
@@ -969,6 +1033,16 @@ export function App() {
             void backend.saveAccounts(next).catch((e) => setErrors((prev) => [...prev, `accounts.json: ${String(e)}`]));
           }}
           onClose={() => setAccountsDialog(false)}
+        />
+      )}
+      {voice && (
+        <VoiceDialog
+          config={stt}
+          onSave={async (next) => {
+            await backend.sttSaveConfig(next);
+            setStt(next);
+          }}
+          onClose={() => setVoice(false)}
         />
       )}
       {presetMenu && active && (

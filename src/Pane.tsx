@@ -10,7 +10,8 @@ import type { Pane as PaneModel } from "./workspace";
 import type { PaneActions } from "./handlers";
 import { Terminal, type TermLook, type TerminalHandle } from "./Terminal";
 import { IconButton } from "./IconButton";
-import { ArrowRightLeft, Maximize2, MessageSquarePlus, Minimize2, RotateCw, X } from "lucide-react";
+import { useDictation } from "./useDictation";
+import { ArrowRightLeft, Loader2, Maximize2, MessageSquarePlus, Mic, Minimize2, RotateCw, Square, X } from "lucide-react";
 
 type Props = {
   pane: PaneModel;
@@ -113,6 +114,12 @@ export function Pane({ pane, path, agent, account, showAccount, limitHit, canCon
   };
 
   const showArmed = armed === true || armedClick;
+  const voice = useDictation({
+    onText: (text) => actions.dictated(pane.id, text),
+    onError: (message) => actions.voiceError(message),
+    getMic: () => actions.voiceMic(),
+  });
+  const mic = () => (actions.voiceReady() ? voice.toggle() : actions.openVoice());
   const status = paneStatus(state);
   const name = agent?.name ?? pane.agentId;
 
@@ -152,7 +159,17 @@ export function Pane({ pane, path, agent, account, showAccount, limitHit, canCon
             {meter.known ? `${meter.pct}%` : "–"}
           </span>
         )}
-        <span className="tools">
+        <span className={`tools${voice.phase !== "idle" ? " has-rec" : ""}`}>
+          {state.exited ? null : voice.phase === "transcribing" ? (
+            <IconButton icon={Loader2} label="Transkrybuję…" className="is-busy" disabled />
+          ) : (
+            <IconButton
+              icon={voice.phase === "recording" ? Square : Mic}
+              label={voice.phase === "recording" ? "Zakończ nagranie i wstaw tekst" : "Dyktuj głosem"}
+              className={voice.phase === "recording" ? "is-rec" : undefined}
+              onClick={mic}
+            />
+          )}
           {canContinue && (
             <IconButton icon={ArrowRightLeft} label="Kontynuuj gdzie indziej" onClick={() => actions.continueFrom(pane.id)} />
           )}

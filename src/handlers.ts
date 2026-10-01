@@ -22,6 +22,14 @@ export type PaneActions = {
   started(paneId: string): void;
   /** Uchwyt terminala panelu (kopiuj/wklej); `null` gdy terminal znika. */
   registerTerminal(paneId: string, handle: TerminalHandle | null): void;
+  /** Wybrano silnik transkrypcji (`stt.json`); bez niego mikrofon otwiera ustawienia głosu. */
+  voiceReady(): boolean;
+  openVoice(): void;
+  /** `deviceId` mikrofonu z ustawień głosu; pusty = domyślny. */
+  voiceMic(): string;
+  /** Tekst z dyktowania trafia do terminala panelu jako wklejka, bez Entera. */
+  dictated(paneId: string, text: string): void;
+  voiceError(message: string): void;
   /** Bajty od procesu — aktywność panelu (patrz `src/activity.ts`). */
   output(paneId: string): void;
   /** Terminal przerysowany (resize): chwila ciszy, bo to nie praca agenta. */

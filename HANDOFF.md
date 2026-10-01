@@ -2,19 +2,6 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
-## Do sprawdzenia przez użytkownika (w oknie Tauri, po etapie 11)
-
-- [ ] TUI claude i pi: kolory, ramki, polskie znaki (ąęśćżźół), Shift+Tab, Esc, Ctrl+C
-- [ ] zmiana rozmiaru okna i maksymalizacja przerysowuje terminale poprawnie
-- [ ] Ctrl+Shift+C/V, Ctrl+V z obrazkiem w claude
-- [ ] 16 paneli z `$SHELL`, w każdym `yes | head -c 20M` — okno reaguje, czas zapisany
-- [ ] zamknięcie aplikacji: `pgrep -a claude; pgrep -a pi` nie pokazują procesów z paneli
-- [ ] restart aplikacji wznawia rozmowy (claude i pi)
-- [ ] przełączanie projektów nie przerywa pracy agentów w schowanych siatkach
-- [ ] powiadomienie po zakończeniu pracy agenta w panelu bez fokusu
-- [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
-- [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
-
 ## Konta agentów (gałąź `konta-etapy`, worktree `.claude/worktrees/konta`) – 2026-10-01 (Claude)
 
 Plan: `docs/plan-konta.md` (etapy 1–5 zrobione i zacommitowane, 6 = ten wpis). Praca poszła w osobnym worktree, bo w głównym katalogu równolegle szło M5 – przed scaleniem do `master` trzeba rozwiązać konflikty w `App.tsx`, `Pane.tsx`, `Grid.tsx`, `backend*.ts`, `main.ts`, `handlers.ts`, `styles.css` (obie strony je dotykają).
@@ -36,6 +23,77 @@ Plan: `docs/plan-konta.md` (etapy 1–5 zrobione i zacommitowane, 6 = ten wpis).
 - [ ] cel Codex: `CODEX_HOME` z własnym kontem, panel działa; MCP bota (M5 Etap 5) nie jest przez to gubiony
 - [ ] okno „Konta”, rząd „Konto” w „Nowy panel”, pasek limitu i bloki w Pulpicie wyglądają dobrze w jasnym i ciemnym motywie (wizualnie nieoglądane)
 - [ ] własna linia statusu w `settings.json` konta wyłącza limity tego konta (bez błędu)
+
+## Tła motywów: Mgławica i radar Wieży (2026-10-01, poza planem M5)
+
+- Powód: motywy z makiet A–U miały w kodzie tylko tokeny i CSS, a część makiet to żywa grafika. Zestawienie makieta ↔ `themes.css` pokazało braki w Mgławicy, Biurze, Wieży, Karuzeli, Rtęci oraz układach Rzeka/Metro/Akwarium/Konstelacja.
+- **Mgławica** (`811259b`): `Nebula.tsx` (canvas pod `.grids`, tylko motyw `mglawica`) + `nebula.ts` (czysta symulacja). Tempo cząstek ze stanu `st-*` panelu (`rateFor`), kolor z `--ag`, rdzeń w środku, fala po `st-done`. `backdrop-filter` na panelach. Tryb Oszczędny / `prefers-reduced-motion` = jeden statyczny kadr i bez blura; ukryte okno nie rysuje.
+- **Wieża** (`811259b`): `Radar.tsx` + `radar.ts` – sekcja „Radar” na górze Pulpitu, tylko motyw `wieza`. Odległość znaku = czas od ostatniego wyjścia (pierścienie 1/5/15 min), kąt stały z id panelu, wołanie `CLA1 041` = agent + kontekst %. Dane: `activity.current` z `App.tsx` przez prop `radar` w `Dock`.
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (530 + 4 pominięte), `electron` build. Testowa kopia z osobnym `AGENTS_CONFIG_DIR` i `--user-data-dir` uruchomiona na prośbę użytkownika (wbrew zakazowi z AGENTS.md, bo to użytkownik o to prosił); wygląd **nie** oceniony.
+- **Niesprawdzone:** wygląd i koszt GPU Mgławicy przy wielu panelach, czytelność radaru w Pulpicie 300 px.
+- Pominięte względem makiet: żółte fale „czeka” i bursztynowy znak CZEKA (brak stanu „czeka na odpowiedź” w aplikacji), napis „N zmian · M plików” w rdzeniu, pasek „SEKTOR/QNH”, **paski lotów** Wieży (lista paneli ze wszystkich projektów po pilności – makieta uznaje je za lepsze od samego radaru). Radar pokazuje tylko aktywny projekt.
+- Do zrobienia: **Biuro** (izometryczne SVG z biurkami – ekran powitalny projektu albo widok w Pulpicie, nie tło), reszta tabeli braków. Niezacommitowane zmiany w `electron/src/bot/*`, `main.ts`, `preload.ts`, `src/backend*.ts`, `src/bot*.ts` nie pochodzą z tej pracy.
+
+## Dyktowanie głosem (2026-10-01, poza planem M5)
+
+- Mikrofon w nagłówku każdego panelu (`Pane.tsx`, `useDictation.ts`): klik = nagrywa, drugi klik = transkrypcja, tekst wchodzi do terminala wklejką **bez Entera**. Rail → „Dyktowanie” (`VoiceDialog.tsx`) wybiera silnik.
+- Silnik = serwer z `POST {baseUrl}/audio/transcriptions` (`electron/src/stt.ts`): szablony OpenRouter, cortecs.ai, OpenAI i „Lokalny serwer” (whisper.cpp / speaches), adres i model edytowalne. Konfiguracja w `stt.json`, klucze w sejfie jako `stt-<id>`.
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (508), `(cd electron && npm run typecheck && npm run build)`. Testy z prawdziwym serwerem HTTP w `electron/src/stt.test.ts`.
+- **Niesprawdzone** (AGENTS.md zabrania uruchamiania Electrona): prawdziwy mikrofon w Electronie na Wayland/KDE, wygląd przycisku w motywach, żywe API.
+- Mowa Wszędzie nie jest zależnością: jej lokalny faster-whisper to demon D-Bus bez HTTP, więc lokalnie trzeba postawić serwer zgodny z OpenAI.
+
+## Do sprawdzenia przez użytkownika (w oknie Tauri, po etapie 11)
+
+- [ ] TUI claude i pi: kolory, ramki, polskie znaki (ąęśćżźół), Shift+Tab, Esc, Ctrl+C
+- [ ] zmiana rozmiaru okna i maksymalizacja przerysowuje terminale poprawnie
+- [ ] Ctrl+Shift+C/V, Ctrl+V z obrazkiem w claude
+- [ ] 16 paneli z `$SHELL`, w każdym `yes | head -c 20M` — okno reaguje, czas zapisany
+- [ ] zamknięcie aplikacji: `pgrep -a claude; pgrep -a pi` nie pokazują procesów z paneli
+- [ ] restart aplikacji wznawia rozmowy (claude i pi)
+- [ ] przełączanie projektów nie przerywa pracy agentów w schowanych siatkach
+- [ ] powiadomienie po zakończeniu pracy agenta w panelu bez fokusu
+- [ ] czarny pasek pod terminalem xterm (zauważony w podglądzie od etapu 5 — w oknie go nie ma?)
+- [ ] presety: wybór z menu dopisuje panele, „Zapisz obecny układ…” wraca po restarcie aplikacji
+
+## M5 Etap 7: karta bota – 2026-10-01 (Claude, master)
+
+- `src/bot/BotCard.tsx`: przycisk „Karta bota” w nagłówku (nagłówek widać teraz też przy pustej rozmowie; „Nowy bot” otwiera kartę od razu). Zakładki: **Osobowość** (imię, emoji z listy albo własne, obrazek, kolor, charakter, styl, czego unika, suwak tonu 3 poziomy, podgląd „Tak się przedstawi” z `botGreeting`), **Pamięć** (dwa pola z licznikiem / limitem, zapis każdego osobno), **Skille** (nazwa, opis, kto utworzył, data; podgląd treści w markdownie; usuń z potwierdzeniem; import z `~/.claude/skills`), **Ustawienia** (menu modeli z Czatu – `ModelMenu` wyeksportowane, Esc zamyka samo menu; foldery z okna wyboru; przełączniki 6 grup narzędzi; „Usuń bota” z potwierdzeniem, nie dla Kreatora). Osobowość i ustawienia zapisuje „Zapisz” w stopce.
+- `BotStore`: autor skilla w `skills/<nazwa>/.author` (`bot` z `skill_create`/`bot_create`, `user` z karty, `import`), ustawiany tylko przy tworzeniu; `skillSources(dir)` i `skillImport` (kopia całego katalogu, dowiązania jako pliki, ≤ 5 MB, źródło bez zmian); `avatarImport` (PNG/JPG/WebP/GIF ≤ 2 MB → `avatar.<ext>`, poprzedni usunięty) i `avatar` → data URL. IPC: `bot_skill_sources`, `bot_skill_import` (nazwa sprawdzona `isSkillName`), `bot_avatar_import`, `bot_avatar`, `pick_image`.
+- `src/bot/Avatar.tsx`: obrazek, emoji albo pierwsza litera; data URL raz na plik.
+- Zrzuty (Electron offscreen, mock) w motywach D i Kreślarnia: cztery zakładki, otwarte menu modeli, podgląd skilla i lista importu. Na żywo w podglądzie: zapis zmienia awatar na liście, Esc w menu nie zamyka karty, usunięcie bota zostawia pozostałe. 0 błędów konsoli.
+- Sprawdzenia: `pnpm typecheck`, `pnpm test` (53 pliki, 538 testów + 4 na żywo pominięte), `electron` typecheck + build – przechodzą.
+- Niesprawdzone: okna wyboru obrazka i folderu (natywne, w podglądzie ich nie ma) i import z prawdziwego `~/.claude/skills` – etap 11.
+
+## M5 Etap 6: zakładka Bot – 2026-10-01 (Claude, master)
+
+- Trzecia karta **Bot** (`ModeTabs`, `ui.mode = "bot"`, Ctrl+Alt+C po kolei Code → Czat → Bot przez `nextMode`); Czat i Bot montowane przy pierwszym wejściu i zostają. `src/bot/BotView.tsx`: lista botów z kropką (pracuje / czeka na zgodę), pod wybranym jego rozmowy, na dole „Nowy bot” (tworzy domyślnego – edycja w etapie 7) i Kreator; powitanie z awatarem i `botGreeting`; nagłówek z awatarem i imieniem. Kilka botów może odpowiadać naraz (trwające odpowiedzi po id rozmowy).
+- Wątek i pole z Czatu: `Thread` dostał `renderBody` (tekst pocięty `messageSegments` + karty narzędzi), `Composer` – `searchToggle`/`placeholder`. Dostawcy i wykrywanie modeli wydzielone do `chat/useProviders.ts` (Czat używa tego samego). Model wybrany w zakładce zapisuje się w bocie.
+- `src/bot/Cards.tsx`: karta narzędzia (wiersz z `toolLabel`, stan, decyzja o zgodzie; rozwinięta: argumenty i wynik) i karta zgody (polecenie / diff `edit_file` w kolorach, trzy przyciski, Enter = raz, Esc = odrzuć – tylko na widocznej zakładce i nie gdy w polu jest tekst).
+- Proces główny: `electron/src/bot/service.ts` (`BotService`: prompt bota jako migawka z pierwszej odpowiedzi w rozmowie, zgody „w rozmowie” per rozmowa, HTTP → `runBotTurn` z FreeToken, claude/codex → most MCP startowany przy pierwszym użyciu, `cwd` = `work/` bota), IPC `bot_send`/`bot_abort`/`bot_event`, `bot_approval` w preload. Typ `ApprovalRequest` przeniesiony do `src/bot.ts`.
+- Mock: skryptowana odpowiedź (read_file → bash z prośbą o zgodę → wynik) i zgody bez procesu głównego.
+- Zrzuty (Electron offscreen, podgląd z mockiem) w motywach D i Kreślarnia: rozmowa z narzędziami (karta rozwinięta), czekająca zgoda, po Enter („zezwolono raz”, 12/12), pusta lista z Kreatorem; Czat z menu modeli bez zmian. 0 błędów konsoli.
+- Sprawdzenia: `pnpm typecheck`, `pnpm test` (53 pliki, 535 testów + 4 na żywo pominięte), `electron` typecheck + build – przechodzą.
+- Niesprawdzone: prawdziwa rozmowa z botem w oknie (claude/codex przez most, llama przez pętlę) – etap 11; awatar z obrazka (pokazuje emoji albo pierwszą literę).
+
+## M5 Etap 5: narzędzia bota w claude i codex – 2026-10-01 (Claude, master)
+
+- `electron/src/bot/mcp.ts` (JSON-RPC po liniach: `initialize`, `ping`, `tools/list`, `tools/call`; błąd narzędzia = `isError`) i `mcp-server.ts` → `out/mcp-server.cjs` (nowe wejście w `vite.config.ts`). Serwer odpowiada bez kolejki, więc `ping` przechodzi w trakcie czekania na zgodę; koniec stdin albo zamknięte gniazdo = wyjście.
+- `bridge.ts`: `ToolBridge.start()` – gniazdo `$XDG_RUNTIME_DIR/agents-bot-<pid>.sock` (umask → od razu 0600), `register({tools, call})` → env `AW_BOT_SOCKET`/`AW_BOT_TOKEN` + `dispose`, `serverSpec(execPath, script, env)` z `ELECTRON_RUN_AS_NODE=1`. Klient gniazda w `bridge-client.ts` (bez Electrona).
+- `ChatRequest.mcp`: claude dostaje `--mcp-config` (plik 0600 w prywatnym katalogu tymczasowym, usuwany po odpowiedzi), `--allowedTools mcp__bot__*` (+ WebSearch/WebFetch przy `search`), `MCP_TOOL_TIMEOUT` 6 h; wbudowane narzędzia dalej tylko `--tools`. Codex: `-c mcp_servers.bot.{command,args,env,tool_timeout_sec}` i `default_tools_approval_mode="approve"` – bez tego `codex exec` odrzuca każde wywołanie MCP („zgody wyłączone”).
+- Zmiana wobec planu: zdarzenia `tool_call`/`tool_result` wysyła sesja mostu (`reportedCall` wydzielone z `loop.ts`), nie parser wyjścia CLI – most zna decyzję o zgodzie i pełne argumenty. Parsery claude/codex bez zmian (wywołania `mcp__bot__*` ignorują).
+- Na żywo (`AW_LIVE=1 pnpm vitest run electron/src/bot/cli-live.test.ts`, 4/4): claude (haiku) i codex (gpt-5.6-luna) ładują serwer, wołają narzędzie i czekają 75 s bez zerwania; Stop w trakcie wywołania zabija CLI i serwer MCP (oba).
+- Sprawdzenia: `pnpm typecheck`, `pnpm test` (50 plików, 519 testów + 4 na żywo pominięte), `electron` typecheck + build – przechodzą. `bridge.test.ts` uruchamia zbudowany `out/mcp-server.cjs` (jak test linii statusu).
+- Niesprawdzone: serwer z AppImage (`app.asar/out/mcp-server.cjs` – ta sama droga co działający `statusline.cjs`, bez `asarUnpack`); podpięcie mostu w `main.ts` i `botSystemPrompt` jako `--system-prompt` – etap 6.
+
+## M5 Etap 4: pętla narzędzi – 2026-10-01 (Claude, master)
+
+- `electron/src/bot/loop.ts`: `runBotTurn(req, tools, step, run, signal, emit)` – model → wywołania → `runTool` po kolei → model, najwyżej 25 kroków, potem tekst „Przerwałem po 25 krokach”. Zamiast `broker` z planu dostaje `run` (runTool z kontekstem, zgoda jest w nim). Tekst kolejnego kroku od nowego akapitu.
+- `openaiBody`/`anthropicBody` biorą `req.tools` i `req.turns` (nowe pola `ChatRequest`); `streamOpenAI`/`streamAnthropic` zwracają wywołania złożone z kawałków (`CallParts` w `http.ts`, zły JSON = `bad` → błąd do modelu bez uruchamiania). `httpError` niesie `status`; `Adapter` w `service.ts` zwraca `Promise<unknown>`.
+- Brak obsługi narzędzi: 400/422/500/501 na pierwszym kroku z `tools` = ten sam krok bez narzędzi i zdarzenie `tools_unsupported`; tak samo szablon `<tool_call>` wypisany tekstem. 401/404/429 i błąd po udanym kroku z narzędziami idą dalej jako błąd.
+- `src/bot.ts`: `applyBotEvent` (tekst do odpowiedzi, `tool_call`/`tool_result` do `calls` z pozycją `at` w tekście, flaga `toolsUnsupported`) i `botTurns` (historia: odpowiedź rozpada się na kroki, wyniki ≤ 4 KB z zapisu, wywołanie bez wyniku = „przerwane (Stop)”). Model w trakcie tury dostaje pełne wyniki, zdarzenie skrót 4 KB.
+- Fixtures: `openai-tools-{1,2}.sse` nagrane na żywo z llama-server (Qwen, `--jinja`, oba kroki działają); `anthropic-tools.sse` napisane ręcznie wg formatu API (bez klucza nie nagrane).
+- Sprawdzenia: `pnpm typecheck`, `pnpm test` (48 plików, 499 testów), `electron` typecheck + build – przechodzą. Ostrzeżenie Node o `localStorage` (`--localstorage-file`) w `pnpm test` było wcześniej, nie z tego etapu.
+- Niesprawdzone: Anthropic API na żywo; pętla nie jest jeszcze podpięta pod IPC (etap 6 – tam też FreeToken z `service.ts` i kreator żądania z `botTurns`). Zdarzenie `approval` idzie przez `ApprovalBroker.onChange`, nie przez `ChatEvent`.
 
 ## M5 Etap 3: narzędzia bota i zgody – 2026-10-01 (Claude, master)
 
