@@ -5,7 +5,7 @@ import { BUILT_IN_PRESETS } from "./presets";
 import { Dialog } from "./Dialog";
 import { IconButton } from "./IconButton";
 import { X } from "lucide-react";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 
 type Props = {
   /** Presety własne z workspace.presets. */

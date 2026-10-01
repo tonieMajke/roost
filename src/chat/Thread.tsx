@@ -2,7 +2,8 @@ import { memo, useState, type ReactNode } from "react";
 import { AlertTriangle, ChevronRight, Globe, Pencil, RotateCcw } from "lucide-react";
 import { domain, linkCitations, modelLabel, type Message, type ProviderDef } from "../chat";
 import { backend } from "../backend";
-import { locale, t, useT } from "../i18n";
+import { locale, t } from "../i18n";
+import { useT } from "../i18n/useT";
 import { CopyButton, Markdown } from "./Markdown";
 
 const seconds = (ms: number) => {

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useT } from "../i18n";
+import { useT } from "../i18n/useT";
 import { botGreeting, displayName, scheduleLabel, TOOL_GROUPS, type BotDef, type BotPreview } from "../bot";
 import { Avatar } from "./Avatar";
 import { groups, tones } from "./BotCard";

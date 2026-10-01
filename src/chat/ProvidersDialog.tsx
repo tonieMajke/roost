@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { Check, KeyRound, Loader2, Plus, Server, Terminal, Trash2, Zap } from "lucide-react";
 import { backend, type KeyState } from "../backend";
 import { Dialog } from "../Dialog";
-import { locale, t, useT } from "../i18n";
+import { locale, t } from "../i18n";
+import { useT } from "../i18n/useT";
 import { freeId, GROUP_LABELS, modelsCount, PROVIDER_TEMPLATES, type ProviderDef, type ProviderGroup } from "../chat";
 
 type Props = {

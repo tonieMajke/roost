@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Clock, MessageSquarePlus, PanelLeft, Plug, Plus, Settings2, ShieldAlert, SlidersHorizontal, Wand2, X } from "lucide-react";
 import { backend, type BotChatKind } from "../backend";
-import { useT } from "../i18n";
+import { useT } from "../i18n/useT";
 import {
   applyBotEvent,
   botGreeting,

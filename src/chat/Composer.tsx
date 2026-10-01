@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowUp, Check, ChevronDown, Globe, Square } from "lucide-react";
-import { useT } from "../i18n";
+import { useT } from "../i18n/useT";
 import { GROUP_LABELS, findModel, modelLabel, supportsSearch, type ModelRef, type ProviderDef, type ProviderGroup } from "../chat";
 
 type Props = {

@@ -10,7 +10,8 @@ import { ResizeThrottle } from "./resize-throttle";
 import { WriteQueue, peakQueueBytes } from "./write-queue";
 import { DEFAULT_TERM_FONT } from "./themes";
 import { findPathRefs } from "./term-links";
-import { t, useT } from "./i18n";
+import { t } from "./i18n";
+import { useT } from "./i18n/useT";
 
 // Ręczny pomiar w oknie (test 16 × 20 MB): w konsoli devtools `awPeakQueueMB()`.
 (globalThis as { awPeakQueueMB?: () => number }).awPeakQueueMB = () =>

@@ -3,7 +3,8 @@ import { X } from "lucide-react";
 import type { AccountDef, AccountKind, Accounts } from "./accounts";
 import { Dialog } from "./Dialog";
 import { IconButton } from "./IconButton";
-import { t, useT } from "./i18n";
+import { t } from "./i18n";
+import { useT } from "./i18n/useT";
 
 type Props = {
   value: Accounts;

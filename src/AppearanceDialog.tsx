@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { uiRows, uiPatch, type Ui } from "./ui";
 import { Dialog } from "./Dialog";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 
 type Props = {
   ui: Ui;

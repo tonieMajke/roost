@@ -9,7 +9,7 @@ import { sttFreeId } from "../stt";
 import { Player } from "./audio";
 import "./voice.css";
 import { activeTts, DEFAULT_TTS, DEFAULT_VOICE, fmtMs, TTS_PRESETS, type TtsConfig, type TtsProvider, type VoiceConfig } from "./voice";
-import { useT } from "../i18n";
+import { useT } from "../i18n/useT";
 
 export type VoiceTab = "dictation" | "talk";
 

@@ -1,4 +1,5 @@
-import { useT, type Key } from "../i18n";
+import { type Key } from "../i18n";
+import { useT } from "../i18n/useT";
 import { Bot, MessagesSquare, SquareTerminal } from "lucide-react";
 
 export type Mode = "code" | "chat" | "bot";

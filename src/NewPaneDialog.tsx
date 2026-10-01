@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from "react";
 import { agentColor, agentModels, type AgentDef } from "./agents";
 import { accountKind, accountsFor, pickAccountId, type Accounts } from "./accounts";
 import { Dialog } from "./Dialog";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 import { dialogKey, stepModel, tileDelayMs } from "./new-pane";
 
 type Props = {

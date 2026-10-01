@@ -13,7 +13,7 @@ import type { PaneActions, ProjectActions } from "./handlers";
 import { Pane } from "./Pane";
 import type { TermLook } from "./Terminal";
 import { usePaneDrag } from "./usePaneDrag";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 import {
   ENTER_WINDOW_MS,
   FLIP_EASE,

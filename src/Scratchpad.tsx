@@ -7,7 +7,7 @@ import { backend } from "./backend";
 import { IconButton } from "./IconButton";
 import { Markdown } from "./chat/Markdown";
 import { createAutosave, type SaveState } from "./scratchpad";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 
 type Props = {
   /** Notatka należy do projektu; zmiana projektu = nowy `key`, więc stan zaczyna się od zera. */

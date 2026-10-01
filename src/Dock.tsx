@@ -12,7 +12,7 @@ import { paneStatus, type PaneState } from "./activity";
 import { filterBoard, idlePaneIds, type BoardRow } from "./board";
 import { moveSection, stepSection, type DockSection } from "./dockOrder";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 
 type Props = {
   project: Project | null; // aktywny: sekcja „Kontekst” pokazuje jego panele

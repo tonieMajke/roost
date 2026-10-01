@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 
 type Props = {
   /** Opis okna dla czytnika (wzór D: „Nowy panel”, „Presety”). */

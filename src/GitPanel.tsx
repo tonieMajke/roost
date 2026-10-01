@@ -3,7 +3,8 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Folder, GitBranch, Minus
 import { backend } from "./backend";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "./confirm";
 import { IconButton } from "./IconButton";
-import { t, tp, useT } from "./i18n";
+import { t, tp } from "./i18n";
+import { useT } from "./i18n/useT";
 import {
   branchLabel,
   buildTree,

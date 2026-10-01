@@ -8,7 +8,7 @@ import remarkBreaks from "remark-breaks";
 import { Check, Copy } from "lucide-react";
 import type { Highlighter } from "shiki";
 import { backend } from "../backend";
-import { useT } from "../i18n";
+import { useT } from "../i18n/useT";
 
 const THEMES = { light: "github-light", dark: "github-dark" } as const;
 const LANGS = ["typescript", "tsx", "javascript", "jsx", "bash", "shell", "python", "rust", "json", "css", "html", "sql", "yaml", "toml", "go", "c", "cpp", "java", "diff", "markdown"];

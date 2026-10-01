@@ -17,7 +17,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useT } from "../i18n";
+import { useT } from "../i18n/useT";
 import { BotPreviewCard } from "./BotPreview";
 import { TOOL_GROUP, type ApprovalDecision, type ApprovalRequest, type ToolCallRecord, type ToolName, toolLabel } from "../bot";
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Copy, Minus, Square, X } from "lucide-react";
 import type { WindowControls } from "./backend";
 import { IconButton } from "./IconButton";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 
 /** Pasek tytułu w UI (okno bez dekoracji systemowych): przeciąganie, min/max/zamknij. */
 export function TitleBar({

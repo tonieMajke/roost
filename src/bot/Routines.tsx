@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Clock, LoaderCircle, Pencil, Play, Plus, ShieldAlert, Trash2 } from "lucide-react";
 import { backend } from "../backend";
-import { t, useT } from "../i18n";
+import { t } from "../i18n";
+import { useT } from "../i18n/useT";
 import {
   dayName,
   freeRoutineId,

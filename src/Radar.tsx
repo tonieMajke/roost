@@ -1,5 +1,5 @@
 import type { Blip } from "./radar";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 
 /** Radar motywu „Wieża” (makieta K): tarcza z pierścieniami 1/5/15 min i wiązką, znaki = panele. */
 export function Radar({ blips, onPick }: { blips: Blip[]; onPick: (id: string) => void }) {

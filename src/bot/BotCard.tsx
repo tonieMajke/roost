@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { ChevronDown, ChevronRight, Download, FolderPlus, ImagePlus, Trash2, X } from "lucide-react";
-import { locale, t, useT, type Key } from "../i18n";
+import { locale, t, type Key } from "../i18n";
+import { useT } from "../i18n/useT";
 import { backend, type BotSkillMeta, type BotSkillSource } from "../backend";
 import {
   botGreeting,

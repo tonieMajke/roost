@@ -6,7 +6,8 @@ import { AudioLines, FolderPlus, Mic, PanelLeft, SlidersHorizontal, X } from "lu
 import { paneStatus, projectState, type PaneState } from "./activity";
 import type { Workspace } from "./workspace";
 import { ModeTabs, type Mode } from "./chat/ModeTabs";
-import { t, useT } from "./i18n";
+import { t } from "./i18n";
+import { useT } from "./i18n/useT";
 
 type Props = {
   mode: Mode;

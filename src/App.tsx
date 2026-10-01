@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { backend, inElectron } from "./backend";
-import { applyLangPref, getLang, useT } from "./i18n";
+import { applyLangPref, getLang } from "./i18n";
+import { useT } from "./i18n/useT";
 import { agentModels, type AgentDef } from "./agents";
 import { accentHex, nextMode, stepFontSize, uiClasses } from "./ui";
 import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";

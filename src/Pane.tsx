@@ -11,7 +11,7 @@ import type { PaneActions } from "./handlers";
 import { Terminal, type TermLook, type TerminalHandle } from "./Terminal";
 import { IconButton } from "./IconButton";
 import { useDictation } from "./useDictation";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 import { ArrowRightLeft, Loader2, Maximize2, MessageSquarePlus, Mic, Minimize2, RotateCw, Square, X } from "lucide-react";
 
 type Props = {

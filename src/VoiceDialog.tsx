@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { Check, Mic, Plus, Trash2 } from "lucide-react";
 import { backend, type KeyState } from "./backend";
 import { Dialog } from "./Dialog";
-import { t as tr, useT } from "./i18n";
+import { t as tr } from "./i18n";
+import { useT } from "./i18n/useT";
 import { STT_PRESETS, sttFreeId, type SttConfig, type SttProvider } from "./stt";
 import { TalkSettings, type VoiceTab } from "./voice/TalkSettings";
 

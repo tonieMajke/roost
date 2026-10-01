@@ -27,7 +27,7 @@ import {
   type ProviderDef,
   configJson,
 } from "../chat";
-import { useT } from "../i18n";
+import { useT } from "../i18n/useT";
 import { CONFIRM_MS, confirmClick, isArmed, type Arm } from "../confirm";
 import { IconButton } from "../IconButton";
 import { Composer } from "./Composer";

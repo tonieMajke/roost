@@ -2,7 +2,6 @@
  *  Polish is the source language; every area file in ./messages exports `{ pl, en }`, and the
  *  compiler checks that `en` has exactly the keys of `pl`. */
 
-import { useSyncExternalStore } from "react";
 import app from "./messages/app";
 import ui from "./messages/ui";
 import panes from "./messages/panes";
@@ -76,13 +75,9 @@ export function tp(base: PluralKey, n: number, params?: Params): string {
 /** Locale tag for `Intl`/`toLocale*String`. */
 export const locale = (): string => (current === "pl" ? "pl-PL" : "en-US");
 
-const subscribe = (cb: () => void) => {
+/** Language-change subscription for the React hook in ./useT (kept out of here: the Electron main
+ *  process imports this module and does not ship React). */
+export const subscribeLang = (cb: () => void) => {
   listeners.add(cb);
   return () => void listeners.delete(cb);
 };
-
-/** Components call this so they re-render when the language changes; use the returned `t`/`tp`. */
-export function useT(): { t: typeof t; tp: typeof tp; lang: Lang } {
-  const lang = useSyncExternalStore(subscribe, getLang, getLang);
-  return { t, tp, lang };
-}

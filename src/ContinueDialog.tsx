@@ -1,5 +1,5 @@
 import { Dialog } from "./Dialog";
-import { useT } from "./i18n";
+import { useT } from "./i18n/useT";
 import type { ContinueTarget } from "./continue";
 
 type Props = {

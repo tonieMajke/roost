@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { MessageSquareText, Mic, MicOff, PhoneOff, Settings } from "lucide-react";
 import { IconButton } from "../IconButton";
-import { useT } from "../i18n";
+import { useT } from "../i18n/useT";
 import type { VoiceTab } from "./TalkSettings";
 import type { CardDecision, DeployCard, PaneHost } from "./tools";
 import { useVoiceSession } from "./useVoiceSession";
