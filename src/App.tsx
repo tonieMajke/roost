@@ -1062,7 +1062,7 @@ export function App() {
 
   return (
     <div className={`shell${winMax ? " is-max" : ""}`}>
-    {backend.window && <Splash />}
+    {backend.window && motionAllowed(ws.ui.motion, window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false) && <Splash />}
     {backend.window && <TitleBar win={backend.window} title={windowTitle} onMaximized={setWinMax} />}
     {backend.window && !winMax && <ResizeEdges win={backend.window} />}
     <div className={`app ${uiClasses(ws.ui)} mode-${mode}`}>

@@ -164,3 +164,9 @@ Not translated on purpose: prompts and tool descriptions sent to language models
 (which are mostly Polish).
 
 The project plan (in Polish): `docs/plan-m1.md`; current state: `HANDOFF.md`.
+
+## License
+
+Roost is free software, licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later); see [`LICENSE`](LICENSE). You may use, modify and distribute it, including commercially, but derived versions must make their source code available under the same license. Third-party components: [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+
+Copyright (C) 2026 majke

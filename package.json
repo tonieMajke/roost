@@ -1,6 +1,8 @@
 {
   "name": "roost-app",
   "version": "0.0.1",
+  "license": "GPL-3.0-or-later",
+  "author": "majke",
   "private": true,
   "type": "module",
   "scripts": {
@@ -55,9 +57,6 @@
     "@fontsource/saira-semi-condensed": "^5.3.0",
     "@fontsource/share-tech-mono": "^5.3.0",
     "@fontsource/vt323": "^5.3.0",
-    "@tauri-apps/api": "^2.11.1",
-    "@tauri-apps/plugin-clipboard-manager": "~2.4.0",
-    "@tauri-apps/plugin-dialog": "~2.8.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "0.16.0",
     "@xterm/addon-unicode11": "^0.9.0",
@@ -71,7 +70,6 @@
     "shiki": "^4.4.3"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",

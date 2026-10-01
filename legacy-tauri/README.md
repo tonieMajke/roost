@@ -11,6 +11,7 @@ jest teraz Electron (`electron/`). Ten folder zostaje do porównań i ewentualne
 Powrót: przenieść `src-tauri/` do katalogu głównego, `backend-tauri.ts` do `src/`,
 w `src/backend.ts` przywrócić `inTauri ? tauriBackend : …` (historia gita: commit `3a98263`)
 i skrypty `desktop: tauri dev`, `tauri: tauri` w `package.json`. Zależności `@tauri-apps/*`
-zostały w `package.json`.
+zostały usunięte z `package.json` — żeby zbudować wersję Tauri, trzeba je doinstalować ręcznie:
+`pnpm add @tauri-apps/api @tauri-apps/plugin-clipboard-manager @tauri-apps/plugin-dialog && pnpm add -D @tauri-apps/cli`.
 
 Ostatnia zainstalowana AppImage z Tauri: `~/.local/bin/Agents-afe59d9.AppImage`.

@@ -1,6 +1,8 @@
 {
   "name": "roost-app",
   "version": "0.0.1",
+  "license": "GPL-3.0-or-later",
+  "author": "majke",
   "private": true,
   "main": "out/main.cjs",
   "scripts": {

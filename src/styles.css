@@ -944,4 +944,6 @@ button.feed-item {
 .splash-name { margin-top: 10px; font-size: 26px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; animation: splash-rise 0.7s 0.12s cubic-bezier(.2, .8, .2, 1) both; }
 .splash-tag { font-size: 13px; letter-spacing: 0.16em; opacity: 0.6; animation: splash-rise 0.7s 0.24s cubic-bezier(.2, .8, .2, 1) both; }
 @keyframes splash-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .splash-bird, .splash-name, .splash-tag { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .splash { transition: none; }
+  .splash-bird, .splash-name, .splash-tag { animation: none; } }

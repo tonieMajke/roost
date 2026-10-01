@@ -149,3 +149,9 @@ jednorazowo (`ping`), gdy praca skończyła się w ukrytym projekcie.
   `killAll` domyka wszystko.
 
 Plan etapów: `docs/plan-m1.md`, bieżący stan: `HANDOFF.md`.
+
+## Licencja
+
+Roost jest wolnym oprogramowaniem na licencji GNU General Public License v3.0 lub nowszej (GPL-3.0-or-later); zob. [`LICENSE`](LICENSE). Możesz go używać, zmieniać i rozpowszechniać, także komercyjnie, ale wersje pochodne muszą mieć dostępny kod źródłowy na tej samej licencji. Komponenty zewnętrzne: [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+
+Copyright (C) 2026 majke

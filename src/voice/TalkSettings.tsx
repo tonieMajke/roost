@@ -219,7 +219,7 @@ export function TalkSettings() {
 
       <div className="rail-label">{t("voice.talk.brain")}</div>
       <label className="prov-field" style={{ marginLeft: 0 }}>
-        <span>Model</span>
+        <span>{t("voice.dlg.model")}</span>
         <select
           value={brainValue}
           onChange={(e) => {
