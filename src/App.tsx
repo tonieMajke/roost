@@ -5,7 +5,8 @@ import { accentHex, nextMode, stepFontSize, uiClasses } from "./ui";
 import { DEFAULT_TERM_FONT, THEMES, termTheme } from "./themes";
 import type { TermLook } from "./Terminal";
 import { IconButton } from "./IconButton";
-import { FolderPlus, Gauge, LayoutGrid, Plus, UserRound, X } from "lucide-react";
+import { FolderPlus, Gauge, LayoutGrid, NotebookPen, Plus, UserRound, X } from "lucide-react";
+import { Scratchpad } from "./Scratchpad";
 import { tildify } from "./paths";
 import {
   MAX_PANES,
@@ -74,6 +75,7 @@ export function App() {
   const [agents, setAgents] = useState<AgentDef[]>([]);
   const [accounts, setAccounts] = useState<Accounts>(NO_ACCOUNTS);
   const [accountsDialog, setAccountsDialog] = useState(false);
+  const [scratchOpen, setScratchOpen] = useState(false);
   const [continuePane, setContinuePane] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   // Ephemeral only: never written to disk (exit + aktywność z src/activity.ts).
@@ -1134,6 +1136,16 @@ export function App() {
               >
                 <Gauge strokeWidth={1.75} aria-hidden /> Pulpit
               </button>
+              <button
+                type="button"
+                className={`btn${scratchOpen ? " is-on" : ""}`}
+                title="Notatki projektu"
+                aria-pressed={scratchOpen}
+                onClick={() => setScratchOpen((o) => !o)}
+                disabled={active === null}
+              >
+                <NotebookPen strokeWidth={1.75} aria-hidden /> Notatki
+              </button>
               <button type="button" className="btn" title="Konta agentów" onClick={() => setAccountsDialog(true)}>
                 <UserRound strokeWidth={1.75} aria-hidden /> Konta
               </button>
@@ -1177,6 +1189,9 @@ export function App() {
         )}
         {!inElectron && <div className="preview-badge">podgląd – bez prawdziwych procesów</div>}
       </main>
+      {scratchOpen && active && (
+        <Scratchpad key={active.id} projectId={active.id} projectName={active.name} onClose={() => setScratchOpen(false)} />
+      )}
       {loaded && ws.ui.dock && ws.projects.length > 0 && (
         <Dock
           project={active}

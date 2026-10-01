@@ -77,6 +77,10 @@ export interface Backend {
   saveWorkspace(json: string): Promise<void>;
   /** Kopia `workspace.json` → `workspace.<date>.bak` (`RRRR-MM-DD`); istniejącej kopii nie nadpisuje. */
   backupWorkspace(date: string): Promise<void>;
+  /** Scratchpad: notatka markdown projektu (`<config>/scratchpad/<id>.md`); pusta, gdy jej nie ma. */
+  scratchpadLoad(projectId: string): Promise<string>;
+  /** Zapis atomowy; odrzuca z powodem (np. za duża notatka). */
+  scratchpadSave(projectId: string, text: string): Promise<void>;
   /** Tekst do schowka (Ctrl+Shift+C). */
   copyText(text: string): Promise<void>;
   /** Tekst ze schowka (Ctrl+Shift+V); `null` = pusty schowek. */
