@@ -65,14 +65,18 @@ export class VoiceSession {
 
   private flushNotes() {
     const speak = this.deps.speak;
+    // Gra poprzedni komunikat: nowe czekają w kolejce i idą zaraz po nim (`done`).
+    if (this.notePlaying) return;
     const text = speakable(this.queued.splice(0).join(" "));
-    if (!speak || !text || this.notePlaying) return;
+    if (!speak || !text) return;
     const ac = new AbortController();
     const id = `note-${this.noteSeq++}`;
     const playing = { ac, id };
     this.notePlaying = playing;
     const done = () => {
-      if (this.notePlaying === playing) this.notePlaying = null;
+      if (this.notePlaying !== playing) return;
+      this.notePlaying = null;
+      if (this.queued.length && this.state.phase === "listening" && !this.state.hearing && !this.card) this.flushNotes();
     };
     speak(id, text)
       .then((bytes) => (ac.signal.aborted || this.state.phase !== "listening" ? undefined : this.deps.play(bytes, ac.signal)))

@@ -196,6 +196,8 @@ const pl = {
   "ui2.dock.radarNote": "odległość od środka = czas od ostatniego wyjścia · liczba = kontekst w %",
   "pane.drag.handoff": "kontekst →",
   "pane.drag.blocked": "brak rozmowy",
+  "pane.drag.pasteCtx": "wklej kontekst",
+  "pane.summarizingBadge": "streszczam…",
   "ui2.cont.defaultAcc": "{name} · domyślne konto",
 } as const;
 
@@ -397,6 +399,8 @@ const en: Record<keyof typeof pl, string> = {
   "ui2.dock.radarNote": "distance from the center = time since the last output · number = context in %",
   "pane.drag.handoff": "context →",
   "pane.drag.blocked": "no conversation",
+  "pane.drag.pasteCtx": "paste context",
+  "pane.summarizingBadge": "summarizing…",
   "ui2.cont.defaultAcc": "{name} · default account",
 };
 

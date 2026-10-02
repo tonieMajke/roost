@@ -70,7 +70,7 @@ html, body { background: transparent; } /* okno jest przezroczyste: rogi zaokrą
   flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--muted);
   letter-spacing: 0.04em; margin-right: 12px; /* równoważy znaczek po lewej */
 }
-/* Electron: przeciąganie okna za pasek (Tauri robi to przez data-tauri-drag-region) */
+/* Electron: przeciąganie okna za pasek tytułu (-webkit-app-region) */
 .titlebar { -webkit-app-region: drag; }
 .titlebar-btns, .resize-edge { -webkit-app-region: no-drag; }
 .titlebar-btns { display: flex; gap: 2px; }
@@ -424,6 +424,8 @@ button.ctx-row:focus-visible { outline: 1px solid var(--accent); outline-offset:
 .ctx-row.is-warn .ctx-line b { color: var(--accent); }
 .dock-live { min-height: 0; display: flex; flex-direction: column; }
 .dock-live:last-child { flex: 1; }
+/* nie ostatnia (przesunięta wyżej): własna wysokość z limitem, inaczej flex ściska ją do samego nagłówka */
+.dock-live:not(:last-child) { flex: none; max-height: 300px; }
 /* uchwyt do zmiany kolejności sekcji: przy lewej krawędzi, widoczny po najechaniu na sekcję */
 .dock-sec-ord { position: relative; }
 .dock-grip {
@@ -626,6 +628,8 @@ button.feed-item {
 /* focused pane header */
 .fh-fill .pane.is-focused .pane-head { background: var(--ag, var(--accent)); color: var(--on-ag); }
 .fh-fill .pane.is-focused .pane-name, .fh-fill .pane.is-focused .pane-title { color: var(--on-ag); }
+/* plakietka konta ma kolor agenta, a tu tło jest w kolorze agenta */
+.fh-fill .pane.is-focused .pane-account { color: var(--on-ag); border-color: color-mix(in srgb, var(--on-ag) 45%, transparent); }
 .fh-fill .pane.is-focused .icon { color: var(--on-ag); }
 .fh-fill .pane.is-focused .icon:hover:not(:disabled) { background: var(--on-ag-hover); }
 .fh-fill .pane.is-focused .ag-badge { background: var(--on-ag); color: var(--ag, var(--accent)); }
@@ -716,7 +720,7 @@ button.feed-item {
 }
 /* Plakietka pod nagłówkiem celu (środek zasłania kulka). */
 .pane-cell[data-drag="handoff"]::before {
-  content: "wklej kontekst"; position: absolute; z-index: 6; left: 50%; top: calc(var(--pane-head-h) + 12px);
+  content: attr(data-label-paste); position: absolute; z-index: 6; left: 50%; top: calc(var(--pane-head-h) + 12px);
   transform: translateX(-50%); padding: 4px 9px; border-radius: var(--r-ctl); pointer-events: none;
   background: var(--accent); color: var(--on-accent); font-family: var(--mono); font-size: 11px; font-weight: 600;
 }
@@ -726,7 +730,7 @@ button.feed-item {
   opacity: 1; box-shadow: inset 0 0 0 2px var(--accent); animation: summaryPulse 1.2s steps(6, jump-none) infinite;
 }
 .pane-cell[data-busy="summary"]::before {
-  content: "streszczam…"; position: absolute; z-index: 6; left: 50%; top: calc(var(--pane-head-h) + 12px);
+  content: attr(data-label-busy); position: absolute; z-index: 6; left: 50%; top: calc(var(--pane-head-h) + 12px);
   transform: translateX(-50%); padding: 4px 9px; border-radius: var(--r-ctl); pointer-events: none;
   background: var(--accent); color: var(--on-accent); font-family: var(--mono); font-size: 11px; font-weight: 600;
 }

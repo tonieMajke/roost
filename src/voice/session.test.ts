@@ -307,6 +307,19 @@ describe("VoiceSession", () => {
     ]);
   });
 
+  it("komunikat w trakcie innego komunikatu nie przepada: gra zaraz po nim", async () => {
+    const r = rig();
+    r.s.start();
+    r.s.note("pi od „README” skończył pracę.");
+    await flush();
+    r.s.note("pi od „Testy” skończył pracę.");
+    await flush();
+    expect(r.log).toEqual(["play note-0:pi od „README” skończył pracę."]);
+    await r.finishPlaying();
+    await flush();
+    expect(r.log.at(-1)).toBe("play note-1:pi od „Testy” skończył pracę.");
+  });
+
   it("CLI: `tool_request` wykonuje narzędzie i odsyła wynik, odpowiedź płynie dalej w tym samym kroku", async () => {
     const results: [string, string][] = [];
     const r = rig({ tts: false, tool: async () => ({ ok: true, text: "2 panele" }), toolResult: (id, out) => void results.push([id, out.text]) });

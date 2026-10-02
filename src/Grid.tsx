@@ -279,6 +279,9 @@ export function Grid({
                     key={pane.id}
                     data-pane={pane.id}
                     data-busy={summarizing.includes(pane.id) ? "summary" : undefined}
+                    // plakietki z CSS (::before): tekst w języku interfejsu
+                    data-label-paste={t("pane.drag.pasteCtx")}
+                    data-label-busy={t("pane.summarizingBadge")}
                     className={`pane-cell${isMax ? " is-maxed" : ""}`}
                     style={
                       {

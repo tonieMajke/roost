@@ -247,6 +247,9 @@ export function ChatView({ mode, onMode, onTitle, railOpen, onToggleRail, onOpen
     const now = Date.now();
     const base = chat ?? { ...newChat(crypto.randomUUID(), now, model, search), folder };
     const q: Message = { id: crypto.randomUUID(), role: "user", text, at: now };
+    // Wstawiony tekst (Edit) zużyty: pole jest w dwóch miejscach (pusty widok / pod wątkiem), a nowo
+    // zamontowane wstawiłoby go jeszcze raz.
+    setInject(null);
     respond({ ...base, title: base.title || chatTitle(text), messages: [...base.messages, q] }, model);
   };
 

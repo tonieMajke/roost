@@ -69,6 +69,14 @@ describe("parseUi", () => {
     }
   });
 
+  it("splash: domyślnie włączony, off się wczytuje, zła wartość = on + błąd", () => {
+    expect(DEFAULT_UI.splash).toBe("on");
+    expect(parseUi({ splash: "off" }).ui.splash).toBe("off");
+    const { ui, errors } = parseUi({ splash: "maybe" });
+    expect(ui.splash).toBe("on");
+    expect(errors).toEqual(["ui.splash: `maybe` is not one of on, off, using `on`"]);
+  });
+
   it("rail: closed wczytuje się, zła wartość = open + błąd", () => {
     expect(parseUi({ rail: "closed" }).ui.rail).toBe("closed");
     const { ui, errors } = parseUi({ rail: "narrow" });

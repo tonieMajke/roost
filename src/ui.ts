@@ -15,6 +15,7 @@ export type Ui = {
   title: "big" | "compact"; // project name in the area header
   grid: "on" | "off"; // background grid
   motion: "full" | "lite";
+  splash: "on" | "off"; // ekran powitalny przy starcie okna
   dock: boolean; // desktop panel visible
   rail: "open" | "closed"; // left rail: full width or 56 px of keys and dots
   feed: "all" | "project"; // dock „Na żywo”: every project or only the active one
@@ -36,6 +37,7 @@ export const DEFAULT_UI: Ui = {
   title: "big",
   grid: "on",
   motion: "full",
+  splash: "on",
   dock: true,
   rail: "open",
   feed: "all",
@@ -58,6 +60,7 @@ export const UI_CHOICES = {
   title: ["big", "compact"],
   grid: ["on", "off"],
   motion: ["full", "lite"],
+  splash: ["on", "off"],
   rail: ["open", "closed"],
   lang: ["auto", "pl", "en"],
 } as const satisfies Record<ChoiceKey, readonly string[]>;
@@ -121,6 +124,7 @@ export function uiRows(): UiRow[] {
     { key: "title", label: t("ui.row.title"), choices: [{ value: "big", label: t("ui.title.big") }, { value: "compact", label: t("ui.title.compact") }] },
     { key: "grid", label: t("ui.row.grid"), choices: [{ value: "on", label: t("ui.yes") }, { value: "off", label: t("ui.no") }] },
     { key: "motion", label: t("ui.row.motion"), choices: [{ value: "full", label: t("ui.motion.full") }, { value: "lite", label: t("ui.motion.lite") }] },
+    { key: "splash", label: t("ui.row.splash"), choices: [{ value: "on", label: t("ui.yes") }, { value: "off", label: t("ui.no") }] },
     { key: "rail", label: t("ui.row.rail"), choices: [{ value: "open", label: t("ui.rail.open") }, { value: "closed", label: t("ui.rail.closed") }] },
     // Nazwy języków zawsze we własnym języku, żeby dało się je znaleźć, gdy interfejs jest obcy.
     { key: "lang", label: t("ui.row.lang"), choices: [{ value: "auto", label: t("ui.lang.auto") }, { value: "pl", label: "Polski" }, { value: "en", label: "English" }] },

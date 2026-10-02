@@ -8,7 +8,6 @@ export function Splash() {
   const [phase, setPhase] = useState<"in" | "out" | "gone">("in");
 
   useEffect(() => {
-    const out = setTimeout(() => setPhase("out"), SPLASH_MS);
     // Capture + stopImmediatePropagation: pierwszy klawisz tylko zamyka splash (listener Splasha
     // rejestruje się przed tym z App.tsx, więc skrót się nie odpali).
     const skip = (e: KeyboardEvent) => {
@@ -16,6 +15,11 @@ export function Splash() {
       e.stopImmediatePropagation();
       setPhase((p) => (p === "in" ? "out" : p));
     };
+    // Splash znika sam: listener też, inaczej połknąłby pierwszy klawisz długo po splashu.
+    const out = setTimeout(() => {
+      window.removeEventListener("keydown", skip, true);
+      setPhase("out");
+    }, SPLASH_MS);
     window.addEventListener("keydown", skip, { capture: true, once: true });
     return () => {
       clearTimeout(out);
