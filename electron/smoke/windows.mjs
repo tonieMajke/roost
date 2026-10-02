@@ -115,7 +115,8 @@ try {
   // 1. Terminal: PowerShell pod ConPTY, polecenie z klawiatury, katalog z polskimi znakami.
   try {
     await until("prompt PowerShella", async () => /PS.+>/.test(flat(await text("shell"))), 60_000);
-    await rows("shell").click();
+    // Kliknięcia odbiera warstwa `.xterm-screen` nad wierszami
+    await page.locator(`section.pane[data-ag="shell"] .xterm-screen`).click();
     await page.keyboard.type(`Write-Output ("ROOST-" + (6*7)); (Get-Location).Path`);
     await page.keyboard.press("Enter");
     const out = await until("wynik polecenia", async () => {
