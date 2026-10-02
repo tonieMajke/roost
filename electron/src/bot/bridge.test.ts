@@ -94,7 +94,8 @@ describe("ToolBridge + mcp-server.cjs", () => {
   };
 
   it("gniazdo 0600; wywołanie przechodzi do sesji z kontekstem i zdarzeniami", async () => {
-    expect(fs.statSync(bridge.socketPath).mode & 0o777).toBe(0o600);
+    // Windows: named pipe, bez pliku i praw uniksowych
+    if (process.platform !== "win32") expect(fs.statSync(bridge.socketPath).mode & 0o777).toBe(0o600);
     const events: ChatEvent[] = [];
     let n = 0;
     const s = bridge.register({

@@ -1,9 +1,11 @@
 //! Procesy agentów w pseudoterminalach. Każdy jest liderem sesji (node-pty woła setsid),
 //! więc jego pid to też grupa procesów i jeden sygnał do `-pid` dociera do wszystkiego, co uruchomił.
+//! Na Windows (ConPTY) grup nie ma: `signalTree` zabija drzewo procesów przez `taskkill`.
 
 import os from "node:os";
 import * as nodePty from "node-pty";
 import { childEnv, expand } from "./env";
+import { signalTree, signalTreeSync, spawnPlan } from "./platform";
 
 export type SpawnSpec = {
   command: string;
@@ -22,31 +24,17 @@ const GRACE_MS = 1500;
 
 const signalNames = new Map(Object.entries(os.constants.signals).map(([name, n]) => [n, name]));
 
-function signalGroup(pid: number, sig: NodeJS.Signals | 0): boolean {
-  try {
-    process.kill(-pid, sig);
-    return true;
-  } catch {
-    // Tuż po spawn dziecko może jeszcze nie mieć setsid (grupy nie ma, ESRCH), a już istnieje
-    // jako proces: wtedy sygnał do samego pid, inaczej panel zamknięty od razu przeżyłby.
-    try {
-      process.kill(pid, sig);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-}
-
 /** SIGHUP do grupy (to robi zamknięcie okna terminala), SIGKILL dla tego, co zostało po `grace`. */
 export function hangUp(pids: number[], grace = GRACE_MS): Promise<void> {
-  const alive = pids.filter((pid) => signalGroup(pid, "SIGHUP"));
+  // Tuż po spawn dziecko może jeszcze nie mieć setsid: wtedy `signalTree` trafia w sam pid,
+  // inaczej panel zamknięty od razu przeżyłby.
+  const alive = pids.filter((pid) => signalTree(pid, "SIGHUP"));
   if (alive.length === 0) return Promise.resolve();
   return new Promise((resolve) => {
     const until = Date.now() + grace;
     const check = () => {
-      if (Date.now() < until && alive.some((pid) => signalGroup(pid, 0))) return void setTimeout(check, 50);
-      for (const pid of alive) signalGroup(pid, "SIGKILL");
+      if (Date.now() < until && alive.some((pid) => signalTree(pid, 0))) return void setTimeout(check, 50);
+      for (const pid of alive) signalTree(pid, "SIGKILL");
       resolve();
     };
     check();
@@ -55,11 +43,11 @@ export function hangUp(pids: number[], grace = GRACE_MS): Promise<void> {
 
 /** To samo synchronicznie: przy wyjściu z aplikacji nie ma już pętli zdarzeń, na którą można czekać. */
 export function hangUpSync(pids: number[], grace = GRACE_MS): void {
-  const alive = pids.filter((pid) => signalGroup(pid, "SIGHUP"));
+  const alive = pids.filter((pid) => signalTreeSync(pid, "SIGHUP"));
   const until = Date.now() + grace;
   const pause = new Int32Array(new SharedArrayBuffer(4));
-  while (Date.now() < until && alive.some((pid) => signalGroup(pid, 0))) Atomics.wait(pause, 0, 0, 50);
-  for (const pid of alive) signalGroup(pid, "SIGKILL");
+  while (Date.now() < until && alive.some((pid) => signalTreeSync(pid, 0))) Atomics.wait(pause, 0, 0, 50);
+  for (const pid of alive) signalTreeSync(pid, "SIGKILL");
 }
 
 export class Ptys {
@@ -71,14 +59,17 @@ export class Ptys {
     const cwd = spec.cwd ? expand(spec.cwd) : "";
     const extra: Record<string, string> = { TERM: "xterm-256color", COLORTERM: "truecolor" };
     for (const [key, value] of spec.env ?? []) extra[expand(key)] = expand(value);
+    const env = childEnv(extra);
     let proc: nodePty.IPty;
     try {
-      proc = nodePty.spawn(expand(spec.command), (spec.args ?? []).map(expand), {
+      // Windows: `codex.cmd` z npm → node + skrypt, inny `.cmd` → cmd.exe (gotowa linia poleceń).
+      const plan = spawnPlan(expand(spec.command), (spec.args ?? []).map(expand), { env });
+      proc = nodePty.spawn(plan.command, plan.verbatim ? plan.args.join(" ") : plan.args, {
         name: "xterm-256color",
         cols: Math.max(1, spec.cols),
         rows: Math.max(1, spec.rows),
         cwd: cwd || expand("~"),
-        env: childEnv(extra),
+        env,
         encoding: null, // surowe bajty: dekoduje xterm.js
       });
     } catch (e) {
@@ -86,7 +77,8 @@ export class Ptys {
     }
     const id = ++this.next;
     this.map.set(id, proc);
-    proc.onData((chunk) => onData(chunk as unknown as Uint8Array));
+    // Na Windows node-pty ignoruje `encoding: null` i zawsze oddaje tekst; strona chce bajtów.
+    proc.onData((chunk: string | Uint8Array) => onData(typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk));
     proc.onExit(({ exitCode, signal }) => {
       // Usunięte przed zgłoszeniem, żeby późniejsze kill nie trafiło w ponownie użyty pid.
       this.map.delete(id);

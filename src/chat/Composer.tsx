@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowUp, Check, ChevronDown, FolderOpen, Globe, Square, X } from "lucide-react";
 import { useT } from "../i18n/useT";
 import { GROUP_LABELS, findModel, isCli, modelLabel, supportsSearch, type ModelRef, type ProviderDef, type ProviderGroup } from "../chat";
+import { baseName } from "../paths";
 
 type Props = {
   providers: ProviderDef[];
@@ -208,7 +209,7 @@ export function Composer({ providers, offline, model, onModel, search, onSearch,
               onClick={onFolder}
             >
               <FolderOpen aria-hidden />
-              <span>{folder && canFolder ? folder.split("/").filter(Boolean).pop() || folder : tr("chat.folder")}</span>
+              <span>{folder && canFolder ? baseName(folder) || folder : tr("chat.folder")}</span>
             </button>
             {folder && (
               <button type="button" className="chat-folder-clear" title={tr("chat.folder.clear")} aria-label={tr("chat.folder.clear")} onClick={onClearFolder}>

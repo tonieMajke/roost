@@ -67,7 +67,7 @@ export function newTools(seen: string | null | undefined, tools: ToolUse[]): Too
 
 /** `~/x` → `/home/u/x`, so it can be compared with the absolute paths claude writes. */
 function expand(path: string, home: string): string {
-  return home !== "" && (path === "~" || path.startsWith("~/")) ? home + path.slice(1) : path;
+  return home !== "" && (path === "~" || /^~[\\/]/.test(path)) ? home + path.slice(1) : path;
 }
 
 /** `Write src/feed.ts`, `bash pnpm test`: the path relative to the project when inside it. */

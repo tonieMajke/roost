@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { rateFor, step, type Emitter, type Particle } from "./nebula";
+import { rateFor, step, type Emitter, type Particle } from "./nebula-sim";
 
 /** Kolory agentów (`--ag`, #rrggbb) jako "r,g,b" do rgba(); nierozpoznane = akcent mgławicy. */
 function rgb(hex: string): string {

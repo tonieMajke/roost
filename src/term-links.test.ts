@@ -34,6 +34,17 @@ describe("findPathRefs", () => {
     expect(findPathRefs("a/b.ts:0")[0]!.line).toBeUndefined();
     expect(paths("docs/plan-kalendarz-mail.md żółć/pliczek.txt")).toEqual(["docs/plan-kalendarz-mail.md", "żółć/pliczek.txt"]);
   });
+  it("Windows: dysk, ukośniki wsteczne, sufiks linii po dwukropku dysku", () => {
+    const line = "error at C:\\Users\\Ja\\proj\\src\\main.rs:12:5 oraz src\\lib.rs";
+    const refs = findPathRefs(line);
+    expect(refs[0]).toMatchObject({ path: "C:\\Users\\Ja\\proj\\src\\main.rs", line: 12, col: 5 });
+    expect(line.slice(refs[0]!.start, refs[0]!.end)).toBe("C:\\Users\\Ja\\proj\\src\\main.rs:12:5");
+    expect(refs[1]).toMatchObject({ path: "src\\lib.rs" });
+    expect(paths("D:/kod/a.ts .\\x.ts ~\\notatki.md")).toEqual(["D:/kod/a.ts", ".\\x.ts", "~\\notatki.md"]);
+    // litera bez ukośnika to nie dysk; ścieżka sieciowa i sam `\n` też nie
+    expect(paths("klasa A:b \\\\serwer\\udział tekst\\n")).toEqual([]);
+    expect(paths('"src/a.ts\\n"')).toEqual(["src/a.ts"]);
+  });
   it("nie zawiesza się na bardzo długiej linii", () => {
     expect(findPathRefs("a/b ".repeat(5000)).length).toBeLessThanOrEqual(40);
   });

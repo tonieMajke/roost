@@ -5,6 +5,7 @@ import { t } from "./i18n";
 import fs from "node:fs";
 import { spawn } from "node:child_process";
 import { childEnv, expand } from "./env";
+import { killChild, releaseAfterExit } from "./platform";
 import { parseStatus, validRelPath, type GitStatus } from "../../src/git";
 
 const LOCAL_MS = 15_000;
@@ -43,7 +44,8 @@ export function runGit(cwd: string, args: string[], opts: RunOpts = {}): Promise
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGKILL");
+      killChild(child);
+      releaseAfterExit(child);
     }, timeoutMs);
     child.stdout.on("data", (b: Buffer) => {
       if (size >= maxBytes) return void (truncated = true);

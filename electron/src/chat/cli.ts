@@ -6,6 +6,7 @@ import fs from "node:fs";
 import type { ChatEvent } from "../../../src/chat";
 import { childEnv } from "../env";
 import { killGroup } from "../bot/proc";
+import { groupSpawn, releaseAfterExit, spawnPlan } from "../platform";
 
 export type LineParser = {
   /** Zdarzenia z jednej linii wyjścia (już sparsowanej z JSON). */
@@ -30,13 +31,21 @@ export function runCli(
 ): Promise<void> {
   if (signal.aborted) return Promise.resolve(); // przerwane przed startem: procesu nie uruchamiamy
   fs.mkdirSync(cwd, { recursive: true });
+  const childVars = childEnv(env);
+  let plan: ReturnType<typeof spawnPlan>;
+  try {
+    plan = spawnPlan(program, args, { env: childVars });
+  } catch (e) {
+    return Promise.reject(e as Error);
+  }
   return new Promise((resolve, reject) => {
-    const child = spawn(program, args, { cwd, env: childEnv(env), stdio: ["pipe", "pipe", "pipe"], detached: true });
+    const child = spawn(plan.command, plan.args, { cwd, env: childVars, stdio: ["pipe", "pipe", "pipe"], detached: groupSpawn(), windowsHide: true, windowsVerbatimArguments: plan.verbatim });
     let buf = "";
     let err = "";
     let killTimer: ReturnType<typeof setTimeout> | undefined;
     const onAbort = () => {
       killGroup(child.pid, "SIGTERM");
+      releaseAfterExit(child);
       killTimer = setTimeout(() => killGroup(child.pid, "SIGKILL"), 2000);
     };
     signal.addEventListener("abort", onAbort, { once: true });

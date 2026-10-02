@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import type { AccountDef } from "../../src/accounts";
+import { isInsidePath } from "./platform";
 import { dayOf, mergeRows, NO_USAGE, normalizeModel, tokenCount, type Usage, type UsageRow } from "../../src/usage";
 import { writeAtomic } from "./config";
 import { expand } from "./env";
@@ -330,9 +331,8 @@ export class UsageScanner {
 
   /** Wiersze z indeksu, bez logów z katalogów wykluczonych. */
   rows(): UsageRow[] {
-    const ex = this.exclude.map((d) => path.resolve(d));
     const all = Object.values(this.load().files).flatMap((e) => e.rows);
-    return all.filter((r) => !r.project || !ex.some((d) => r.project === d || r.project!.startsWith(d + path.sep)));
+    return all.filter((r) => !r.project || !this.exclude.some((d) => isInsidePath(r.project!, d)));
   }
 
   scan(): Promise<ScanResult> {

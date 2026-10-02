@@ -4,7 +4,7 @@ import { t } from "./i18n";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { app, BrowserWindow, clipboard, dialog, ipcMain, powerMonitor, safeStorage, shell } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Notification, powerMonitor, safeStorage, shell } from "electron";
 import * as config from "./config";
 import * as scratchpad from "./scratchpad";
 import { sessionContext } from "./context";
@@ -12,7 +12,8 @@ import { sessionHandoff } from "./handoff";
 import * as git from "./git";
 import { commandsAvailable } from "./commands";
 import { claudeLimits, claudeSettingsArg } from "./limits";
-import { notify } from "./notify";
+import { notify as notifySend } from "./notify";
+import { isLinux, isWindows } from "./platform";
 import { getMainLang, resolveMainLang, setMainLang } from "./i18n";
 import * as sandboxNotice from "./sandbox-notice";
 import { openFile, resolveFiles } from "./open-path";
@@ -45,6 +46,24 @@ import { buildChatConfig, isCli, type ChatEvent, type ChatRequest, type Provider
 // klucze API (safeStorage). Zmiana nazwy po cichu unieważniłaby zapisane klucze. Widoczna nazwa to Roost.
 app.setName("Agents");
 app.setPath("userData", path.join(app.getPath("appData"), "Agents"));
+// Windows pokazuje powiadomienia tylko aplikacji z AppUserModelID (ten sam co `appId` instalatora).
+if (isWindows) app.setAppUserModelId("dev.majke.roost");
+
+/** Powiadomienie na pulpicie: na Linuksie `notify-send` (działa z akcją kliknięcia w KDE/GNOME/dunst),
+ *  gdzie indziej `Notification` z Electrona. */
+function notify(title: string, body: string, onClick?: () => void): void {
+  if (isLinux) return notifySend(title, body, onClick);
+  const n = new Notification({ title, body });
+  // Bez referencji obiekt może zniknąć przed kliknięciem (a z nim obsługa `click`).
+  shownNotifications.add(n);
+  n.on("close", () => shownNotifications.delete(n));
+  n.on("click", () => {
+    shownNotifications.delete(n);
+    onClick?.();
+  });
+  n.show();
+}
+const shownNotifications = new Set<Notification>();
 
 // Jedna kopia na katalog konfiguracji: druga podwoiłaby harmonogram bota i nadpisywała workspace.json.
 // Z własnym `ROOST_CONFIG_DIR`/`AGENTS_CONFIG_DIR` druga kopia jest zamierzona.
@@ -78,7 +97,7 @@ try {
 }
 
 // Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
-const store = passwordStore(readOrNull(path.join(app.getPath("home"), ".config", "kwalletrc")), process.env);
+const store = isLinux ? passwordStore(readOrNull(path.join(app.getPath("home"), ".config", "kwalletrc")), process.env) : null;
 if (store) app.commandLine.appendSwitch("password-store", store);
 
 function readOrNull(file: string): string | null {
@@ -140,10 +159,11 @@ const botService = new BotService({
   key: (p) => keys.get(p.id, p.keyEnv),
   onUsage: ({ bot, ...r }) => ledger.record({ ts: Date.now(), source: "bot", ref: bot, ...r }),
   beforeOpenAI: async (req, signal, emit) => {
-    const ft = freetokenInstance(req.provider.baseUrl, req.model);
+    // FreeToken i router to usługi systemd z nvidia-smi: tylko Linux.
+    const ft = isLinux ? freetokenInstance(req.provider.baseUrl, req.model) : null;
     const status = (text: string) => emit({ type: "thinking", text: `${text}\n` });
     if (ft) await ensureFreeToken(req.model, ft, signal, status);
-    else if (isRouter(req.provider.baseUrl)) await freeGpuForRouter(signal, status);
+    else if (isLinux && isRouter(req.provider.baseUrl)) await freeGpuForRouter(signal, status);
   },
 });
 
@@ -362,7 +382,15 @@ handle("open_external", (url: string) => {
 });
 // Ścieżki z terminala (Ctrl-klik): istnienie sprawdza proces główny, plik otwiera spawn z tablicą argumentów.
 handle("resolve_files", (cwd: string, paths: string[]) => resolveFiles(cwd, paths));
-handle("open_file", (file: string, line?: number, col?: number) => openFile(file, line, col));
+handle("open_file", (file: string, line?: number, col?: number) => openFile(
+    file,
+    line,
+    col,
+    process.env,
+    (f) => void shell.openPath(f),
+    (f) => shell.showItemInFolder(f),
+  ),
+);
 handle("chat_config", () => chatConfigLoad(config.configDir()));
 handle("chat_models", (p: ProviderDef) => chat.models(p));
 handle("chat_config_save", (json: string) => chatConfigSave(config.configDir(), json));

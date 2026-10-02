@@ -15,6 +15,7 @@ import { streamPi } from "./pi";
 import { providerLabel } from "../usage-store";
 import type { Usage } from "../../../src/usage";
 import { ensureFreeToken, freeGpuForRouter, freetokenInstance, isRouter } from "./freetoken";
+import { isLinux } from "../platform";
 
 const CONFIG_FILE = "chat.json";
 
@@ -119,10 +120,11 @@ export function defaultChatService(
       openai: async (req, signal, emit) => {
         // FreeToken sam wstaje na żądanie (jedna instancja na dwóch kartach, port 1919); router
         // llama.cpp ładuje model sam, ale najpierw trzeba mu oddać karty zajęte przez FreeToken
-        const ft = freetokenInstance(req.provider.baseUrl, req.model);
+        // FreeToken i router to usługi systemd z nvidia-smi: tylko Linux.
+        const ft = isLinux ? freetokenInstance(req.provider.baseUrl, req.model) : null;
         const status = (text: string) => emit({ type: "thinking", text: `${text}\n` });
         if (ft) await ensureFreeToken(req.model, ft, signal, status);
-        else if (isRouter(req.provider.baseUrl)) await freeGpuForRouter(signal, status);
+        else if (isLinux && isRouter(req.provider.baseUrl)) await freeGpuForRouter(signal, status);
         return streamOpenAI(req, key(req.provider), signal, emit);
       },
       anthropic: (req, signal, emit) => streamAnthropic(req, key(req.provider), signal, emit),

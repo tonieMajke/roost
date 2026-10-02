@@ -1,0 +1,92 @@
+name: Release
+
+# Tag `v<wersja>` (zgodny z `electron/package.json`) → szkic wydania z AppImage, instalatorem
+# i zipem dla Windows oraz plikami `.sha256`. Szkic publikuje się ręcznie na GitHubie.
+on:
+  push:
+    tags: ["v*"]
+  # Zmiana tego pliku w PR: próbna budowa bez wydania
+  pull_request:
+    paths: [.github/workflows/release.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wersja z tagu
+        if: github.event_name == 'push'
+        run: |
+          v=$(node -p "require('./electron/package.json').version")
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME ≠ electron/package.json $v" >&2; exit 1; }
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: npm ci
+        working-directory: electron
+      # `dist` sprawdza też, że pty.node nie wymaga glibc nowszego niż 2.34
+      - run: npm run dist
+        working-directory: electron
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: electron/release/*.AppImage
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: npm ci
+        working-directory: electron
+      - run: npm run dist:win
+        working-directory: electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            electron/release/*.exe
+            electron/release/*.zip
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push'
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Sumy kontrolne
+        working-directory: out
+        run: for f in *; do sha256sum "$f" > "$f.sha256"; done
+      - name: Szkic wydania
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in v0.*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" \
+            --draft $prerelease --generate-notes --title "Roost ${GITHUB_REF_NAME#v}"

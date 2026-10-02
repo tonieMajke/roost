@@ -49,7 +49,9 @@ it("expand rozwija dom i zmienne", () => {
   const home = os.homedir();
   expect(expand("~")).toBe(home);
   expect(expand("~/x")).toBe(`${home}/x`);
-  expect(expand("$HOME")).toBe(process.env.HOME);
+  process.env.ROOST_TEST_EXPAND = "wartość";
+  expect(expand("$ROOST_TEST_EXPAND")).toBe("wartość");
+  delete process.env.ROOST_TEST_EXPAND;
   expect(expand("claude")).toBe("claude");
   expect(expand("a~b")).toBe("a~b");
 });

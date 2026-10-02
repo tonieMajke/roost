@@ -1,4 +1,5 @@
 //! Pliki konfiguracji w `configDir()` (`~/.config/dev.majke.roost/`; do wersji „Agents” był to `dev.majke.agents`).
+//! Na macOS `~/Library/Application Support/dev.majke.roost`, na Windows `%APPDATA%\\dev.majke.roost`.
 
 import { t } from "./i18n";
 import fs from "node:fs";
@@ -6,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { expand } from "./env";
 import { validId } from "./context";
+import { configBase, hasUnixPerms } from "./platform";
 
 const AGENTS_FILE = "agents.json";
 const WORKSPACE_FILE = "workspace.json";
@@ -15,12 +17,12 @@ const CHAT_KEYS_FILE = "chat-keys.json";
 /** `ROOST_CONFIG_DIR` (dawniej `AGENTS_CONFIG_DIR`) pozwala uruchomić drugą kopię obok, bez wspólnego workspace.json. */
 export function configDir(): string {
   const env = process.env.ROOST_CONFIG_DIR || process.env.AGENTS_CONFIG_DIR;
-  return env || path.join(os.homedir(), ".config", "dev.majke.roost");
+  return env || path.join(configBase(), "dev.majke.roost");
 }
 
 /** Katalog z czasów nazwy „Agents”. */
 export function legacyConfigDir(): string {
-  return path.join(os.homedir(), ".config", "dev.majke.agents");
+  return path.join(configBase(), "dev.majke.agents");
 }
 
 const DATA_NAMES = ["workspace.json", "agents.json", "accounts.json", "chat-keys.json", "bots", "chats"];
@@ -67,6 +69,7 @@ const SECRET_FILES = [CHAT_KEYS_FILE, ACCOUNTS_FILE, path.join("pi-agent", "web-
 /** Katalog konfiguracji 0700, a pliki z sekretami 0600 (cpSync zachowuje stare, szersze uprawnienia).
  *  Reszty plików nie ruszamy. Brakujące pliki pomijamy. */
 export function tightenSecretPerms(dir: string): void {
+  if (!hasUnixPerms()) return; // Windows: %APPDATA% chronią ACL profilu, chmod zmienia tylko „tylko do odczytu”
   fs.chmodSync(dir, 0o700);
   for (const f of SECRET_FILES) {
     const file = path.join(dir, f);

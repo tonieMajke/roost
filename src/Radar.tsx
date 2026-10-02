@@ -1,4 +1,4 @@
-import type { Blip } from "./radar";
+import type { Blip } from "./radar-model";
 import { useT } from "./i18n/useT";
 
 /** Radar motywu „Wieża” (makieta K): tarcza z pierścieniami 1/5/15 min i wiązką, znaki = panele. */

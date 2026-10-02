@@ -1,5 +1,6 @@
 /** Konta agentów (osobne foldery logowania Claude / Codex), `accounts.json`. Czyste, bez dostępu do dysku. */
 import type { AgentDef } from "./agents";
+import { programName } from "./paths";
 
 export type AccountKind = "claude" | "codex";
 
@@ -18,7 +19,7 @@ const isKind = (v: unknown): v is AccountKind => v === "claude" || v === "codex"
 
 /** Rodzaj agenta, który ma konta (po nazwie polecenia, jak `withClaudeSettings`); inne agenty: `null`. */
 export function accountKind(agent: AgentDef | undefined): AccountKind | null {
-  const cmd = agent?.command.split("/").pop();
+  const cmd = agent ? programName(agent.command) : undefined;
   return isKind(cmd) ? cmd : null;
 }
 

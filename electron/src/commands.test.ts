@@ -4,9 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import { commandExists, commandsAvailable } from "./commands";
 
+/** Pliki w nowym katalogu. Na Windows o tym, że plik jest programem, decyduje rozszerzenie z PATHEXT,
+ *  a nie bit x: „wykonywalny” dostaje `.cmd`, reszta zostaje bez rozszerzenia. */
 function bin(files: Record<string, number>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "roost-cmd-"));
-  for (const [name, mode] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), "#!/bin/sh\n", { mode });
+  for (const [name, mode] of Object.entries(files)) {
+    const file = process.platform === "win32" && mode & 0o111 ? `${name}.cmd` : name;
+    fs.writeFileSync(path.join(dir, file), "#!/bin/sh\n", { mode });
+  }
   return dir;
 }
 
@@ -36,14 +41,15 @@ describe("commandExists", () => {
     expect(commandExists(path.join(dir, "nope"), dir)).toBe(false);
   });
 
-  it("rozwija $SHELL i odrzuca pustą komendę", () => {
+  it.skipIf(process.platform === "win32")("rozwija $SHELL (pusty = /bin/sh) i odrzuca pustą komendę", () => {
     const dir = bin({ sh: 0o755 });
     const old = process.env.SHELL;
     process.env.SHELL = path.join(dir, "sh");
     try {
       expect(commandExists("$SHELL", "")).toBe(true);
       process.env.SHELL = "";
-      expect(commandExists("$SHELL", dir)).toBe(false);
+      expect(commandExists("$SHELL", "")).toBe(fs.existsSync("/bin/sh"));
+      expect(commandExists("", dir)).toBe(false);
     } finally {
       if (old === undefined) delete process.env.SHELL;
       else process.env.SHELL = old;

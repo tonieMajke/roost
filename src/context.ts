@@ -2,6 +2,7 @@
 import type { AgentDef } from "./agents";
 import type { ToolUse } from "./feed";
 import type { Pane, Project } from "./workspace";
+import { programName } from "./paths";
 
 /** Which session file reader (Rust `session_context`) understands this agent. */
 export type ContextKind = "claude" | "pi";
@@ -39,7 +40,7 @@ export function claudeWindow(model: string | null | undefined): number | null {
 /** Reader by the program the agent runs (`/usr/bin/claude` too); others have no meter. */
 export function contextKind(agent: AgentDef | undefined): ContextKind | null {
   if (!agent?.session) return null;
-  const program = agent.command.split("/").pop();
+  const program = programName(agent.command);
   return program === "claude" || program === "pi" ? program : null;
 }
 
@@ -97,6 +98,9 @@ export function sessionTitles(projects: Project[], contexts: Record<string, Sess
 /** Terminal titles programs keep that say nothing about the conversation. */
 const GENERIC_TERM_TITLES = new Set(["claude", "claude code", "pi"]);
 
+/** Windows (ConPTY): default console title = path of the started program, "Administrator: " in front when elevated. */
+const CONSOLE_DEFAULT_TITLE = /^(?:[^:\\]{1,30}: )?[A-Za-z]:\\.*\.(?:exe|com|cmd|bat)$/i;
+
 /**
  * Title a program set with OSC 0/2 (claude: "✳ Naprawa paska xterm", with a spinner in
  * place of ✳ while it works). The leading status marks go: the pane shows the state itself,
@@ -104,6 +108,7 @@ const GENERIC_TERM_TITLES = new Set(["claude", "claude code", "pi"]);
  */
 export function cleanTermTitle(raw: string): string | null {
   const text = raw.replace(/^[^\p{L}\p{N}]+/u, "").replace(/\s+/g, " ").trim().slice(0, 80).trim();
+  if (CONSOLE_DEFAULT_TITLE.test(raw.trim())) return null;
   return text === "" || GENERIC_TERM_TITLES.has(text.toLowerCase()) ? null : text;
 }
 

@@ -1,6 +1,10 @@
 # Plan „Roost na Windows i macOS”
 
-Dopisane 2026-10-02 z rozmowy z użytkownikiem. Na razie tylko plan, kod jeszcze nie ruszony.
+Dopisane 2026-10-02 z rozmowy z użytkownikiem. Praca idzie na gałęzi `worktree-windows`
+(worktree `.claude/worktrees/windows`); stan w HANDOFF.
+
+**Decyzja w kodzie:** narzędzie `bash` bota na Windows jest wyłączone (`toolDefs` go nie daje),
+dopóki nie powstaną reguły zgód dla PowerShella (Zagrożenia, pkt 2).
 
 **Warunek brzegowy: nic nie płacimy.** Żadnego Apple Developer Program, certyfikatów
 OV/EV ani Azure Trusted Signing. Wszystko poniżej zakłada darmowe drogi.

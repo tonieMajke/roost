@@ -26,6 +26,7 @@ import {
   mountOrder,
   type Box,
 } from "./motion";
+import { programName } from "./paths";
 
 type Props = {
   projects: Project[];
@@ -299,7 +300,7 @@ export function Grid({
                       agent={agentById(agents, pane.agentId)}
                       account={accountById(accounts, pane.account)}
                       showAccount={accounts.accounts.length > 0}
-                      limitHit={agentById(agents, pane.agentId)?.command.split("/").pop() === "claude" ? limitHit(limits[pane.account ?? ""], Date.now()) : null}
+                      limitHit={programName(agentById(agents, pane.agentId)?.command ?? "") === "claude" ? limitHit(limits[pane.account ?? ""], Date.now()) : null}
                       canContinue={Boolean(pane.sessionId) && contextKind(agentById(agents, pane.agentId)) !== null}
                       look={look}
                       fontSize={fontSize}

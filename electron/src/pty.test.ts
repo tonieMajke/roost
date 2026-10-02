@@ -4,11 +4,15 @@ import os from "node:os";
 import path from "node:path";
 import { type ExitInfo, Ptys } from "./pty";
 
-const FIVE = 5000;
+/** Czas na wyjście; PowerShell na maszynie CI z Windows startuje kilka sekund. */
+const FIVE = process.platform === "win32" ? 20000 : 5000;
 const sh = (script: string) => ({ command: "/bin/sh", args: ["-c", script], cols: 80, rows: 24 });
+const WIN = process.platform === "win32";
+const plain = (s: string) => s.replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[()][0-9A-Za-z]/g, "").replaceAll("\r", "");
 
-function run(ptys: Ptys, spec: ReturnType<typeof sh> & { cwd?: string }) {
+function run(ptys: Ptys, spec: { command: string; args: string[]; cols: number; rows: number; cwd?: string }) {
   let out = "";
+  const dec = new TextDecoder();
   let onOut: (() => void) | null = null;
   let exitInfo: ExitInfo | null = null;
   let resolveExit: (info: ExitInfo) => void = () => {};
@@ -16,7 +20,8 @@ function run(ptys: Ptys, spec: ReturnType<typeof sh> & { cwd?: string }) {
   const id = ptys.spawn(
     spec,
     (chunk) => {
-      out += Buffer.from(chunk).toString("utf8");
+      // Jak strona: `TextDecoder` przyjmuje tylko bajty (tekst z node-pty na Windows rzuca).
+      out += dec.decode(chunk, { stream: true });
       onOut?.();
     },
     (info) => resolveExit((exitInfo = info)),
@@ -24,8 +29,9 @@ function run(ptys: Ptys, spec: ReturnType<typeof sh> & { cwd?: string }) {
   return {
     id,
     exited,
+    /** Bez `\r` i sekwencji sterujących (ConPTY przerysowuje ekran kodami ANSI). */
     get out() {
-      return out.replaceAll("\r", "");
+      return plain(out);
     },
     get exit() {
       return exitInfo;
@@ -35,7 +41,7 @@ function run(ptys: Ptys, spec: ReturnType<typeof sh> & { cwd?: string }) {
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(`brak ${re} w ${JSON.stringify(out)}`)), FIVE);
         const check = () => {
-          const m = out.match(re);
+          const m = plain(out).match(re);
           if (m) {
             clearTimeout(timer);
             onOut = null;
@@ -66,7 +72,7 @@ async function until(cond: () => boolean, what: string) {
   }
 }
 
-describe("pty", () => {
+describe.skipIf(WIN)("pty", () => {
   it("kod wyjścia trafia do wywołania zwrotnego, wpis znika", async () => {
     const ptys = new Ptys();
     const p = run(ptys, sh("exit 7"));
@@ -130,4 +136,37 @@ describe("pty", () => {
     const p = run(new Ptys(), sh("kill -TERM $$"));
     expect((await p.exited).signal).toBe("SIGTERM");
   });
+});
+
+/** Windows (ConPTY): to samo zachowanie bez /bin/sh – kod wyjścia, stdin, zabicie drzewa. Przez cmd.exe:
+ *  PowerShell pod ConPTY na maszynie CI potrafi nie wypisać nic przez dziesiątki sekund. */
+describe.runIf(WIN)("pty (Windows)", () => {
+  const cmd = (script: string) => ({ command: "cmd.exe", args: ["/d", "/c", script], cols: 80, rows: 24 });
+
+  it("kod wyjścia; $SHELL bez zmiennej to PowerShell", async () => {
+    const ptys = new Ptys();
+    const p = run(ptys, cmd("exit 7"));
+    expect((await p.exited).code).toBe(7);
+    expect(ptys.pid(p.id)).toBeUndefined();
+    const shell = run(ptys, { command: "$SHELL", args: ["-NoProfile", "-Command", "exit 3"], cols: 80, rows: 24 });
+    expect((await shell.exited).code).toBe(3);
+  }, 60000);
+
+  it("zapis trafia na stdin dziecka", async () => {
+    const ptys = new Ptys();
+    const p = run(ptys, cmd("set /p L=& call echo ECHO-%L%"));
+    ptys.write(p.id, "hello-pipe\r");
+    await p.waitFor(/ECHO-hello-pipe/);
+    await p.exited;
+  }, 30000);
+
+  it("kill kończy panel razem z dzieckiem (taskkill /T)", async () => {
+    const ptys = new Ptys();
+    const p = run(ptys, cmd("echo START& ping -n 31 127.0.0.1"));
+    await p.waitFor(/START/);
+    const pid = ptys.pid(p.id)!;
+    ptys.kill(p.id);
+    await p.exited;
+    await until(() => !alive(pid), "cmd przeżył zabicie drzewa");
+  }, 30000);
 });

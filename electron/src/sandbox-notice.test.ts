@@ -13,7 +13,8 @@ test("ostrzega tylko spakowaną aplikację z --no-sandbox, do czasu „Nie pokaz
   expect(shouldWarn(true, false, dir)).toBe(false);
   expect(shouldWarn(true, true, dir)).toBe(true);
   dismiss(path.join(dir, "nowy")); // katalog jeszcze nie istnieje
-  expect(fs.statSync(path.join(dir, "nowy", DISMISS_FILE)).mode & 0o777).toBe(0o600);
+  // Windows: bez uniksowych praw
+  if (process.platform !== "win32") expect(fs.statSync(path.join(dir, "nowy", DISMISS_FILE)).mode & 0o777).toBe(0o600);
   dismiss(dir);
   expect(shouldWarn(true, true, dir)).toBe(false);
 });

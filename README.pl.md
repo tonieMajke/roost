@@ -62,6 +62,27 @@ chmod +x Roost-*.AppImage
 Obok każdego wydania leży plik `.sha256` (`sha256sum -c Roost-<wersja>.AppImage.sha256`). Agenci
 nie są dołączeni — patrz „Wymagania” niżej. Jeśli nie startuje, zajrzyj do sekcji [Rozwiązywanie problemów](#rozwiązywanie-problemów).
 
+### Windows (beta)
+
+W tym samym miejscu: `Roost-Setup-<wersja>.exe` (instalator dla bieżącego użytkownika, bez uprawnień
+administratora) albo `Roost-<wersja>-win-x64.zip` (wersja przenośna). Windows 10/11, x64.
+
+Aplikacja nie jest podpisana, więc przy pierwszym uruchomieniu SmartScreen pokaże „System Windows
+ochronił ten komputer”: **Więcej informacji → Uruchom mimo to**.
+
+Agenci i narzędzia (wszystko opcjonalne, w `PATH`):
+
+```powershell
+npm install -g @anthropic-ai/claude-code @openai/codex
+winget install Git.Git BurntSushi.ripgrep.MSVC
+```
+
+Różnice względem Linuksa:
+
+- Panel „Terminal” uruchamia PowerShell.
+- Konfiguracja leży w `%APPDATA%\dev.majke.roost\`.
+- Narzędzie `bash` botów jest wyłączone; pozostałe narzędzia (pliki, `grep`, sieć) działają.
+
 ## Wymagania
 
 Linux, Node.js i pnpm do budowania ze źródeł. Agenci nie są dołączeni; zainstaluj tych, których
