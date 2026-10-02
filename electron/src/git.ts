@@ -23,11 +23,19 @@ export function gitEnv(base: Record<string, string | undefined> = process.env): 
   return childEnv(extra, base);
 }
 
+/**
+ * Opcje wymuszane przy każdym wywołaniu: `core.fsmonitor` z konfiguracji sklonowanego repozytorium to program
+ * odpalany przez `status`/`diff`, więc wyłączamy go, żeby samo otwarcie cudzego repo nie wykonało kodu.
+ * `core.hooksPath` zostawiamy: hooki (pre-commit, pre-push) odpalają się tylko przy commit/pull/push
+ * z wyraźnego polecenia użytkownika i ich działanie jest oczekiwane (także hooki zarządzane przez narzędzia).
+ */
+export const GIT_SAFE_ARGS = ["-c", "core.fsmonitor=false"] as const;
+
 /** Uruchamia `git args…` w `cwd`. Kod spoza `okCodes` (domyślnie 0) odrzuca komunikatem z stderr. */
 export function runGit(cwd: string, args: string[], opts: RunOpts = {}): Promise<RunResult> {
   const { input, okCodes = [0], timeoutMs = LOCAL_MS, maxBytes = MAX_OUT } = opts;
   return new Promise((resolve, reject) => {
-    const child = spawn("git", args, { cwd: expand(cwd), env: gitEnv(), stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn("git", [...GIT_SAFE_ARGS, ...args], { cwd: expand(cwd), env: gitEnv(), stdio: ["pipe", "pipe", "pipe"] });
     const out: Buffer[] = [];
     const err: Buffer[] = [];
     let size = 0;
@@ -95,7 +103,7 @@ export type DiffMode = "staged" | "unstaged" | "untracked";
 
 export async function gitDiff(cwd: string, path: string, mode: DiffMode): Promise<string> {
   checkPaths([path]);
-  const base = ["--no-optional-locks", "diff", "--no-color", "--no-ext-diff"];
+  const base = ["--no-optional-locks", "diff", "--no-color", "--no-ext-diff", "--no-textconv"];
   const args =
     mode === "staged"
       ? [...base, "--cached", "--", path]

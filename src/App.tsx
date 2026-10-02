@@ -43,7 +43,7 @@ import { GitPanel } from "./GitPanel";
 import { BotView } from "./bot/BotView";
 import type { Mode } from "./chat/ModeTabs";
 import { CONTEXT_POLL_MS, cleanTermTitle, contextKind, contextTargets, paneMeter, paneTitles, sessionTitles, type SessionContext } from "./context";
-import { FALLBACK_MAX_CHARS, SUMMARY_SYSTEM, digestText, handoffText, summaryText } from "./handoff";
+import { FALLBACK_MAX_CHARS, digestText, handoffText, summarySystem, summaryText } from "./handoff";
 import { exitedText, finishedText, startedText, newTools, pushFeed, toolText, type FeedItem } from "./feed";
 import { LIMITS_POLL_MS, limitHit, type ClaudeLimits } from "./limits";
 import { TOAST_MS, toastText } from "./toast";
@@ -120,6 +120,8 @@ export function App() {
   const [lastAgentId, setLastAgentId] = useState<string | null>(null);
   // false do końca startu: zapis `ws` na dysk musi ruszyć dopiero po wczytaniu pliku.
   const [loaded, setLoaded] = useState(false);
+  // Splash decyduje się raz, po wczytaniu ustawień: zapisane „off” nie mignie, a włączenie w ustawieniach nie pokaże go od nowa.
+  const [splash, setSplash] = useState(false);
   // Home is fetched once: paths are stored as `~/...` (Rust expands them at spawn).
   const home = useRef<string>("");
   // Terminal of each mounted pane, for Ctrl+Shift+C / Ctrl+Shift+V.
@@ -199,6 +201,12 @@ export function App() {
       setErrors((prev) => [...prev, t("app.errSave", { error: String(e) })]),
     );
   }, [ws, loaded]);
+
+  // Tylko przy przejściu na `loaded` (raz na start okna); `ws` celowo poza zależnościami.
+  useEffect(() => {
+    if (loaded && ws.ui.splash === "on" && motionAllowed(ws.ui.motion, window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false)) setSplash(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   useEffect(() => {
     void backend
@@ -533,8 +541,8 @@ export function App() {
       try {
         const input = digestText(h, source);
         const out = local
-          ? await backend.piSummary(dstAgent.command, SUMMARY_SYSTEM, input)
-          : await backend.claudeSummary(claude, SUMMARY_SYSTEM, input);
+          ? await backend.piSummary(dstAgent.command, summarySystem(), input)
+          : await backend.claudeSummary(claude, summarySystem(), input);
         text = summaryText(out, source);
       } catch (e) {
         failed = e instanceof Error ? e.message : String(e);
@@ -1062,7 +1070,7 @@ export function App() {
 
   return (
     <div className={`shell${winMax ? " is-max" : ""}`}>
-    {backend.window && motionAllowed(ws.ui.motion, window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false) && <Splash />}
+    {backend.window && splash && <Splash />}
     {backend.window && <TitleBar win={backend.window} title={windowTitle} onMaximized={setWinMax} />}
     {backend.window && !winMax && <ResizeEdges win={backend.window} />}
     <div className={`app ${uiClasses(ws.ui)} mode-${mode}`}>

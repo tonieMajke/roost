@@ -42,9 +42,9 @@ export function TitleBar({
   }, [win, onMaximized]);
 
   return (
-    <div className="titlebar" data-tauri-drag-region onDoubleClick={() => win.toggleMaximize()}>
+    <div className="titlebar" onDoubleClick={() => win.toggleMaximize()}>
       <span className="titlebar-mark" aria-hidden />
-      <span className="titlebar-title" data-tauri-drag-region title={title}>
+      <span className="titlebar-title" title={title}>
         {title}
       </span>
       <div className="titlebar-btns" onDoubleClick={(e) => e.stopPropagation()}>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allowNavigation, buildCsp, isTrustedSender, PickedFiles, shouldApplyCsp, validateArgs, validateSpawnSpec } from "./security";
+import { allowNavigation, buildCsp, isTrustedSender, allowPermission, PickedFiles, shouldApplyCsp, validateArgs, validateSpawnSpec } from "./security";
 
 describe("buildCsp", () => {
   const csp = buildCsp();
@@ -94,5 +94,26 @@ describe("PickedFiles", () => {
     expect(p.take("/b.png")).toBe(false);
     expect(p.take("/a.png")).toBe(true);
     expect(p.take("/a.png")).toBe(false);
+  });
+});
+
+describe("allowPermission", () => {
+  const app = { file: "file:///opt/roost/dist-web/index.html" };
+  const dev = { dev: "http://localhost:5183", file: app.file };
+  it("mikrofon tylko dla audio i tylko dla naszej strony", () => {
+    expect(allowPermission("media", app.file, app, ["audio"])).toBe(true);
+    expect(allowPermission("media", app.file, app, ["audio", "video"])).toBe(false);
+    expect(allowPermission("media", app.file, app, ["video"])).toBe(false);
+    expect(allowPermission("media", app.file, app, [])).toBe(false);
+    expect(allowPermission("media", "https://evil.example/", app, ["audio"])).toBe(false);
+    expect(allowPermission("media", "http://localhost:5183/", dev, ["audio"])).toBe(true);
+    expect(allowPermission("media", undefined, app, ["audio"])).toBe(false);
+  });
+  it("schowek: tylko zapis; reszta odmowa", () => {
+    expect(allowPermission("clipboard-sanitized-write", app.file, app)).toBe(true);
+    for (const p of ["clipboard-read", "notifications", "geolocation", "fullscreen", "midi", "openExternal", "display-capture"]) {
+      expect(allowPermission(p, app.file, app)).toBe(false);
+    }
+    expect(allowPermission("clipboard-sanitized-write", "https://evil.example/", app)).toBe(false);
   });
 });

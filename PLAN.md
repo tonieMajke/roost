@@ -1,5 +1,10 @@
 # Roost – plan
 
+> **Stan na 2026-10-02:** aplikacja działa na **Electronie** (nie Tauri), a nazwa produktu to Roost.
+> Sekcje „Decyzje (2026-09-30)”, „Architektura” i „Lekcje przeniesione z Pi Code” opisują dawny
+> start na Tauri/WebKitGTK i zostały jako historia. Bieżący stan: `HANDOFF.md`; plany funkcji:
+> `docs/plan-*.md` (spis w `docs/README.md`).
+
 Osobiste, lokalne środowisko do uruchamiania wielu agentów CLI obok siebie, w stylu
 trybu Code z BridgeMind One (bridgemind.ai), ale bez konta, chmury i subskrypcji.
 
@@ -131,11 +136,11 @@ utworzeniu, zapisany w układzie. Po restarcie aplikacji panel startuje z tym sa
 Na początek, małe:
 - **Klikalne ścieżki w terminalu.** [x] Zrobione (`src/term-links.ts`, `electron/src/open-path.ts`; do sprawdzenia w oknie). Ctrl-klik na `src/foo.ts:41` otwiera plik w linii
   (xterm.js `registerLinkProvider`). Na start `$EDITOR` albo `xdg-open`, bez wbudowanego edytora.
-- **Szukanie w terminalu.** Ctrl+F, Ctrl+G / Ctrl+Shift+G między trafieniami (xterm-addon-search).
-- **Dashboard agentów z wyszukiwaniem i „Close idle”.** Szukanie po tytule, agencie, projekcie,
+- **Szukanie w terminalu.** [x] Zrobione (`src/term-search.ts`, `@xterm/addon-search`). Ctrl+F, Ctrl+G / Ctrl+Shift+G między trafieniami (xterm-addon-search).
+- **Dashboard agentów z wyszukiwaniem i „Close idle”.** [x] Zrobione (`src/board.ts`: `filterBoard`, `idlePaneIds`; `src/Dock.tsx`). Szukanie po tytule, agencie, projekcie,
   branchu, ostatniej wiadomości (każde słowo musi pasować, Esc czyści). „Close idle” zamyka tylko
   bezczynne, zostawia działające i czekające. Baza: `activity.ts`.
-- **Przeciągnięcie pliku na panel wpisuje jego ścieżkę w prompcie** (w cudzysłowie).
+- **Przeciągnięcie pliku na panel wpisuje jego ścieżkę w prompcie** (w cudzysłowie). [x] Zrobione (`src/drop.ts`, `Grid.tsx`, `App.tsx`).
 
 Większe:
 - **Przełączanie kont przy limicie.** Konto = osobny folder logowania agenta (Claude:
@@ -164,7 +169,7 @@ Lekcje do przeniesienia:
   przy pełnym dysku zachować zapisany stan zamiast go tracić.
 - Aktualizacje pokazywać w pasku tytułu, nie wyskakującym oknem.
 
-Sugerowana kolejność: klikalne ścieżki → szukanie → Dashboard/„Close idle” → konta.
+Sugerowana kolejność (pierwsze trzy zrobione): klikalne ścieżki → szukanie → Dashboard/„Close idle” → konta.
 
 ## Ryzyka
 

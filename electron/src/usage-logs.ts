@@ -367,6 +367,13 @@ export class UsageScanner {
         }
       }
     }
+    // Wpisy skasowanych plików znikają ze statystyk; "niewidziany" nie wystarcza (chwilowo niedostępny katalog logów).
+    for (const file of Object.keys(index.files)) {
+      if (!fs.existsSync(file)) {
+        delete index.files[file];
+        dirty = true;
+      }
+    }
     if (dirty) {
       try {
         fs.mkdirSync(this.configDir, { recursive: true });

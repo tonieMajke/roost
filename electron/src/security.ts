@@ -55,6 +55,23 @@ export function isTrustedSender(url: string | undefined | null, appUrl: { dev?: 
   return typeof url === "string" && url !== "" && allowNavigation(url, appUrl);
 }
 
+/**
+ * Uprawnienia Chromium, które aplikacja naprawdę wykorzystuje (domyślnie Electron przyznaje wszystko):
+ * mikrofon dla dyktowania i rozmowy głosowej (`getUserMedia({ audio })`) oraz zapis do schowka z poziomu strony.
+ * Kamera, powiadomienia, geolokalizacja, pełny ekran, odczyt schowka itd. są odrzucane.
+ */
+export function allowPermission(
+  permission: string,
+  url: string | undefined | null,
+  appUrl: { dev?: string; file: string },
+  mediaTypes: readonly string[] = [],
+): boolean {
+  if (!isTrustedSender(url, appUrl)) return false;
+  if (permission === "clipboard-sanitized-write") return true;
+  if (permission === "media") return mediaTypes.length > 0 && mediaTypes.every((m) => m === "audio");
+  return false;
+}
+
 /** Rodzaje argumentów IPC. */
 export type ArgKind = "str" | "path" | "int" | "bool" | "strs" | "paths" | "obj" | "objs" | "bytes" | "any";
 /** Rodzaj albo lista dozwolonych tekstów (enum); `?` na końcu rodzaju = opcjonalny. */

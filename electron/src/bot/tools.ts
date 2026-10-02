@@ -17,6 +17,7 @@ import {
   isSkillName,
   MEMORY_LIMIT,
   memoryEdit,
+  fetchHost,
   fetchRisk,
   needsApproval,
   newBot,
@@ -49,7 +50,7 @@ import { type FetchOpts, webFetch, webSearch } from "./web";
 export type JsonSchema = Record<string, unknown>;
 export type ToolDef = { name: ToolName; description: string; parameters: JsonSchema };
 /** `prefix`: bash; `dir`: narzędzia plikowe (realpath katalogu, poza którym zgoda nie działa). */
-export type Grant = { tool: ToolName; prefix?: string; dir?: string };
+export type Grant = { tool: ToolName; prefix?: string; dir?: string; host?: string };
 
 /** Katalog zgody „w tej rozmowie” dla narzędzia plikowego (ścieżka po realpath); `null` = nie da się zawęzić
  *  (np. plik w `/`), wtedy zgoda w rozmowie nie jest oferowana. */
@@ -256,7 +257,14 @@ function approvalText(tool: ToolName, a: Record<string, unknown>, ctx: ToolConte
     case "web_fetch": {
       const url = str(a.url) ?? "";
       const why = fetchRisk(url).map((r) => t(`appr.fetch.${r}`));
-      return { title: t("appr.fetch"), detail: `${url}\n\n${why.join("\n")}` };
+      const host = fetchHost(url);
+      return { title: host ? t("appr.fetchHost", { host }) : t("appr.fetch"), detail: clip(`${url}${why.length ? `\n\n${why.join("\n")}` : ""}`) };
+    }
+    case "skill_create":
+      return { title: t("appr.tool", { tool }), detail: clip(`${str(a.name) ?? ""}\n${str(a.description) ?? ""}\n\n${str(a.body) ?? ""}`) };
+    case "skill_patch": {
+      const diff = (pre: string, x: string) => x.split("\n").map((l) => `${pre} ${l}`).join("\n");
+      return { title: t("appr.tool", { tool }), detail: clip(`${str(a.name) ?? ""}\n${diff("-", str(a.old) ?? "")}\n${diff("+", str(a.new) ?? "")}`) };
     }
     case "bash":
       return { title: t("appr.bash"), detail: `${str(a.command) ?? ""}\n\n${t("appr.in")}: ${str(a.cwd) ?? ctx.store.work(ctx.bot.id)}` };
@@ -326,8 +334,10 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
   if (verdict === "ask") {
     const prefix = tool === "bash" ? commandPrefix(str(args.command) ?? "") : undefined;
     const dir = pathTools.includes(tool) && str(args.path) !== undefined ? grantDir(tool, str(args.path) as string) : undefined;
+    // `web_fetch`: zgoda w rozmowie dotyczy hosta, i tylko gdy sam adres nie jest podejrzany.
+    const webHost = tool === "web_fetch" ? (fetchRisk(str(args.url) ?? "").length === 0 ? fetchHost(str(args.url) ?? "") : null) : undefined;
     const decision = await ctx.broker.request(
-      { bot: ctx.bot.id, chat: ctx.chat, tool, ...approvalText(tool, args, ctx, plan), canGrant: tool === "web_fetch" ? false : tool === "bash" ? prefix !== null : dir !== null },
+      { bot: ctx.bot.id, chat: ctx.chat, tool, ...approvalText(tool, args, ctx, plan), canGrant: webHost !== undefined ? webHost !== null : tool === "skill_create" || tool === "skill_patch" ? false : tool === "bash" ? prefix !== null : dir !== null, ...(webHost ? { host: webHost } : {}) },
       ctx.signal,
     );
     approval = decision;
@@ -336,6 +346,7 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
     if (decision === "chat") {
       if (prefix) ctx.grants.push({ tool, prefix });
       else if (dir) ctx.grants.push({ tool, dir });
+      else if (webHost) ctx.grants.push({ tool, host: webHost });
       else if (!pathTools.includes(tool) && tool !== "bash" && tool !== "web_fetch") ctx.grants.push({ tool });
     }
   }
@@ -390,7 +401,10 @@ async function exec(tool: ToolName, a: Record<string, unknown>, ctx: ToolContext
     {
       // Zgoda na adres prywatny dotyczy dokładnie tego host:port; przekierowania na inne hosty prywatne są odrzucane.
       const url = need(a, "url");
-      return (ctx.web?.fetch ?? webFetch)(url, ctx.signal, { allowPrivate: approved && fetchRisk(url).includes("private") ? safeHost(url) : undefined });
+      const first = fetchHost(url);
+      // Przekierowanie na inny host tylko, gdy ten host jest już dozwolony w rozmowie (w przebiegu: bez ograniczeń).
+      const allowHost = ctx.routine ? undefined : (h: string) => h === first || ctx.grants.some((g) => g.tool === "web_fetch" && g.host === h);
+      return (ctx.web?.fetch ?? webFetch)(url, ctx.signal, { allowPrivate: approved && fetchRisk(url).includes("private") ? safeHost(url) : undefined, allowHost });
     }
     case "memory":
       return memory(a, ctx);
@@ -475,8 +489,9 @@ function listDir(p: string): string {
 
 async function grep(pattern: string, p: string, glob: string | undefined, signal: AbortSignal): Promise<string> {
   const args = ["--line-number", "--no-heading", "--color", "never", "--max-count", "20", "--max-columns", "300", "--max-filesize", "1M"];
-  for (const g of SENSITIVE_GLOBS) args.push("--glob", g);
+  // Glob modelu przed wykluczeniami: w rg późniejszy glob wygrywa, więc `--glob '*'` na końcu odsłoniłby `.env`.
   if (glob) args.push("--glob", glob);
+  for (const g of SENSITIVE_GLOBS) args.push("--glob", g);
   args.push("-e", pattern, "--", p);
   const r = await runProc("rg", args, { cwd: isDir(p) ? p : path.dirname(p), timeoutMs: 30_000, maxBytes: 32 * 1024, signal });
   if (r.code === 1) return `brak dopasowań „${pattern}” w ${p}`;

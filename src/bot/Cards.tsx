@@ -150,8 +150,8 @@ export function ApprovalCard({ req, botName, active, onDecide }: { req: Approval
           {t("bot.ask.once")} <kbd>Enter</kbd>
         </button>
         {req.canGrant && (
-          <button type="button" className="bot-btn" onClick={() => onDecide("chat")} title={t("bot.ask.chatTitle")}>
-            {t("bot.ask.chat")}
+          <button type="button" className="bot-btn" onClick={() => onDecide("chat")} title={t(req.host ? "bot.ask.chatHostTitle" : "bot.ask.chatTitle")}>
+            {req.host ? t("bot.ask.chatHost", { host: req.host }) : t("bot.ask.chat")}
           </button>
         )}
         <span className="chat-composer-gap" />

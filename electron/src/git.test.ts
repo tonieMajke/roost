@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { gitCommit, gitDiff, gitDiscard, gitEnv, gitFiles, gitStage, gitStatus, gitSync, gitUnstage, runGit } from "./git";
+import { GIT_SAFE_ARGS, gitCommit, gitDiff, gitDiscard, gitEnv, gitFiles, gitStage, gitStatus, gitSync, gitUnstage, runGit } from "./git";
 
 // Prawdziwy git na katalogach tymczasowych; konfiguracja użytkownika nie bierze udziału.
 const saved: Record<string, string | undefined> = {};
@@ -198,5 +198,20 @@ describe("git (prawdziwe repozytorium)", () => {
   it("środowisko git: bez pytań o hasło, ssh w trybie wsadowym", () => {
     expect(gitEnv({})).toMatchObject({ GIT_TERMINAL_PROMPT: "0", LC_ALL: "C", GIT_SSH_COMMAND: "ssh -o BatchMode=yes" });
     expect(gitEnv({ GIT_SSH_COMMAND: "moje ssh" }).GIT_SSH_COMMAND).toBe("moje ssh");
+  });
+});
+
+describe("git: core.fsmonitor z konfiguracji repozytorium nie jest wykonywany", () => {
+  it("status nie uruchamia zapisanego programu", async () => {
+    const evil = fs.mkdtempSync(path.join(root, "evil-"));
+    await runGit(evil, ["init", "-q", "-b", "main"]);
+    const marker = path.join(root, "fsmonitor-ran");
+    const hook = path.join(root, "fsmonitor.sh");
+    fs.writeFileSync(hook, `#!/bin/sh\ntouch '${marker}'\n`, { mode: 0o755 });
+    fs.appendFileSync(path.join(evil, ".git", "config"), `[core]\n\tfsmonitor = ${hook}\n`);
+    expect(GIT_SAFE_ARGS).toContain("core.fsmonitor=false");
+    await gitStatus(evil);
+    await gitFiles(evil);
+    expect(fs.existsSync(marker)).toBe(false);
   });
 });

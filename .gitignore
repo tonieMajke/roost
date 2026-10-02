@@ -10,3 +10,7 @@ electron/dist-web/
 electron/release/
 .claude/
 __pycache__/
+*.AppImage
+.env
+.env.*
+!.env.example

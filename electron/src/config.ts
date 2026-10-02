@@ -74,6 +74,12 @@ export function tightenSecretPerms(dir: string): void {
   }
 }
 
+/** Na starcie: tworzy katalog konfiguracji (0700) i zaostrza uprawnienia, także w świeżej instalacji. */
+export function ensureConfigPerms(dir = configDir()): void {
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  tightenSecretPerms(dir);
+}
+
 /** Ta sama lista co `DEFAULT_AGENTS` w `src/agents.ts`. */
 export function defaultAgentsJson(): string {
   return JSON.stringify(

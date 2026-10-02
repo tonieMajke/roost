@@ -2,7 +2,10 @@
 //! (strona jako tekst). Dostawcy CLI mają własne WebSearch/WebFetch; to jest dla reszty.
 
 import { lookup as dnsLookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import http from "node:http";
+import https from "node:https";
+import { isIP, type LookupFunction } from "node:net";
+import { Readable } from "node:stream";
 import { isPrivateHost } from "../../../src/bot";
 import { t } from "../i18n";
 const UA = "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0";
@@ -125,13 +128,54 @@ export async function webSearch(query: string, signal: AbortSignal, limit = 8): 
 export type FetchOpts = {
   /** `host:port`, na który użytkownik zgodził się mimo adresu lokalnego/prywatnego; tylko ten host, także po przekierowaniu. */
   allowPrivate?: string;
+  /** Czy po przekierowaniu można wejść na ten host (nazwa, małe litery); brak = bez ograniczeń. */
+  allowHost?: (hostname: string) => boolean;
   /** Do testów: rozwiązywanie nazw. */
   resolve?: (host: string) => Promise<string[]>;
+  /** Do testów: wykonanie żądania (domyślnie `pinnedGet`: połączenie tylko z adresem sprawdzonym w `lookup`). */
+  transport?: (url: URL, signal: AbortSignal, lookup: LookupFunction) => Promise<Response>;
 };
 
 export const MAX_REDIRECTS = 5;
 
 const resolveAll = async (host: string) => (await dnsLookup(host, { all: true })).map((a) => a.address);
+
+/** `lookup` dla `http(s).request`: jedno rozwiązanie nazwy, odrzucenie adresów prywatnych (poza hostem zatwierdzonym
+ *  przez użytkownika) i połączenie dokładnie z tym adresem, więc DNS-rebinding między sprawdzeniem a połączeniem nie przejdzie. */
+export function pinnedLookup(u: URL, opts: FetchOpts): LookupFunction {
+  const approved = opts.allowPrivate !== undefined && u.host === opts.allowPrivate;
+  return (hostname, options, cb) => {
+    const done = (err: Error | null, addrs: string[]) => {
+      const list = addrs.map((address) => ({ address, family: isIP(address) === 6 ? 6 : 4 }));
+      if (err || list.length === 0) return cb(err ?? new Error(`nie znaleziono adresu: ${hostname}`), "", 4);
+      if (!approved && list.some((a) => isPrivateHost(a.address))) return cb(new Error(t("web.privateResolved", { host: u.host })), "", 4);
+      if (typeof options === "object" && options.all) return (cb as unknown as (e: null, a: typeof list) => void)(null, list);
+      cb(null, list[0].address, list[0].family);
+    };
+    (opts.resolve ?? resolveAll)(hostname).then((a) => done(null, a), (e: unknown) => done(e instanceof Error ? e : new Error(String(e)), []));
+  };
+}
+
+/** GET przez `node:http(s)` z przypiętym adresem (bez przekierowań; limit 20 s jak w `get`). */
+function pinnedGet(url: URL, signal: AbortSignal, lookup: LookupFunction): Promise<Response> {
+  const timeout = AbortSignal.timeout(FETCH_TIMEOUT);
+  return new Promise((resolve, reject) => {
+    const req = (url.protocol === "https:" ? https : http).request(
+      url,
+      { method: "GET", lookup, signal: AbortSignal.any([signal, timeout]), headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5" } },
+      (res) => {
+        const headers = new Headers();
+        for (const [k, v] of Object.entries(res.headers)) if (v !== undefined) headers.set(k, Array.isArray(v) ? v.join(", ") : v);
+        const status = res.statusCode ?? 0;
+        const empty = status === 204 || status === 205 || status === 304;
+        if (empty) res.resume();
+        resolve(new Response(empty ? null : (Readable.toWeb(res) as ReadableStream<Uint8Array>), { status, headers }));
+      },
+    );
+    req.on("error", (e) => reject(timeout.aborted && !signal.aborted ? new Error(`${url.host} nie odpowiada (20 s)`) : e));
+    req.end();
+  });
+}
 
 /** Odrzuca adres lokalny/prywatny (tekstowo i po rozwiązaniu DNS), chyba że to host zatwierdzony przez użytkownika. */
 async function guardHost(u: URL, opts: FetchOpts, hop: boolean): Promise<void> {
@@ -150,7 +194,8 @@ async function guardHost(u: URL, opts: FetchOpts, hop: boolean): Promise<void> {
 
 /** Strona jako tekst (≤ 30 KB). Tylko http(s). Adresy lokalne/prywatne (bot czyta np. własny serwer deweloperski)
  *  tylko za zgodą (`opts.allowPrivate`, ustalane przez wywołującego); przekierowania ręcznie, max 5 skoków,
- *  każdy host sprawdzany od nowa (tekst + DNS). Zostaje wąskie okno DNS-rebinding między sprawdzeniem a połączeniem. */
+ *  każdy host sprawdzany od nowa (tekst + DNS), a samo połączenie idzie na adres sprawdzony w `pinnedLookup`
+ *  (bez drugiego rozwiązania nazwy), więc DNS-rebinding nie działa. */
 export async function webFetch(url: string, signal: AbortSignal, opts: FetchOpts = {}): Promise<string> {
   let u: URL;
   try {
@@ -162,8 +207,9 @@ export async function webFetch(url: string, signal: AbortSignal, opts: FetchOpts
   const first = u.href;
   let res: Response;
   for (let hop = 0; ; hop++) {
+    if (hop > 0 && opts.allowHost && !opts.allowHost(u.hostname.toLowerCase())) throw new Error(t("web.hostRedirect", { host: u.hostname, url: u.href }));
     await guardHost(u, opts, hop > 0);
-    res = await get(u.href, signal, "manual");
+    res = await (opts.transport ?? pinnedGet)(u, signal, pinnedLookup(u, opts));
     const loc = res.headers.get("location");
     if (res.status < 300 || res.status >= 400 || !loc) break;
     await res.body?.cancel();

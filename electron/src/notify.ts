@@ -1,4 +1,4 @@
-//! Powiadomienie na pulpicie przez `notify-send` (Linux), jak w wersji Tauri.
+//! Powiadomienie na pulpicie przez `notify-send` (Linux).
 
 import { t } from "./i18n";
 import { spawn } from "node:child_process";

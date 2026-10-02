@@ -104,6 +104,8 @@ const pl = {
   "bot.ask.once": "Zezwól raz",
   "bot.ask.chat": "Zezwalaj w tej rozmowie",
   "bot.ask.chatTitle": "Nie pytaj więcej o to w tej rozmowie",
+  "bot.ask.chatHost": "Zezwalaj na {host} w tej rozmowie",
+  "bot.ask.chatHostTitle": "Nie pytaj więcej o ten host w tej rozmowie (podejrzane adresy nadal pytają)",
   "bot.ask.deny": "Odrzuć",
 
   // --- podgląd bota w zgodzie (BotPreview.tsx)
@@ -419,6 +421,8 @@ const en: Record<keyof typeof pl, string> = {
   "bot.ask.once": "Allow once",
   "bot.ask.chat": "Allow in this chat",
   "bot.ask.chatTitle": "Don't ask about this again in this chat",
+  "bot.ask.chatHost": "Allow {host} in this chat",
+  "bot.ask.chatHostTitle": "Don't ask about this host again in this chat (suspicious addresses still ask)",
   "bot.ask.deny": "Deny",
 
   "bot.prev.persona": "Character",

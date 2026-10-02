@@ -33,6 +33,13 @@
     "directories": {
       "output": "release"
     },
+    "electronFuses": {
+      "runAsNode": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "onlyLoadAppFromAsar": true,
+      "enableCookieEncryption": true
+    },
     "files": [
       "out/**",
       "dist-web/**",

@@ -264,7 +264,13 @@ describe("pamięć, historia, skille, sieć", () => {
   });
 
   it("skill_create, skill_view, skill_patch", async () => {
-    expect(await runTool("skill_create", { name: "deploy", description: "Wdrożenie", body: "1. build" }, ctx())).toMatchObject({ ok: true });
+    expect(await runTool("skill_create", { name: "deploy", description: "Wdrożenie", body: "1. build" }, ctx())).toMatchObject({ ok: true, approval: "once" });
+    expect(asked[0]).toMatchObject({ tool: "skill_create", canGrant: false });
+    expect(asked[0].detail).toContain("1. build");
+    answer = "deny";
+    expect(await runTool("skill_create", { name: "zly", description: "x", body: "y" }, ctx())).toMatchObject({ ok: false });
+    expect(store.skill("rust", "zly")).toBeNull();
+    answer = "once";
     expect((await runTool("skill_create", { name: "deploy", description: "x", body: "y" }, ctx())).text).toContain("już jest");
     expect((await runTool("skill_view", { name: "deploy" }, ctx())).text).toContain("1. build");
     expect(await runTool("skill_patch", { name: "deploy", old: "1. build", new: "1. test\n2. build" }, ctx())).toMatchObject({ ok: true });
@@ -274,9 +280,30 @@ describe("pamięć, historia, skille, sieć", () => {
     expect((await runTool("skill_view", { name: "../x" }, ctx())).text).toContain("zła nazwa");
   });
 
-  it("sieć bez pytania", async () => {
+  it("web_search bez pytania; web_fetch pyta o nowy host, zgoda w rozmowie dotyczy hosta", async () => {
     expect(await runTool("web_search", { query: "rust" }, ctx())).toEqual({ ok: true, text: "wyniki: rust", approval: "auto" });
-    expect((await runTool("web_fetch", { url: "https://x" }, ctx())).text).toBe("strona: https://x");
+    const grants: ToolContext["grants"] = [];
+    answer = "chat";
+    expect((await runTool("web_fetch", { url: "https://x.com/a" }, ctx({ grants }))).text).toBe("strona: https://x.com/a");
+    expect(asked[0]).toMatchObject({ tool: "web_fetch", canGrant: true, host: "x.com" });
+    expect(asked[0].title).toContain("x.com");
+    expect(asked[0].detail).toContain("https://x.com/a");
+    expect(grants).toEqual([{ tool: "web_fetch", host: "x.com" }]);
+    expect(await runTool("web_fetch", { url: "https://X.com/b" }, ctx({ grants }))).toMatchObject({ ok: true, approval: "auto" });
+    expect(asked.length).toBe(1);
+    await runTool("web_fetch", { url: "https://y.com/" }, ctx({ grants }));
+    expect(asked.length).toBe(2); // inny host pyta
+    // podejrzany adres zatwierdzonego hosta pyta i nie daje zgody na host
+    await runTool("web_fetch", { url: `https://x.com/?d=${"a".repeat(200)}` }, ctx({ grants: [] }));
+    expect(asked[2]).toMatchObject({ canGrant: false });
+  });
+  it("web_fetch: przekierowania tylko na hosty dozwolone w rozmowie", async () => {
+    let allow: ((h: string) => boolean) | undefined;
+    const web = { search: async () => "", fetch: async (u: string, _s: AbortSignal, o?: { allowHost?: (h: string) => boolean }) => ((allow = o?.allowHost), `strona: ${u}`) };
+    await runTool("web_fetch", { url: "https://x.com/a" }, ctx({ web, grants: [{ tool: "web_fetch", host: "x.com" }, { tool: "web_fetch", host: "cdn.com" }] }));
+    expect([allow?.("x.com"), allow?.("cdn.com"), allow?.("evil.com")]).toEqual([true, true, false]);
+    await runTool("web_fetch", { url: "https://x.com/a" }, ctx({ web, routine: { writeWork: false, bash: [] } }));
+    expect(allow).toBeUndefined();
   });
 
   it("web_fetch: adres lokalny pyta (raz, bez grantu), długie query pyta, pełny URL w karcie", async () => {
@@ -428,10 +455,15 @@ describe("ścieżki wrażliwe", () => {
     const r = await run("grep", { pattern: "KEY", path: path.join(fakeHome, "proj") });
     expect(r.text).toContain("kod.txt");
     expect(r.text).not.toContain("KEY=1");
+    // Glob modelu nie odsłania wykluczonych plików (w rg późniejszy glob wygrywa).
+    for (const glob of ["*", ".env", "**/.env"]) {
+      const g = await run("grep", { pattern: "KEY", path: path.join(fakeHome, "proj"), glob });
+      expect(g.text, glob).not.toContain("KEY=1");
+    }
   });
 
   it("bash: wymienienie sekretu w poleceniu lub cwd daje odmowę bez karty", async () => {
-    for (const cmd of ["cat ~/.ssh/id_ed25519", `cat ${fakeHome}/.ssh/id_ed25519`, "cat proj/.env", `ls ${cfg}`]) {
+    for (const cmd of ["cat ~/.ssh/id_ed25519", `cat ${fakeHome}/.ssh/id_ed25519`, "cat proj/.env", `ls ${cfg}`, "cat /proc/1234/environ", "tr '\\0' '\\n' < /proc/$PPID/environ", "cat ~/.bash_history", "cat ~/.git-credentials", "ls ~/.mozilla"]) {
       const r = await run("bash", { command: cmd });
       expect(r.ok, cmd).toBe(false);
       expect(r.text, cmd).toContain("zablokowany");

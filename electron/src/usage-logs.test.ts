@@ -143,13 +143,22 @@ describe("UsageScanner", () => {
     expect(r.parsed).toBe(1);
     expect(r.rows.reduce((s, x) => s + x.output, 0)).toBe(22);
   });
-  it("indeks przeżywa restart, a usunięty log zostaje w statystykach", async () => {
+  it("indeks przeżywa restart (przed skanem usunięty log jeszcze liczy), skan go odcina", async () => {
     const { cfg, logs, scanner } = setup();
     await scanner.scan();
     fs.rmSync(path.join(logs, "proj"), { recursive: true });
     const fresh = new UsageScanner(cfg, () => [{ kind: "claude", dir: logs }]);
     expect(fresh.rows().reduce((s, x) => s + x.output, 0)).toBe(17);
-    expect((await fresh.scan()).parsed).toBe(0);
+    const r = await fresh.scan();
+    expect(r.parsed).toBe(0);
+    expect(r.rows).toEqual([]);
+  });
+  it("usunięcie jednego logu odcina tylko jego wiersze", async () => {
+    const { logs, scanner } = setup();
+    await scanner.scan();
+    fs.rmSync(path.join(logs, "proj", "sess"), { recursive: true });
+    const r = await scanner.scan();
+    expect(r.rows.reduce((s, x) => s + x.output, 0)).toBe(10);
   });
   it("logi z katalogów wykluczonych (Czat i Boty) są pomijane", async () => {
     const cfg = tmp();

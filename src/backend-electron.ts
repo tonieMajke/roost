@@ -34,7 +34,7 @@ const bridge = () => (window as unknown as { agentsElectron: ElectronBridge }).a
 export const pathForFile = (file: File): string => (typeof window !== "undefined" && "agentsElectron" in window ? bridge().pathForFile(file) : "");
 
 /** Electron opakowuje błąd z procesu głównego w „Error invoking remote method 'x': Error: …”;
- *  UI pokazuje powód (np. streszczenia), więc zostaje sam komunikat, jak w wersji Tauri. */
+ *  UI pokazuje powód (np. streszczenia), więc zostaje sam komunikat. */
 export const remoteMessage = (e: unknown) =>
   String(e instanceof Error ? e.message : e).replace(/^Error invoking remote method '[^']*': (?:\w*Error: )?/, "");
 

@@ -16,7 +16,7 @@ import { resolveMainLang, setMainLang } from "./i18n";
 import { openFile, resolveFiles } from "./open-path";
 import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
-import { allowNavigation, buildCsp, isTrustedSender, PickedFiles, shouldApplyCsp, validateArgs, validateSpawnSpec, type ArgSpec } from "./security";
+import { allowNavigation, buildCsp, isTrustedSender, allowPermission, PickedFiles, shouldApplyCsp, validateArgs, validateSpawnSpec, type ArgSpec } from "./security";
 import { claudeSummary, piSummary } from "./summary";
 import { ChatStore } from "./chat/store";
 import { UsageLedger } from "./usage-store";
@@ -44,14 +44,35 @@ import { buildChatConfig, isCli, type ChatEvent, type ChatRequest, type Provider
 app.setName("Agents");
 app.setPath("userData", path.join(app.getPath("appData"), "Agents"));
 
+// Jedna kopia na katalog konfiguracji: druga podwoiłaby harmonogram bota i nadpisywała workspace.json.
+// Z własnym `ROOST_CONFIG_DIR`/`AGENTS_CONFIG_DIR` druga kopia jest zamierzona.
+const ownConfig = Boolean(process.env.ROOST_CONFIG_DIR || process.env.AGENTS_CONFIG_DIR);
+if (!ownConfig && !app.requestSingleInstanceLock()) {
+  process.exit(0); // od razu: bez migracji, sklepów i harmonogramu w drugiej kopii
+}
+app.on("second-instance", () => {
+  // `win` jest zadeklarowane niżej; handler odpala się dopiero po starcie.
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+});
+
 // Pierwszy start po zmianie nazwy: konfiguracja ze starego katalogu `dev.majke.agents`. Nie przy
 // własnym `ROOST_CONFIG_DIR`/`AGENTS_CONFIG_DIR` (druga kopia ma zostać pusta).
-if (!process.env.ROOST_CONFIG_DIR && !process.env.AGENTS_CONFIG_DIR) {
+if (!ownConfig) {
   try {
     config.migrateLegacyConfig();
   } catch (e) {
     console.error("config migration failed:", e);
   }
+}
+
+// Katalog konfiguracji 0700, pliki z sekretami 0600 – przy każdym starcie, nie tylko po migracji.
+try {
+  config.ensureConfigPerms();
+} catch (e) {
+  console.error("config permissions:", e);
 }
 
 // Przed `ready`: wybór sejfu kluczy API (wyłączony KWallet → Secret Service).
@@ -159,7 +180,9 @@ function runNotify(r: RunInfo) {
 
 /** Adres naszej strony (dist-web albo dev serwer); do nawigacji okna i do sprawdzania nadawcy IPC. */
 const appFile = path.join(__dirname, "..", "dist-web", "index.html");
-const appUrl = { dev: process.env.AGENTS_DEV_URL, file: pathToFileURL(appFile).href };
+// Dev serwer i DevTools tylko poza spakowaną aplikacją: w AppImage zmienna środowiskowa nie wyłącza CSP.
+const devUrl = app.isPackaged ? undefined : process.env.AGENTS_DEV_URL;
+const appUrl = { dev: devUrl, file: pathToFileURL(appFile).href };
 
 /** Każde żądanie IPC musi przyjść z ramki z naszą stroną; obca ramka (iframe, nawigacja) nie dostaje nic. */
 function assertTrusted(event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent, name: string): void {
@@ -525,6 +548,17 @@ function createWindow() {
     if (!allowNavigation(url, appUrl)) e.preventDefault();
   });
   win.webContents.on("will-attach-webview", (e) => e.preventDefault());
+  // Uprawnienia Chromium: domyślnie odmowa, mikrofon (tylko audio) i zapis schowka wyłącznie dla naszej strony.
+  win.webContents.session.setPermissionRequestHandler((wc, permission, cb, details) => {
+    const d = details as { requestingUrl?: string; mediaTypes?: string[] };
+    cb(allowPermission(permission, d.requestingUrl ?? wc.getURL(), appUrl, d.mediaTypes));
+  });
+  win.webContents.session.setPermissionCheckHandler((wc, permission, _origin, details) => {
+    const d = details as { requestingUrl?: string; mediaType?: string };
+    // Sprawdzenie (np. etykiety mikrofonów w enumerateDevices) przychodzi z typem „unknown” albo bez typu;
+    // samo nic nie nagrywa, więc liczy się jak audio. Kamera nadal nie.
+    return allowPermission(permission, d.requestingUrl ?? wc?.getURL(), appUrl, [d.mediaType === "video" ? "video" : "audio"]);
+  });
   // CSP z nagłówka (nie z <meta>, żeby nie psuć HMR Vite); tylko dla file://.
   win.webContents.session.webRequest.onHeadersReceived((details, cb) => {
     if (!shouldApplyCsp(details.url)) return cb({});
@@ -542,10 +576,9 @@ function createWindow() {
       tts.end();
     }
   });
-  const dev = process.env.AGENTS_DEV_URL;
-  if (dev) void win.loadURL(dev);
+  if (devUrl) void win.loadURL(devUrl);
   else void win.loadFile(appFile);
-  if (process.env.AGENTS_DEVTOOLS) win.webContents.openDevTools({ mode: "detach" });
+  if (!app.isPackaged && process.env.AGENTS_DEVTOOLS) win.webContents.openDevTools({ mode: "detach" });
   const resized = () => win?.webContents.send("win_resized");
   win.on("resize", resized);
   win.on("maximize", resized);

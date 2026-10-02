@@ -127,8 +127,7 @@ export async function streamPi(
   // Ustawienia wyszukiwarek użytkownika (kolejność dostawców, ich klucze) – kopia tylko do odczytu.
   const userSearch = path.join(os.homedir(), ".pi", "agent", "web-search.json");
   if (fs.existsSync(userSearch)) {
-    fs.copyFileSync(userSearch, path.join(agentDir, "web-search.json"));
-    fs.chmodSync(path.join(agentDir, "web-search.json"), 0o600);
+    writeAtomic(path.join(agentDir, "web-search.json"), fs.readFileSync(userSearch, "utf8"), 0o600);
   }
   const env = { PI_CODING_AGENT_DIR: agentDir, PI_OFFLINE: "1", [KEY_VAR]: key ?? "none" };
   return runCli("pi", piArgs(req, ext), req.prompt, cwd, new PiParser(), signal, emit, env);

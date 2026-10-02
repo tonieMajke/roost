@@ -112,6 +112,7 @@ const pl = {
   "appr.botCreate": "Utworzyć bota „{name}”?",
   "appr.tool": "Użyć narzędzia {tool}?",
   "appr.fetch": "Pobrać stronę z tego adresu?",
+  "appr.fetchHost": "Pobrać stronę z hosta `{host}`?",
   "appr.fetch.private": "Adres lokalny/prywatny (ten komputer, sieć domowa lub metadane chmury).",
   "appr.fetch.long": "Bardzo długie zapytanie w adresie: tak można wysłać dane na zewnątrz.",
   "appr.fetch.encoded": "W adresie jest długi ciąg zakodowanych danych (base64/hex).",
@@ -120,6 +121,7 @@ const pl = {
   "web.routineBlocked": "adres wymaga zgody użytkownika (lokalny/prywatny lub podejrzanie długi), a przebieg działa bez człowieka: {url}",
   "web.privateRedirect": "przekierowanie na adres lokalny/prywatny ({host}) odrzucone; jeśli to zamierzone, wywołaj web_fetch bezpośrednio z tym adresem (użytkownik zatwierdzi)",
   "web.privateResolved": "{host} wskazuje na adres lokalny/prywatny; nazwa nie jest zaufana; jeśli to zamierzone, użyj bezpośrednio adresu IP (użytkownik zatwierdzi)",
+  "web.hostRedirect": "przekierowanie na inny host ({host}) wymaga zgody użytkownika; wywołaj web_fetch bezpośrednio z adresem {url}",
   "web.tooManyRedirects": "za dużo przekierowań (max 5)",
 } as const;
 
@@ -233,6 +235,7 @@ const en: Record<keyof typeof pl, string> = {
   "appr.botCreate": "Create bot “{name}”?",
   "appr.tool": "Use tool {tool}?",
   "appr.fetch": "Fetch the page at this address?",
+  "appr.fetchHost": "Fetch a page from host `{host}`?",
   "appr.fetch.private": "Local/private address (this computer, home network or cloud metadata).",
   "appr.fetch.long": "Very long query in the address: this is a way to send data out.",
   "appr.fetch.encoded": "The address holds a long run of encoded data (base64/hex).",
@@ -241,6 +244,7 @@ const en: Record<keyof typeof pl, string> = {
   "web.routineBlocked": "the address needs user approval (local/private or suspiciously long) and the run has no human: {url}",
   "web.privateRedirect": "redirect to a local/private address ({host}) rejected; if intended, call web_fetch with that address directly (the user will approve)",
   "web.privateResolved": "{host} resolves to a local/private address; the name is not trusted; if intended, use the IP address directly (the user will approve)",
+  "web.hostRedirect": "redirect to another host ({host}) needs the user's consent; call web_fetch directly with {url}",
   "web.tooManyRedirects": "too many redirects (max 5)",
 };
 
