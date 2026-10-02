@@ -46,7 +46,8 @@ afterAll(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-describe("git (prawdziwe repozytorium)", () => {
+// Windows: każde wywołanie gita to nowy proces, test z push/clone/fetch przekraczał domyślne 5 s
+describe("git (prawdziwe repozytorium)", { timeout: 30_000 }, () => {
   it("katalog bez repozytorium i nieistniejący = null", async () => {
     const plain = fs.mkdtempSync(path.join(root, "plain-"));
     expect(await gitStatus(plain)).toBeNull();
