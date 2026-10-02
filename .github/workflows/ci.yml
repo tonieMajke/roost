@@ -64,6 +64,14 @@ jobs:
         working-directory: electron
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      # Filtry `win.files` nie mogą wyciąć modułu terminala
+      - name: node-pty w paczce
+        shell: pwsh
+        run: |
+          $r = "electron/release/win-unpacked/resources/app.asar.unpacked/node_modules/node-pty/build/Release"
+          foreach ($f in "conpty.node", "pty.node", "winpty-agent.exe", "winpty.dll") {
+            if (-not (Test-Path "$r/$f")) { Write-Error "brak $f"; exit 1 }
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: roost-windows

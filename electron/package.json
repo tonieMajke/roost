@@ -66,6 +66,14 @@
         "nsis",
         "zip"
       ],
+      "files": [
+        "!node_modules/node-pty/build/deps/**",
+        "!node_modules/node-pty/build/Release/obj/**",
+        "!node_modules/node-pty/build/**/*.{tlog,obj,pdb,lib,iobj,ipdb,exp,ilk,vcxproj,filters,recipe,sln}",
+        "!node_modules/node-pty/prebuilds/darwin-*/**",
+        "!node_modules/node-pty/prebuilds/win32-arm64/**",
+        "!node_modules/node-pty/third_party/conpty/*/win10-arm64/**"
+      ],
       "icon": "../branding/icon.png",
       "executableName": "Roost",
       "artifactName": "Roost-${version}-win-${arch}.${ext}"
