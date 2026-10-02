@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CORE_RADIUS, MAX_PARTICLES, rateFor, step, type Emitter } from "./nebula";
+import { CORE_RADIUS, MAX_PARTICLES, rateFor, step, type Emitter } from "./nebula-sim";
 
 const core = { x: 100, y: 100 };
 const em = (rate: number, extra: Partial<Emitter> = {}): Emitter => ({ x: 300, y: 100, color: "1,2,3", rate, ...extra });

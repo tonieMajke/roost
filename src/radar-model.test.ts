@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { angleFor, blips, callsigns, radiusFor, RADAR_R } from "./radar";
+import { angleFor, blips, callsigns, radiusFor, RADAR_R } from "./radar-model";
 
 describe("radiusFor", () => {
   it("trafia w pierścienie: 1, 5 i 15 minut", () => {

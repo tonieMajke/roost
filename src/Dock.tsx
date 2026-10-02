@@ -7,7 +7,7 @@ import { limitBlocks, type ClaudeLimits } from "./limits";
 import type { Project } from "./workspace";
 import { IconButton } from "./IconButton";
 import { Radar } from "./Radar";
-import { blips, type BlipInput } from "./radar";
+import { blips, type BlipInput } from "./radar-model";
 import { paneStatus, type PaneState } from "./activity";
 import { filterBoard, idlePaneIds, type BoardRow } from "./board";
 import { moveSection, stepSection, type DockSection } from "./dockOrder";

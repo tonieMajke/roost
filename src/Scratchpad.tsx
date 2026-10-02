@@ -1,12 +1,12 @@
 // Scratchpad: notatka markdown projektu w panelu po prawej (obok Pulpitu). Edycja i podgląd
-// przełączane; autozapis po ciszy (`src/scratchpad.ts`), plik w katalogu konfiguracji.
+// przełączane; autozapis po ciszy (`src/scratchpad-save.ts`), plik w katalogu konfiguracji.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Pencil, X } from "lucide-react";
 import { backend } from "./backend";
 import { IconButton } from "./IconButton";
 import { Markdown } from "./chat/Markdown";
-import { createAutosave, type SaveState } from "./scratchpad";
+import { createAutosave, type SaveState } from "./scratchpad-save";
 import { useT } from "./i18n/useT";
 
 type Props = {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SAVE_DELAY_MS, createAutosave, type SaveState } from "./scratchpad";
+import { SAVE_DELAY_MS, createAutosave, type SaveState } from "./scratchpad-save";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
