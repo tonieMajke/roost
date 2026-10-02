@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { botEnv, runProc } from "./proc";
+import { botEnv, runProc, stripSecrets } from "./proc";
 
 const opts = (extra: Partial<Parameters<typeof runProc>[2]> = {}) => ({ cwd: "/tmp", timeoutMs: 5000, maxBytes: 1024, signal: new AbortController().signal, ...extra });
 
@@ -38,5 +38,23 @@ describe("botEnv", () => {
   it("bez kluczy aplikacji i zmiennych Electrona", () => {
     const env = botEnv({ PATH: "/usr/bin", AW_CHAT_API_KEY: "sk", AW_BOT_TOKEN: "t", ELECTRON_RUN_AS_NODE: "1", HOME: "/h" });
     expect(env).toEqual({ PATH: "/usr/bin", HOME: "/h" });
+  });
+});
+
+describe("stripSecrets", () => {
+  it("usuwa sekrety i agenty kluczy", () => {
+    const secrets = ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "GROQ_API_KEY", "MISTRAL_API_KEY", "DEEPSEEK_API_KEY", "XAI_API_KEY", "GITHUB_TOKEN", "GH_TOKEN", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_PROFILE", "AZURE_CLIENT_ID", "GOOGLE_APPLICATION_CREDENTIALS", "SSH_AUTH_SOCK", "GPG_AGENT_INFO", "DB_PASSWORD", "npm_config_token"];
+    const base = Object.fromEntries(secrets.map((k) => [k, "x"]));
+    expect(stripSecrets(base)).toEqual({});
+  });
+  it("zostawia niesekretne, też podobne z nazwy", () => {
+    const keep = { PATH: "/usr/bin", HOME: "/h", LANG: "pl", TERM: "xterm", DISPLAY: ":0", WAYLAND_DISPLAY: "w", XDG_RUNTIME_DIR: "/r", USER: "u", SHELL: "/bin/fish", TMPDIR: "/t", KUBECONFIG: "/k", TOKENIZERS_PARALLELISM: "false", KEYBOARD_LAYOUT: "pl", SECRETARY: "x", MONKEY: "1" };
+    expect(stripSecrets(keep)).toEqual(keep);
+  });
+  it("extraHidden: własny keyEnv spoza wzorca", () => {
+    expect(stripSecrets({ MYPROVIDER_PASS: "x", PATH: "/p" }, ["MYPROVIDER_PASS"])).toEqual({ PATH: "/p" });
+  });
+  it("botEnv usuwa domyślne keyEnv dostawców", () => {
+    expect(botEnv({ PATH: "/p", CORTECS_API_KEY: "k", OPENAI_API_KEY: "k" })).toEqual({ PATH: "/p" });
   });
 });

@@ -140,6 +140,23 @@ describe("config", () => {
       expect(fs.readFileSync(path.join(legacy, "workspace.json"), "utf8")).toBe("old");
     });
 
+    it("po migracji katalog ma 0700, a pliki z sekretami 0600 (reszta bez zmian)", () => {
+      const legacy = legacyWith();
+      fs.mkdirSync(path.join(legacy, "pi-agent"));
+      for (const f of ["accounts.json", "chat-keys.json", "pi-agent/web-search.json", "agents.json"]) {
+        fs.writeFileSync(path.join(legacy, f), "{}");
+        fs.chmodSync(path.join(legacy, f), 0o644);
+      }
+      fs.chmodSync(legacy, 0o755);
+      const dir = path.join(tempDir(), "roost");
+      expect(migrateLegacyConfig(dir, legacy)).toBe(true);
+      const mode = (f: string) => fs.statSync(path.join(dir, f)).mode & 0o777;
+      expect(fs.statSync(dir).mode & 0o777).toBe(0o700);
+      for (const f of ["accounts.json", "chat-keys.json", "pi-agent/web-search.json"]) expect(mode(f)).toBe(0o600);
+      expect(mode("agents.json")).toBe(0o644);
+      expect(fs.statSync(legacy).mode & 0o777).toBe(0o755); // stary katalog nietknięty
+    });
+
     it("przerwana kopia (.migrating z resztkami) nie blokuje kolejnej próby", () => {
       const legacy = legacyWith();
       const dir = path.join(tempDir(), "roost");

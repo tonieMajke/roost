@@ -10,6 +10,7 @@ import { validId } from "./context";
 const AGENTS_FILE = "agents.json";
 const WORKSPACE_FILE = "workspace.json";
 const ACCOUNTS_FILE = "accounts.json";
+const CHAT_KEYS_FILE = "chat-keys.json";
 
 /** `ROOST_CONFIG_DIR` (dawniej `AGENTS_CONFIG_DIR`) pozwala uruchomić drugą kopię obok, bez wspólnego workspace.json. */
 export function configDir(): string {
@@ -52,11 +53,25 @@ export function migrateLegacyConfig(dir = configDir(), legacy = legacyConfigDir(
       fs.rmSync(dir, { recursive: true, force: true });
     }
     fs.renameSync(tmp, dir);
+    tightenSecretPerms(dir);
   } catch (e) {
     fs.rmSync(tmp, { recursive: true, force: true });
     throw e;
   }
   return true;
+}
+
+/** Pliki z sekretami (względem `dir`): klucze zaszyfrowane safeStorage, konta, kopia ustawień wyszukiwarek pi. */
+const SECRET_FILES = [CHAT_KEYS_FILE, ACCOUNTS_FILE, path.join("pi-agent", "web-search.json")];
+
+/** Katalog konfiguracji 0700, a pliki z sekretami 0600 (cpSync zachowuje stare, szersze uprawnienia).
+ *  Reszty plików nie ruszamy. Brakujące pliki pomijamy. */
+export function tightenSecretPerms(dir: string): void {
+  fs.chmodSync(dir, 0o700);
+  for (const f of SECRET_FILES) {
+    const file = path.join(dir, f);
+    if (isFile(file)) fs.chmodSync(file, 0o600);
+  }
 }
 
 /** Ta sama lista co `DEFAULT_AGENTS` w `src/agents.ts`. */

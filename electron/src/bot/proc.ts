@@ -2,17 +2,34 @@
 //! całą grupę (też dzieci powłoki), wyjście ucięte do limitu bajtów.
 
 import { spawn } from "node:child_process";
+import { DEFAULT_PROVIDERS } from "../../../src/chat";
 import { childEnv } from "../env";
+
+const DEFAULT_KEY_ENVS = DEFAULT_PROVIDERS.flatMap((p) => (p.keyEnv ? [p.keyEnv] : []));
 
 export type ProcResult = { code: number | null; signal: string | null; out: string; truncated: boolean; timedOut: boolean };
 
 /** Zmienne, których polecenia bota nie dostają (klucze aplikacji, token serwera MCP). */
-const HIDDEN = ["AW_CHAT_API_KEY", "AW_BOT_TOKEN", "AW_BOT_SOCKET"];
+const HIDDEN = ["AW_CHAT_API_KEY", "AW_BOT_TOKEN", "AW_BOT_SOCKET", "SSH_AUTH_SOCK", "GPG_AGENT_INFO"];
+const HIDDEN_PREFIXES = ["AWS_", "AZURE_"];
+/** Nazwy sekretów jako całe segmenty rozdzielone `_`: `GITHUB_TOKEN`, `X_API_KEY`, `DB_PASSWORD`,
+ *  `GOOGLE_APPLICATION_CREDENTIALS`; nie łapie `TOKENIZERS_PARALLELISM` ani `KEYBOARD_LAYOUT`. */
+const SECRET_NAME = /(^|_)(API_?KEY|SECRET|TOKEN|PASSWORD|PASSWD|CREDENTIALS?)(_|$)/i;
 
-export function botEnv(base: Record<string, string | undefined> = process.env): Record<string, string> {
-  const env = childEnv({}, base);
-  for (const k of HIDDEN) delete env[k];
+/** Czysta kopia środowiska bez sekretów. `extraHidden`: `keyEnv` dostawców o nazwach spoza wzorca. */
+export function stripSecrets(base: Record<string, string>, extraHidden: readonly string[] = []): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [k, v] of Object.entries(base)) {
+    if (HIDDEN.includes(k) || extraHidden.includes(k) || HIDDEN_PREFIXES.some((p) => k.startsWith(p)) || SECRET_NAME.test(k)) continue;
+    env[k] = v;
+  }
   return env;
+}
+
+/** Środowisko narzędzia `bash`/`rg` bota: bez sekretów. Procesy CLI agenta (claude/codex, chat/cli.ts) używają
+ *  `childEnv` bez filtra, bo potrzebują własnych kluczy; filtr dotyczy tylko poleceń uruchamianych na zgodę. */
+export function botEnv(base: Record<string, string | undefined> = process.env, extraHidden: readonly string[] = DEFAULT_KEY_ENVS): Record<string, string> {
+  return stripSecrets(childEnv({}, base), extraHidden);
 }
 
 function killGroup(pid: number | undefined, sig: NodeJS.Signals) {
