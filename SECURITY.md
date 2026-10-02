@@ -60,7 +60,6 @@ Nie chronimy przed użytkownikiem lokalnym z dostępem do konta ani przed zainst
 
 ## Zgłaszanie błędów
 
-Nie otwieraj publicznego zgłoszenia dla luki. Po opublikowaniu repozytorium użyj prywatnego
-zgłoszenia w zakładce **Security → Report a vulnerability** (GitHub Security Advisories).
-Do tego czasu napisz bezpośrednio do właściciela repozytorium. Podaj wersję, kroki odtworzenia
+Nie otwieraj publicznego zgłoszenia dla luki. Użyj prywatnego zgłoszenia w zakładce
+**Security → Report a vulnerability** (GitHub Security Advisories). Podaj wersję, kroki odtworzenia
 i skutek; nie dołączaj prawdziwych kluczy.

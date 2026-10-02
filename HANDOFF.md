@@ -2,6 +2,12 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Przed upublicznieniem repo – 2026-10-02 (Claude)
+
+- Przegląd: w drzewie i całej historii `main` brak kluczy/tokenów (`sk-ant` to atrapa w testach), brak `.env`/`.pem`/AppImage w gitcie, `.gitignore` pokrywa wyniki budowy. Dane osobiste: tylko `/home/majke/...` w danych testowych i mocku; w starych commitach adresy `majke@localhost`/`pi-gui@localhost`. Na `origin` jest tylko `main` (lokalne gałęzie robocze nie są wypchnięte).
+- `SECURITY.md`: zgłoszenia przez GitHub Security Advisories, bez „napisz do właściciela”. **Do zrobienia na GitHubie po zmianie widoczności:** włączyć *Settings → Code security → Private vulnerability reporting*, uzupełnić opis i tematy repo, sprawdzić `social-preview` (`branding/`).
+- Otwarte: CI, `CONTRIBUTING`, szablony zgłoszeń.
+
 ## Okno pierwszego uruchomienia – 2026-10-02 (Claude, gałąź `main`)
 
 - Pokazuje się, gdy nie ma `workspace.json` (`App.tsx`: `firstRun`). `FirstRunDialog.tsx`: język i motyw (wspólny `UiRowControl.tsx`, wyciągnięty z „Wyglądu”), lista agentów z `agents.json` z oznaczeniem „znaleziony / brak w PATH” (+ komenda instalacji dla claude i codex) i „Sprawdź ponownie”, wybór folderu i presetu → `startFirstProject` tworzy projekt od razu z panelami. „Pomiń”/Esc zamyka; po pierwszym zapisie okno już się nie pojawi.
