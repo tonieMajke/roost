@@ -16,7 +16,8 @@ let answer: ApprovalDecision = "once";
 let broker: ApprovalBroker;
 
 beforeEach(() => {
-  dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "aw-tools-")));
+  // `.native`: na Windows tmp bywa krótką nazwą 8.3 (`RUNNER~1`), a resolvePath ją rozwija
+  dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "aw-tools-")));
   store = new BotStore(path.join(dir, "bots"), path.join(dir, "trash"), () => 1000);
   home = path.join(dir, "kod");
   outside = path.join(dir, "obcy");

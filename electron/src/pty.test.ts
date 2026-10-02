@@ -4,9 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { type ExitInfo, Ptys } from "./pty";
 
-const FIVE = 5000;
+/** Czas na wyjście; PowerShell na maszynie CI z Windows startuje kilka sekund. */
+const FIVE = process.platform === "win32" ? 20000 : 5000;
 const sh = (script: string) => ({ command: "/bin/sh", args: ["-c", script], cols: 80, rows: 24 });
 const WIN = process.platform === "win32";
+const plain = (s: string) => s.replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[()][0-9A-Za-z]/g, "").replaceAll("\r", "");
 
 function run(ptys: Ptys, spec: { command: string; args: string[]; cols: number; rows: number; cwd?: string }) {
   let out = "";
@@ -25,8 +27,9 @@ function run(ptys: Ptys, spec: { command: string; args: string[]; cols: number; 
   return {
     id,
     exited,
+    /** Bez `\r` i sekwencji sterujących (ConPTY przerysowuje ekran kodami ANSI). */
     get out() {
-      return out.replaceAll("\r", "");
+      return plain(out);
     },
     get exit() {
       return exitInfo;
@@ -36,7 +39,7 @@ function run(ptys: Ptys, spec: { command: string; args: string[]; cols: number; 
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(`brak ${re} w ${JSON.stringify(out)}`)), FIVE);
         const check = () => {
-          const m = out.match(re);
+          const m = plain(out).match(re);
           if (m) {
             clearTimeout(timer);
             onOut = null;
@@ -144,22 +147,22 @@ describe.runIf(WIN)("pty (Windows)", () => {
     expect(ptys.pid(p.id)).toBeUndefined();
     const shell = run(ptys, { command: "$SHELL", args: ["-NoProfile", "-Command", "exit 3"], cols: 80, rows: 24 });
     expect((await shell.exited).code).toBe(3);
-  });
+  }, 30000);
 
   it("zapis trafia na stdin dziecka", async () => {
     const ptys = new Ptys();
-    const p = run(ptys, ps("$l = [Console]::ReadLine(); Write-Output \"ECHO-$l\""));
+    const p = run(ptys, ps("$l = [Console]::ReadLine(); Write-Output ('ECHO-' + $l)"));
     ptys.write(p.id, "hello-pipe\r");
     await p.waitFor(/ECHO-hello-pipe/);
     await p.exited;
-  });
+  }, 30000);
 
   it("kill zabija całe drzewo (taskkill /T)", async () => {
     const ptys = new Ptys();
-    const p = run(ptys, ps("$c = Start-Process ping -ArgumentList '-n','31','127.0.0.1' -NoNewWindow -PassThru; Write-Output \"MARKER-$($c.Id)\"; $c.WaitForExit()"));
+    const p = run(ptys, ps("$c = Start-Process ping -ArgumentList '-n','31','127.0.0.1' -NoNewWindow -PassThru; Write-Output ('MARKER-' + $c.Id); $c.WaitForExit()"));
     const pid = Number((await p.waitFor(/MARKER-(\d+)/))[1]);
     expect(alive(pid)).toBe(true);
     ptys.kill(p.id);
     await until(() => !alive(pid), "ping przeżył zabicie drzewa");
-  });
+  }, 30000);
 });

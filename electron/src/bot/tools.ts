@@ -292,6 +292,11 @@ function sensitiveEnv(work: string): SensitiveEnv {
   return { home: real(os.homedir()), configDirs: [real(configDir()), real(legacyConfigDir())], exempt: [work] };
 }
 
+function resolvedSensitive(env: SensitiveEnv, work: string): SensitiveEnv {
+  const real = (p: string) => resolvePath(p, work);
+  return { home: real(env.home), configDirs: env.configDirs.map(real), exempt: env.exempt?.map(real) };
+}
+
 /** Wywołanie narzędzia przez model. Nigdy nie rzuca: błąd wraca do modelu jako `ok: false`. */
 export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext): Promise<ToolOutcome> {
   if (!(name in TOOL_GROUP)) return { ok: false, text: `nieznane narzędzie: ${name}`, approval: "auto" };
@@ -313,7 +318,8 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
   if (streamPath !== undefined) return { ok: false, text: t("path.sensitive", { p: streamPath }), approval: "auto" };
 
   // Sekrety (klucze, tokeny, .env, konfiguracja aplikacji): bez karty zgody, w każdym trybie i dla każdej zgody.
-  const sens = ctx.sensitive ?? sensitiveEnv(workReal);
+  // Podane z zewnątrz też po realpath: krótka nazwa 8.3 albo dowiązanie ominęłyby porównanie.
+  const sens = ctx.sensitive ? resolvedSensitive(ctx.sensitive, workReal) : sensitiveEnv(workReal);
   const blockedPath = [str(args.path), str(args.cwd)].find((p) => p !== undefined && isSensitivePath(p, sens));
   const blocked =
     blockedPath ??
