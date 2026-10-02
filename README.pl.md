@@ -4,6 +4,8 @@
 
 *Rule the roost.*
 
+https://github.com/user-attachments/assets/6798c7fb-9c21-4cbf-a05f-db971493c9fd
+
 Desktopowa aplikacja (Electron + React + TypeScript, tylko Linux) do pracy z wieloma
 agentami CLI naraz. Po lewej szyna z projektami (folderami), po prawej siatka 1–16
 terminali aktywnego projektu. Przełączenie projektu nie zatrzymuje procesów —
@@ -34,6 +36,19 @@ dostaje polski, reszta angielski); zmiana w **Wygląd → Język**.
   pull i push.
 - **Konta** — kilka loginów Claude/Codex i „kontynuuj na innym koncie” przy limicie (niżej).
 - **Wygląd** — ponad 20 motywów, interfejs po polsku i angielsku.
+
+## Zrzuty ekranu
+
+![Roost: dziewięciu agentów obok siebie w jednej siatce](docs/screenshots/grid.webp)
+
+| | |
+|---|---|
+| ![Pulpit: limity Claude dla każdego konta, kontekst paneli, feed na żywo](docs/screenshots/dashboard.webp) | ![Statystyki tokenów: dni, modele, projekty, dostawcy, konta](docs/screenshots/statistics.webp) |
+| Pulpit: limity Claude dla każdego konta, kontekst paneli, feed na żywo | Statystyki tokenów: dni, modele, projekty, dostawcy, konta |
+| ![Czat: subskrypcje, API i modele lokalne w jednym wyborze](docs/screenshots/chat.webp) | ![Bot: recenzent czyta diff i za zgodą zapisuje uwagi](docs/screenshots/bots.webp) |
+| Czat: subskrypcje, API i modele lokalne w jednym wyborze | Bot: recenzent czyta diff i za zgodą zapisuje uwagi |
+| ![Pliki i git: diff, stage, commit, push](docs/screenshots/files-git.webp) | ![Ponad 20 motywów](docs/screenshots/themes.webp) |
+| Pliki i git: diff, stage, commit, push | Ponad 20 motywów |
 
 ## Wymagania
 

@@ -41,6 +41,19 @@ The interface is available in **English and Polish**. By default it follows your
 - **Accounts** — several Claude/Codex logins and "continue on another account" at a limit (below).
 - **Appearance** — over 20 themes, English and Polish interface.
 
+## Screenshots
+
+![Roost: nine agents side by side in one grid](docs/screenshots/grid.webp)
+
+| | |
+|---|---|
+| ![Dashboard: Claude limits per account, context per pane, live feed](docs/screenshots/dashboard.webp) | ![Token statistics by day, model, project, provider and account](docs/screenshots/statistics.webp) |
+| Dashboard: Claude limits per account, context per pane, live feed | Token statistics by day, model, project, provider and account |
+| ![Chat: subscriptions, API and local models in one picker](docs/screenshots/chat.webp) | ![Bot: a reviewer reads the diff and writes its notes, with permission](docs/screenshots/bots.webp) |
+| Chat: subscriptions, API and local models in one picker | Bot: a reviewer reads the diff and writes its notes, with permission |
+| ![Files and git: diff, stage, commit, push](docs/screenshots/files-git.webp) | ![Over 20 themes](docs/screenshots/themes.webp) |
+| Files and git: diff, stage, commit, push | Over 20 themes |
+
 ## Requirements
 
 Linux, Node.js and pnpm to build from source. The agents themselves are not bundled; install the
