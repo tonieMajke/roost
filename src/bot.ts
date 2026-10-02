@@ -763,6 +763,56 @@ export function fetchRisk(url: string): FetchRisk[] {
   return out;
 }
 
+/** Środowisko do rozpoznawania ścieżek wrażliwych: `home` i `configDirs` już po `realpath`;
+ *  `exempt` (np. katalog roboczy bota, który leży w configDir) nie jest blokowany. */
+export interface SensitiveEnv {
+  home: string;
+  configDirs: string[];
+  exempt?: string[];
+}
+
+/** Katalogi i pliki względem `$HOME`, których narzędzia plikowe i bash nie ruszają nigdy (bez karty zgody). */
+export const SENSITIVE_HOME = [
+  ".ssh", ".aws", ".gnupg", ".kube", ".config/gcloud", ".local/share/keyrings",
+  ".docker/config.json", ".netrc", ".npmrc", ".pypirc", ".claude/.credentials.json", ".codex/auth.json",
+];
+const SENSITIVE_NAME = /^(\.env(\..+)?|.+\.pem|.+\.key|id_(rsa|dsa|ecdsa|ed25519))$/i;
+const TEMPLATE_NAME = /\.(example|sample|template|dist)$/i;
+/** Globy dla `rg`: wzorce nazw pasują wszędzie, więc `grep` po całym projekcie też ich nie czyta. */
+export const SENSITIVE_GLOBS = ["!**/.env", "!**/.env.*", "!**/*.pem", "!**/*.key", "!**/id_rsa", "!**/id_dsa", "!**/id_ecdsa", "!**/id_ed25519"];
+
+function sensitiveRoots(env: SensitiveEnv): string[] {
+  return [...SENSITIVE_HOME.map((r) => `${env.home.replace(/\/$/, "")}/${r}`), ...env.configDirs];
+}
+
+/** Czy ścieżka (po `realpath`) wskazuje na sekrety: klucze SSH/chmur, tokeny CLI, pliki `.env`, `*.pem`,
+ *  `/proc/<pid>/environ`, katalog konfiguracji aplikacji. */
+export function isSensitivePath(p: string, env: SensitiveEnv): boolean {
+  if (env.exempt?.some((e) => isInside(p, e))) return false;
+  if (sensitiveRoots(env).some((r) => isInside(p, r))) return true;
+  if (/^\/proc\/[^/]+\/environ$/.test(p)) return true;
+  const name = p.slice(p.lastIndexOf("/") + 1);
+  return SENSITIVE_NAME.test(name) && !TEMPLATE_NAME.test(name);
+}
+
+/** Czy `grep` po tym folderze wszedłby do wrażliwego korzenia (np. `grep -r` po `~`). */
+export function containsSensitiveRoot(dir: string, env: SensitiveEnv): boolean {
+  if (env.exempt?.some((e) => isInside(dir, e))) return false;
+  return sensitiveRoots(env).some((r) => r !== dir && isInside(r, dir));
+}
+
+/** Heurystyka dla `bash`: polecenie, które wprost wymienia wrażliwą ścieżkę. Best effort – powłoka da się
+ *  zaciemnić (`$(printf …)`), więc to osłona przed pomyłką modelu, a nie granica bezpieczeństwa. */
+export function commandTouchesSensitive(command: string, env: SensitiveEnv): boolean {
+  const cmd = (env.exempt ?? []).reduce((c, e) => c.split(e).join(" "), command); // katalog roboczy bota leży w configDir
+  const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const roots = [...SENSITIVE_HOME.map((r) => esc(r)), ...env.configDirs.map(esc)];
+  const rootRe = new RegExp(`(^|[\\s='"/:])(~/|\\$HOME/|${esc(env.home)}/)?(${roots.join("|")})($|[\\s'"/:;|&)])`);
+  if (env.configDirs.some((d) => cmd.includes(d)) || rootRe.test(cmd)) return true;
+  const name = "(\\.env(\\.(?!(example|sample|template|dist)\\b)[\\w.-]+)?|[\\w.-]+\\.pem|id_(rsa|dsa|ecdsa|ed25519))";
+  return new RegExp(`(^|[\\s='"/])${name}($|[\\s'";|&)])`).test(cmd);
+}
+
 /** Czy wywołanie wymaga zgody. Ścieżki w `args.path` przychodzą już po `realpath`
  *  (dla nieistniejącego pliku: realpath folderu nadrzędnego + nazwa). */
 export function needsApproval(tool: ToolName, args: Record<string, unknown>, ctx: ApprovalContext): Verdict {

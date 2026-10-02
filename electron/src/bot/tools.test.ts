@@ -382,3 +382,62 @@ describe("Kreator", () => {
     expect((await runTool("bot_update", { id: "rust", style: "x" }, ctx())).text).toContain("wyłączone");
   });
 });
+
+describe("ścieżki wrażliwe", () => {
+  let fakeHome = "";
+  let cfg = "";
+  const sens = () => ({ home: fakeHome, configDirs: [cfg], exempt: [work()] });
+  const run = (name: string, args: unknown, extra: Partial<ToolContext> = {}) => {
+    const bot = { ...store.load("rust")!, folders: [fakeHome], tools: { ...store.load("rust")!.tools, bash: true, write: true, read: true } };
+    return runTool(name, args, ctx({ bot, sensitive: sens(), ...extra }));
+  };
+  beforeEach(() => {
+    fakeHome = path.join(dir, "dom");
+    cfg = path.join(dir, "bots", "..", "cfg");
+    fs.mkdirSync(path.join(fakeHome, ".ssh"), { recursive: true });
+    fs.mkdirSync(path.join(fakeHome, "proj"), { recursive: true });
+    fs.mkdirSync(cfg, { recursive: true });
+    fs.writeFileSync(path.join(fakeHome, ".ssh", "id_ed25519"), "TAJNE");
+    fs.writeFileSync(path.join(fakeHome, "proj", ".env"), "KEY=1");
+    fs.writeFileSync(path.join(fakeHome, "proj", ".env.example"), "KEY=");
+    fs.writeFileSync(path.join(fakeHome, "proj", "kod.txt"), "KEY zwykły");
+    fs.writeFileSync(path.join(cfg, "accounts.json"), "{}");
+    fs.symlinkSync(path.join(fakeHome, ".ssh"), path.join(fakeHome, "proj", "ln"));
+  });
+
+  it("odczyt, zapis i edycja sekretów: odmowa bez karty, także przez dowiązanie i `..`", async () => {
+    for (const p of [".ssh/id_ed25519", "proj/.env", "proj/ln/id_ed25519", "proj/../.ssh/id_ed25519", path.join(cfg, "accounts.json")]) {
+      for (const tool of ["read_file", "write_file"]) {
+        const r = await run(tool, { path: p.startsWith("/") ? p : path.join(fakeHome, p), content: "x" });
+        expect(r.ok, `${tool} ${p}`).toBe(false);
+        expect(r.text).toContain("zablokowany");
+      }
+    }
+    expect(asked).toHaveLength(0);
+    expect(fs.readFileSync(path.join(fakeHome, ".ssh", "id_ed25519"), "utf8")).toBe("TAJNE");
+  });
+
+  it("szablon .env.example i zwykłe pliki przechodzą; katalog roboczy bota w configDir też", async () => {
+    expect((await run("read_file", { path: path.join(fakeHome, "proj", ".env.example") })).ok).toBe(true);
+    expect((await run("read_file", { path: path.join(fakeHome, "proj", "kod.txt") })).ok).toBe(true);
+    expect((await run("write_file", { path: "notatka.txt", content: "ok" }, { sensitive: { home: fakeHome, configDirs: [path.join(dir, "bots")], exempt: [work()] } })).ok).toBe(true);
+  });
+
+  it("grep: po całym domu odmowa, po projekcie pomija .env", async () => {
+    expect((await run("grep", { pattern: "TAJNE", path: fakeHome })).ok).toBe(false);
+    const r = await run("grep", { pattern: "KEY", path: path.join(fakeHome, "proj") });
+    expect(r.text).toContain("kod.txt");
+    expect(r.text).not.toContain("KEY=1");
+  });
+
+  it("bash: wymienienie sekretu w poleceniu lub cwd daje odmowę bez karty", async () => {
+    for (const cmd of ["cat ~/.ssh/id_ed25519", `cat ${fakeHome}/.ssh/id_ed25519`, "cat proj/.env", `ls ${cfg}`]) {
+      const r = await run("bash", { command: cmd });
+      expect(r.ok, cmd).toBe(false);
+      expect(r.text, cmd).toContain("zablokowany");
+    }
+    expect((await run("bash", { command: "ls .", cwd: path.join(fakeHome, ".ssh") })).ok).toBe(false);
+    expect(asked).toHaveLength(0);
+    expect((await run("bash", { command: "echo ok" })).ok).toBe(true);
+  });
+});

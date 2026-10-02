@@ -9,6 +9,11 @@ import {
   botId,
   commandPrefix,
   isInside,
+  isSensitivePath,
+  containsSensitiveRoot,
+  commandTouchesSensitive,
+  SENSITIVE_GLOBS,
+  type SensitiveEnv,
   isSkillName,
   MEMORY_LIMIT,
   memoryEdit,
@@ -33,6 +38,8 @@ import {
   type ToolName,
 } from "../../../src/bot";
 import type { ModelRef } from "../../../src/chat";
+import os from "node:os";
+import { configDir, legacyConfigDir } from "../config";
 import { expand } from "../env";
 import type { ApprovalBroker } from "./approvals";
 import { runProc } from "./proc";
@@ -72,6 +79,8 @@ export type ToolContext = {
   model?: ModelRef;
   web?: { search(q: string, signal: AbortSignal): Promise<string>; fetch(url: string, signal: AbortSignal, opts?: FetchOpts): Promise<string> };
   now?: () => number;
+  /** Nadpisanie rozpoznawania ścieżek wrażliwych (testy); domyślnie `$HOME` i katalogi konfiguracji aplikacji. */
+  sensitive?: SensitiveEnv;
 };
 
 export type ToolOutcome = { ok: boolean; text: string; approval: "auto" | ApprovalDecision };
@@ -264,6 +273,12 @@ function approvalText(tool: ToolName, a: Record<string, unknown>, ctx: ToolConte
   }
 }
 
+/** `home` i katalogi konfiguracji po realpath; katalog roboczy bota (leży w configDir) jest wyłączony z blokady. */
+function sensitiveEnv(work: string): SensitiveEnv {
+  const real = (p: string) => resolvePath(p, work);
+  return { home: real(os.homedir()), configDirs: [real(configDir()), real(legacyConfigDir())], exempt: [work] };
+}
+
 /** Wywołanie narzędzia przez model. Nigdy nie rzuca: błąd wraca do modelu jako `ok: false`. */
 export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext): Promise<ToolOutcome> {
   if (!(name in TOOL_GROUP)) return { ok: false, text: `nieznane narzędzie: ${name}`, approval: "auto" };
@@ -280,6 +295,15 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
     args.path = resolvePath(p ?? ".", workReal);
   }
   if (tool === "bash") args.cwd = resolvePath(str(args.cwd) ?? ".", workReal);
+
+  // Sekrety (klucze, tokeny, .env, konfiguracja aplikacji): bez karty zgody, w każdym trybie i dla każdej zgody.
+  const sens = ctx.sensitive ?? sensitiveEnv(workReal);
+  const blockedPath = [str(args.path), str(args.cwd)].find((p) => p !== undefined && isSensitivePath(p, sens));
+  const blocked =
+    blockedPath ??
+    (tool === "grep" && containsSensitiveRoot(str(args.path) ?? workReal, sens) ? str(args.path) : undefined) ??
+    (tool === "bash" && commandTouchesSensitive(str(args.command) ?? "", sens) ? str(args.command) : undefined);
+  if (blocked !== undefined) return { ok: false, text: t("path.sensitive", { p: blocked.length > 120 ? `${blocked.slice(0, 120)}…` : blocked }), approval: "auto" };
 
   const folders = ctx.bot.folders.map((f) => resolvePath(f, workReal));
   let verdict = needsApproval(tool, args, { bot: ctx.bot, work: workReal, folders, grants: ctx.grants, routine: ctx.routine });
@@ -451,6 +475,7 @@ function listDir(p: string): string {
 
 async function grep(pattern: string, p: string, glob: string | undefined, signal: AbortSignal): Promise<string> {
   const args = ["--line-number", "--no-heading", "--color", "never", "--max-count", "20", "--max-columns", "300", "--max-filesize", "1M"];
+  for (const g of SENSITIVE_GLOBS) args.push("--glob", g);
   if (glob) args.push("--glob", glob);
   args.push("-e", pattern, "--", p);
   const r = await runProc("rg", args, { cwd: isDir(p) ? p : path.dirname(p), timeoutMs: 30_000, maxBytes: 32 * 1024, signal });
