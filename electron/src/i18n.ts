@@ -129,6 +129,10 @@ const pl = {
   "sandbox.howto": "Pokaż instrukcję",
   "sandbox.ok": "Rozumiem",
   "sandbox.dontShow": "Nie pokazuj ponownie",
+  "update.title": "Roost {version} jest gotowy",
+  "update.detail": "Nowa wersja została pobrana. Uruchom ponownie teraz albo później – zainstaluje się przy zamknięciu aplikacji. Otwarte panele zostaną zamknięte.",
+  "update.restart": "Uruchom ponownie",
+  "update.later": "Później",
 } as const;
 
 const en: Record<keyof typeof pl, string> = {
@@ -258,6 +262,10 @@ const en: Record<keyof typeof pl, string> = {
   "sandbox.howto": "Show instructions",
   "sandbox.ok": "Got it",
   "sandbox.dontShow": "Don't show again",
+  "update.title": "Roost {version} is ready",
+  "update.detail": "The new version has been downloaded. Restart now, or later – it installs when you quit the app. Open panes will be closed.",
+  "update.restart": "Restart",
+  "update.later": "Later",
 };
 
 import { setLang } from "../../src/i18n";

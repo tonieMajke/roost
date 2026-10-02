@@ -2,6 +2,7 @@ name: Release
 
 # Tag `v<wersja>` (zgodny z `electron/package.json`) → szkic wydania z AppImage, instalatorem
 # i zipem dla Windows oraz plikami `.sha256`. Szkic publikuje się ręcznie na GitHubie.
+# `latest*.yml` i `.blockmap` czyta electron-updater w zainstalowanych kopiach (updater.ts).
 on:
   push:
     tags: ["v*"]
@@ -38,7 +39,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: electron/release/*.AppImage
+          path: |
+            electron/release/*.AppImage
+            electron/release/latest-linux.yml
           if-no-files-found: error
 
   windows:
@@ -65,7 +68,9 @@ jobs:
           name: windows
           path: |
             electron/release/*.exe
+            electron/release/*.exe.blockmap
             electron/release/*.zip
+            electron/release/latest.yml
           if-no-files-found: error
 
   release:
@@ -81,7 +86,7 @@ jobs:
           merge-multiple: true
       - name: Sumy kontrolne
         working-directory: out
-        run: for f in *; do sha256sum "$f" > "$f.sha256"; done
+        run: for f in *.AppImage *.exe *.zip; do sha256sum "$f" > "$f.sha256"; done
       - name: Szkic wydania
         env:
           GH_TOKEN: ${{ github.token }}

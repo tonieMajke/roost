@@ -11,10 +11,11 @@
     "build": "npm run build:web && npm run build:main",
     "typecheck": "node ../node_modules/typescript/bin/tsc --noEmit",
     "start": "npm run build && electron .",
-    "dist": "npm run build && rm -rf node_modules/node-pty/build && CXXFLAGS=\"-include '$PWD/build-tools/glibc-compat.h'\" electron-builder --linux AppImage && ./build-tools/check-pty-glibc.sh",
-    "dist:win": "npm run build && electron-builder --win nsis zip --x64"
+    "dist": "npm run build && rm -rf node_modules/node-pty/build && CXXFLAGS=\"-include '$PWD/build-tools/glibc-compat.h'\" electron-builder --linux AppImage --publish never && ./build-tools/check-pty-glibc.sh",
+    "dist:win": "npm run build && electron-builder --win nsis zip --x64 --publish never"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "node-pty": "^1.1.0"
   },
   "allowScripts": {
@@ -34,6 +35,11 @@
     },
     "appId": "dev.majke.roost",
     "productName": "Roost",
+    "publish": {
+      "provider": "github",
+      "owner": "tonieMajke",
+      "repo": "roost"
+    },
     "directories": {
       "output": "release"
     },
