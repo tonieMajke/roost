@@ -12,6 +12,7 @@ AGENTS.md zabrania agentowi uruchamiania okna, więc robi to użytkownik.
 - [ ] ikona i `StartupWMClass` w menu / na pasku zadań (KDE)
 - [ ] czysty start (`ROOST_CONFIG_DIR=$(mktemp -d)`): okno pierwszego uruchomienia – wygląd, wykrywanie `claude`/`pi`, „Sprawdź ponownie” po doinstalowaniu, folder + preset tworzą projekt z panelami, „Pomiń”
 - [ ] AppImage na Ubuntu 24.04 w VM: start bez libfuse2 (statyczny runtime), terminal w panelu startuje (`pty.node` na glibc 2.39), błąd sandboxa i obejście z README (AppArmor / `--no-sandbox`)
+  - 2026-10-02, VM Ubuntu 24.04.5 (obraz chmurowy, QEMU/KVM, Xvfb, `apparmor_restrict_unprivileged_userns=1`): AppImage przez FUSE startuje, ale **AppRun electron-buildera sam dokleja `--no-sandbox`** (renderer bez przestrzeni nazw i seccomp). Dodane ostrzeżenie `sandbox-notice.ts` – widoczne bez profilu; z profilem z README renderer ma własną przestrzeń nazw i seccomp=2, ostrzeżenia nie ma.
 - [ ] to samo na Ubuntu 22.04 (glibc 2.35), Debianie 12 (2.36) i Mincie
   - 2026-10-02, kontenery podmana (Ubuntu 22.04/24.04, Debian 12) z AppImage z Releases: rozpakowanie bez libfuse, `pty.node` bez braków (glibc 2.35/2.36/2.39), node-pty w spakowanej aplikacji uruchamia powłokę, start jako zwykły użytkownik z sandboxem pod Xvfb, okno pierwszego uruchomienia się rysuje. Na gołym obrazie trzeba `libgtk-3-0 libnss3 libasound2 libgbm1` (desktop je ma). **Nie sprawdza:** AppArmor z 24.04 (kernel hosta to Arch), prawdziwego pulpitu, Minta.
 - [ ] panel z agentem bez `claude`/`pi` w PATH: co widać, czy opis w README wystarcza

@@ -2,6 +2,13 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## AppImage na innych dystrybucjach, ostrzeżenie o braku sandboxa – 2026-10-02 (Claude)
+
+- Kontenery podmana (Ubuntu 22.04/24.04, Debian 12) i VM Ubuntu 24.04 (QEMU/KVM, obraz chmurowy, cloud-init przez HTTP, Xvfb): AppImage startuje, `pty.node` i node-pty działają, okno się rysuje. Szczegóły: `docs/checklista-wydania.md` §0.
+- Na 24.04 AppRun z electron-buildera po cichu dodaje `--no-sandbox` (gdy `unshare -Ur` się nie udaje). Nowe `electron/src/sandbox-notice.ts`: jednorazowe okno ostrzeżenia z instrukcją i „Nie pokazuj ponownie” (plik `no-sandbox-ok` w konfiguracji), tylko w spakowanej aplikacji. README EN/PL: profil AppArmor jako blok do wklejenia (sprawdzony w VM), SECURITY.md: znane ograniczenie.
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (918 + 10), electron typecheck, `npm run dist`; w VM ostrzeżenie bez profilu, brak ostrzeżenia i sandbox (seccomp=2) z profilem.
+- Niesprawdzone: prawdziwy pulpit Ubuntu (GNOME), Mint, polska wersja okna na żywo (tylko test jednostkowy).
+
 ## Wydanie 0.0.1 i CI – 2026-10-02 (Claude)
 
 - Release [`v0.0.1`](https://github.com/tonieMajke/roost/releases/tag/v0.0.1) (pre-release) na `97f78a9`: `Roost-0.0.1.AppImage` z czystego klonu + `.sha256`; pobrany plik zgadza się z sumą. README EN/PL: sekcja „Download”/„Pobieranie” z linkiem do Releases.
