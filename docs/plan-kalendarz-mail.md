@@ -11,7 +11,7 @@ przepisać ten plik w formacie `plan-m5.md` (Postęp, etapy L/C, komunikaty comm
   harmonogram tykający co 30 s (`scheduler.ts`), powiadomienia (`notify.ts`), pamięć
   i most MCP dla `claude -p` / `codex exec`. Czat to czysta rozmowa bez narzędzi.
 - **Dane nie należą do jednego bota.** Kalendarz to jedno źródło prawdy:
-  `~/.config/dev.majke.agents/calendar/`. Bot dostaje nową grupę narzędzi `calendar`
+  `~/.config/dev.majke.roost/calendar/`. Bot dostaje nową grupę narzędzi `calendar`
   (i później `mail`), włączaną w ustawieniach bota jak `web` czy `bash`.
 - Później ten sam rejestr może dostać rozmówca głosowy (`window-tools`): „co mam jutro?”.
 

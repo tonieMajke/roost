@@ -15,6 +15,31 @@ The interface is available in **English and Polish**. By default it follows your
 (Polish systems get Polish, everything else gets English); change it any time in
 **Appearance → Language**.
 
+## Features
+
+- **Code** — the terminal grid described above: presets, drag-and-drop pane swapping, a dashboard
+  with Claude limits and context use, Ctrl-click on `path:line` in terminal output, notifications
+  when a hidden agent finishes.
+- **Chat** — a claude.ai-style conversation tab. Models: Claude and ChatGPT through your
+  subscription (`claude -p`, `codex exec`), API keys (stored in the system keyring), local models
+  (llama-server). You can switch models mid-conversation and search the web with sources.
+- **Bot** — your own bots, each with a personality, persistent memory, skills it writes itself,
+  tools (web, files, shell; writes and commands ask for permission first) and a schedule that
+  runs while the app is open. A built-in Creator builds a bot from a description.
+- **Voice** — dictation into any pane and a live voice conversation (microphone → speech
+  recognition → model → speech), which can also open and read panes.
+- **Files and git** — a side panel with the project tree, diffs, stage/unstage/discard, commit,
+  pull and push.
+- **Accounts** — several Claude/Codex logins and "continue on another account" at a limit (below).
+- **Appearance** — over 20 themes, English and Polish interface.
+
+## Requirements
+
+Linux, Node.js and pnpm to build from source. The agents themselves are not bundled; install the
+ones you use and make sure they are on `PATH`: `claude`, `codex`, `pi`. Optional: `git` and `rg`
+(file panel, bot tools), `piper-tts` (local speech; on Arch/AUR the binary is `piper-tts`, not
+`piper`), a `whisper`-compatible server for dictation.
+
 ## Running
 
 ```bash
@@ -130,9 +155,15 @@ Claude account (when that one is exhausted, a shortened excerpt is pasted instea
 | Ctrl+Alt+P | new project (asks for a folder) |
 | Ctrl+Alt+1…9 | go to project number N |
 | Ctrl+Alt+B | collapse / expand the project rail (56 px of keys and dots) |
+| Ctrl+Alt+D | show / hide the dashboard |
+| Ctrl+Alt+C | switch Code → Chat → Bot |
+| Ctrl+Alt+`+` / `-` / `0` | terminal font size: larger / smaller / reset |
 | Ctrl+Alt+R | restart the active pane |
 | Ctrl+Alt+W | close the active pane (with a live process: a second press = "Sure?") |
+| Ctrl+F / Ctrl+G / Ctrl+Shift+G | search in the terminal / next / previous match (Esc closes) |
 | Ctrl+Shift+C / Ctrl+Shift+V | copy the selection / paste into the active pane |
+
+Moving panes by keyboard (Ctrl+Alt+Shift+arrows) may be taken by your desktop environment.
 
 Plain Ctrl+C and Ctrl+V are not intercepted — they go to the process (SIGINT, pasting an image
 into claude). The dot in a pane header: grey = process finished, pulsing = the agent is working,
@@ -163,7 +194,21 @@ process has its own small table in `electron/src/i18n.ts`. To add a language, ad
 Not translated on purpose: prompts and tool descriptions sent to language models, and code comments
 (which are mostly Polish).
 
-The project plan (in Polish): `docs/plan-m1.md`; current state: `HANDOFF.md`.
+## Troubleshooting
+
+- **API keys are lost after an update** — keys live in the system keyring (`safeStorage`) under the
+  app name; don't rename the app's `userData`. Without a keyring (e.g. KWallet not running) they
+  cannot be saved.
+- **A codex pane starts fresh after a restart** — codex can't be given a conversation UUID; type
+  `codex resume` in the pane.
+- **Two windows overwrite each other's layout** — use `ROOST_CONFIG_DIR` for a second copy.
+- **No voice output** — check that `piper-tts` is installed and set as the program in
+  Voice → Conversation.
+
+## Documentation
+
+Plans and design notes (in Polish) are indexed in [`docs/README.md`](docs/README.md); current
+state and open manual checks: `HANDOFF.md`.
 
 ## License
 

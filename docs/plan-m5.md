@@ -73,7 +73,7 @@ zamkniętej aplikacji (usługa systemd).
   da się go edytować.
 - **Wszystko w plikach**, bez bazy:
   ```
-  ~/.config/dev.majke.agents/bots/<id>/
+  ~/.config/dev.majke.roost/bots/<id>/
     bot.json        imię, awatar, charakter, model, foldery, narzędzia
     memory.md       user.md
     skills/<nazwa>/SKILL.md

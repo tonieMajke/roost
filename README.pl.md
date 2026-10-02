@@ -9,9 +9,37 @@ agentami CLI naraz. Po lewej szyna z projektami (folderami), po prawej siatka 1�
 terminali aktywnego projektu. Przełączenie projektu nie zatrzymuje procesów —
 schowane siatki żyją dalej.
 
-Każdy panel to prawdziwy PTY (`portable-pty`) renderowany przez xterm.js. Panel
+Każdy panel to prawdziwy PTY (`node-pty`) renderowany przez xterm.js. Panel
 uruchamia agenta w folderze projektu i pilnuje UUID rozmowy, żeby po restarcie
 aplikacji wrócić do tych samych rozmów.
+
+Interfejs jest po **polsku i angielsku**. Domyślnie idzie za językiem systemu (polski system
+dostaje polski, reszta angielski); zmiana w **Wygląd → Język**.
+
+## Funkcje
+
+- **Code** — siatka terminali opisana wyżej: presety, zamiana paneli przeciąganiem, Pulpit
+  z limitami Claude i zużyciem kontekstu, Ctrl-klik na `ścieżka:linia` w terminalu, powiadomienie,
+  gdy ukryty agent skończy pracę.
+- **Czat** — zakładka rozmowy w stylu claude.ai. Modele: Claude i ChatGPT z subskrypcji
+  (`claude -p`, `codex exec`), klucze API (w systemowym sejfie), modele lokalne (llama-server).
+  Model można zmienić w środku rozmowy, jest wyszukiwanie w sieci ze źródłami.
+- **Bot** — własne boty z osobowością, trwałą pamięcią, skillami zapisywanymi przez samego bota,
+  narzędziami (sieć, pliki, powłoka; zapis i polecenia najpierw pytają o zgodę) i harmonogramem
+  działającym, gdy aplikacja jest otwarta. Wbudowany Kreator tworzy bota z opisu.
+- **Głos** — dyktowanie do dowolnego panelu i rozmowa głosowa na żywo (mikrofon → rozpoznawanie
+  mowy → model → mowa), która potrafi też otwierać i czytać panele.
+- **Pliki i git** — panel boczny z drzewem projektu, diffem, stage/unstage/discard, commitem,
+  pull i push.
+- **Konta** — kilka loginów Claude/Codex i „kontynuuj na innym koncie” przy limicie (niżej).
+- **Wygląd** — ponad 20 motywów, interfejs po polsku i angielsku.
+
+## Wymagania
+
+Linux, Node.js i pnpm do budowania ze źródeł. Agenci nie są dołączeni; zainstaluj tych, których
+używasz, i dopilnuj, by były w `PATH`: `claude`, `codex`, `pi`. Opcjonalnie: `git` i `rg`
+(panel plików, narzędzia botów), `piper-tts` (lokalna mowa; w Arch/AUR binarka nazywa się
+`piper-tts`, nie `piper`), serwer zgodny z `whisper` do dyktowania.
 
 ## Uruchomienie
 
@@ -125,9 +153,15 @@ Codexa; limity wykrywamy tylko dla Claude; streszczenie robi Haiku na domyślnym
 | Ctrl+Alt+P | nowy projekt (pyta o katalog) |
 | Ctrl+Alt+1…9 | przejdź do projektu numer N |
 | Ctrl+Alt+B | zwiń / rozwiń szynę projektów (56 px samych klawiszy i kropek) |
+| Ctrl+Alt+D | pokaż / ukryj Pulpit |
+| Ctrl+Alt+C | przełącz Code → Czat → Bot |
+| Ctrl+Alt+`+` / `-` / `0` | rozmiar czcionki terminala: większy / mniejszy / domyślny |
 | Ctrl+Alt+R | uruchom ponownie aktywny panel |
 | Ctrl+Alt+W | zamknij aktywny panel (przy żywym procesu: drugi raz = „Na pewno?”) |
+| Ctrl+F / Ctrl+G / Ctrl+Shift+G | szukaj w terminalu / następne / poprzednie trafienie (Esc zamyka) |
 | Ctrl+Shift+C / Ctrl+Shift+V | kopiuj zaznaczenie / wklej do aktywnego panelu |
+
+Przenoszenie paneli z klawiatury (Ctrl+Alt+Shift+strzałki) może być zajęte przez środowisko pulpitu.
 
 Zwyczajne Ctrl+C i Ctrl+V nie są przechwytywane — trafiają do procesu (SIGINT,
 wklejenie obrazka w claude). Kropka w nagłówku panelu: szara = proces skończony,
@@ -148,7 +182,31 @@ jednorazowo (`ping`), gdy praca skończyła się w ukrytym projekcie.
   zabijanie sprząta całe drzewo dziecka (SIGHUP, po 1,5 s SIGKILL). Przy wyjściu aplikacji
   `killAll` domyka wszystko.
 
-Plan etapów: `docs/plan-m1.md`, bieżący stan: `HANDOFF.md`.
+## Tłumaczenie
+
+Teksty interfejsu idą przez `t()` / `useT()` z `src/i18n`. Napisy leżą w
+`src/i18n/messages/<obszar>.ts` jako para `{ pl, en }`; kompilator pilnuje, by oba języki miały
+te same klucze. Proces główny Electrona ma własną małą tabelę w `electron/src/i18n.ts`. Nowy język:
+dopisz jego tabelę obok `pl`/`en` w każdym pliku obszaru, język w `src/i18n/index.ts` (`Lang`,
+`LANGS`) i jego wybór w rzędzie języka w `src/ui.ts`.
+
+Celowo nie tłumaczymy promptów i opisów narzędzi wysyłanych do modeli ani komentarzy w kodzie
+(w większości polskich).
+
+## Rozwiązywanie problemów
+
+- **Klucze API znikają po aktualizacji** — klucze leżą w systemowym sejfie (`safeStorage`) pod nazwą
+  aplikacji; nie zmieniaj `userData`. Bez sejfu (np. KWallet nie działa) nie da się ich zapisać.
+- **Panel codexa po restarcie startuje od nowa** — codex nie przyjmuje UUID rozmowy; wpisz
+  w panelu `codex resume`.
+- **Dwa okna nadpisują sobie układ** — drugiej kopii użyj z `ROOST_CONFIG_DIR`.
+- **Brak głosu** — sprawdź, czy `piper-tts` jest zainstalowany i wpisany jako program w
+  Głos → Rozmowa.
+
+## Dokumentacja
+
+Plany i notatki projektowe są spisane w [`docs/README.md`](docs/README.md); bieżący stan i
+otwarte sprawdzenia ręczne: `HANDOFF.md`.
 
 ## Licencja
 
