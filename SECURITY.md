@@ -53,6 +53,10 @@ Nie chronimy przed użytkownikiem lokalnym z dostępem do konta ani przed zainst
 - `web_fetch`: zostaje wąskie okno DNS-rebinding między sprawdzeniem adresu a połączeniem.
 - Zgoda „Zezwalaj w tej rozmowie” obowiązuje do końca rozmowy dla danego narzędzia i prefiksu polecenia.
 - Agenci w panelach (`claude`, `codex`, `pi`) nie są ograniczani przez Roost.
+- Sandbox Chromium wymaga nieuprzywilejowanych przestrzeni nazw użytkownika. Gdzie system ich nie daje
+  (Ubuntu 24.04+ z AppArmor), skrypt startowy AppImage z electron-buildera uruchamia aplikację
+  z `--no-sandbox`; Roost wtedy raz ostrzega (`electron/src/sandbox-notice.ts`). Przywrócenie: profil
+  AppArmor z README („Rozwiązywanie problemów”).
 - Pliki konfiguracji bez prawa 0600 (np. ustawienia niezawierające kluczy) są czytelne dla innych
   procesów użytkownika.
 - Planowane Windows/macOS (`docs/plan-multiplatform.md`) wymagają osobnego przeglądu: `chmod` i

@@ -264,14 +264,29 @@ Not translated on purpose: prompts and tool descriptions sent to language models
   (`sudo apt install libfuse2t64` on 24.04, `libfuse2` on 22.04). Current builds use the static
   runtime and don't need it; without any FUSE (containers, WSL) run
   `./Roost-<version>.AppImage --appimage-extract-and-run`.
-- **Ubuntu 24.04+: "The SUID sandbox helper binary was found, but is not configured correctly"** —
-  AppArmor blocks Chromium's unprivileged user namespaces for unpacked apps. Either add an AppArmor
-  profile for the AppImage (create `/etc/apparmor.d/roost` with `abi <abi/4.0>, include <tunables/global>
-  profile roost /path/to/Roost-*.AppImage flags=(unconfined) { userns, }`, then
-  `sudo apparmor_parser -r /etc/apparmor.d/roost`), or, as a last resort, start with `--no-sandbox`.
-  `--no-sandbox` turns off Chromium's process sandbox: a bug in the renderer (which shows web
-  content, e.g. chat answers and fetched pages) would then run with all your user's rights. Roost
-  does not disable the sandbox by itself.
+- **`error while loading shared libraries: libnss3.so` (or `libgtk-3.so.0`, `libasound.so.2`, `libgbm.so.1`)** — a minimal
+  install without a desktop. On Debian/Ubuntu: `sudo apt install libgtk-3-0 libnss3 libasound2 libgbm1`
+  (on Ubuntu 24.04 the packages are `libgtk-3-0t64` and `libasound2t64`).
+- **Ubuntu 24.04+: "Roost is running without the Chromium sandbox"** — AppArmor blocks the
+  unprivileged user namespaces Chromium's sandbox needs. The AppImage launcher then starts the app with
+  `--no-sandbox` so it still opens, and Roost shows this warning once. Without the sandbox, a bug in the
+  renderer (which shows web content, e.g. chat answers and fetched pages) would run with all your
+  user's rights. To turn the sandbox back on, add an AppArmor profile for the AppImage (use its full path;
+  `*` matches any version):
+
+  ```bash
+  sudo tee /etc/apparmor.d/roost <<'EOF'
+  abi <abi/4.0>,
+  include <tunables/global>
+
+  profile roost /home/YOU/Applications/Roost-*.AppImage flags=(unconfined) {
+    userns,
+  }
+  EOF
+  sudo apparmor_parser -r /etc/apparmor.d/roost
+  ```
+
+  Checked on Ubuntu 24.04: with the profile the renderer runs in its own namespace with seccomp.
 - **A pane shows `execvp(3) failed.: No such file or directory`** — the agent program (`claude`, `pi`,
   …) is not in `PATH`. Install it, or set the full path in `agents.json`. An AppImage started from the
   desktop menu may have a shorter `PATH` than your terminal.

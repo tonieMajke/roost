@@ -8,8 +8,16 @@ Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 lini
 - Przepięte: `pty.ts`, `bot/proc.ts`, `chat/cli.ts`, `summary.ts`, `bot/bridge.ts`, `config.ts` (bez chmod na Windows), `env.ts` (`$SHELL` bez zmiennej → domyślna powłoka; na Linuksie pusty `SHELL` daje teraz `/bin/sh`), `commands.ts`, `open-path.ts`, `voice/tts.ts` (`piper.exe`), `main.ts` (powiadomienia `Notification` poza Linuksem, `setAppUserModelId`, KWallet tylko Linux), freetoken tylko Linux, `term-links.ts` (`Code.exe` jako edytor).
 - Bezpieczeństwo: narzędzie `bash` bota wyłączone na Windows. Ctrl+klik w ścieżkę `.bat`/`.exe`/`.lnk` (Windows) czy `.command`/`.app` (macOS) nie uruchamia jej, tylko pokazuje w folderze.
 - Pakowanie: `npm run dist:win` (NSIS + zip x64), skrypty `electron/package.json` bez `../node_modules/.bin` (cmd.exe). CI: macierz ubuntu + windows, job `package-windows` z artefaktem instalatora.
-- Sprawdzone na Linuksie: `pnpm typecheck`, `pnpm test` (934 + 10 pominiętych), electron typecheck i build. **Na Windows nic jeszcze nie uruchomione** – pierwszy przebieg CI pokaże, które testy zakładają POSIX.
-- Otwarte: testy POSIX-owe pod `skipIf` albo warianty, kodowanie ścieżek sesji `~/.claude/projects` z `C:\` (`context.ts`, `handoff.ts`, `usage-logs.ts`), `term-links.ts` nie rozpoznaje ścieżek `C:\…` w wyjściu terminala, skróty `Cmd` na macOS, test w VM.
+- CI na Windows (PR #1) znalazło prawdziwe błędy: `Nebula.tsx`/`nebula.ts` (i Radar, Scratchpad) różniły się tylko wielkością liter – build frontendu padał; logika ma teraz nazwy `nebula-sim`, `radar-model`, `scratchpad-save`, a `filenames.test.ts` pilnuje, żeby para nie wróciła. **Polityka ścieżek bota porównywała przez `/`: na Windows `read_file ~/.ssh/id_ed25519` przechodził bez blokady.** Teraz `isInside`/`isSensitivePath` bez względu na ukośnik i wielkość liter (`src/bot-paths.test.ts`), `realpathSync.native` (nazwy 8.3), dwukropek strumienia NTFS odrzucany, wrażliwe katalogi Windows (DPAPI `Protect`, profile przeglądarek, historia PSReadLine). `grep` dawał pustkę przez `detached` (osobna konsola, shim `rg` gubił wyjście) – `groupSpawn()` tylko na POSIX. Limit czasu `summary`/`git` i zamknięcie Pipera zabijają drzewo (`killChild`).
+- Testy: warianty Windows dla `pty`, `runProc`, Pipera (atrapa przez `.cmd`), `commands`; `skipIf` tylko dla `chmod` i wyłączonego `bash`.
+- Otwarte: kodowanie ścieżek sesji `~/.claude/projects` z `C:\` (`context.ts`, `handoff.ts`, `usage-logs.ts`), `term-links.ts` nie rozpoznaje ścieżek `C:\…` w wyjściu terminala, skróty `Cmd` na macOS, test w VM.
+
+## AppImage na innych dystrybucjach, ostrzeżenie o braku sandboxa – 2026-10-02 (Claude)
+
+- Kontenery podmana (Ubuntu 22.04/24.04, Debian 12) i VM Ubuntu 24.04 (QEMU/KVM, obraz chmurowy, cloud-init przez HTTP, Xvfb): AppImage startuje, `pty.node` i node-pty działają, okno się rysuje. Szczegóły: `docs/checklista-wydania.md` §0.
+- Na 24.04 AppRun z electron-buildera po cichu dodaje `--no-sandbox` (gdy `unshare -Ur` się nie udaje). Nowe `electron/src/sandbox-notice.ts`: jednorazowe okno ostrzeżenia z instrukcją i „Nie pokazuj ponownie” (plik `no-sandbox-ok` w konfiguracji), tylko w spakowanej aplikacji. README EN/PL: profil AppArmor jako blok do wklejenia (sprawdzony w VM), SECURITY.md: znane ograniczenie.
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (918 + 10), electron typecheck, `npm run dist`; w VM ostrzeżenie bez profilu, brak ostrzeżenia i sandbox (seccomp=2) z profilem.
+- Niesprawdzone: prawdziwy pulpit Ubuntu (GNOME), Mint, polska wersja okna na żywo (tylko test jednostkowy).
 
 ## Wydanie 0.0.1 i CI – 2026-10-02 (Claude)
 

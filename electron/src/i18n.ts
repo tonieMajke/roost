@@ -124,6 +124,11 @@ const pl = {
   "web.privateResolved": "{host} wskazuje na adres lokalny/prywatny; nazwa nie jest zaufana; jeśli to zamierzone, użyj bezpośrednio adresu IP (użytkownik zatwierdzi)",
   "web.hostRedirect": "przekierowanie na inny host ({host}) wymaga zgody użytkownika; wywołaj web_fetch bezpośrednio z adresem {url}",
   "web.tooManyRedirects": "za dużo przekierowań (max 5)",
+  "sandbox.title": "Roost działa bez sandboxa Chromium",
+  "sandbox.detail": "System nie pozwala Chromium utworzyć przestrzeni nazw użytkownika (na Ubuntu 24.04+ blokuje to AppArmor), więc AppImage uruchomił się z --no-sandbox. Aplikacja działa, ale błąd w części wyświetlającej treść z sieci (odpowiedzi czatu, pobrane strony) miałby wszystkie Twoje uprawnienia.\n\nNaprawa: profil AppArmor dla AppImage – instrukcja w README, sekcja „Rozwiązywanie problemów”.",
+  "sandbox.howto": "Pokaż instrukcję",
+  "sandbox.ok": "Rozumiem",
+  "sandbox.dontShow": "Nie pokazuj ponownie",
 } as const;
 
 const en: Record<keyof typeof pl, string> = {
@@ -248,6 +253,11 @@ const en: Record<keyof typeof pl, string> = {
   "web.privateResolved": "{host} resolves to a local/private address; the name is not trusted; if intended, use the IP address directly (the user will approve)",
   "web.hostRedirect": "redirect to another host ({host}) needs the user's consent; call web_fetch directly with {url}",
   "web.tooManyRedirects": "too many redirects (max 5)",
+  "sandbox.title": "Roost is running without the Chromium sandbox",
+  "sandbox.detail": "Your system does not let Chromium create user namespaces (on Ubuntu 24.04+ AppArmor blocks it), so the AppImage started with --no-sandbox. The app works, but a bug in the part that shows web content (chat answers, fetched pages) would run with all your user's rights.\n\nFix: an AppArmor profile for the AppImage – see Troubleshooting in the README.",
+  "sandbox.howto": "Show instructions",
+  "sandbox.ok": "Got it",
+  "sandbox.dontShow": "Don't show again",
 };
 
 import { setLang } from "../../src/i18n";

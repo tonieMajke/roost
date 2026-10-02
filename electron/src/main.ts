@@ -14,7 +14,8 @@ import { commandsAvailable } from "./commands";
 import { claudeLimits, claudeSettingsArg } from "./limits";
 import { notify as notifySend } from "./notify";
 import { isLinux, isWindows } from "./platform";
-import { resolveMainLang, setMainLang } from "./i18n";
+import { getMainLang, resolveMainLang, setMainLang } from "./i18n";
+import * as sandboxNotice from "./sandbox-notice";
 import { openFile, resolveFiles } from "./open-path";
 import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
@@ -628,9 +629,28 @@ function initialLang(): void {
   setMainLang(resolveMainLang(pref, app.getLocale()));
 }
 
+/** Jednorazowe ostrzeżenie, gdy AppRun uruchomił nas z `--no-sandbox` (sandbox-notice.ts). */
+function warnIfNoSandbox(w: BrowserWindow): void {
+  const dir = config.configDir();
+  if (!sandboxNotice.shouldWarn(app.commandLine.hasSwitch("no-sandbox"), app.isPackaged, dir)) return;
+  w.webContents.once("did-finish-load", () => {
+    void dialog.showMessageBox(w, sandboxNotice.noticeOptions()).then(({ response, checkboxChecked }) => {
+      if (checkboxChecked) {
+        try {
+          sandboxNotice.dismiss(dir);
+        } catch (e) {
+          console.error("no-sandbox-ok:", e);
+        }
+      }
+      if (response === 0) void shell.openExternal(sandboxNotice.HOWTO_URL[getMainLang()]);
+    });
+  });
+}
+
 void app.whenReady().then(() => {
   initialLang();
   createWindow();
+  if (win) warnIfNoSandbox(win);
   scheduler.start();
   // Po wybudzeniu od razu, nie po najbliższym tyknięciu.
   powerMonitor.on("resume", () => scheduler.tick());
