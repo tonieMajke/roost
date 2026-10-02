@@ -18,7 +18,8 @@ dostaje polski, reszta angielski); zmiana w **Wygląd → Język**.
 
 ## Funkcje
 
-- **Code** — siatka terminali opisana wyżej: presety, zamiana paneli przeciąganiem, Pulpit
+- **Code** — siatka terminali opisana wyżej: presety, zamiana paneli przeciąganiem, Shift+przeciągnięcie przekazuje
+  streszczenie rozmowy do innego panelu, upuszczony plik wpisuje swoją ścieżkę, Pulpit
   z limitami Claude i zużyciem kontekstu, Ctrl-klik na `ścieżka:linia` w terminalu, powiadomienie,
   gdy ukryty agent skończy pracę.
 - **Czat** — zakładka rozmowy w stylu claude.ai. Modele: Claude i ChatGPT z subskrypcji
@@ -117,6 +118,26 @@ Wybrany preset dopisuje panele na koniec aktywnego projektu, do limitu 16 — o
 pominiętych panelach i agentach spoza `agents.json` mówi komunikat nad siatką.
 Własne presety są w `workspace.json` (`presets`), wbudowane w kodzie (`src/presets.ts`).
 W projekcie bez paneli presety wbudowane stoją obok „+ Panel”.
+
+## Przeciąganie paneli, plików i kontekstu
+
+- **Zamiana paneli:** złap panel za nagłówek i przeciągnij na inny. Panel zwija się w kulkę, która
+  leci za kursorem; upuszczenie zamienia oba miejscami. Procesy pracują dalej, nic się nie
+  restartuje. Esc albo upuszczenie gdzie indziej anuluje.
+- **Przekazanie kontekstu (Shift + przeciągnięcie):** przytrzymaj Shift w trakcie przeciągania
+  (można go wcisnąć w locie) i upuść panel na inny. Rozmowa źródłowa zostaje streszczona w kilku
+  punktach – cel, co zrobiono, decyzje, dotknięte pliki, co zostało otwarte – i wklejona do panelu
+  docelowego **bez Entera**, z miejscem na twoje polecenie pod spodem. Celem może być dowolny
+  agent: świeży Claude, pi na lokalnym modelu, inne konto. Panel źródłowy zostaje bez zmian.
+  Streszczenie robi Haiku na domyślnym koncie Claude (najwyżej 1500 znaków); gdy się nie uda,
+  wkleja się skrócony wyciąg z rozmowy. Czytać umiemy tylko rozmowy Claude i pi, więc panel Codexa
+  albo powłoki nie może być źródłem.
+- **Nowa rozmowa ze streszczeniem:** to samo streszczenie jest pod ikoną ⇄ w nagłówku panelu
+  („Kontynuuj gdzie indziej”) – otwiera **nowy** panel, na innym koncie albo z innym agentem,
+  i wkleja do niego streszczenie. Przydaje się, gdy długa sesja zapchała kontekst, a chcesz
+  pracować dalej w czystej rozmowie bez gubienia wątku.
+- **Upuszczanie plików:** przeciągnij pliki z menedżera plików na panel, a ich ścieżki wpiszą się
+  w prompt, w cudzysłowie dla powłoki i bez Entera.
 
 ## Konta i kontynuacja na innym koncie
 

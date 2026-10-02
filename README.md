@@ -17,7 +17,8 @@ The interface is available in **English and Polish**. By default it follows your
 
 ## Features
 
-- **Code** — the terminal grid described above: presets, drag-and-drop pane swapping, a dashboard
+- **Code** — the terminal grid described above: presets, drag-and-drop pane swapping, Shift-drag to hand a conversation summary
+  to another pane, dropping files to paste their paths, a dashboard
   with Claude limits and context use, Ctrl-click on `path:line` in terminal output, notifications
   when a hidden agent finishes.
 - **Chat** — a claude.ai-style conversation tab. Models: Claude and ChatGPT through your
@@ -118,6 +119,26 @@ preset appends its panes to the active project, up to the limit of 16; skipped p
 missing from `agents.json` are reported in a message above the grid. Custom presets are stored in
 `workspace.json` (`presets`), built-in ones in the code (`src/presets.ts`). In a project with no
 panes the built-in presets sit next to "+ Pane".
+
+## Dragging panes, files and context
+
+- **Swap panes:** grab a pane by its header and drag it onto another pane. The pane shrinks into a
+  bubble that follows the cursor; dropping it swaps the two places. The processes keep running,
+  nothing restarts. Esc or dropping it anywhere else cancels.
+- **Hand over context (Shift + drag):** hold Shift while dragging (you can press it mid-flight) and
+  drop the pane onto another one. The source conversation is summarized into a few bullet points
+  — goal, what was done, decisions, files touched, what is still open — and pasted into the target
+  pane **without pressing Enter**, followed by a line for your own instruction. The target can be
+  any agent: a fresh Claude, pi on a local model, another account. The source pane stays as it
+  was. The summary is made by Haiku on the default Claude account (at most 1500 characters); if
+  that fails, a shortened excerpt of the conversation is pasted instead. Only Claude and pi
+  conversations can be read, so a Codex or shell pane can't be the source.
+- **Start over with a summary:** the same summary is behind the ⇄ icon in the pane header
+  ("Continue elsewhere") — it opens a **new** pane, on another account or another agent, and
+  pastes the summary there. Handy when a long session has filled up its context and you want to
+  continue in a clean conversation without losing the thread.
+- **Drop files:** drag files from your file manager onto a pane to type their paths into the
+  prompt, quoted for the shell and without Enter.
 
 ## Accounts and continuing on another account
 
