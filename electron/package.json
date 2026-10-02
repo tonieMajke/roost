@@ -11,7 +11,7 @@
     "build": "npm run build:web && npm run build:main",
     "typecheck": "../node_modules/.bin/tsc --noEmit",
     "start": "npm run build && electron .",
-    "dist": "npm run build && electron-builder --linux AppImage"
+    "dist": "npm run build && rm -rf node_modules/node-pty/build && CXXFLAGS=\"-include '$PWD/build-tools/glibc-compat.h'\" electron-builder --linux AppImage && ./build-tools/check-pty-glibc.sh"
   },
   "dependencies": {
     "node-pty": "^1.1.0"
@@ -28,6 +28,9 @@
   "description": "Roost – rule the roost",
   "desktopName": "roost-app.desktop",
   "build": {
+    "toolsets": {
+      "appimage": "1.0.3"
+    },
     "appId": "dev.majke.roost",
     "productName": "Roost",
     "directories": {

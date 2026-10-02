@@ -222,6 +222,22 @@ Not translated on purpose: prompts and tool descriptions sent to language models
   cannot be saved.
 - **A codex pane starts fresh after a restart** — codex can't be given a conversation UUID; type
   `codex resume` in the pane.
+- **AppImage won't start (`dlopen(): error loading libfuse.so.2`)** — AppImages built with the old
+  runtime need libfuse2, which Ubuntu 22.04+ no longer installs by default
+  (`sudo apt install libfuse2t64` on 24.04, `libfuse2` on 22.04). Current builds use the static
+  runtime and don't need it; without any FUSE (containers, WSL) run
+  `./Roost-<version>.AppImage --appimage-extract-and-run`.
+- **Ubuntu 24.04+: "The SUID sandbox helper binary was found, but is not configured correctly"** —
+  AppArmor blocks Chromium's unprivileged user namespaces for unpacked apps. Either add an AppArmor
+  profile for the AppImage (create `/etc/apparmor.d/roost` with `abi <abi/4.0>, include <tunables/global>
+  profile roost /path/to/Roost-*.AppImage flags=(unconfined) { userns, }`, then
+  `sudo apparmor_parser -r /etc/apparmor.d/roost`), or, as a last resort, start with `--no-sandbox`.
+  `--no-sandbox` turns off Chromium's process sandbox: a bug in the renderer (which shows web
+  content, e.g. chat answers and fetched pages) would then run with all your user's rights. Roost
+  does not disable the sandbox by itself.
+- **A pane shows `execvp(3) failed.: No such file or directory`** — the agent program (`claude`, `pi`,
+  …) is not in `PATH`. Install it, or set the full path in `agents.json`. An AppImage started from the
+  desktop menu may have a shorter `PATH` than your terminal.
 - **Two windows overwrite each other's layout** — use `ROOST_CONFIG_DIR` for a second copy.
 - **No voice output** — check that `piper-tts` is installed and set as the program in
   Voice → Conversation.

@@ -2,6 +2,14 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## AppImage poza Archem – 2026-10-02 (Claude, gałąź `main`)
+
+- `pty.node` wymagał glibc 2.42 (`cfsetospeed`/`cfsetispeed`). `electron/build-tools/glibc-compat.h` przypina je do `GLIBC_2.2.5` (x86_64), `npm run dist` wstrzykuje go przez `CXXFLAGS=-include` (ścieżka w apostrofach, bo repo ma spację w nazwie) i **kasuje `node-pty/build` przed budową**, inaczej electron-builder używa starego, już skompilowanego modułu. Po budowie `build-tools/check-pty-glibc.sh` kończy się błędem, gdy `pty.node` wymaga glibc > 2.34. Wynik `objdump`: `cfsetospeed`/`cfsetispeed` = 2.2.5, reszta ≤ 2.4.
+- `build.toolsets.appimage: "1.0.3"` (beta electron-buildera): statyczny runtime (`static-pie`, bez `NEEDED`), nie potrzebuje libfuse2; `--appimage-extract` działa. README (EN/PL, „Problemy”): libfuse2 dla starych paczek, `--appimage-extract-and-run`, AppArmor na Ubuntu 24.04 (profil, `--no-sandbox` i jego skutki), brak `claude`/`pi` w `PATH`. Sandbox w kodzie nie ruszany.
+- Brak `claude`/`pi` w PATH: node-pty kończy `execvp(3) failed.: No such file or directory` + pasek „Proces zakończony”. Propozycja (niewdrożona): w `Ptys.spawn` sprawdzić komendę w `PATH` i zwrócić błąd, który `Terminal.tsx` pokaże przez nowy klucz `pane.term.notFound` (PL+EN w `src/i18n/messages/panes.ts`: „Nie znaleziono programu „{command}” w PATH. Zainstaluj go albo wpisz pełną ścieżkę w agents.json.”).
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (904 + 10 pominiętych), electron typecheck, `pnpm electron:dist` (przebudowa node-pty, AppImage 128 MB).
+- **Niesprawdzone (brak innej dystrybucji):** start na Ubuntu 22.04/24.04, Debianie 12, Mincie; ładowanie `pty.node` na glibc < 2.42; statyczny runtime bez libfuse2; AppArmor. Pozycje w `docs/checklista-wydania.md` §0.
+
 ## Audyt i poprawki bezpieczeństwa – 2026-10-02 (Claude, gałąź `roost-rename`)
 
 - Bot: `grep` nie odsłania `.env`/kluczy przez glob modelu (kolejność `--glob`); szersza lista ścieżek wrażliwych (historia powłok, git/gh credentials, `~/.pi/agent/auth.json`, profile przeglądarek, `/proc/*/environ|mem` też w bash); zgody „na rozmowę” dla curl/cat/cp/tar/grep itp. tylko na identyczne polecenie; `skill_create`/`skill_patch` pytają (karta z treścią/diffem); `web_fetch` łączy się z adresem z jednego rozwiązania DNS (`pinnedLookup`, bez rebindingu). Pierwszy `web_fetch` do nowego hosta pyta (zgoda „na rozmowę” = ten host); ryzykowny URL pyta zawsze, przekierowanie na niezatwierdzony host kończy się błędem; przebiegi harmonogramu bez zmian.

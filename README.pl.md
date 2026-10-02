@@ -220,6 +220,22 @@ Celowo nie tłumaczymy promptów i opisów narzędzi wysyłanych do modeli ani k
   aplikacji; nie zmieniaj `userData`. Bez sejfu (np. KWallet nie działa) nie da się ich zapisać.
 - **Panel codexa po restarcie startuje od nowa** — codex nie przyjmuje UUID rozmowy; wpisz
   w panelu `codex resume`.
+- **AppImage nie startuje (`dlopen(): error loading libfuse.so.2`)** — AppImage zbudowany ze
+  starym runtime'em wymaga libfuse2, której Ubuntu 22.04+ domyślnie nie instaluje
+  (`sudo apt install libfuse2t64` na 24.04, `libfuse2` na 22.04). Obecne paczki mają statyczny
+  runtime i jej nie potrzebują; bez żadnego FUSE (kontenery, WSL) uruchom
+  `./Roost-<wersja>.AppImage --appimage-extract-and-run`.
+- **Ubuntu 24.04+: „The SUID sandbox helper binary was found, but is not configured correctly”** —
+  AppArmor blokuje Chromium nieuprzywilejowane przestrzenie nazw dla rozpakowanych aplikacji. Dodaj
+  profil AppArmor dla AppImage (plik `/etc/apparmor.d/roost`: `abi <abi/4.0>, include <tunables/global>
+  profile roost /sciezka/do/Roost-*.AppImage flags=(unconfined) { userns, }`, potem
+  `sudo apparmor_parser -r /etc/apparmor.d/roost`) albo w ostateczności uruchom z `--no-sandbox`.
+  `--no-sandbox` wyłącza piaskownicę procesów Chromium: błąd w rendererze (który pokazuje treści
+  z sieci, np. odpowiedzi czatu i pobrane strony) dostałby wtedy wszystkie uprawnienia Twojego
+  użytkownika. Roost sam piaskownicy nie wyłącza.
+- **Panel pokazuje `execvp(3) failed.: No such file or directory`** — programu agenta (`claude`,
+  `pi`, …) nie ma w `PATH`. Zainstaluj go albo wpisz pełną ścieżkę w `agents.json`. AppImage
+  uruchomiony z menu może mieć krótszy `PATH` niż terminal.
 - **Dwa okna nadpisują sobie układ** — drugiej kopii użyj z `ROOST_CONFIG_DIR`.
 - **Brak głosu** — sprawdź, czy `piper-tts` jest zainstalowany i wpisany jako program w
   Głos → Rozmowa.
