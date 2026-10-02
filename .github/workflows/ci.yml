@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # rg: narzędzie grep botów (tools.test.ts)
+      - run: sudo apt-get install -y ripgrep
       - uses: pnpm/action-setup@v4
         with:
           version: 11

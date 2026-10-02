@@ -120,7 +120,7 @@ describe("runCli", () => {
   it("Stop zabija proces i kończy bez błędu", async () => {
     const ctl = new AbortController();
     const t0 = Date.now();
-    const p = runCli("sh", sh("sleep 20"), "", cwd, echo, ctl.signal, () => {});
+    const p = runCli("sh", sh("sleep 20; echo koniec"), "", cwd, echo, ctl.signal, () => {});
     setTimeout(() => ctl.abort(), 50);
     await p;
     expect(Date.now() - t0).toBeLessThan(3000);

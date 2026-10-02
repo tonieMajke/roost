@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import type { ChatEvent } from "../../../src/chat";
 import { childEnv } from "../env";
+import { killGroup } from "../bot/proc";
 
 export type LineParser = {
   /** Zdarzenia z jednej linii wyjścia (już sparsowanej z JSON). */
@@ -15,7 +16,8 @@ export type LineParser = {
 
 /** Uruchamia program, podaje `input` na stdin; zdarzenia z parsera idą do `emit`.
  *  Rozwiązuje się po zamknięciu procesu; odrzuca przy błędzie (komunikat z parsera albo stderr).
- *  Abort = SIGTERM, po 2 s SIGKILL. */
+ *  Abort = SIGTERM, po 2 s SIGKILL, do całej grupy: dzieci programu (MCP, polecenia) trzymają stdout
+ *  i bez tego `close` czekałby, aż same skończą. */
 export function runCli(
   program: string,
   args: string[],
@@ -29,13 +31,13 @@ export function runCli(
   if (signal.aborted) return Promise.resolve(); // przerwane przed startem: procesu nie uruchamiamy
   fs.mkdirSync(cwd, { recursive: true });
   return new Promise((resolve, reject) => {
-    const child = spawn(program, args, { cwd, env: childEnv(env), stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(program, args, { cwd, env: childEnv(env), stdio: ["pipe", "pipe", "pipe"], detached: true });
     let buf = "";
     let err = "";
     let killTimer: ReturnType<typeof setTimeout> | undefined;
     const onAbort = () => {
-      child.kill("SIGTERM");
-      killTimer = setTimeout(() => child.kill("SIGKILL"), 2000);
+      killGroup(child.pid, "SIGTERM");
+      killTimer = setTimeout(() => killGroup(child.pid, "SIGKILL"), 2000);
     };
     signal.addEventListener("abort", onAbort, { once: true });
 

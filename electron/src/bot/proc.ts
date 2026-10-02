@@ -32,7 +32,8 @@ export function botEnv(base: Record<string, string | undefined> = process.env, e
   return stripSecrets(childEnv({}, base), extraHidden);
 }
 
-function killGroup(pid: number | undefined, sig: NodeJS.Signals) {
+/** Sygnał do całej grupy procesu (spawn z `detached: true`), więc dochodzi też do wnuków. */
+export function killGroup(pid: number | undefined, sig: NodeJS.Signals) {
   if (!pid) return;
   try {
     process.kill(-pid, sig);
