@@ -279,7 +279,9 @@ export class BotStore {
     const dir = this.mustExist(id);
     const ext = path.extname(src).slice(1).toLowerCase();
     if (!AVATAR_TYPES[ext]) throw new Error("awatar: tylko PNG, JPG, WebP albo GIF");
-    if (fs.statSync(src).size > AVATAR_MAX) throw new Error(t("bot.avatarBig", { mb: AVATAR_MAX / 1024 / 1024 }));
+    const st = fs.statSync(src);
+    if (!st.isFile()) throw new Error("awatar: to nie jest zwykły plik");
+    if (st.size > AVATAR_MAX) throw new Error(t("bot.avatarBig", { mb: AVATAR_MAX / 1024 / 1024 }));
     for (const f of fs.readdirSync(dir)) if (AVATAR_RE.test(f)) fs.rmSync(path.join(dir, f));
     const name = `avatar.${ext}`;
     fs.copyFileSync(src, path.join(dir, name));

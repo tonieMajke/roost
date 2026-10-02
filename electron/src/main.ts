@@ -16,7 +16,7 @@ import { resolveMainLang, setMainLang } from "./i18n";
 import { openFile, resolveFiles } from "./open-path";
 import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
-import { allowNavigation, buildCsp, shouldApplyCsp } from "./security";
+import { allowNavigation, buildCsp, isTrustedSender, PickedFiles, shouldApplyCsp, validateArgs, validateSpawnSpec, type ArgSpec } from "./security";
 import { claudeSummary, piSummary } from "./summary";
 import { ChatStore } from "./chat/store";
 import { UsageLedger } from "./usage-store";
@@ -157,12 +157,123 @@ function runNotify(r: RunInfo) {
   });
 }
 
-/** Każde wywołanie z `backend-electron.ts` to `invoke(name, ...args)`; błąd wraca jako odrzucenie. */
-function handle(name: string, fn: (...args: never[]) => unknown) {
-  ipcMain.handle(name, (_event, ...args) => fn(...(args as never[])));
+/** Adres naszej strony (dist-web albo dev serwer); do nawigacji okna i do sprawdzania nadawcy IPC. */
+const appFile = path.join(__dirname, "..", "dist-web", "index.html");
+const appUrl = { dev: process.env.AGENTS_DEV_URL, file: pathToFileURL(appFile).href };
+
+/** Każde żądanie IPC musi przyjść z ramki z naszą stroną; obca ramka (iframe, nawigacja) nie dostaje nic. */
+function assertTrusted(event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent, name: string): void {
+  const url = event.senderFrame?.url;
+  if (!isTrustedSender(url, appUrl)) throw new Error(`${name}: żądanie z niezaufanej ramki`);
+}
+/** `ipcMain.handle` z kontrolą nadawcy. */
+function secure(name: string, fn: (event: Electron.IpcMainInvokeEvent, ...args: unknown[]) => unknown) {
+  ipcMain.handle(name, (event, ...args) => {
+    assertTrusted(event, name);
+    return fn(event, ...args);
+  });
+}
+/** `ipcMain.on` z kontrolą nadawcy: obca ramka jest po cichu ignorowana. */
+function secureOn(name: string, fn: (event: Electron.IpcMainEvent, ...args: unknown[]) => void) {
+  ipcMain.on(name, (event, ...args) => {
+    if (!isTrustedSender(event.senderFrame?.url, appUrl)) return;
+    fn(event, ...args);
+  });
 }
 
-ipcMain.handle("pty_spawn", (event, spec: SpawnSpec) => {
+const DIFF_MODES = ["staged", "unstaged", "untracked"] as const;
+const ID = "str" as const;
+/** Typy argumentów każdego handlera; brak wpisu = brak argumentów. Błędny typ odrzuca `handle` zanim dotknie dysku, procesu czy shella. */
+const ARGS: Record<string, readonly ArgSpec[]> = {
+  pty_write: ["int", "str"],
+  pty_resize: ["int", "int", "int"],
+  pty_kill: ["int"],
+  accounts_save: ["str"],
+  claude_session_exists: [ID, "path?"],
+  dir_exists: ["path"],
+  git_status: ["path"],
+  git_files: ["path"],
+  git_diff: ["path", "path", DIFF_MODES],
+  git_stage: ["path", "paths"],
+  git_unstage: ["path", "paths"],
+  git_discard: ["path", "paths", "paths"],
+  git_commit: ["path", "str"],
+  git_sync: ["path", ["pull", "push"]],
+  set_language: ["str"],
+  workspace_save: ["str"],
+  workspace_backup: ["str"],
+  scratchpad_load: [ID],
+  scratchpad_save: [ID, "str"],
+  session_context: [ID, ID, "path?"],
+  session_handoff: [ID, ID, "path?"],
+  claude_summary: ["str", "str", "str"],
+  pi_summary: ["str", "str", "str"],
+  claude_settings_arg: ["obj?"],
+  usage_stats: ["bool?"],
+  claude_limits: ["str?"],
+  notify: ["str", "str"],
+  copy_text: ["str"],
+  open_external: ["str"],
+  resolve_files: ["path", "paths"],
+  open_file: ["path", "int?", "int?"],
+  chat_models: ["obj"],
+  chat_config_save: ["str"],
+  chat_key_status: ["objs"],
+  chat_set_key: [ID, "str?"],
+  chat_load: [ID],
+  chat_save: ["str"],
+  chat_delete: [ID],
+  chat_abort: [ID],
+  chat_send: [ID, "obj"],
+  chat_tool_result: [ID, "bool", "str"],
+  stt_config_save: ["str"],
+  stt_key_status: ["objs"],
+  stt_set_key: [ID, "str?"],
+  stt_transcribe: ["bytes", "str"],
+  tts_config_save: ["str"],
+  tts_key_status: ["objs"],
+  tts_set_key: [ID, "str?"],
+  voice_config_save: ["str"],
+  voice_speak: [ID, "str"],
+  voice_cancel: [ID],
+  bot_create: ["str"],
+  bot_save: ["str"],
+  bot_delete: [ID],
+  bot_memory: [ID],
+  bot_memory_save: [ID, ["memory", "user"], "str"],
+  bot_skills: [ID],
+  bot_skill: [ID, ID],
+  bot_skill_save: [ID, "str"],
+  bot_skill_delete: [ID, ID],
+  bot_routines: [ID],
+  bot_routines_save: [ID, "str"],
+  bot_chat_list: [ID, ["chats", "runs"]],
+  bot_chat_load: [ID, ["chats", "runs"], ID],
+  bot_chat_save: ["str"],
+  bot_run_now: [ID, ID],
+  bot_approve: [ID, ["once", "chat", "deny"]],
+  bot_skill_import: [ID, ID],
+  bot_avatar_import: [ID, "path"],
+  bot_avatar: [ID, ID],
+  bot_abort: [ID],
+  bot_send: [ID, "str", "obj"],
+  bot_chat_delete: [ID, ["chats", "runs"], ID],
+  win_set_title: ["str"],
+  win_resize_move: ["str", "int", "int"],
+};
+
+/** Każde wywołanie z `backend-electron.ts` to `invoke(name, ...args)`; błąd wraca jako odrzucenie. */
+function handle(name: string, fn: (...args: never[]) => unknown) {
+  secure(name, (_event, ...args) => {
+    validateArgs(name, args, ARGS[name] ?? []);
+    return fn(...(args as never[]));
+  });
+}
+
+secure("pty_spawn", (event, rawSpec) => {
+  validateArgs("pty_spawn", [rawSpec], ["obj"]);
+  validateSpawnSpec(rawSpec);
+  const spec = rawSpec as SpawnSpec;
   const sender = event.sender;
   const send = (channel: string, ...args: unknown[]) => {
     if (!sender.isDestroyed()) sender.send(channel, ...args);
@@ -236,7 +347,9 @@ handle("chat_save", (json: string) => chats.save(json));
 handle("chat_delete", (id: string) => chats.delete(id));
 handle("chat_abort", (reqId: string) => chat.abort(reqId));
 // Odpowiedź płynie zdarzeniami `chat_event` (reqId, ChatEvent); `invoke` wraca od razu.
-ipcMain.handle("chat_send", (event, reqId: string, req: ChatRequest) => {
+secure("chat_send", (event, ...a) => {
+  validateArgs("chat_send", a, ARGS.chat_send);
+  const [reqId, req] = a as [string, ChatRequest];
   const sender = event.sender;
   const emit = (e: ChatEvent) => {
     if (!sender.isDestroyed()) sender.send("chat_event", reqId, e);
@@ -312,11 +425,18 @@ handle("bot_skill_import", (id: string, name: string) => {
   if (!isSkillName(name)) throw new Error(t("main.badSkill", { name }));
   return bots.skillImport(id, path.join(claudeSkills(), name));
 });
-handle("bot_avatar_import", (id: string, file: string) => bots.avatarImport(id, file));
+// Awatar tylko z pliku wskazanego w ostatnim oknie `pick_image` (jednorazowo); renderer nie może podać dowolnej ścieżki.
+const pickedImages = new PickedFiles();
+handle("bot_avatar_import", (id: string, file: string) => {
+  if (!pickedImages.take(file)) throw new Error(t("main.avatarNotPicked"));
+  return bots.avatarImport(id, file);
+});
 handle("bot_avatar", (id: string, name: string) => bots.avatar(id, name));
 handle("bot_abort", (reqId: string) => botService.abort(reqId));
 // Odpowiedź bota płynie zdarzeniami `bot_event` (reqId, ChatEvent), jak `chat_event`.
-ipcMain.handle("bot_send", (event, reqId: string, chatJson: string, req: ChatRequest) => {
+secure("bot_send", (event, ...a) => {
+  validateArgs("bot_send", a, ARGS.bot_send);
+  const [reqId, chatJson, req] = a as [string, string, ChatRequest];
   const sender = event.sender;
   const c = parseBotChat(chatJson);
   const emit = (e: unknown) => {
@@ -339,27 +459,39 @@ handle("pick_image", async () => {
     filters: [{ name: t("dialog.images"), extensions: ["png", "jpg", "jpeg", "webp", "gif"] }],
   };
   const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
-  return res.canceled ? null : (res.filePaths[0] ?? null);
+  const file = res.canceled ? null : (res.filePaths[0] ?? null);
+  if (file) pickedImages.add(file);
+  return file;
 });
 
 // Okno bez dekoracji systemowych (jak w wersji Tauri): pasek tytułu i krawędzie robi `TitleBar.tsx`.
 const senderWindow = (event: Electron.IpcMainInvokeEvent) => BrowserWindow.fromWebContents(event.sender);
-ipcMain.handle("win_set_title", (e, title: string) => senderWindow(e)?.setTitle(title));
-ipcMain.handle("win_is_maximized", (e) => senderWindow(e)?.isMaximized() ?? false);
-ipcMain.handle("win_minimize", (e) => senderWindow(e)?.minimize());
-ipcMain.handle("win_toggle_maximize", (e) => {
+secure("win_set_title", (e, ...a) => {
+  validateArgs("win_set_title", a, ARGS.win_set_title);
+  return senderWindow(e)?.setTitle(a[0] as string);
+});
+secure("win_is_maximized", (e) => senderWindow(e)?.isMaximized() ?? false);
+secure("win_minimize", (e) => senderWindow(e)?.minimize());
+secure("win_toggle_maximize", (e) => {
   const w = senderWindow(e);
   if (w?.isMaximized()) w.unmaximize();
   else w?.maximize();
 });
-ipcMain.handle("win_close", (e) => senderWindow(e)?.close());
+secure("win_close", (e) => senderWindow(e)?.close());
 
 /** Granice okna w chwili wciśnięcia uchwytu; `win_resize_move` liczy od nich. */
 let resizeFrom: Electron.Rectangle | null = null;
-ipcMain.on("win_resize_start", (e) => {
+secureOn("win_resize_start", (e) => {
   resizeFrom = BrowserWindow.fromWebContents(e.sender)?.getBounds() ?? null;
 });
-ipcMain.on("win_resize_move", (e, edge: string, dx: number, dy: number) => {
+secureOn("win_resize_move", (e, ...a) => {
+  // Zły typ w zdarzeniu bez odpowiedzi: ignorujemy, nie rzucamy.
+  try {
+    validateArgs("win_resize_move", a, ARGS.win_resize_move);
+  } catch {
+    return;
+  }
+  const [edge, dx, dy] = a as [string, number, number];
   const w = BrowserWindow.fromWebContents(e.sender);
   if (!w || !resizeFrom) return;
   w.setBounds(resizedBounds(resizeFrom, edge, dx, dy, w.getMinimumSize()));
@@ -389,8 +521,6 @@ function createWindow() {
     return { action: "deny" };
   });
   // Strona nie wychodzi poza własny adres ani nie osadza <webview>.
-  const appFile = path.join(__dirname, "..", "dist-web", "index.html");
-  const appUrl = { dev: process.env.AGENTS_DEV_URL, file: pathToFileURL(appFile).href };
   win.webContents.on("will-navigate", (e, url) => {
     if (!allowNavigation(url, appUrl)) e.preventDefault();
   });
@@ -414,7 +544,7 @@ function createWindow() {
   });
   const dev = process.env.AGENTS_DEV_URL;
   if (dev) void win.loadURL(dev);
-  else void win.loadFile(path.join(__dirname, "..", "dist-web", "index.html"));
+  else void win.loadFile(appFile);
   if (process.env.AGENTS_DEVTOOLS) win.webContents.openDevTools({ mode: "detach" });
   const resized = () => win?.webContents.send("win_resized");
   win.on("resize", resized);
