@@ -4,6 +4,13 @@
 
 *Rule the roost.*
 
+
+
+https://github.com/user-attachments/assets/6798c7fb-9c21-4cbf-a05f-db971493c9fd
+
+
+
+
 A desktop app (Electron + React + TypeScript, Linux only) for running several CLI agents at
 once. On the left is a rail of projects (folders); on the right, a grid of 1–16 terminals for the
 active project. Switching projects does not stop any processes — hidden grids keep running.
