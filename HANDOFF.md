@@ -2,6 +2,15 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Windows, etap 1: warstwa platformy – 2026-10-02 (Claude, gałąź `worktree-windows`)
+
+- Plan: `docs/plan-multiplatform.md`. Nowy `electron/src/platform.ts` – jedyne miejsce z `process.platform`: `configBase` (Linux bez zmian, macOS `~/Library/Application Support`, Windows `%APPDATA%`), `defaultShell` (`$SHELL`/`/bin/sh`, Windows `powershell.exe`), `resolveCommand` (PATH + `PATHEXT`), `spawnPlan` (Windows: `.exe` wprost, shim npm `.cmd` → `node skrypt.js`, inny `.cmd` → `cmd.exe /d /s /c` z cytowaniem jak `cross-spawn`), `signalTree`/`signalTreeSync` (grupa `-pid`, Windows `taskkill /T /F`), `bridgeSocketPath` (Windows named pipe), `opensAsProgram`.
+- Przepięte: `pty.ts`, `bot/proc.ts`, `chat/cli.ts`, `summary.ts`, `bot/bridge.ts`, `config.ts` (bez chmod na Windows), `env.ts` (`$SHELL` bez zmiennej → domyślna powłoka; na Linuksie pusty `SHELL` daje teraz `/bin/sh`), `commands.ts`, `open-path.ts`, `voice/tts.ts` (`piper.exe`), `main.ts` (powiadomienia `Notification` poza Linuksem, `setAppUserModelId`, KWallet tylko Linux), freetoken tylko Linux, `term-links.ts` (`Code.exe` jako edytor).
+- Bezpieczeństwo: narzędzie `bash` bota wyłączone na Windows. Ctrl+klik w ścieżkę `.bat`/`.exe`/`.lnk` (Windows) czy `.command`/`.app` (macOS) nie uruchamia jej, tylko pokazuje w folderze.
+- Pakowanie: `npm run dist:win` (NSIS + zip x64), skrypty `electron/package.json` bez `../node_modules/.bin` (cmd.exe). CI: macierz ubuntu + windows, job `package-windows` z artefaktem instalatora.
+- Sprawdzone na Linuksie: `pnpm typecheck`, `pnpm test` (934 + 10 pominiętych), electron typecheck i build. **Na Windows nic jeszcze nie uruchomione** – pierwszy przebieg CI pokaże, które testy zakładają POSIX.
+- Otwarte: testy POSIX-owe pod `skipIf` albo warianty, kodowanie ścieżek sesji `~/.claude/projects` z `C:\` (`context.ts`, `handoff.ts`, `usage-logs.ts`), `term-links.ts` nie rozpoznaje ścieżek `C:\…` w wyjściu terminala, skróty `Cmd` na macOS, test w VM.
+
 ## Wydanie 0.0.1 i CI – 2026-10-02 (Claude)
 
 - Release [`v0.0.1`](https://github.com/tonieMajke/roost/releases/tag/v0.0.1) (pre-release) na `97f78a9`: `Roost-0.0.1.AppImage` z czystego klonu + `.sha256`; pobrany plik zgadza się z sumą. README EN/PL: sekcja „Download”/„Pobieranie” z linkiem do Releases.

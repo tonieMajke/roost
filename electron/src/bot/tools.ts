@@ -42,6 +42,7 @@ import type { ModelRef } from "../../../src/chat";
 import os from "node:os";
 import { configDir, legacyConfigDir } from "../config";
 import { expand } from "../env";
+import { posixShell } from "../platform";
 import type { ApprovalBroker } from "./approvals";
 import { runProc } from "./proc";
 import type { BotStore, ChatKind } from "./store";
@@ -199,9 +200,11 @@ export const TOOL_DEFS: ToolDef[] = [
   },
 ];
 
-/** Narzędzia, które dostaje ten bot (włączone grupy; Kreator dodatkowo swoje). */
-export function toolDefs(bot: BotDef): ToolDef[] {
+/** Narzędzia, które dostaje ten bot (włączone grupy; Kreator dodatkowo swoje). Bez `bash` tam, gdzie nie ma
+ *  `/bin/sh` (Windows): zgody na polecenia (`commandPrefix`, ścieżki wrażliwe) znają tylko składnię sh. */
+export function toolDefs(bot: BotDef, shell = posixShell()): ToolDef[] {
   return TOOL_DEFS.filter((t) => {
+    if (t.name === "bash" && shell === null) return false;
     const g = TOOL_GROUP[t.name];
     return g === "creator" ? bot.builtin === "creator" : bot.tools[g];
   });
@@ -391,7 +394,8 @@ async function exec(tool: ToolName, a: Record<string, unknown>, ctx: ToolContext
       const cmd = need(a, "command");
       const cwd = a.cwd as string;
       if (!isDir(cwd)) fail(`nie ma folderu ${cwd}`);
-      const r = await runProc("/bin/sh", ["-c", cmd], { cwd, timeoutMs: BASH_TIMEOUT, maxBytes: BASH_MAX, signal: ctx.signal });
+      const sh = posixShell() ?? fail(t("bot.noShell"));
+      const r = await runProc(sh, ["-c", cmd], { cwd, timeoutMs: BASH_TIMEOUT, maxBytes: BASH_MAX, signal: ctx.signal });
       const status = r.timedOut ? `przerwane po ${BASH_TIMEOUT / 1000} s` : r.signal ? `sygnał ${r.signal}` : `kod wyjścia ${r.code}`;
       return `${r.out}${r.truncated ? "\n… [wyjście ucięte do 64 KB]" : ""}\n[${status}]`.replace(/^\n/, "");
     }

@@ -4,6 +4,7 @@
 //! nie mogą go dziedziczyć: python, perl i programy z systemowymi bibliotekami się sypią.
 
 import os from "node:os";
+import { defaultShell } from "./platform";
 
 /** Ustawiane przez runtime/AppRun bez odwołania do `$APPDIR` w wartości. */
 const APPIMAGE_ONLY = ["APPDIR", "APPIMAGE", "ARGV0", "OWD", "PYTHONDONTWRITEBYTECODE", "GTK_THEME"];
@@ -48,8 +49,10 @@ export function childEnv(extra: Env = {}, base: Env = process.env): Record<strin
   return env;
 }
 
-/** `$SHELL` → wartość zmiennej, `~/x` → względem katalogu domowego. */
+/** `$SHELL` → wartość zmiennej (bez niej, np. na Windows: domyślna powłoka systemu),
+ *  `$X` → wartość zmiennej, `~/x` → względem katalogu domowego. */
 export function expand(value: string): string {
+  if (value === "$SHELL") return defaultShell();
   if (value.startsWith("$")) return process.env[value.slice(1)] ?? "";
   if (value === "~" || value.startsWith("~/")) return os.homedir() + value.slice(1);
   return value;

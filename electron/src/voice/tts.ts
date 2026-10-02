@@ -11,6 +11,7 @@ import { activeTts, parseTtsConfig, parseVoiceConfig, ttsKeyId, type TtsProvider
 import { writeAtomic } from "../config";
 import { httpError, isAbort, networkError } from "../chat/http";
 import { childEnv } from "../env";
+import { isWindows, pathValue } from "../platform";
 
 const TIMEOUT_MS = 30_000;
 /** Zdanie dłuższe niż to jest błędem cięcia, nie mową. */
@@ -39,10 +40,11 @@ export const voiceConfigSave = (dir: string, json: string) => save(dir, "voice.j
 const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
 const expandHome = (p: string) => (p === "~" || p.startsWith("~/") ? path.join(os.homedir(), p.slice(1)) : p);
 
-/** Program Pipera, gdy ustawienia go nie podają: Arch/AUR instaluje `piper-tts`, pip – `piper`. */
-export function defaultPiperCommand(pathEnv = process.env.PATH ?? "", exists: (f: string) => boolean = isExecutable): string {
+/** Program Pipera, gdy ustawienia go nie podają: Arch/AUR instaluje `piper-tts`, pip – `piper` (na Windows `piper.exe`). */
+export function defaultPiperCommand(pathEnv = pathValue(process.env), exists: (f: string) => boolean = isExecutable): string {
   const dirs = pathEnv.split(path.delimiter).filter(Boolean);
-  for (const name of ["piper-tts", "piper"]) if (dirs.some((d) => exists(path.join(d, name)))) return name;
+  const files = (d: string, name: string) => (isWindows ? [path.join(d, `${name}.exe`)] : [path.join(d, name)]);
+  for (const name of ["piper-tts", "piper"]) if (dirs.some((d) => files(d, name).some(exists))) return name;
   return "piper";
 }
 

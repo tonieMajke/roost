@@ -93,7 +93,9 @@ const GUI_EDITORS: Record<string, (file: string, line?: number, col?: number) =>
 /** Polecenie otwarcia pliku jako tablica argumentów (bez powłoki). `editor` to $VISUAL/$EDITOR. */
 export function openPlan(file: string, line: number | undefined, col: number | undefined, editor: string | undefined): { command: string; args: string[] } {
   // Tylko nazwa programu z listy: `code --wait`, ścieżki i reszta $EDITOR nie są wykonywane wprost.
-  const name = (editor ?? "").trim().split(/\s+/)[0]?.split("/").pop() ?? "";
+  // `/usr/bin/kate` → `kate`; na Windows `C:\…\Code.exe` → `code`.
+  const raw = (editor ?? "").trim().split(/\s+/)[0]?.split(/[\\/]/).pop() ?? "";
+  const name = /\.exe$/i.test(raw) ? raw.slice(0, -4).toLowerCase() : raw;
   const build = Object.hasOwn(GUI_EDITORS, name) ? GUI_EDITORS[name] : undefined;
   if (build) return { command: name, args: build(file, line, col) };
   return { command: "xdg-open", args: [file] };

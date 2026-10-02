@@ -5,6 +5,7 @@ import { t } from "./i18n";
 import { spawn } from "node:child_process";
 import os from "node:os";
 import { childEnv } from "./env";
+import { spawnPlan } from "./platform";
 
 const TIMEOUT_MS = 60_000;
 const PI_TIMEOUT_MS = 120_000; // lokalny model bywa wolniejszy niż Haiku
@@ -29,7 +30,9 @@ export function piSummaryArgs(system: string): string[] {
  *  Odrzuca: nie wystartował, przekroczony czas (proces zabity), kod ≠ 0 albo pusta odpowiedź. */
 export function run(program: string, args: string[], input: string, timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(program, args, { cwd: os.tmpdir(), env: childEnv(), stdio: ["pipe", "pipe", "pipe"] });
+    const env = childEnv();
+    const plan = spawnPlan(program, args, { env });
+    const child = spawn(plan.command, plan.args, { cwd: os.tmpdir(), env, stdio: ["pipe", "pipe", "pipe"], windowsHide: true, windowsVerbatimArguments: plan.verbatim });
     let out = "";
     let err = "";
     let timedOut = false;

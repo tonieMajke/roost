@@ -4,6 +4,7 @@
 import { spawn } from "node:child_process";
 import { DEFAULT_PROVIDERS } from "../../../src/chat";
 import { childEnv } from "../env";
+import { signalTree, spawnPlan } from "../platform";
 
 const DEFAULT_KEY_ENVS = DEFAULT_PROVIDERS.flatMap((p) => (p.keyEnv ? [p.keyEnv] : []));
 
@@ -32,14 +33,10 @@ export function botEnv(base: Record<string, string | undefined> = process.env, e
   return stripSecrets(childEnv({}, base), extraHidden);
 }
 
-/** Sygnał do całej grupy procesu (spawn z `detached: true`), więc dochodzi też do wnuków. */
+/** Sygnał do całej grupy procesu (spawn z `detached: true`), więc dochodzi też do wnuków.
+ *  Na Windows każdy sygnał zabija drzewo procesów (`taskkill /T /F`). */
 export function killGroup(pid: number | undefined, sig: NodeJS.Signals) {
-  if (!pid) return;
-  try {
-    process.kill(-pid, sig);
-  } catch {
-    // grupa już nie istnieje
-  }
+  if (pid) signalTree(pid, sig);
 }
 
 /** stdout i stderr przeplecione w kolejności nadejścia. Abort/czas = SIGTERM, po 2 s SIGKILL. */
@@ -49,7 +46,9 @@ export function runProc(
   opts: { cwd: string; timeoutMs: number; maxBytes: number; signal: AbortSignal; env?: Record<string, string> },
 ): Promise<ProcResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(program, args, { cwd: opts.cwd, env: opts.env ?? botEnv(), stdio: ["ignore", "pipe", "pipe"], detached: true });
+    const env = opts.env ?? botEnv();
+    const plan = spawnPlan(program, args, { env });
+    const child = spawn(plan.command, plan.args, { cwd: opts.cwd, env, stdio: ["ignore", "pipe", "pipe"], detached: true, windowsHide: true, windowsVerbatimArguments: plan.verbatim });
     const chunks: Buffer[] = [];
     let size = 0;
     let truncated = false;

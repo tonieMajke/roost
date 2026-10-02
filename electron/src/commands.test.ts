@@ -36,14 +36,15 @@ describe("commandExists", () => {
     expect(commandExists(path.join(dir, "nope"), dir)).toBe(false);
   });
 
-  it("rozwija $SHELL i odrzuca pustą komendę", () => {
+  it.skipIf(process.platform === "win32")("rozwija $SHELL (pusty = /bin/sh) i odrzuca pustą komendę", () => {
     const dir = bin({ sh: 0o755 });
     const old = process.env.SHELL;
     process.env.SHELL = path.join(dir, "sh");
     try {
       expect(commandExists("$SHELL", "")).toBe(true);
       process.env.SHELL = "";
-      expect(commandExists("$SHELL", dir)).toBe(false);
+      expect(commandExists("$SHELL", "")).toBe(fs.existsSync("/bin/sh"));
+      expect(commandExists("", dir)).toBe(false);
     } finally {
       if (old === undefined) delete process.env.SHELL;
       else process.env.SHELL = old;

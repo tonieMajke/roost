@@ -4,17 +4,27 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
+      # Windows: bez tego checkout zamienia \n na \r\n i psuje testy porównujące tekst plików
+      - run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       # rg: narzędzie grep botów (tools.test.ts)
-      - run: sudo apt-get install -y ripgrep
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y ripgrep
+      - if: runner.os == 'Windows'
+        run: choco install ripgrep -y --no-progress
       - uses: pnpm/action-setup@v4
         with:
           version: 11
@@ -32,3 +42,32 @@ jobs:
       - run: pnpm test
       - run: npm run typecheck
         working-directory: electron
+
+  # Instalator i zip do ręcznego testu w maszynie wirtualnej (bez podpisu: SmartScreen ostrzega).
+  package-windows:
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: npm ci
+        working-directory: electron
+      - run: npm run dist:win
+        working-directory: electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roost-windows
+          path: |
+            electron/release/*.exe
+            electron/release/*.zip
+          if-no-files-found: error

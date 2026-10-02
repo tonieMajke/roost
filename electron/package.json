@@ -6,12 +6,13 @@
   "private": true,
   "main": "out/main.cjs",
   "scripts": {
-    "build:web": "../node_modules/.bin/vite build .. --base ./ --outDir electron/dist-web --emptyOutDir",
-    "build:main": "../node_modules/.bin/vite build",
+    "build:web": "node ../node_modules/vite/bin/vite.js build .. --base ./ --outDir electron/dist-web --emptyOutDir",
+    "build:main": "node ../node_modules/vite/bin/vite.js build",
     "build": "npm run build:web && npm run build:main",
-    "typecheck": "../node_modules/.bin/tsc --noEmit",
+    "typecheck": "node ../node_modules/typescript/bin/tsc --noEmit",
     "start": "npm run build && electron .",
-    "dist": "npm run build && rm -rf node_modules/node-pty/build && CXXFLAGS=\"-include '$PWD/build-tools/glibc-compat.h'\" electron-builder --linux AppImage && ./build-tools/check-pty-glibc.sh"
+    "dist": "npm run build && rm -rf node_modules/node-pty/build && CXXFLAGS=\"-include '$PWD/build-tools/glibc-compat.h'\" electron-builder --linux AppImage && ./build-tools/check-pty-glibc.sh",
+    "dist:win": "npm run build && electron-builder --win nsis zip --x64"
   },
   "dependencies": {
     "node-pty": "^1.1.0"
@@ -59,6 +60,21 @@
           "StartupWMClass": "roost-app"
         }
       }
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "../branding/icon.png",
+      "executableName": "Roost",
+      "artifactName": "Roost-${version}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Roost-Setup-${version}.${ext}"
     }
   }
 }

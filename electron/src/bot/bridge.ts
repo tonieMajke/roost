@@ -1,14 +1,13 @@
-//! Gniazdo unix w procesie głównym: serwery MCP `bot` (po jednym na uruchomienie claude/codex)
-//! wołają przez nie rejestr narzędzi. Sesja = jedna odpowiedź bota, rozpoznawana po tokenie;
+//! Gniazdo unix (na Windows named pipe) w procesie głównym: serwery MCP `bot` (po jednym na uruchomienie
+//! claude/codex) wołają przez nie rejestr narzędzi. Sesja = jedna odpowiedź bota, rozpoznawana po tokenie;
 //! gniazdo ma prawa 0600, token chroni przed pomyłką sesji, nie przed innym użytkownikiem.
 
 import { t } from "../i18n";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
-import os from "node:os";
-import path from "node:path";
 import type { ToolSpec } from "../../../src/chat";
+import { bridgeSocketPath, isPipePath } from "../platform";
 import { onLines } from "./bridge-client";
 import type { ToolOutcome } from "./tools";
 
@@ -30,10 +29,12 @@ export class ToolBridge {
     readonly socketPath: string,
   ) {}
 
-  /** `dir`: `$XDG_RUNTIME_DIR` (prywatny katalog użytkownika); bez niego własny katalog w /tmp. */
-  static async start(dir = process.env.XDG_RUNTIME_DIR || fs.mkdtempSync(path.join(os.tmpdir(), "agents-"))): Promise<ToolBridge> {
-    const socketPath = path.join(dir, `agents-bot-${process.pid}.sock`);
-    fs.rmSync(socketPath, { force: true }); // po awarii poprzedniego procesu o tym samym pid
+  /** `dir`: katalog gniazda, domyślnie `$XDG_RUNTIME_DIR` (prywatny katalog użytkownika), bez niego własny
+   *  katalog w /tmp. Na Windows pomijany: named pipe. */
+  static async start(dir?: string): Promise<ToolBridge> {
+    const socketPath = bridgeSocketPath(dir);
+    const pipe = isPipePath(socketPath);
+    if (!pipe) fs.rmSync(socketPath, { force: true }); // po awarii poprzedniego procesu o tym samym pid
     const server = net.createServer();
     const bridge = new ToolBridge(server, socketPath);
     server.on("connection", (s) => bridge.accept(s));
@@ -46,7 +47,7 @@ export class ToolBridge {
     } finally {
       process.umask(old);
     }
-    fs.chmodSync(socketPath, 0o600);
+    if (!pipe) fs.chmodSync(socketPath, 0o600);
     return bridge;
   }
 
@@ -95,6 +96,6 @@ export class ToolBridge {
     for (const s of this.sockets) s.destroy();
     this.server.close();
     this.sessions.clear();
-    fs.rmSync(this.socketPath, { force: true });
+    if (!isPipePath(this.socketPath)) fs.rmSync(this.socketPath, { force: true });
   }
 }
