@@ -6,7 +6,7 @@ import fs from "node:fs";
 import type { ChatEvent } from "../../../src/chat";
 import { childEnv } from "../env";
 import { killGroup } from "../bot/proc";
-import { groupSpawn, spawnPlan } from "../platform";
+import { groupSpawn, releaseAfterExit, spawnPlan } from "../platform";
 
 export type LineParser = {
   /** Zdarzenia z jednej linii wyjścia (już sparsowanej z JSON). */
@@ -45,6 +45,7 @@ export function runCli(
     let killTimer: ReturnType<typeof setTimeout> | undefined;
     const onAbort = () => {
       killGroup(child.pid, "SIGTERM");
+      releaseAfterExit(child);
       killTimer = setTimeout(() => killGroup(child.pid, "SIGKILL"), 2000);
     };
     signal.addEventListener("abort", onAbort, { once: true });

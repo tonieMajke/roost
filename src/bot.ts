@@ -1007,7 +1007,7 @@ export function clipResult(text: string, limit = RESULT_LIMIT): string {
 
 /** Ścieżka do karty: ostatnie dwa człony („src/main.rs”), żeby wiersz się mieścił. */
 export function shortPath(p: string): string {
-  const parts = p.replace(/\/+$/, "").split("/").filter(Boolean);
+  const parts = p.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean);
   if (parts.length <= 2) return p || ".";
   return `…/${parts.slice(-2).join("/")}`;
 }

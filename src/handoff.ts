@@ -1,5 +1,5 @@
 import { t } from "./i18n";
-import { tildify } from "./paths";
+import { isUnder, tildify } from "./paths";
 
 /** Wyciąg rozmowy z pliku sesji (Rust `session_handoff`, M4). */
 export type Handoff = { prompts: string[]; replies: string[]; files: string[]; commands: string[] };
@@ -33,7 +33,7 @@ const footer = () => "---\n" + t("handoff.footer");
 function relative(file: string, projectPath: string, home: string): string {
   const f = tildify(file, home);
   const dir = tildify(projectPath, home);
-  return f.startsWith(`${dir}/`) ? f.slice(dir.length + 1) : f;
+  return f !== dir && isUnder(f, dir) ? f.slice(dir.length + 1) : f;
 }
 
 function sections(h: Handoff, src: HandoffSource): string[] {

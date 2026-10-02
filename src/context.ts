@@ -2,6 +2,7 @@
 import type { AgentDef } from "./agents";
 import type { ToolUse } from "./feed";
 import type { Pane, Project } from "./workspace";
+import { programName } from "./paths";
 
 /** Which session file reader (Rust `session_context`) understands this agent. */
 export type ContextKind = "claude" | "pi";
@@ -39,7 +40,7 @@ export function claudeWindow(model: string | null | undefined): number | null {
 /** Reader by the program the agent runs (`/usr/bin/claude` too); others have no meter. */
 export function contextKind(agent: AgentDef | undefined): ContextKind | null {
   if (!agent?.session) return null;
-  const program = agent.command.split("/").pop();
+  const program = programName(agent.command);
   return program === "claude" || program === "pi" ? program : null;
 }
 

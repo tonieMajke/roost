@@ -185,6 +185,22 @@ export function killChild(child: { pid?: number; kill(sig?: NodeJS.Signals): boo
   else child.kill("SIGKILL");
 }
 
+type Piped = { stdout?: { destroy(): void } | null; stderr?: { destroy(): void } | null; once(ev: "exit", fn: () => void): unknown; exitCode: number | null; signalCode: string | null };
+
+/** Po zatrzymaniu (Stop, limit czasu): gdy proces się skończy, zamyka nasze końce potoków. Na Windows
+ *  `taskkill /T` nie znajdzie wnuka, którego rodzic już zginął, a taki sierota trzyma stdout i `close`
+ *  nigdy by nie przyszedł. Na Linuksie/macOS grupa procesów ginie w całości, więc nic nie robi. */
+export function releaseAfterExit(child: Piped, platform: NodeJS.Platform = process.platform, graceMs = 300): void {
+  if (platform !== "win32") return;
+  const release = () =>
+    void setTimeout(() => {
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+    }, graceMs);
+  if (child.exitCode !== null || child.signalCode !== null) release();
+  else child.once("exit", release);
+}
+
 /** Czy `p` to `dir` albo leży w nim. Ścieżki systemowe (`path.resolve`); na Windows bez względu
  *  na wielkość liter i rodzaj ukośnika (`C:\A\b` = `c:/a/B`). */
 export function isInsidePath(p: string, dir: string, platform: NodeJS.Platform = process.platform): boolean {

@@ -3,6 +3,7 @@
  *  the caller creates ids and passes them in actions. */
 
 import { DEFAULT_UI, parseUi, type Ui } from "./ui";
+import { baseName } from "./paths";
 
 export const MAX_PANES = 16; // per project
 
@@ -65,12 +66,9 @@ export function activeProject(ws: Workspace): Project | null {
   return ws.projects.find((p) => p.id === ws.active) ?? null;
 }
 
-/** Last path segment: "/a/b/" -> "b", "~" -> "~", "/" -> "/". */
+/** Last path segment: "/a/b/" -> "b", "C:\\a\\b" -> "b", "~" -> "~", "/" -> "/". */
 export function projectName(path: string): string {
-  const trimmed = path.replace(/\/+$/, "");
-  const idx = trimmed.lastIndexOf("/");
-  const name = idx >= 0 ? trimmed.slice(idx + 1) : trimmed;
-  return name === "" ? "/" : name;
+  return baseName(path) || "/";
 }
 
 export type Action =

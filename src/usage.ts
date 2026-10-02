@@ -3,6 +3,7 @@
  *  (`reasoning` jest tylko jego wyróżnioną częścią, nie dodaje się do sumy). */
 
 import { locale, t } from "./i18n";
+import { isUnder } from "./paths";
 
 export type Usage = {
   input: number;
@@ -215,10 +216,10 @@ export function compact(n: number, loc = locale()): string {
 export function projectLabel(cwd: string, projects: { name: string; path: string }[]): string {
   if (cwd === "") return "";
   const hit = projects
-    .filter((p) => p.path !== "" && (cwd === p.path || cwd.startsWith(`${p.path.replace(/\/+$/, "")}/`)))
+    .filter((p) => p.path !== "" && isUnder(cwd, p.path))
     .sort((a, b) => b.path.length - a.path.length)[0];
   if (hit) return hit.name;
-  return cwd.split("/").filter(Boolean).slice(-2).join("/") || cwd;
+  return cwd.split(/[\\/]/).filter(Boolean).slice(-2).join("/") || cwd;
 }
 
 /** Wiersze z katalogiem roboczym zamienionym na projekt z workspace: katalogi jednego projektu

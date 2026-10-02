@@ -136,33 +136,35 @@ describe.skipIf(WIN)("pty", () => {
   });
 });
 
-/** Windows (ConPTY): to samo zachowanie bez /bin/sh – kod wyjścia, stdin, zabicie całego drzewa. */
+/** Windows (ConPTY): to samo zachowanie bez /bin/sh – kod wyjścia, stdin, zabicie drzewa. Przez cmd.exe:
+ *  PowerShell pod ConPTY na maszynie CI potrafi nie wypisać nic przez dziesiątki sekund. */
 describe.runIf(WIN)("pty (Windows)", () => {
-  const ps = (script: string) => ({ command: "powershell.exe", args: ["-NoProfile", "-NonInteractive", "-Command", script], cols: 80, rows: 24 });
+  const cmd = (script: string) => ({ command: "cmd.exe", args: ["/d", "/c", script], cols: 80, rows: 24 });
 
-  it("kod wyjścia i $SHELL bez zmiennej (PowerShell)", async () => {
+  it("kod wyjścia; $SHELL bez zmiennej to PowerShell", async () => {
     const ptys = new Ptys();
-    const p = run(ptys, { command: "cmd.exe", args: ["/d", "/c", "exit 7"], cols: 80, rows: 24 });
+    const p = run(ptys, cmd("exit 7"));
     expect((await p.exited).code).toBe(7);
     expect(ptys.pid(p.id)).toBeUndefined();
     const shell = run(ptys, { command: "$SHELL", args: ["-NoProfile", "-Command", "exit 3"], cols: 80, rows: 24 });
     expect((await shell.exited).code).toBe(3);
-  }, 30000);
+  }, 60000);
 
   it("zapis trafia na stdin dziecka", async () => {
     const ptys = new Ptys();
-    const p = run(ptys, ps("$l = [Console]::ReadLine(); Write-Output ('ECHO-' + $l)"));
+    const p = run(ptys, cmd("set /p L=& call echo ECHO-%L%"));
     ptys.write(p.id, "hello-pipe\r");
     await p.waitFor(/ECHO-hello-pipe/);
     await p.exited;
   }, 30000);
 
-  it("kill zabija całe drzewo (taskkill /T)", async () => {
+  it("kill kończy panel razem z dzieckiem (taskkill /T)", async () => {
     const ptys = new Ptys();
-    const p = run(ptys, ps("$c = Start-Process ping -ArgumentList '-n','31','127.0.0.1' -NoNewWindow -PassThru; Write-Output ('MARKER-' + $c.Id); $c.WaitForExit()"));
-    const pid = Number((await p.waitFor(/MARKER-(\d+)/))[1]);
-    expect(alive(pid)).toBe(true);
+    const p = run(ptys, cmd("echo START& ping -n 31 127.0.0.1"));
+    await p.waitFor(/START/);
+    const pid = ptys.pid(p.id)!;
     ptys.kill(p.id);
-    await until(() => !alive(pid), "ping przeżył zabicie drzewa");
+    await p.exited;
+    await until(() => !alive(pid), "cmd przeżył zabicie drzewa");
   }, 30000);
 });

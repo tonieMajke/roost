@@ -1,6 +1,7 @@
 /** „Limity Claude” in the dock: windows from Claude Code's status line (Rust `limits.rs`). Pure. */
 import type { AgentDef } from "./agents";
 import { locale, t } from "./i18n";
+import { programName } from "./paths";
 
 /** `pct` 0–100 (above 100 once exceeded), `resetsAt` in Unix seconds. */
 export type LimitWindow = { pct: number; resetsAt: number };
@@ -11,7 +12,7 @@ export const LIMITS_POLL_MS = 30_000;
 
 /** `--settings <json>` for claude panes, unless the agent's own args already set settings. */
 export function withClaudeSettings(agent: AgentDef, args: string[], settings: string | null): string[] {
-  if (settings === null || agent.command.split("/").pop() !== "claude") return args;
+  if (settings === null || programName(agent.command) !== "claude") return args;
   if (args.some((a) => a === "--settings" || a.startsWith("--settings="))) return args;
   return [...args, "--settings", settings];
 }

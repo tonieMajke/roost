@@ -1,3 +1,5 @@
+import { programName } from "./paths";
+
 /** Agent definitions loaded from agents.json (see Rust `agents_load`). */
 export type AgentDef = {
   id: string;
@@ -26,7 +28,7 @@ export const CLAUDE_MODELS: AgentModel[] = [
 /** Models offered for an agent: its own `models`, else the claude list for `claude`, else none. */
 export function agentModels(agent: AgentDef): AgentModel[] {
   if (agent.models) return agent.models;
-  return agent.command.split("/").pop() === "claude" ? CLAUDE_MODELS : [];
+  return programName(agent.command) === "claude" ? CLAUDE_MODELS : [];
 }
 
 /** `--model <id>` appended for a pane that has a model; unchanged without one. */

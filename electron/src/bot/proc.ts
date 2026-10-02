@@ -4,7 +4,7 @@
 import { spawn } from "node:child_process";
 import { DEFAULT_PROVIDERS } from "../../../src/chat";
 import { childEnv } from "../env";
-import { groupSpawn, signalTree, spawnPlan } from "../platform";
+import { groupSpawn, releaseAfterExit, signalTree, spawnPlan } from "../platform";
 
 const DEFAULT_KEY_ENVS = DEFAULT_PROVIDERS.flatMap((p) => (p.keyEnv ? [p.keyEnv] : []));
 
@@ -56,6 +56,7 @@ export function runProc(
     let killTimer: ReturnType<typeof setTimeout> | undefined;
     const stop = () => {
       killGroup(child.pid, "SIGTERM");
+      releaseAfterExit(child);
       killTimer ??= setTimeout(() => killGroup(child.pid, "SIGKILL"), 2000);
     };
     const timer = setTimeout(() => {

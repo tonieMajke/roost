@@ -9,7 +9,7 @@ import type { TermLook } from "./Terminal";
 import { IconButton } from "./IconButton";
 import { BarChart3, FolderPlus, FolderTree, Gauge, LayoutGrid, NotebookPen, Plus, UserRound, X } from "lucide-react";
 import { Scratchpad } from "./Scratchpad";
-import { tildify } from "./paths";
+import { programName, tildify } from "./paths";
 import {
   MAX_PANES,
   activeProject,
@@ -575,8 +575,8 @@ export function App() {
       // Streszcza agent panelu docelowego: pi → lokalny model, w pozostałych razach Haiku przez claude
       // (programy z agents.json; źródłem może być każdy z nich).
       const dstAgent = agents.find((a) => a.id === ws.projects.flatMap((p) => p.panes).find((p) => p.id === to)?.agentId);
-      const local = dstAgent !== undefined && dstAgent.command.split("/").pop() === "pi";
-      const claude = agents.find((a) => a.command.split("/").pop() === "claude")?.command ?? "claude";
+      const local = dstAgent !== undefined && programName(dstAgent.command) === "pi";
+      const claude = agents.find((a) => programName(a.command) === "claude")?.command ?? "claude";
       setNotice(t("app.summarizing", { agent: src.agent, model: local ? t("app.localModel") : "Haiku" }));
       try {
         const input = digestText(h, source);
@@ -663,7 +663,7 @@ export function App() {
             const agent = agents.find((a) => a.id === pane.agentId);
             const eph = ephemeral[pane.id];
             const meter = paneMeter(pane, agent, contexts);
-            const hit = agent?.command.split("/").pop() === "claude" ? limitHit(limits[pane.account ?? ""], now) : null;
+            const hit = programName(agent?.command ?? "") === "claude" ? limitHit(limits[pane.account ?? ""], now) : null;
             const last = activity.current.get(pane.id)?.lastOutput ?? 0;
             const account = accountById(accounts, pane.account)?.name;
             return {

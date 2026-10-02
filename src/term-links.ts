@@ -10,17 +10,19 @@ export type PathRef = {
   col?: number;
 };
 
-// Znaki ścieżki; dwukropek tylko jako początek sufiksu `:linia[:kolumna]`.
-const TOKEN = /[\p{L}\p{N}_.~@+\-/]+(?::\d{1,7}(?::\d{1,7})?)?/gu;
+// Znaki ścieżki; dwukropek tylko po literze dysku (`C:\`, Windows) i jako początek sufiksu `:linia[:kolumna]`.
+const TOKEN = /(?:(?<![\p{L}\p{N}])[A-Za-z]:(?=[\\/]))?[\p{L}\p{N}_.~@+\-/\\]+(?::\d{1,7}(?::\d{1,7})?)?/gu;
 const MAX_REFS = 40;
 const MAX_LINE = 2000;
 
-/** Ma sens szukać pliku: zawiera `/` albo kończy się rozszerzeniem z literą (nie `1.5`, nie `e.g.`). */
+/** Ma sens szukać pliku: zawiera `/` (albo `\` z Windows) albo kończy się rozszerzeniem z literą
+ *  (nie `1.5`, nie `e.g.`). */
 function looksLikePath(p: string): boolean {
-  if (p.length < 2 || p.endsWith("/")) return false;
-  if (/^[.~/]+$/.test(p)) return false;
-  if (p.startsWith("//")) return false; // reszta adresu URL
-  if (p.includes("/")) return true;
+  if (p.length < 2 || /[\\/]$/.test(p)) return false;
+  if (/^[.~/\\]+$/.test(p)) return false;
+  if (p.startsWith("//") || p.startsWith("\\\\")) return false; // reszta adresu URL, ścieżka sieciowa
+  if (/^[A-Za-z]:[\\/]./.test(p)) return true;
+  if (/[\\/]/.test(p)) return true;
   return /\.[A-Za-z][A-Za-z0-9]{0,9}$/.test(p) && !p.startsWith(".");
 }
 
@@ -39,8 +41,8 @@ export function findPathRefs(text: string): PathRef[] {
       if (suffix[2] !== undefined) col = Number(suffix[2]);
       tok = tok.slice(0, suffix.index);
     }
-    // Interpunkcja doklejona do ścieżki: „plik.ts.” „a/b.ts,”.
-    const trimmed = tok.replace(/[.,;]+$/, "");
+    // Interpunkcja doklejona do ścieżki: „plik.ts.” „a/b.ts,”; dosłowne `\n` z wypisanego tekstu.
+    const trimmed = tok.replace(/(\\[nrt0])+$/, "").replace(/[.,;]+$/, "");
     if (trimmed !== tok) {
       if (suffix) continue; // `plik.:3` to nie ścieżka z numerem
       tok = trimmed;
