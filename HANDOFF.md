@@ -2,6 +2,14 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Wydanie 0.0.1 i CI – 2026-10-02 (Claude)
+
+- Release [`v0.0.1`](https://github.com/tonieMajke/roost/releases/tag/v0.0.1) (pre-release) na `97f78a9`: `Roost-0.0.1.AppImage` z czystego klonu + `.sha256`; pobrany plik zgadza się z sumą. README EN/PL: sekcja „Download”/„Pobieranie” z linkiem do Releases.
+- CI (`.github/workflows/ci.yml`, ubuntu, Node 26, pnpm 11): ripgrep, `electron npm ci && npm run build` (testy potrzebują `node-pty` i `out/mcp-server.cjs`), typecheck obu części, `pnpm test`. Zielone 2× z rzędu. README: pełna lista sprawdzeń.
+- Błędy znalezione przez CI: `runCli` (czat CLI) przy Stop zabijał tylko program, jego dzieci trzymały stdout i Stop wisiał – teraz `detached` + `killGroup`. `pty.ts`: panel zamknięty tuż po starcie (przed `setsid`, ESRCH na `-pid`) przeżywał – `signalGroup` spada na sam pid.
+- Wiki i Projects na GitHubie wyłączone. Private vulnerability reporting był już włączony.
+- Otwarte: `CONTRIBUTING`, szablony zgłoszeń, test AppImage na innych dystrybucjach (`docs/checklista-wydania.md` §0), `AGENTS.md` wskazuje jeszcze `plan-m5.md`. Wypychanie zmian w `.github/workflows/` działa przez SSH (`origin`), token `gh` nie ma zakresu `workflow`.
+
 ## Przed upublicznieniem repo – 2026-10-02 (Claude)
 
 - Przegląd: w drzewie i całej historii `main` brak kluczy/tokenów (`sk-ant` to atrapa w testach), brak `.env`/`.pem`/AppImage w gitcie, `.gitignore` pokrywa wyniki budowy. Dane osobiste: tylko `/home/majke/...` w danych testowych i mocku; w starych commitach adresy `majke@localhost`/`pi-gui@localhost`. Na `origin` jest tylko `main` (lokalne gałęzie robocze nie są wypchnięte).
