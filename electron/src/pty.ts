@@ -27,7 +27,14 @@ function signalGroup(pid: number, sig: NodeJS.Signals | 0): boolean {
     process.kill(-pid, sig);
     return true;
   } catch {
-    return false;
+    // Tuż po spawn dziecko może jeszcze nie mieć setsid (grupy nie ma, ESRCH), a już istnieje
+    // jako proces: wtedy sygnał do samego pid, inaczej panel zamknięty od razu przeżyłby.
+    try {
+      process.kill(pid, sig);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

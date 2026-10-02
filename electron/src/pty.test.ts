@@ -107,14 +107,14 @@ describe("pty", () => {
   });
 
   it("killAllAsync zapomina panele od razu i zabija je później", async () => {
+    // Kilka paneli naraz i zabicie od razu: część dzieci nie zdążyła jeszcze zrobić setsid.
     const ptys = new Ptys();
-    const a = run(ptys, sh("sleep 32"));
-    const b = run(ptys, sh("sleep 33"));
-    const pids = [ptys.pid(a.id)!, ptys.pid(b.id)!];
+    const panes = Array.from({ length: 10 }, (_, i) => run(ptys, sh(`sleep ${32 + i}`)));
+    const pids = panes.map((p) => ptys.pid(p.id)!);
     const started = Date.now();
     ptys.killAllAsync();
     expect(Date.now() - started).toBeLessThan(500);
-    expect([ptys.pid(a.id), ptys.pid(b.id)]).toEqual([undefined, undefined]);
+    expect(panes.map((p) => ptys.pid(p.id))).toEqual(panes.map(() => undefined));
     await until(() => pids.every((p) => !alive(p)), "panel przeżył przeładowanie");
   });
 
