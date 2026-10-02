@@ -6,8 +6,9 @@ import { type ExitInfo, Ptys } from "./pty";
 
 const FIVE = 5000;
 const sh = (script: string) => ({ command: "/bin/sh", args: ["-c", script], cols: 80, rows: 24 });
+const WIN = process.platform === "win32";
 
-function run(ptys: Ptys, spec: ReturnType<typeof sh> & { cwd?: string }) {
+function run(ptys: Ptys, spec: { command: string; args: string[]; cols: number; rows: number; cwd?: string }) {
   let out = "";
   let onOut: (() => void) | null = null;
   let exitInfo: ExitInfo | null = null;
@@ -66,7 +67,7 @@ async function until(cond: () => boolean, what: string) {
   }
 }
 
-describe("pty", () => {
+describe.skipIf(WIN)("pty", () => {
   it("kod wyjścia trafia do wywołania zwrotnego, wpis znika", async () => {
     const ptys = new Ptys();
     const p = run(ptys, sh("exit 7"));
@@ -129,5 +130,36 @@ describe("pty", () => {
   it("sygnał zgłaszany nazwą", async () => {
     const p = run(new Ptys(), sh("kill -TERM $$"));
     expect((await p.exited).signal).toBe("SIGTERM");
+  });
+});
+
+/** Windows (ConPTY): to samo zachowanie bez /bin/sh – kod wyjścia, stdin, zabicie całego drzewa. */
+describe.runIf(WIN)("pty (Windows)", () => {
+  const ps = (script: string) => ({ command: "powershell.exe", args: ["-NoProfile", "-NonInteractive", "-Command", script], cols: 80, rows: 24 });
+
+  it("kod wyjścia i $SHELL bez zmiennej (PowerShell)", async () => {
+    const ptys = new Ptys();
+    const p = run(ptys, { command: "cmd.exe", args: ["/d", "/c", "exit 7"], cols: 80, rows: 24 });
+    expect((await p.exited).code).toBe(7);
+    expect(ptys.pid(p.id)).toBeUndefined();
+    const shell = run(ptys, { command: "$SHELL", args: ["-NoProfile", "-Command", "exit 3"], cols: 80, rows: 24 });
+    expect((await shell.exited).code).toBe(3);
+  });
+
+  it("zapis trafia na stdin dziecka", async () => {
+    const ptys = new Ptys();
+    const p = run(ptys, ps("$l = [Console]::ReadLine(); Write-Output \"ECHO-$l\""));
+    ptys.write(p.id, "hello-pipe\r");
+    await p.waitFor(/ECHO-hello-pipe/);
+    await p.exited;
+  });
+
+  it("kill zabija całe drzewo (taskkill /T)", async () => {
+    const ptys = new Ptys();
+    const p = run(ptys, ps("$c = Start-Process ping -ArgumentList '-n','31','127.0.0.1' -NoNewWindow -PassThru; Write-Output \"MARKER-$($c.Id)\"; $c.WaitForExit()"));
+    const pid = Number((await p.waitFor(/MARKER-(\d+)/))[1]);
+    expect(alive(pid)).toBe(true);
+    ptys.kill(p.id);
+    await until(() => !alive(pid), "ping przeżył zabicie drzewa");
   });
 });

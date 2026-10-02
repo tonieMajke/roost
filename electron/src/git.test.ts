@@ -208,7 +208,8 @@ describe("git: core.fsmonitor z konfiguracji repozytorium nie jest wykonywany", 
     const marker = path.join(root, "fsmonitor-ran");
     const hook = path.join(root, "fsmonitor.sh");
     fs.writeFileSync(hook, `#!/bin/sh\ntouch '${marker}'\n`, { mode: 0o755 });
-    fs.appendFileSync(path.join(evil, ".git", "config"), `[core]\n\tfsmonitor = ${hook}\n`);
+    // `/` zamiast `\` z Windows: w pliku konfiguracji git `\` zaczyna sekwencję ucieczki
+    fs.appendFileSync(path.join(evil, ".git", "config"), `[core]\n\tfsmonitor = ${hook.replaceAll("\\", "/")}\n`);
     expect(GIT_SAFE_ARGS).toContain("core.fsmonitor=false");
     await gitStatus(evil);
     await gitFiles(evil);

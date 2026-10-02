@@ -171,6 +171,33 @@ export function signalTreeSync(pid: number, sig: NodeJS.Signals | 0, platform: N
   return true;
 }
 
+/** `detached` dla dziecka, które ma być liderem własnej grupy (Stop i limit czasu trafiają w `-pid`).
+ *  Na Windows grup nie ma (drzewo zabija `taskkill /T`), a `detached` daje dziecku osobną konsolę:
+ *  shimy (np. `rg.exe` z chocolatey) gubią wtedy wyjście. */
+export function groupSpawn(platform: NodeJS.Platform = process.platform): boolean {
+  return platform !== "win32";
+}
+
+/** Zabija dziecko bez łagodnego zamknięcia. Na Windows całe drzewo: inaczej wnuk (np. `sleep` uruchomiony
+ *  przez powłokę) trzyma otwarte stdout i `close` nie przychodzi. */
+export function killChild(child: { pid?: number; kill(sig?: NodeJS.Signals): boolean }, platform: NodeJS.Platform = process.platform): void {
+  if (platform === "win32" && child.pid) signalTree(child.pid, "SIGKILL", platform);
+  else child.kill("SIGKILL");
+}
+
+/** Czy `p` to `dir` albo leży w nim. Ścieżki systemowe (`path.resolve`); na Windows bez względu
+ *  na wielkość liter i rodzaj ukośnika (`C:\A\b` = `c:/a/B`). */
+export function isInsidePath(p: string, dir: string, platform: NodeJS.Platform = process.platform): boolean {
+  const lib = platform === "win32" ? path.win32 : path.posix;
+  const norm = (x: string) => {
+    const r = lib.resolve(x);
+    return platform === "win32" ? r.toLowerCase() : r;
+  };
+  const a = norm(p);
+  const d = norm(dir);
+  return a === d || a.startsWith(d.endsWith(lib.sep) ? d : d + lib.sep);
+}
+
 function alive(pid: number, sig: NodeJS.Signals | 0 = 0): boolean {
   try {
     process.kill(pid, sig);
@@ -186,7 +213,7 @@ function alive(pid: number, sig: NodeJS.Signals | 0 = 0): boolean {
 export function bridgeSocketPath(dir?: string, platform: NodeJS.Platform = process.platform, env: Env = process.env, pid = process.pid): string {
   if (platform === "win32") return `\\\\.\\pipe\\roost-bot-${pid}-${randomBytes(6).toString("hex")}`;
   const base = dir || env.XDG_RUNTIME_DIR || fs.mkdtempSync(path.join(os.tmpdir(), "agents-"));
-  return path.join(base, `agents-bot-${pid}.sock`);
+  return path.posix.join(base, `agents-bot-${pid}.sock`);
 }
 
 /** Czy adres to named pipe Windows (a nie plik gniazda). */

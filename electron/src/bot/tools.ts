@@ -42,7 +42,7 @@ import type { ModelRef } from "../../../src/chat";
 import os from "node:os";
 import { configDir, legacyConfigDir } from "../config";
 import { expand } from "../env";
-import { posixShell } from "../platform";
+import { isWindows, posixShell } from "../platform";
 import type { ApprovalBroker } from "./approvals";
 import { runProc } from "./proc";
 import type { BotStore, ChatKind } from "./store";
@@ -211,14 +211,16 @@ export function toolDefs(bot: BotDef, shell = posixShell()): ToolDef[] {
 }
 
 /** Ścieżka po `realpath`: `~` i ścieżki względne (względem `work`), dowiązania rozwinięte.
- *  Dla nieistniejącego pliku: realpath najbliższego istniejącego przodka + reszta. */
+ *  Dla nieistniejącego pliku: realpath najbliższego istniejącego przodka + reszta.
+ *  `native`: na Windows rozwija krótkie nazwy 8.3 (`SSH~1` → `.ssh`) i ujednolica wielkość liter,
+ *  inaczej ścieżka do sekretu ominęłaby porównanie z listą wrażliwych. */
 export function resolvePath(p: string, work: string): string {
   const abs = path.resolve(p.startsWith("~") ? expand(p) : path.isAbsolute(p) ? p : path.join(work, p));
   const rest: string[] = [];
   let cur = abs;
   for (;;) {
     try {
-      return path.join(fs.realpathSync(cur), ...rest);
+      return path.join(fs.realpathSync.native(cur), ...rest);
     } catch {
       const parent = path.dirname(cur);
       if (parent === cur) return abs;
@@ -297,7 +299,7 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
   const args: Record<string, unknown> = rawArgs && typeof rawArgs === "object" && !Array.isArray(rawArgs) ? { ...(rawArgs as Record<string, unknown>) } : {};
   const work = ctx.store.work(ctx.bot.id);
   fs.mkdirSync(work, { recursive: true });
-  const workReal = fs.realpathSync(work);
+  const workReal = fs.realpathSync.native(work);
   // Ścieżki do decyzji i do wykonania: zawsze po realpath, domyślnie katalog roboczy.
   const pathTools: ToolName[] = ["read_file", "list_dir", "grep", "write_file", "edit_file"];
   if (pathTools.includes(tool)) {
@@ -306,6 +308,9 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
     args.path = resolvePath(p ?? ".", workReal);
   }
   if (tool === "bash") args.cwd = resolvePath(str(args.cwd) ?? ".", workReal);
+  // NTFS: `plik:strumień` (np. `.env::$DATA`) czyta ten sam plik pod inną nazwą; dwukropek tylko po literze dysku.
+  const streamPath = isWindows ? [str(args.path), str(args.cwd)].find((p) => p !== undefined && p.slice(2).includes(":")) : undefined;
+  if (streamPath !== undefined) return { ok: false, text: t("path.sensitive", { p: streamPath }), approval: "auto" };
 
   // Sekrety (klucze, tokeny, .env, konfiguracja aplikacji): bez karty zgody, w każdym trybie i dla każdej zgody.
   const sens = ctx.sensitive ?? sensitiveEnv(workReal);

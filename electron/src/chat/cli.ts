@@ -6,7 +6,7 @@ import fs from "node:fs";
 import type { ChatEvent } from "../../../src/chat";
 import { childEnv } from "../env";
 import { killGroup } from "../bot/proc";
-import { spawnPlan } from "../platform";
+import { groupSpawn, spawnPlan } from "../platform";
 
 export type LineParser = {
   /** Zdarzenia z jednej linii wyjścia (już sparsowanej z JSON). */
@@ -39,7 +39,7 @@ export function runCli(
     return Promise.reject(e as Error);
   }
   return new Promise((resolve, reject) => {
-    const child = spawn(plan.command, plan.args, { cwd, env: childVars, stdio: ["pipe", "pipe", "pipe"], detached: true, windowsHide: true, windowsVerbatimArguments: plan.verbatim });
+    const child = spawn(plan.command, plan.args, { cwd, env: childVars, stdio: ["pipe", "pipe", "pipe"], detached: groupSpawn(), windowsHide: true, windowsVerbatimArguments: plan.verbatim });
     let buf = "";
     let err = "";
     let killTimer: ReturnType<typeof setTimeout> | undefined;

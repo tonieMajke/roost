@@ -65,6 +65,11 @@ describe("toolDefs", () => {
     expect(toolDefs(creatorBot(0)).map((t) => t.name)).toContain("bot_create");
     expect(toolDefs(newBot("a", 0)).map((t) => t.name)).not.toContain("bot_create");
   });
+  it("bez /bin/sh (Windows) nie ma narzędzia bash, nawet z włączoną grupą", () => {
+    const bot = newBot("b", 0, { tools: { web: false, read: false, write: false, bash: true, memory: false, skills: false } });
+    expect(toolDefs(bot, "/bin/sh").map((t) => t.name)).toEqual(["bash"]);
+    expect(toolDefs(bot, null)).toEqual([]);
+  });
 });
 
 describe("pliki", () => {
@@ -189,7 +194,8 @@ describe("pliki", () => {
   });
 });
 
-describe("bash", () => {
+// Windows: narzędzie bash jest wyłączone (toolDefs), jego testy zakładają /bin/sh.
+describe.skipIf(process.platform === "win32")("bash", () => {
   it("zawsze pyta; wynik z kodem wyjścia, w katalogu roboczym", async () => {
     const r = await runTool("bash", { command: "pwd; exit 2" }, ctx());
     expect(r).toMatchObject({ ok: true, approval: "once" });
@@ -462,7 +468,7 @@ describe("ścieżki wrażliwe", () => {
     }
   });
 
-  it("bash: wymienienie sekretu w poleceniu lub cwd daje odmowę bez karty", async () => {
+  it.skipIf(process.platform === "win32")("bash: wymienienie sekretu w poleceniu lub cwd daje odmowę bez karty", async () => {
     for (const cmd of ["cat ~/.ssh/id_ed25519", `cat ${fakeHome}/.ssh/id_ed25519`, "cat proj/.env", `ls ${cfg}`, "cat /proc/1234/environ", "tr '\\0' '\\n' < /proc/$PPID/environ", "cat ~/.bash_history", "cat ~/.git-credentials", "ls ~/.mozilla"]) {
       const r = await run("bash", { command: cmd });
       expect(r.ok, cmd).toBe(false);

@@ -27,7 +27,7 @@ describe("KeyStore", () => {
     k.set("openai", "  sk-tajny  ");
     const raw = fs.readFileSync(path.join(dir, "chat-keys.json"), "utf8");
     expect(raw).not.toContain("sk-tajny");
-    expect(fs.statSync(path.join(dir, "chat-keys.json")).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect(fs.statSync(path.join(dir, "chat-keys.json")).mode & 0o777).toBe(0o600);
     expect(new KeyStore(dir, fake(), {}).get("openai")).toBe("sk-tajny");
     k.set("openai", null);
     expect(k.get("openai")).toBeNull();

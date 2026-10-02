@@ -4,7 +4,7 @@
 import { spawn } from "node:child_process";
 import { DEFAULT_PROVIDERS } from "../../../src/chat";
 import { childEnv } from "../env";
-import { signalTree, spawnPlan } from "../platform";
+import { groupSpawn, signalTree, spawnPlan } from "../platform";
 
 const DEFAULT_KEY_ENVS = DEFAULT_PROVIDERS.flatMap((p) => (p.keyEnv ? [p.keyEnv] : []));
 
@@ -48,7 +48,7 @@ export function runProc(
   return new Promise((resolve, reject) => {
     const env = opts.env ?? botEnv();
     const plan = spawnPlan(program, args, { env });
-    const child = spawn(plan.command, plan.args, { cwd: opts.cwd, env, stdio: ["ignore", "pipe", "pipe"], detached: true, windowsHide: true, windowsVerbatimArguments: plan.verbatim });
+    const child = spawn(plan.command, plan.args, { cwd: opts.cwd, env, stdio: ["ignore", "pipe", "pipe"], detached: groupSpawn(), windowsHide: true, windowsVerbatimArguments: plan.verbatim });
     const chunks: Buffer[] = [];
     let size = 0;
     let truncated = false;

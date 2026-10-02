@@ -4,9 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import { commandExists, commandsAvailable } from "./commands";
 
+/** Pliki w nowym katalogu. Na Windows o tym, że plik jest programem, decyduje rozszerzenie z PATHEXT,
+ *  a nie bit x: „wykonywalny” dostaje `.cmd`, reszta zostaje bez rozszerzenia. */
 function bin(files: Record<string, number>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "roost-cmd-"));
-  for (const [name, mode] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), "#!/bin/sh\n", { mode });
+  for (const [name, mode] of Object.entries(files)) {
+    const file = process.platform === "win32" && mode & 0o111 ? `${name}.cmd` : name;
+    fs.writeFileSync(path.join(dir, file), "#!/bin/sh\n", { mode });
+  }
   return dir;
 }
 

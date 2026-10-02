@@ -7,7 +7,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { TtsProvider } from "../../../src/voice/voice";
 import { defaultPiperCommand, MAX_TEXT, Piper, speakHttp, ttsConfigLoad, ttsConfigSave, TtsService, voiceConfigSave } from "./tts";
 
-const FAKE = path.join(__dirname, "fixtures", "fake-piper.mjs");
+const FAKE_MJS = path.join(__dirname, "fixtures", "fake-piper.mjs");
+/** Windows nie uruchomi `.mjs` z shebangiem: atrapa dostaje opakowanie `.cmd` (jak program z pip/npm). */
+const FAKE = process.platform === "win32" ? winWrapper(FAKE_MJS) : FAKE_MJS;
+function winWrapper(script: string): string {
+  const cmd = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "aw-fake-piper-")), "piper.cmd");
+  fs.writeFileSync(cmd, `@"${process.execPath}" "${script}" %*\r\n`);
+  return cmd;
+}
 const text = (a: Uint8Array) => Buffer.from(a).toString("utf8");
 
 let dir = "";
@@ -221,7 +228,12 @@ describe("TtsService", () => {
 
 describe("defaultPiperCommand", () => {
   const has = (...files: string[]) => (f: string) => files.includes(f);
-  it("woli piper-tts (Arch/AUR), potem piper", () => {
+  it.runIf(process.platform === "win32")("Windows: piper-tts.exe / piper.exe", () => {
+    expect(defaultPiperCommand("C:\\a;C:\\b", has("C:\\b\\piper.exe", "C:\\b\\piper-tts.exe"))).toBe("piper-tts");
+    expect(defaultPiperCommand("C:\\a;C:\\b", has("C:\\a\\piper.exe"))).toBe("piper");
+    expect(defaultPiperCommand("C:\\a", has("C:\\a\\piper"))).toBe("piper");
+  });
+  it.skipIf(process.platform === "win32")("woli piper-tts (Arch/AUR), potem piper", () => {
     expect(defaultPiperCommand("/a:/b", has("/b/piper", "/b/piper-tts"))).toBe("piper-tts");
     expect(defaultPiperCommand("/a:/b", has("/a/piper"))).toBe("piper");
   });

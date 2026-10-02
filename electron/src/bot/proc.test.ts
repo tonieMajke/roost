@@ -3,7 +3,9 @@ import { botEnv, runProc, stripSecrets } from "./proc";
 
 const opts = (extra: Partial<Parameters<typeof runProc>[2]> = {}) => ({ cwd: "/tmp", timeoutMs: 5000, maxBytes: 1024, signal: new AbortController().signal, ...extra });
 
-describe("runProc", () => {
+const WIN = process.platform === "win32";
+
+describe.skipIf(WIN)("runProc", () => {
   it("stdout i stderr, kod wyjścia", async () => {
     const r = await runProc("/bin/sh", ["-c", "echo out; echo err >&2; exit 3"], opts());
     expect(r.out).toContain("out");
@@ -31,6 +33,48 @@ describe("runProc", () => {
   });
   it("brak programu = odrzucenie", async () => {
     await expect(runProc("nie-ma-takiego-programu-xyz", [], opts())).rejects.toThrow("nie uruchomiono");
+  });
+});
+
+/** Windows: bez /bin/sh; limit czasu i Stop muszą zabić też wnuka (taskkill /T). */
+describe.runIf(WIN)("runProc (Windows)", () => {
+  const ps = (script: string) => ["-NoProfile", "-NonInteractive", "-Command", script];
+  const alive = (pid: number) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const winOpts = (extra: Partial<Parameters<typeof runProc>[2]> = {}) => opts({ cwd: process.cwd(), ...extra });
+
+  it("stdout i stderr, kod wyjścia", async () => {
+    const r = await runProc("cmd.exe", ["/d", "/c", "echo out& echo err 1>&2& exit 3"], winOpts());
+    expect(r.out).toContain("out");
+    expect(r.out).toContain("err");
+    expect(r.code).toBe(3);
+  });
+  it("limit czasu zabija całe drzewo, też wnuka", async () => {
+    const t = Date.now();
+    const r = await runProc("powershell.exe", ps("$c = Start-Process ping -ArgumentList '-n','31','127.0.0.1' -NoNewWindow -PassThru; Write-Output \"PID=$($c.Id)\"; $c.WaitForExit()"), winOpts({ timeoutMs: 3000 }));
+    expect(r.timedOut).toBe(true);
+    expect(Date.now() - t).toBeLessThan(8000);
+    const child = Number(/PID=(\d+)/.exec(r.out)?.[1]);
+    expect(child).toBeGreaterThan(0);
+    await new Promise((res) => setTimeout(res, 500));
+    expect(alive(child)).toBe(false);
+  }, 15000);
+  it("Stop przerywa", async () => {
+    const ctl = new AbortController();
+    setTimeout(() => ctl.abort(), 300);
+    const t = Date.now();
+    const r = await runProc("cmd.exe", ["/d", "/c", "ping -n 30 127.0.0.1"], winOpts({ signal: ctl.signal }));
+    expect(r.code).not.toBe(0);
+    expect(Date.now() - t).toBeLessThan(5000);
+  }, 10000);
+  it("brak programu = odrzucenie", async () => {
+    await expect(runProc("nie-ma-takiego-programu-xyz", [], winOpts())).rejects.toThrow("nie uruchomiono");
   });
 });
 

@@ -5,7 +5,7 @@ import { t } from "./i18n";
 import { spawn } from "node:child_process";
 import os from "node:os";
 import { childEnv } from "./env";
-import { spawnPlan } from "./platform";
+import { killChild, spawnPlan } from "./platform";
 
 const TIMEOUT_MS = 60_000;
 const PI_TIMEOUT_MS = 120_000; // lokalny model bywa wolniejszy niż Haiku
@@ -42,7 +42,7 @@ export function run(program: string, args: string[], input: string, timeoutMs: n
     child.stdin.end(input); // zamknięcie stdin = koniec wejścia
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill("SIGKILL");
+      killChild(child);
     }, timeoutMs);
     child.on("error", (e) => {
       clearTimeout(timer);

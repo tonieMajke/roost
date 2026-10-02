@@ -235,7 +235,7 @@ export function parseBot(raw: unknown): { bot: BotDef | null; errors: string[] }
   if (m && typeof m.provider === "string" && typeof m.model === "string") bot.model = { provider: m.provider, model: m.model };
   else if (m != null) errors.push(t("bot.err.badModel", { where }));
   if (Array.isArray(r.folders)) {
-    bot.folders = r.folders.filter((f): f is string => typeof f === "string" && f.startsWith("/"));
+    bot.folders = r.folders.filter((f): f is string => typeof f === "string" && isAbsolutePath(f));
     if (bot.folders.length !== r.folders.length) errors.push(t("bot.err.folders", { where }));
   }
   const tl = r.tools as Record<string, unknown> | undefined;
@@ -618,7 +618,21 @@ export type ApprovalContext = {
 
 export type Verdict = "allow" | "ask" | "deny";
 
-export const isInside = (p: string, dir: string) => p === dir || p.startsWith(dir.endsWith("/") ? dir : `${dir}/`);
+/** Ścieżka Windows (`C:\…`, `\\serwer\…`): porównywana bez względu na wielkość liter i rodzaj ukośnika,
+ *  bo tak ją traktuje system plików (`C:\Users\Ja\.SSH` to ten sam katalog co `c:/users/ja/.ssh`). */
+const isWinPath = (p: string) => /^[a-zA-Z]:[\\/]/.test(p) || p.startsWith("\\\\");
+const pathKey = (p: string) => (isWinPath(p) ? p.replace(/\\/g, "/").toLowerCase() : p);
+
+export const isInside = (p: string, dir: string) => {
+  const a = pathKey(p);
+  const key = pathKey(dir);
+  // `/a/` to ten sam katalog co `/a`; korzeń (`/`, `c:/`) zostaje z ukośnikiem
+  const d = key.length > 1 && key.endsWith("/") && !/^[a-z]:\/$/.test(key) ? key.slice(0, -1) : key;
+  return a === d || a.startsWith(d.endsWith("/") ? d : `${d}/`);
+};
+
+/** Ścieżka bezwzględna: uniksowa albo Windows (`C:\…`, `\\serwer\…`). */
+export const isAbsolutePath = (p: string) => p.startsWith("/") || isWinPath(p);
 
 /** Polecenie, które da się porównać z prefiksem: bez łączenia poleceń, przekierowań i podstawień. */
 const PLAIN_CMD = /^[^;&|`$<>\n\r\\(){}]*$/;
@@ -808,6 +822,11 @@ export const SENSITIVE_HOME = [
   ".bash_history", ".zsh_history", ".local/share/fish/fish_history", ".python_history",
   // profile przeglądarek (ciasteczka, zapisane hasła)
   ".mozilla", ".librewolf", ".config/chromium", ".config/google-chrome", ".config/BraveSoftware", ".config/vivaldi",
+  // Windows: profile przeglądarek, klucze DPAPI, poświadczenia, historia PowerShella, tokeny CLI
+  "AppData/Roaming/Mozilla", "AppData/Local/Google/Chrome/User Data", "AppData/Local/Microsoft/Edge/User Data",
+  "AppData/Local/BraveSoftware", "AppData/Local/Vivaldi", "AppData/Roaming/Microsoft/Protect", "AppData/Roaming/Microsoft/Credentials",
+  "AppData/Local/Microsoft/Credentials", "AppData/Roaming/Microsoft/Windows/PowerShell/PSReadLine", "AppData/Roaming/gcloud",
+  "AppData/Roaming/GitHub CLI",
 ];
 const SENSITIVE_NAME = /^(\.env(\..+)?|.+\.pem|.+\.key|id_(rsa|dsa|ecdsa|ed25519))$/i;
 /** Środowisko i pamięć dowolnego procesu (w tym Electrona z kluczami API w env). */
@@ -817,7 +836,7 @@ const TEMPLATE_NAME = /\.(example|sample|template|dist)$/i;
 export const SENSITIVE_GLOBS = ["!**/.env", "!**/.env.*", "!**/*.pem", "!**/*.key", "!**/id_rsa", "!**/id_dsa", "!**/id_ecdsa", "!**/id_ed25519"];
 
 function sensitiveRoots(env: SensitiveEnv): string[] {
-  return [...SENSITIVE_HOME.map((r) => `${env.home.replace(/\/$/, "")}/${r}`), ...env.configDirs];
+  return [...SENSITIVE_HOME.map((r) => `${env.home.replace(/[\\/]$/, "")}/${r}`), ...env.configDirs];
 }
 
 /** Czy ścieżka (po `realpath`) wskazuje na sekrety: klucze SSH/chmur, tokeny CLI, pliki `.env`, `*.pem`,
@@ -826,14 +845,14 @@ export function isSensitivePath(p: string, env: SensitiveEnv): boolean {
   if (env.exempt?.some((e) => isInside(p, e))) return false;
   if (sensitiveRoots(env).some((r) => isInside(p, r))) return true;
   if (PROC_SECRET.test(p)) return true;
-  const name = p.slice(p.lastIndexOf("/") + 1);
+  const name = p.slice(Math.max(p.lastIndexOf("/"), isWinPath(p) ? p.lastIndexOf("\\") : -1) + 1);
   return SENSITIVE_NAME.test(name) && !TEMPLATE_NAME.test(name);
 }
 
 /** Czy `grep` po tym folderze wszedłby do wrażliwego korzenia (np. `grep -r` po `~`). */
 export function containsSensitiveRoot(dir: string, env: SensitiveEnv): boolean {
   if (env.exempt?.some((e) => isInside(dir, e))) return false;
-  return sensitiveRoots(env).some((r) => r !== dir && isInside(r, dir));
+  return sensitiveRoots(env).some((r) => pathKey(r) !== pathKey(dir) && isInside(r, dir));
 }
 
 /** Heurystyka dla `bash`: polecenie, które wprost wymienia wrażliwą ścieżkę. Best effort – powłoka da się

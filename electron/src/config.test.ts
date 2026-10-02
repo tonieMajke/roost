@@ -140,7 +140,8 @@ describe("config", () => {
       expect(fs.readFileSync(path.join(legacy, "workspace.json"), "utf8")).toBe("old");
     });
 
-    it("po migracji katalog ma 0700, a pliki z sekretami 0600 (reszta bez zmian)", () => {
+    // Windows: bez uniksowych praw (profil chronią ACL), `tightenSecretPerms` nic nie robi
+    it.skipIf(process.platform === "win32")("po migracji katalog ma 0700, a pliki z sekretami 0600 (reszta bez zmian)", () => {
       const legacy = legacyWith();
       fs.mkdirSync(path.join(legacy, "pi-agent"));
       for (const f of ["accounts.json", "chat-keys.json", "pi-agent/web-search.json", "agents.json"]) {
@@ -194,7 +195,7 @@ describe("config", () => {
     });
   });
 
-  it("writeAtomic z mode: plik 0600, także gdy stary .tmp był szerszy", () => {
+  it.skipIf(process.platform === "win32")("writeAtomic z mode: plik 0600, także gdy stary .tmp był szerszy", () => {
     const dir = tempDir();
     const file = path.join(dir, "k.json");
     fs.writeFileSync(`${file}.tmp`, "stare", { mode: 0o644 });
@@ -204,7 +205,7 @@ describe("config", () => {
     expect(fs.readdirSync(dir)).toEqual(["k.json"]);
   });
 
-  it("accountsSave zapisuje z 0600", () => {
+  it.skipIf(process.platform === "win32")("accountsSave zapisuje z 0600", () => {
     const dir = tempDir();
     accountsSave("{}", dir);
     expect(fs.statSync(path.join(dir, "accounts.json")).mode & 0o777).toBe(0o600);
@@ -241,10 +242,11 @@ describe("config", () => {
       expect(resolveClaudeResume(id, "/home/u/proj", null, root)).toEqual({ cwd: "/home/u/proj", resume: false });
     });
     it("legacyCwdFor mapuje ścieżki pod configDir", () => {
-      expect(legacyCwdFor("/c/roost/bots/b/work", "/c/roost", "/c/agents")).toBe("/c/agents/bots/b/work");
-      expect(legacyCwdFor("/c/roost", "/c/roost", "/c/agents")).toBe("/c/agents");
-      expect(legacyCwdFor("/home/u/proj", "/c/roost", "/c/agents")).toBeNull();
-      expect(legacyCwdFor("/c/roost-x", "/c/roost", "/c/agents")).toBeNull();
+      const p = (...s: string[]) => path.join("/c", ...s); // na Windows `\c\…`, jak ścieżki z systemu
+      expect(legacyCwdFor(p("roost", "bots", "b", "work"), p("roost"), p("agents"))).toBe(p("agents", "bots", "b", "work"));
+      expect(legacyCwdFor(p("roost"), p("roost"), p("agents"))).toBe(p("agents"));
+      expect(legacyCwdFor(path.join("/home", "u", "proj"), p("roost"), p("agents"))).toBeNull();
+      expect(legacyCwdFor(p("roost-x"), p("roost"), p("agents"))).toBeNull();
     });
   });
 });

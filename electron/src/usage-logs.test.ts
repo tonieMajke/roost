@@ -100,10 +100,10 @@ describe("foldery logów", () => {
       "/h",
     );
     expect(roots.filter((r) => r.kind === "claude").map((r) => [r.dir, r.account])).toEqual([
-      ["/h/.claude/projects", undefined],
-      ["/x/claude-praca/projects", "praca"],
+      [path.join("/h", ".claude", "projects"), undefined],
+      [path.join("/x", "claude-praca", "projects"), "praca"],
     ]);
-    expect(roots.some((r) => r.dir === "/x/codex/sessions" && r.account === "cx")).toBe(true);
+    expect(roots.some((r) => r.dir === path.join("/x", "codex", "sessions") && r.account === "cx")).toBe(true);
   });
 });
 
@@ -182,6 +182,7 @@ describe("UsageScanner", () => {
 
 describe("chatLogExcludes", () => {
   it("obejmuje chat-cwd i bots w nowym i starym katalogu", () => {
-    expect(chatLogExcludes("/c/roost", "/c/agents")).toEqual(["/c/roost/chat-cwd", "/c/roost/bots", "/c/agents/chat-cwd", "/c/agents/bots"]);
+    const p = (...s: string[]) => path.join("/c", ...s);
+    expect(chatLogExcludes(p("roost"), p("agents"))).toEqual([p("roost", "chat-cwd"), p("roost", "bots"), p("agents", "chat-cwd"), p("agents", "bots")]);
   });
 });

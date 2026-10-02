@@ -86,9 +86,9 @@ describe("limits", () => {
 
 describe("limity per konto", () => {
   it("limitsFile: domyślne bez zmiany, konto we własnym pliku, id nie wychodzi poza folder", () => {
-    expect(limitsFile("/c")).toBe(`/c/${LIMITS_FILE}`);
-    expect(limitsFile("/c", "praca")).toBe("/c/claude-limits.praca.json");
-    expect(limitsFile("/c", "../../x")).toBe("/c/claude-limits.______x.json");
+    expect(limitsFile("/c")).toBe(path.join("/c", LIMITS_FILE));
+    expect(limitsFile("/c", "praca")).toBe(path.join("/c", "claude-limits.praca.json"));
+    expect(limitsFile("/c", "../../x")).toBe(path.join("/c", "claude-limits.______x.json"));
   });
 
   it("konto czyta i zapisuje własny plik, nie plik domyślnego", () => {

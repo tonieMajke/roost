@@ -11,7 +11,7 @@ import { activeTts, parseTtsConfig, parseVoiceConfig, ttsKeyId, type TtsProvider
 import { writeAtomic } from "../config";
 import { httpError, isAbort, networkError } from "../chat/http";
 import { childEnv } from "../env";
-import { isWindows, pathValue } from "../platform";
+import { isWindows, killChild, pathValue, spawnPlan } from "../platform";
 
 const TIMEOUT_MS = 30_000;
 /** Zdanie dłuższe niż to jest błędem cięcia, nie mową. */
@@ -116,7 +116,9 @@ export class Piper {
     this.dir = fs.mkdtempSync(path.join(os.tmpdir(), "aw-piper-"));
     const args = ["--model", expandHome(model), "--output_dir", this.dir, "--quiet"];
     if (/^\d+$/.test(speaker)) args.push("--speaker", speaker);
-    this.child = spawn(expandHome(command), args, { env: childEnv({}, process.env), stdio: ["pipe", "pipe", "pipe"] });
+    const env = childEnv({}, process.env);
+    const plan = spawnPlan(expandHome(command), args, { env });
+    this.child = spawn(plan.command, plan.args, { env, stdio: ["pipe", "pipe", "pipe"], windowsHide: true, windowsVerbatimArguments: plan.verbatim });
     this.child.stdout.setEncoding("utf8");
     this.child.stderr.setEncoding("utf8");
     this.child.stdout.on("data", (d: string) => this.onOut(d));
@@ -183,7 +185,10 @@ export class Piper {
   close() {
     this.fail(new Error(tr("tts.closed")));
     this.child.stdin.end();
-    if (this.child.exitCode === null && this.child.signalCode === null) this.child.kill("SIGTERM");
+    if (this.child.exitCode !== null || this.child.signalCode !== null) return;
+    // Windows: bez SIGTERM; całe drzewo, bo `.cmd` uruchamia Pipera przez cmd.exe
+    if (isWindows) killChild(this.child);
+    else this.child.kill("SIGTERM");
   }
 }
 
