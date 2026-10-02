@@ -27,6 +27,7 @@ const pl = {
   "main.bridge": "most narzędzi: {msg}",
   "main.noStt": "nie wybrano silnika transkrypcji (Ustawienia głosu)",
   "main.badSkill": "zła nazwa skilla: {name}",
+  "main.avatarNotPicked": "awatar: plik nie pochodzi z wyboru w oknie dialogowym",
   "main.badBotChat": "zła rozmowa bota",
   "dialog.dir": "Katalog projektu",
   "dialog.avatar": "Obrazek awatara",
@@ -110,6 +111,15 @@ const pl = {
   "appr.botUpdate": "Zmienić bota „{name}”?",
   "appr.botCreate": "Utworzyć bota „{name}”?",
   "appr.tool": "Użyć narzędzia {tool}?",
+  "appr.fetch": "Pobrać stronę z tego adresu?",
+  "appr.fetch.private": "Adres lokalny/prywatny (ten komputer, sieć domowa lub metadane chmury).",
+  "appr.fetch.long": "Bardzo długie zapytanie w adresie: tak można wysłać dane na zewnątrz.",
+  "appr.fetch.encoded": "W adresie jest długi ciąg zakodowanych danych (base64/hex).",
+  "appr.fetch.userinfo": "Adres zawiera login/hasło przed nazwą hosta.",
+  "web.routineBlocked": "adres wymaga zgody użytkownika (lokalny/prywatny lub podejrzanie długi), a przebieg działa bez człowieka: {url}",
+  "web.privateRedirect": "przekierowanie na adres lokalny/prywatny ({host}) odrzucone; jeśli to zamierzone, wywołaj web_fetch bezpośrednio z tym adresem (użytkownik zatwierdzi)",
+  "web.privateResolved": "{host} wskazuje na adres lokalny/prywatny; nazwa nie jest zaufana; jeśli to zamierzone, użyj bezpośrednio adresu IP (użytkownik zatwierdzi)",
+  "web.tooManyRedirects": "za dużo przekierowań (max 5)",
 } as const;
 
 const en: Record<keyof typeof pl, string> = {
@@ -137,6 +147,7 @@ const en: Record<keyof typeof pl, string> = {
   "main.bridge": "tool bridge: {msg}",
   "main.noStt": "no transcription engine selected (Voice settings)",
   "main.badSkill": "invalid skill name: {name}",
+  "main.avatarNotPicked": "avatar: the file was not chosen in the file dialog",
   "main.badBotChat": "invalid bot chat",
   "dialog.dir": "Project folder",
   "dialog.avatar": "Avatar image",
@@ -220,6 +231,15 @@ const en: Record<keyof typeof pl, string> = {
   "appr.botUpdate": "Change bot “{name}”?",
   "appr.botCreate": "Create bot “{name}”?",
   "appr.tool": "Use tool {tool}?",
+  "appr.fetch": "Fetch the page at this address?",
+  "appr.fetch.private": "Local/private address (this computer, home network or cloud metadata).",
+  "appr.fetch.long": "Very long query in the address: this is a way to send data out.",
+  "appr.fetch.encoded": "The address holds a long run of encoded data (base64/hex).",
+  "appr.fetch.userinfo": "The address has a login/password before the host name.",
+  "web.routineBlocked": "the address needs user approval (local/private or suspiciously long) and the run has no human: {url}",
+  "web.privateRedirect": "redirect to a local/private address ({host}) rejected; if intended, call web_fetch with that address directly (the user will approve)",
+  "web.privateResolved": "{host} resolves to a local/private address; the name is not trusted; if intended, use the IP address directly (the user will approve)",
+  "web.tooManyRedirects": "too many redirects (max 5)",
 };
 
 import { setLang } from "../../src/i18n";

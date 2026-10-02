@@ -12,6 +12,7 @@ import {
   isSkillName,
   MEMORY_LIMIT,
   memoryEdit,
+  fetchRisk,
   needsApproval,
   newBot,
   parseBot,
@@ -36,7 +37,7 @@ import { expand } from "../env";
 import type { ApprovalBroker } from "./approvals";
 import { runProc } from "./proc";
 import type { BotStore, ChatKind } from "./store";
-import { webFetch, webSearch } from "./web";
+import { type FetchOpts, webFetch, webSearch } from "./web";
 
 export type JsonSchema = Record<string, unknown>;
 export type ToolDef = { name: ToolName; description: string; parameters: JsonSchema };
@@ -69,7 +70,7 @@ export type ToolContext = {
   signal: AbortSignal;
   /** Model rozmowy: bot z `bot_create` bez `model` dostaje ten sam. */
   model?: ModelRef;
-  web?: { search(q: string, signal: AbortSignal): Promise<string>; fetch(url: string, signal: AbortSignal): Promise<string> };
+  web?: { search(q: string, signal: AbortSignal): Promise<string>; fetch(url: string, signal: AbortSignal, opts?: FetchOpts): Promise<string> };
   now?: () => number;
 };
 
@@ -243,6 +244,11 @@ function approvalText(tool: ToolName, a: Record<string, unknown>, ctx: ToolConte
       const diff = (pre: string, t: string) => t.split("\n").map((l) => `${pre} ${l}`).join("\n");
       return { title: t("appr.edit", { p }), detail: clip(`${diff("-", str(a.old) ?? "")}\n${diff("+", str(a.new) ?? "")}`) };
     }
+    case "web_fetch": {
+      const url = str(a.url) ?? "";
+      const why = fetchRisk(url).map((r) => t(`appr.fetch.${r}`));
+      return { title: t("appr.fetch"), detail: `${url}\n\n${why.join("\n")}` };
+    }
     case "bash":
       return { title: t("appr.bash"), detail: `${str(a.command) ?? ""}\n\n${t("appr.in")}: ${str(a.cwd) ?? ctx.store.work(ctx.bot.id)}` };
     case "bot_create":
@@ -280,6 +286,8 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
   // Przebieg: polecenie z listy zgód z góry, ale tylko w katalogu roboczym albo folderach bota.
   const cwd = str(args.cwd);
   if (tool === "bash" && ctx.routine && verdict === "allow" && cwd && !isInside(cwd, workReal) && !folders.some((f) => isInside(cwd, f))) verdict = "ask";
+  if (tool === "web_fetch" && ctx.routine && fetchRisk(str(args.url) ?? "").length > 0)
+    return { ok: false, text: t("web.routineBlocked", { url: str(args.url) ?? "" }), approval: "auto" };
   if (verdict === "deny") return { ok: false, text: `narzędzie ${tool} jest wyłączone dla tego bota`, approval: "auto" };
   // Kreator: błędy w definicji wracają do modelu, zanim użytkownik zobaczy kartę zgody.
   let plan: CreatorPlan | undefined;
@@ -295,7 +303,7 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
     const prefix = tool === "bash" ? commandPrefix(str(args.command) ?? "") : undefined;
     const dir = pathTools.includes(tool) && str(args.path) !== undefined ? grantDir(tool, str(args.path) as string) : undefined;
     const decision = await ctx.broker.request(
-      { bot: ctx.bot.id, chat: ctx.chat, tool, ...approvalText(tool, args, ctx, plan), canGrant: tool === "bash" ? prefix !== null : dir !== null },
+      { bot: ctx.bot.id, chat: ctx.chat, tool, ...approvalText(tool, args, ctx, plan), canGrant: tool === "web_fetch" ? false : tool === "bash" ? prefix !== null : dir !== null },
       ctx.signal,
     );
     approval = decision;
@@ -304,11 +312,11 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
     if (decision === "chat") {
       if (prefix) ctx.grants.push({ tool, prefix });
       else if (dir) ctx.grants.push({ tool, dir });
-      else if (!pathTools.includes(tool) && tool !== "bash") ctx.grants.push({ tool });
+      else if (!pathTools.includes(tool) && tool !== "bash" && tool !== "web_fetch") ctx.grants.push({ tool });
     }
   }
   try {
-    return { ok: true, text: plan ? applyPlan(plan, ctx) : await exec(tool, args, ctx), approval };
+    return { ok: true, text: plan ? applyPlan(plan, ctx) : await exec(tool, args, ctx, approval !== "auto"), approval };
   } catch (e) {
     if (ctx.signal.aborted) return { ok: false, text: "przerwane (Stop)", approval };
     const msg = e instanceof ToolError ? e.message : e instanceof Error ? e.message.replace(/^(\w+): /, "") : String(e);
@@ -316,7 +324,15 @@ export async function runTool(name: string, rawArgs: unknown, ctx: ToolContext):
   }
 }
 
-async function exec(tool: ToolName, a: Record<string, unknown>, ctx: ToolContext): Promise<string> {
+const safeHost = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return undefined;
+  }
+};
+
+async function exec(tool: ToolName, a: Record<string, unknown>, ctx: ToolContext, approved = false): Promise<string> {
   const { store, bot } = ctx;
   switch (tool) {
     case "read_file":
@@ -347,7 +363,11 @@ async function exec(tool: ToolName, a: Record<string, unknown>, ctx: ToolContext
     case "web_search":
       return (ctx.web?.search ?? webSearch)(need(a, "query"), ctx.signal);
     case "web_fetch":
-      return (ctx.web?.fetch ?? webFetch)(need(a, "url"), ctx.signal);
+    {
+      // Zgoda na adres prywatny dotyczy dokładnie tego host:port; przekierowania na inne hosty prywatne są odrzucane.
+      const url = need(a, "url");
+      return (ctx.web?.fetch ?? webFetch)(url, ctx.signal, { allowPrivate: approved && fetchRisk(url).includes("private") ? safeHost(url) : undefined });
+    }
     case "memory":
       return memory(a, ctx);
     case "history_search":

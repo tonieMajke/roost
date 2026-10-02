@@ -1,6 +1,9 @@
 //! Sieć dla narzędzi bota: `web_search` (DuckDuckGo HTML, bez klucza) i `web_fetch`
 //! (strona jako tekst). Dostawcy CLI mają własne WebSearch/WebFetch; to jest dla reszty.
 
+import { lookup as dnsLookup } from "node:dns/promises";
+import { isIP } from "node:net";
+import { isPrivateHost } from "../../../src/bot";
 import { t } from "../i18n";
 const UA = "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0";
 const FETCH_TIMEOUT = 20_000;
@@ -77,10 +80,10 @@ export function formatResults(query: string, results: SearchResult[]): string {
   return results.map((r, i) => `[${i + 1}] ${r.title}\n${r.url}\n${r.snippet}`).join("\n\n");
 }
 
-async function get(url: string, signal: AbortSignal): Promise<Response> {
+async function get(url: string, signal: AbortSignal, redirect: "follow" | "manual" = "follow"): Promise<Response> {
   const timeout = AbortSignal.timeout(FETCH_TIMEOUT);
   try {
-    return await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5" }, signal: AbortSignal.any([signal, timeout]), redirect: "follow" });
+    return await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5" }, signal: AbortSignal.any([signal, timeout]), redirect });
   } catch (e) {
     if (timeout.aborted && !signal.aborted) throw new Error(`${new URL(url).host} nie odpowiada (20 s)`);
     throw e;
@@ -119,8 +122,36 @@ export async function webSearch(query: string, signal: AbortSignal, limit = 8): 
   return formatResults(q, results.slice(0, limit));
 }
 
-/** Strona jako tekst (≤ 30 KB). Tylko http(s); adresy lokalne też, bo bot może czytać własny serwer deweloperski. */
-export async function webFetch(url: string, signal: AbortSignal): Promise<string> {
+export type FetchOpts = {
+  /** `host:port`, na który użytkownik zgodził się mimo adresu lokalnego/prywatnego; tylko ten host, także po przekierowaniu. */
+  allowPrivate?: string;
+  /** Do testów: rozwiązywanie nazw. */
+  resolve?: (host: string) => Promise<string[]>;
+};
+
+export const MAX_REDIRECTS = 5;
+
+const resolveAll = async (host: string) => (await dnsLookup(host, { all: true })).map((a) => a.address);
+
+/** Odrzuca adres lokalny/prywatny (tekstowo i po rozwiązaniu DNS), chyba że to host zatwierdzony przez użytkownika. */
+async function guardHost(u: URL, opts: FetchOpts, hop: boolean): Promise<void> {
+  if (opts.allowPrivate !== undefined && u.host === opts.allowPrivate) return;
+  if (isPrivateHost(u.hostname)) throw new Error(hop ? t("web.privateRedirect", { host: u.host }) : t("web.privateResolved", { host: u.host }));
+  const bare = u.hostname.replace(/^\[|\]$/g, "");
+  if (isIP(bare)) return; // literał IP już sprawdzony wyżej
+  let addrs: string[];
+  try {
+    addrs = await (opts.resolve ?? resolveAll)(bare);
+  } catch {
+    return; // brak DNS: fetch sam zgłosi błąd
+  }
+  if (addrs.some((a) => isPrivateHost(a))) throw new Error(t("web.privateResolved", { host: u.host }));
+}
+
+/** Strona jako tekst (≤ 30 KB). Tylko http(s). Adresy lokalne/prywatne (bot czyta np. własny serwer deweloperski)
+ *  tylko za zgodą (`opts.allowPrivate`, ustalane przez wywołującego); przekierowania ręcznie, max 5 skoków,
+ *  każdy host sprawdzany od nowa (tekst + DNS). Zostaje wąskie okno DNS-rebinding między sprawdzeniem a połączeniem. */
+export async function webFetch(url: string, signal: AbortSignal, opts: FetchOpts = {}): Promise<string> {
   let u: URL;
   try {
     u = new URL(url);
@@ -128,14 +159,29 @@ export async function webFetch(url: string, signal: AbortSignal): Promise<string
     throw new Error(t("web.badUrl", { url }));
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("tylko adresy http(s)");
-  const res = await get(u.href, signal);
+  const first = u.href;
+  let res: Response;
+  for (let hop = 0; ; hop++) {
+    await guardHost(u, opts, hop > 0);
+    res = await get(u.href, signal, "manual");
+    const loc = res.headers.get("location");
+    if (res.status < 300 || res.status >= 400 || !loc) break;
+    await res.body?.cancel();
+    if (hop >= MAX_REDIRECTS) throw new Error(t("web.tooManyRedirects"));
+    try {
+      u = new URL(loc, u);
+    } catch {
+      throw new Error(t("web.badUrl", { url: loc }));
+    }
+    if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("tylko adresy http(s)");
+  }
   const type = res.headers.get("content-type") ?? "";
   if (!res.ok) throw new Error(`HTTP ${res.status} dla ${u.href}`);
   if (type && !/text\/|json|xml|javascript/.test(type)) throw new Error(`nie tekst (${type.split(";")[0]})`);
   const { text: raw, capped } = await readCapped(res, MAX_DOWNLOAD);
   const isHtml = /html/.test(type) || /^\s*<(!doctype|html)/i.test(raw);
   const { title, text } = isHtml ? htmlToText(raw) : { title: "", text: raw };
-  let out = `${title ? `# ${title}\n` : ""}${res.url !== u.href ? `(po przekierowaniu: ${res.url})\n` : ""}\n${text}`;
+  let out = `${title ? `# ${title}\n` : ""}${u.href !== first ? `(po przekierowaniu: ${u.href})\n` : ""}\n${text}`;
   if (out.length > FETCH_LIMIT) out = `${out.slice(0, FETCH_LIMIT)}\n… [ucięte, strona ma ${out.length} znaków]`;
   else if (capped) out += "\n… [strona większa niż 2 MB, reszta pominięta]";
   return out;

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-import { decodeEntities, formatResults, htmlToText, parseDdg } from "./web";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { decodeEntities, formatResults, htmlToText, parseDdg, webFetch } from "./web";
 
 const fixture = (name: string) => fs.readFileSync(path.join(__dirname, "fixtures", name), "utf8");
 
@@ -42,5 +42,56 @@ describe("htmlToText", () => {
   });
   it("encje spoza zakresu zostają", () => {
     expect(decodeEntities("&#99999999; &bogus; &lt;")).toBe("&#99999999; &bogus; <");
+  });
+});
+
+describe("webFetch: przekierowania i DNS", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const sig = new AbortController().signal;
+  const redirect = (to: string) => new Response(null, { status: 302, headers: { location: to } });
+  const page = () => new Response("ok", { status: 200, headers: { "content-type": "text/plain" } });
+  const pub = async () => ["93.184.216.34"];
+  const stub = (f: (url: string) => Response) => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      expect(init.redirect).toBe("manual");
+      calls.push(url);
+      return f(url);
+    });
+    return calls;
+  };
+
+  it("publiczny adres z przekierowaniem działa", async () => {
+    stub((u) => (u === "https://a.com/" ? redirect("/b") : page()));
+    expect(await webFetch("https://a.com/", sig, { resolve: pub })).toContain("ok");
+  });
+  it("skok z publicznego na prywatny jest odrzucony i nie jest pobierany", async () => {
+    const calls = stub((u) => (u.startsWith("https://a.com") ? redirect("http://169.254.169.254/latest") : page()));
+    await expect(webFetch("https://a.com/", sig, { resolve: pub })).rejects.toThrow(/przekierowanie|redirect/);
+    expect(calls).toEqual(["https://a.com/"]);
+  });
+  it("nazwa wskazująca na 127.0.0.1 jest odrzucona (DNS)", async () => {
+    const calls = stub(page);
+    await expect(webFetch("https://evil.com/", sig, { resolve: async () => ["127.0.0.1"] })).rejects.toThrow();
+    expect(calls).toEqual([]);
+  });
+  it("rebinding na kolejnym skoku", async () => {
+    stub((u) => (u.includes("a.com") ? redirect("https://b.com/") : page()));
+    await expect(webFetch("https://a.com/", sig, { resolve: async (h) => (h === "b.com" ? ["10.0.0.5"] : ["93.184.216.34"]) })).rejects.toThrow();
+  });
+  it("zatwierdzony host prywatny działa, inny prywatny po przekierowaniu nie", async () => {
+    stub((u) => (u === "http://127.0.0.1:8080/" ? redirect("http://127.0.0.1:9999/") : page()));
+    await expect(webFetch("http://127.0.0.1:8080/", sig, { allowPrivate: "127.0.0.1:8080", resolve: pub })).rejects.toThrow();
+    stub(page);
+    expect(await webFetch("http://127.0.0.1:8080/", sig, { allowPrivate: "127.0.0.1:8080", resolve: pub })).toContain("ok");
+  });
+  it("bez zgody adres prywatny jest odrzucony", async () => {
+    stub(page);
+    await expect(webFetch("http://localhost:3000/", sig, { resolve: pub })).rejects.toThrow();
+  });
+  it("pętla przekierowań: max 5 skoków", async () => {
+    const calls = stub(() => redirect("https://a.com/x"));
+    await expect(webFetch("https://a.com/", sig, { resolve: pub })).rejects.toThrow(/5/);
+    expect(calls.length).toBe(6);
   });
 });

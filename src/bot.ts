@@ -685,6 +685,84 @@ export function matchesPrefix(cmd: string, prefix: string): boolean {
   return true;
 }
 
+/** Powody, dla których `web_fetch` do tego adresu wymaga zgody (pusta lista = bez pytania).
+ *  `private`: loopback, LAN, link-local, metadane chmury, nazwy lokalne (`localhost`, `*.local`, `*.internal`,
+ *  jednoczłonowe); wszystkie zapisy IPv4 (0x7f.1, 2130706433) i IPv6 (`::ffff:127.0.0.1`) normalizuje `URL`.
+ *  `long`/`encoded`/`userinfo`: kształt adresu typowy dla wycieku danych (`https://evil/?d=<dane>`). */
+export type FetchRisk = "private" | "long" | "encoded" | "userinfo";
+export const FETCH_QUERY_MAX = 200;
+export const FETCH_ENCODED_RUN = 100;
+
+function v4Private(a: number, b: number, c: number): boolean {
+  return (
+    a === 0 || a === 10 || a === 127 || a >= 224 ||
+    (a === 100 && b >= 64 && b <= 127) || // CGNAT
+    (a === 169 && b === 254) || // link-local, metadane chmury
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 198 && (b === 18 || b === 19))
+  );
+}
+
+/** Rozwija IPv6 (bez nawiasów, z ewentualnym końcowym a.b.c.d) do 8 grup; null = nie IPv6. */
+function parseV6(h: string): number[] | null {
+  let s = h;
+  const tail = /(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(s);
+  if (tail) {
+    const [a, b, c, d] = tail.slice(1).map(Number);
+    if ([a, b, c, d].some((x) => x > 255)) return null;
+    s = s.slice(0, tail.index) + ((a << 8) | b).toString(16) + ":" + ((c << 8) | d).toString(16);
+  }
+  const halves = s.split("::");
+  if (halves.length > 2) return null;
+  const grp = (x: string) => (x === "" ? [] : x.split(":"));
+  const head = grp(halves[0]);
+  const rest = halves.length === 2 ? grp(halves[1]) : [];
+  const fill = 8 - head.length - rest.length;
+  if (halves.length === 2 ? fill < 1 : fill !== 0) return null;
+  const all = [...head, ...Array<string>(halves.length === 2 ? fill : 0).fill("0"), ...rest];
+  const nums = all.map((g) => (/^[0-9a-f]{1,4}$/i.test(g) ? parseInt(g, 16) : NaN));
+  return nums.length === 8 && nums.every((n) => !Number.isNaN(n)) ? nums : null;
+}
+
+/** Czy host (z `URL.hostname`, już znormalizowany) jest prywatny/lokalny. Literał IP po normalizacji lub nazwa. */
+export function isPrivateHost(hostname: string): boolean {
+  let h = hostname.toLowerCase();
+  if (h.startsWith("[") && h.endsWith("]")) h = h.slice(1, -1);
+  while (h.endsWith(".")) h = h.slice(0, -1);
+  if (h === "") return true;
+  if (h.includes(":")) {
+    const g = parseV6(h);
+    if (!g) return true; // nierozpoznany zapis: traktuj ostrożnie
+    const v4 = (hi: number, lo: number) => v4Private(hi >> 8, hi & 255, lo >> 8);
+    if (g.slice(0, 5).every((x) => x === 0) && (g[5] === 0xffff || g[5] === 0)) return g[5] === 0 && g[6] === 0 && g[7] <= 1 ? true : v4(g[6], g[7]); // ::, ::1, ::ffff:a.b.c.d, ::a.b.c.d
+    if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every((x) => x === 0)) return v4(g[6], g[7]); // NAT64
+    if (g[0] === 0x2002) return v4(g[1], g[2]); // 6to4
+    if ((g[0] & 0xfe00) === 0xfc00 || (g[0] & 0xffc0) === 0xfe80 || (g[0] & 0xff00) === 0xff00) return true; // ULA, link-local, multicast
+    return false;
+  }
+  const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(h);
+  if (m) return v4Private(Number(m[1]), Number(m[2]), Number(m[3]));
+  if (!h.includes(".")) return true; // `nas`, `router`: nazwa z sieci lokalnej
+  return /(^|\.)(localhost|local|internal|lan|localdomain|home\.arpa|intranet|corp)$/.test(h);
+}
+
+export function fetchRisk(url: string): FetchRisk[] {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return [];
+  }
+  const out: FetchRisk[] = [];
+  if (isPrivateHost(u.hostname)) out.push("private");
+  if (u.search.length + u.hash.length > FETCH_QUERY_MAX) out.push("long");
+  if (new RegExp(`[A-Za-z0-9+/=_-]{${FETCH_ENCODED_RUN},}`).test(`${u.pathname}${u.search}${u.hash}`)) out.push("encoded");
+  if (u.username || u.password) out.push("userinfo");
+  return out;
+}
+
 /** Czy wywołanie wymaga zgody. Ścieżki w `args.path` przychodzą już po `realpath`
  *  (dla nieistniejącego pliku: realpath folderu nadrzędnego + nazwa). */
 export function needsApproval(tool: ToolName, args: Record<string, unknown>, ctx: ApprovalContext): Verdict {
@@ -703,6 +781,10 @@ export function needsApproval(tool: ToolName, args: Record<string, unknown>, ctx
   const path = typeof args.path === "string" ? args.path : null;
   switch (group) {
     case "web":
+      // `web_fetch` pod adres lokalny/prywatny albo wyglądający na wyciek danych: zawsze „raz” (bez zgody na rozmowę);
+      // w przebiegu (bez człowieka) odmowa.
+      if (tool === "web_fetch" && fetchRisk(typeof args.url === "string" ? args.url : "").length > 0) return ctx.routine ? "deny" : "ask";
+      return "allow";
     case "memory":
     case "skills":
       return "allow";

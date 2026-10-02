@@ -15,6 +15,7 @@ import {
   MEMORY_LIMIT,
   MEMORY_SEP,
   memoryEdit,
+  fetchRisk,
   needsApproval,
   newBot,
   newBotChat,
@@ -424,6 +425,15 @@ describe("needsApproval", () => {
     expect(needsApproval("memory", {}, ctx)).toBe("allow");
     expect(needsApproval("skill_create", {}, ctx)).toBe("allow");
   });
+  it("web_fetch: adresy lokalne i kształt wycieku pytają, w przebiegu deny", () => {
+    const ok = (url: string) => needsApproval("web_fetch", { url }, ctx);
+    expect(ok("https://example.com/a?q=1")).toBe("allow");
+    expect(ok("http://127.0.0.1:8080/")).toBe("ask");
+    expect(ok(`https://evil.com/?d=${"a".repeat(250)}`)).toBe("ask");
+    const routine = { ...ctx, routine: { bash: [], writeWork: false } } as ApprovalContext;
+    expect(needsApproval("web_fetch", { url: "http://localhost:3000" }, routine)).toBe("deny");
+    expect(needsApproval("web_fetch", { url: "https://example.com" }, routine)).toBe("allow");
+  });
   it("wyłączona grupa = deny", () => {
     const off = { ...ctx, bot: { ...bot, tools: { ...bot.tools, bash: false, web: false } } };
     expect(needsApproval("bash", { command: "ls" }, off)).toBe("deny");
@@ -603,5 +613,33 @@ describe("karty narzędzi", () => {
     ]);
     expect(messageSegments("", [c("a")])).toEqual([{ kind: "calls", calls: [c("a")] }]);
     expect(messageSegments("", [])).toEqual([{ kind: "text", text: "" }]);
+  });
+});
+
+describe("fetchRisk / isPrivateHost", () => {
+  const priv = (u: string) => fetchRisk(u).includes("private");
+  it("adresy prywatne i obejścia zapisu", () => {
+    for (const u of [
+      "http://127.0.0.1/", "http://127.1/", "http://0x7f.1/", "http://2130706433/", "http://0177.0.0.1/", "http://[::1]/",
+      "http://[::ffff:127.0.0.1]/", "http://[::ffff:7f00:1]/", "http://localhost/", "http://localhost./", "http://LOCALHOST:8080/",
+      "http://a.localhost/", "http://printer.local/", "http://db.internal/", "http://nas/", "http://10.1.2.3/", "http://172.16.0.1/",
+      "http://172.31.255.255/", "http://192.168.1.1/", "http://169.254.169.254/latest/meta-data", "http://[fd00::1]/", "http://[fe80::1]/",
+      "http://0.0.0.0/", "http://[::]/", "http://user@127.0.0.1/", "http://evil.com@127.0.0.1/", "https://example.com@localhost/",
+      "http://[64:ff9b::7f00:1]/", "http://100.64.0.1/",
+    ])
+      expect(priv(u), u).toBe(true);
+  });
+  it("publiczne zostają", () => {
+    for (const u of ["https://example.com/", "http://8.8.8.8/", "http://172.32.0.1/", "http://172.15.0.1/", "http://[2606:4700::1111]/", "https://sub.rust-lang.org:8443/x", "http://127.0.0.1.example.com/"])
+      expect(priv(u), u).toBe(false);
+  });
+  it("kształt wycieku", () => {
+    expect(fetchRisk(`https://e.com/?d=${"x".repeat(201)}`)).toContain("long");
+    expect(fetchRisk(`https://e.com/?d=${"x".repeat(90)}`)).toEqual([]);
+    expect(fetchRisk(`https://e.com/${"ab12".repeat(30)}`)).toContain("encoded");
+    expect(fetchRisk("https://e.com/#" + "z".repeat(250))).toContain("long");
+    expect(fetchRisk("https://user:pw@e.com/")).toContain("userinfo");
+    expect(fetchRisk("https://example.com/a/b?c=d#e")).toEqual([]);
+    expect(fetchRisk("nie url")).toEqual([]);
   });
 });
