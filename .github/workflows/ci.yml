@@ -79,3 +79,47 @@ jobs:
             electron/release/*.exe
             electron/release/*.zip
           if-no-files-found: error
+
+  # Test dymny na czystej maszynie: instalator po cichu, prawdziwe okno, panele z PowerShellem,
+  # claude i codex z npm (bez logowania), na koniec deinstalacja. Wyniki i zrzuty: artefakt `smoke-windows`.
+  smoke-windows:
+    needs: package-windows
+    runs-on: windows-latest
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+      - run: choco install ripgrep -y --no-progress
+      - run: npm install -g @anthropic-ai/claude-code @openai/codex
+      - run: npm install --no-save --no-package-lock playwright-core
+        working-directory: electron/smoke
+      - uses: actions/download-artifact@v4
+        with:
+          name: roost-windows
+          path: dist
+      - name: Instalacja
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist -Filter "Roost-Setup-*.exe" | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList "/S" -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter Roost.exe | Select-Object -First 1
+          if (-not $exe) { Write-Error "instalator nie zostawił Roost.exe"; exit 1 }
+          "ROOST_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+      - name: Test dymny
+        run: node electron/smoke/windows.mjs "$env:ROOST_EXE" smoke-out
+      - name: Deinstalacja
+        shell: pwsh
+        run: |
+          $dir = Split-Path $env:ROOST_EXE
+          Start-Process -FilePath (Join-Path $dir "Uninstall Roost.exe") -ArgumentList "/S" -Wait
+          # Deinstalator kopiuje się do TEMP i kończy, zanim skończy usuwać.
+          for ($i = 0; $i -lt 30 -and (Test-Path $env:ROOST_EXE); $i++) { Start-Sleep 1 }
+          if (Test-Path $env:ROOST_EXE) { Write-Error "Roost.exe został po deinstalacji"; exit 1 }
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-windows
+          path: smoke-out
+          if-no-files-found: ignore
