@@ -256,6 +256,9 @@ Celowo nie tłumaczymy promptów i opisów narzędzi wysyłanych do modeli ani k
   (`sudo apt install libfuse2t64` na 24.04, `libfuse2` na 22.04). Obecne paczki mają statyczny
   runtime i jej nie potrzebują; bez żadnego FUSE (kontenery, WSL) uruchom
   `./Roost-<wersja>.AppImage --appimage-extract-and-run`.
+- **`error while loading shared libraries: libnss3.so` (albo `libgtk-3.so.0`, `libasound.so.2`, `libgbm.so.1`)** —
+  minimalna instalacja bez pulpitu. Na Debianie/Ubuntu: `sudo apt install libgtk-3-0 libnss3 libasound2 libgbm1`
+  (na Ubuntu 24.04 pakiety nazywają się `libgtk-3-0t64` i `libasound2t64`).
 - **Ubuntu 24.04+: „The SUID sandbox helper binary was found, but is not configured correctly”** —
   AppArmor blokuje Chromium nieuprzywilejowane przestrzenie nazw dla rozpakowanych aplikacji. Dodaj
   profil AppArmor dla AppImage (plik `/etc/apparmor.d/roost`: `abi <abi/4.0>, include <tunables/global>
