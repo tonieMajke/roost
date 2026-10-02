@@ -54,6 +54,18 @@ The interface is available in **English and Polish**. By default it follows your
 | ![Files and git: diff, stage, commit, push](docs/screenshots/files-git.webp) | ![Over 20 themes](docs/screenshots/themes.webp) |
 | Files and git: diff, stage, commit, push | Over 20 themes |
 
+## Download
+
+Prebuilt AppImage (Linux x86_64): **[Releases](https://github.com/tonieMajke/roost/releases/latest)**.
+
+```bash
+chmod +x Roost-*.AppImage
+./Roost-*.AppImage
+```
+
+Each release has a `.sha256` file next to it (`sha256sum -c Roost-<version>.AppImage.sha256`). Agents
+are not bundled — see Requirements below. If it doesn't start, see [Troubleshooting](#troubleshooting).
+
 ## Requirements
 
 Linux, Node.js and pnpm to build from source. The agents themselves are not bundled; install the
@@ -76,7 +88,12 @@ Configuration lives in `~/.config/dev.majke.roost/` (`ROOST_CONFIG_DIR` points i
 don't run two copies at once against a shared `workspace.json`). On first start after the rename from
 "Agents", the old `~/.config/dev.majke.agents/` is copied to the new folder (the old one stays as a backup).
 
-Checks: `pnpm typecheck`, `pnpm test` (vitest), `cd electron && npm run typecheck`.
+Checks (the same ones CI runs):
+
+```bash
+pnpm install && (cd electron && npm ci && npm run build)   # tests need node-pty and out/mcp-server.cjs
+pnpm typecheck && pnpm test && (cd electron && npm run typecheck)
+```
 
 ### Browser preview (no processes)
 

@@ -50,6 +50,18 @@ dostaje polski, reszta angielski); zmiana w **Wygląd → Język**.
 | ![Pliki i git: diff, stage, commit, push](docs/screenshots/files-git.webp) | ![Ponad 20 motywów](docs/screenshots/themes.webp) |
 | Pliki i git: diff, stage, commit, push | Ponad 20 motywów |
 
+## Pobieranie
+
+Gotowy AppImage (Linux x86_64): **[Releases](https://github.com/tonieMajke/roost/releases/latest)**.
+
+```bash
+chmod +x Roost-*.AppImage
+./Roost-*.AppImage
+```
+
+Obok każdego wydania leży plik `.sha256` (`sha256sum -c Roost-<wersja>.AppImage.sha256`). Agenci
+nie są dołączeni — patrz „Wymagania” niżej. Jeśli nie startuje, zajrzyj do sekcji [Rozwiązywanie problemów](#rozwiązywanie-problemów).
+
 ## Wymagania
 
 Linux, Node.js i pnpm do budowania ze źródeł. Agenci nie są dołączeni; zainstaluj tych, których
@@ -72,8 +84,12 @@ konfiguracja w `~/.config/dev.majke.roost/` (`ROOST_CONFIG_DIR` przestawia ją n
 nie uruchamiaj dwóch kopii naraz na wspólnym `workspace.json`). Przy pierwszym starcie po zmianie nazwy z „Agents” stary katalog
 `~/.config/dev.majke.agents/` jest kopiowany do nowego (stary zostaje jako kopia zapasowa).
 
-Sprawdzenia: `pnpm typecheck`, `pnpm test` (vitest),
-`cd electron && npm run typecheck`.
+Sprawdzenia (te same uruchamia CI):
+
+```bash
+pnpm install && (cd electron && npm ci && npm run build)   # testy potrzebują node-pty i out/mcp-server.cjs
+pnpm typecheck && pnpm test && (cd electron && npm run typecheck)
+```
 
 ### Podgląd w przeglądarce (bez procesów)
 
