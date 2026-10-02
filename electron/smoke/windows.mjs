@@ -78,7 +78,8 @@ async function until(what, fn, ms) {
 
 const appLog = fs.openSync(path.join(outDir, "roost.log"), "w");
 const app = spawn(exe, [`--remote-debugging-port=${PORT}`], {
-  env: { ...process.env, ROOST_CONFIG_DIR: configDir },
+  // Bez aktualizacji w trakcie testu (okno „gotowa” zasłoniłoby panele)
+  env: { ...process.env, ROOST_CONFIG_DIR: configDir, ROOST_NO_UPDATE: "1" },
   stdio: ["ignore", appLog, appLog],
 });
 let appExit = null;
@@ -196,6 +197,11 @@ try {
 
   const relevant = pageErrors.filter((e) => !/Autofill\./.test(e));
   report("bez błędów w konsoli strony", relevant.length === 0, relevant.join("\n"));
+
+  // electron-updater czyta źródło aktualizacji z resources/app-update.yml; deinstalator = instalacja NSIS (updater.ts)
+  const dir = path.dirname(exe);
+  const feed = fs.existsSync(path.join(dir, "resources", "app-update.yml")) ? fs.readFileSync(path.join(dir, "resources", "app-update.yml"), "utf8") : "";
+  report("aktualizacje: źródło w paczce, instalacja NSIS", /provider: github/.test(feed) && fs.existsSync(path.join(dir, "Uninstall Roost.exe")), feed.trim());
 
   // 4. Zamknięcie okna kończy aplikację i procesy paneli.
   const before = spawnSync("tasklist", ["/FO", "CSV", "/NH"], { encoding: "utf8" }).stdout;

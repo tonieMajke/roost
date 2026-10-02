@@ -52,7 +52,7 @@ dostaje polski, reszta angielski); zmiana w **Wygląd → Język**.
 
 ## Pobieranie
 
-Gotowy AppImage (Linux x86_64): **[Releases](https://github.com/tonieMajke/roost/releases/latest)**.
+Gotowy AppImage (Linux x86_64): **[Releases](https://github.com/tonieMajke/roost/releases)**.
 
 ```bash
 chmod +x Roost-*.AppImage
@@ -61,6 +61,9 @@ chmod +x Roost-*.AppImage
 
 Obok każdego wydania leży plik `.sha256` (`sha256sum -c Roost-<wersja>.AppImage.sha256`). Agenci
 nie są dołączeni — patrz „Wymagania” niżej. Jeśli nie startuje, zajrzyj do sekcji [Rozwiązywanie problemów](#rozwiązywanie-problemów).
+
+Od wersji 0.0.3 AppImage i instalator Windows same sprawdzają aktualizacje na GitHubie, pobierają je
+w tle i pytają o ponowne uruchomienie (wersja zip – nie). Wyłączenie: zmienna `ROOST_NO_UPDATE=1`.
 
 ### Windows (beta)
 

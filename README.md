@@ -56,7 +56,7 @@ The interface is available in **English and Polish**. By default it follows your
 
 ## Download
 
-Prebuilt AppImage (Linux x86_64): **[Releases](https://github.com/tonieMajke/roost/releases/latest)**.
+Prebuilt AppImage (Linux x86_64): **[Releases](https://github.com/tonieMajke/roost/releases)**.
 
 ```bash
 chmod +x Roost-*.AppImage
@@ -65,6 +65,9 @@ chmod +x Roost-*.AppImage
 
 Each release has a `.sha256` file next to it (`sha256sum -c Roost-<version>.AppImage.sha256`). Agents
 are not bundled — see Requirements below. If it doesn't start, see [Troubleshooting](#troubleshooting).
+
+From 0.0.3 on, the AppImage and the Windows installer check GitHub for updates, download them in the
+background and ask to restart (the zip doesn't). To turn this off, set `ROOST_NO_UPDATE=1`.
 
 ### Windows (beta)
 

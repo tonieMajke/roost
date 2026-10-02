@@ -2,6 +2,14 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Automatyczne aktualizacje – 2026-10-02 (Claude, gałąź `auto-aktualizacje`)
+
+- `electron-updater` (zależność w paczce; vite go nie wkleja do `main.cjs`). `electron/src/updater.ts`: aktualizuje się tylko AppImage (`APPIMAGE`) i instalacja NSIS (deinstalator obok exe), nie zip ani tryb deweloperski; `ROOST_NO_UPDATE=1` wyłącza. Sprawdzenie 10 s po starcie i co 6 h, pobranie w tle, okno „Uruchom ponownie / Później” (później = instalacja przy zamknięciu). `allowPrerelease`, bo 0.x wychodzą jako pre-release.
+- `electron/package.json`: `publish` → GitHub (`resources/app-update.yml` w paczce), `--publish never` w `dist`/`dist:win`. `release.yml` wgrywa `latest-linux.yml`, `latest.yml` i `.exe.blockmap`; `.sha256` tylko dla programów.
+- Sprawdzone: testy `updater.test.ts`, zbudowany AppImage 0.0.2 pyta GitHub i loguje jedną linię błędu (w 0.0.2 brak `latest-linux.yml`). Test dymny: `app-update.yml` i deinstalator w instalacji.
+- **Niesprawdzone: prawdziwa podmiana wersji.** Pierwszy raz zadziała między 0.0.3 a 0.0.4 – po wydaniu 0.0.4 sprawdzić na AppImage i Windows.
+- README: link „Releases” bez `/latest` (ta strona pomija pre-release, czyli wszystkie 0.x).
+
 ## Windows, etap 1: warstwa platformy – 2026-10-02 (Claude, gałąź `worktree-windows`)
 
 - Plan: `docs/plan-multiplatform.md`. Nowy `electron/src/platform.ts` – jedyne miejsce z `process.platform`: `configBase` (Linux bez zmian, macOS `~/Library/Application Support`, Windows `%APPDATA%`), `defaultShell` (`$SHELL`/`/bin/sh`, Windows `powershell.exe`), `resolveCommand` (PATH + `PATHEXT`), `spawnPlan` (Windows: `.exe` wprost, shim npm `.cmd` → `node skrypt.js`, inny `.cmd` → `cmd.exe /d /s /c` z cytowaniem jak `cross-spawn`), `signalTree`/`signalTreeSync` (grupa `-pid`, Windows `taskkill /T /F`), `bridgeSocketPath` (Windows named pipe), `opensAsProgram`.

@@ -16,6 +16,8 @@ import { notify as notifySend } from "./notify";
 import { isLinux, isWindows } from "./platform";
 import { getMainLang, resolveMainLang, setMainLang } from "./i18n";
 import * as sandboxNotice from "./sandbox-notice";
+import * as updater from "./updater";
+import { autoUpdater } from "electron-updater";
 import { openFile, resolveFiles } from "./open-path";
 import { Ptys, type SpawnSpec } from "./pty";
 import { resizedBounds, usesWayland } from "./window";
@@ -647,10 +649,32 @@ function warnIfNoSandbox(w: BrowserWindow): void {
   });
 }
 
+/** Aktualizacje z GitHub Releases (updater.ts); błędy (np. brak sieci) tylko do logu. */
+function startUpdates(): void {
+  if (!updater.updatable({ packaged: app.isPackaged, platform: process.platform, env: process.env, exePath: process.execPath })) return;
+  // Wersje 0.x wychodzą jako pre-release
+  autoUpdater.allowPrerelease = true;
+  // Domyślny logger wypisuje całe odpowiedzi HTTP; wystarczy linia z błędem
+  autoUpdater.logger = null;
+  autoUpdater.on("error", (e) => console.error("aktualizacja:", e.message));
+  let asked = false;
+  autoUpdater.on("update-downloaded", ({ version }) => {
+    if (asked || !win) return;
+    asked = true;
+    void dialog.showMessageBox(win, updater.readyOptions(version)).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall();
+    });
+  });
+  const check = () => void autoUpdater.checkForUpdates().catch(() => {});
+  setTimeout(check, updater.CHECK_DELAY_MS);
+  setInterval(check, updater.CHECK_EVERY_MS).unref();
+}
+
 void app.whenReady().then(() => {
   initialLang();
   createWindow();
   if (win) warnIfNoSandbox(win);
+  startUpdates();
   scheduler.start();
   // Po wybudzeniu od razu, nie po najbliższym tyknięciu.
   powerMonitor.on("resume", () => scheduler.tick());
