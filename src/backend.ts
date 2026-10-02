@@ -70,6 +70,8 @@ export interface Backend {
   /** Statystyki zużycia tokenów. Bez `rescan` od razu to, co już policzone; z `rescan` najpierw doczytuje nowe logi. */
   usageStats(rescan: boolean): Promise<UsageStats>;
   dirExists(path: string): Promise<boolean>;
+  /** Które z programów (`command` z `agents.json`, także `$SHELL`) da się uruchomić; klucz = tekst komendy. */
+  commandsAvailable(commands: string[]): Promise<Record<string, boolean>>;
   /** Folder wybrany przez użytkownika; `null` = anulowanie. */
   pickDir(): Promise<string | null>;
   /** Obrazek (PNG/JPG/WebP/GIF) wybrany przez użytkownika; `null` = anulowanie. */

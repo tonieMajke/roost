@@ -10,6 +10,7 @@ import * as scratchpad from "./scratchpad";
 import { sessionContext } from "./context";
 import { sessionHandoff } from "./handoff";
 import * as git from "./git";
+import { commandsAvailable } from "./commands";
 import { claudeLimits, claudeSettingsArg } from "./limits";
 import { notify } from "./notify";
 import { resolveMainLang, setMainLang } from "./i18n";
@@ -214,6 +215,7 @@ const ARGS: Record<string, readonly ArgSpec[]> = {
   accounts_save: ["str"],
   claude_session_exists: [ID, "path?"],
   dir_exists: ["path"],
+  commands_available: ["strs"],
   git_status: ["path"],
   git_files: ["path"],
   git_diff: ["path", "path", DIFF_MODES],
@@ -317,6 +319,7 @@ handle("accounts_load", () => config.accountsLoad());
 handle("accounts_save", (json: string) => config.accountsSave(json));
 handle("claude_session_exists", (id: string, dir?: string) => config.claudeSessionExists(id, dir));
 handle("dir_exists", (p: string) => config.dirExists(p));
+handle("commands_available", (commands: string[]) => commandsAvailable(commands));
 handle("git_status", (cwd: string) => git.gitStatus(cwd));
 handle("git_files", (cwd: string) => git.gitFiles(cwd));
 handle("git_diff", (cwd: string, p: string, mode: git.DiffMode) => git.gitDiff(cwd, p, mode));

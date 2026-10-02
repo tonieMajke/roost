@@ -10,6 +10,7 @@ AGENTS.md zabrania agentowi uruchamiania okna, więc robi to użytkownik.
 - [ ] migracja `~/.config/dev.majke.agents` → `dev.majke.roost`: stary katalog zostaje, układ i presety są
 - [ ] zapisane wcześniej klucze API nadal działają (`safeStorage`, nazwa `userData` bez zmian)
 - [ ] ikona i `StartupWMClass` w menu / na pasku zadań (KDE)
+- [ ] czysty start (`ROOST_CONFIG_DIR=$(mktemp -d)`): okno pierwszego uruchomienia – wygląd, wykrywanie `claude`/`pi`, „Sprawdź ponownie” po doinstalowaniu, folder + preset tworzą projekt z panelami, „Pomiń”
 - [ ] AppImage na Ubuntu 24.04 w VM: start bez libfuse2 (statyczny runtime), terminal w panelu startuje (`pty.node` na glibc 2.39), błąd sandboxa i obejście z README (AppArmor / `--no-sandbox`)
 - [ ] to samo na Ubuntu 22.04 (glibc 2.35), Debianie 12 (2.36) i Mincie
 - [ ] panel z agentem bez `claude`/`pi` w PATH: co widać, czy opis w README wystarcza

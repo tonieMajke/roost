@@ -2,6 +2,13 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Okno pierwszego uruchomienia – 2026-10-02 (Claude, gałąź `main`)
+
+- Pokazuje się, gdy nie ma `workspace.json` (`App.tsx`: `firstRun`). `FirstRunDialog.tsx`: język i motyw (wspólny `UiRowControl.tsx`, wyciągnięty z „Wyglądu”), lista agentów z `agents.json` z oznaczeniem „znaleziony / brak w PATH” (+ komenda instalacji dla claude i codex) i „Sprawdź ponownie”, wybór folderu i presetu → `startFirstProject` tworzy projekt od razu z panelami. „Pomiń”/Esc zamyka; po pierwszym zapisie okno już się nie pojawi.
+- Wykrywanie: `backend.commandsAvailable` → `commands_available` w `electron/src/commands.ts` (PATH jak u dziecka z `childEnv`, `$SHELL`/`~` rozwijane jak przy starcie panelu). Logika wyboru presetów: `src/firstrun.ts` (tylko presety, w których każdy agent jest dostępny; bez agentów CLI sama powłoka). Teksty `first.*` w `src/i18n/messages/app.ts`.
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (916 + 10 pominiętych), electron typecheck, build i vitest (353 + 10).
+- **Niesprawdzone:** wygląd okna (nie oglądany w przeglądarce ani oknie), prawdziwy pierwszy start na czystym `ROOST_CONFIG_DIR`, komendy instalacji (z pamięci; pi bez komendy celowo). Podgląd w przeglądarce (mock) udaje brak `pi`. Nie ma sposobu ponownego otwarcia okna po pominięciu.
+
 ## AppImage poza Archem – 2026-10-02 (Claude, gałąź `main`)
 
 - `pty.node` wymagał glibc 2.42 (`cfsetospeed`/`cfsetispeed`). `electron/build-tools/glibc-compat.h` przypina je do `GLIBC_2.2.5` (x86_64), `npm run dist` wstrzykuje go przez `CXXFLAGS=-include` (ścieżka w apostrofach, bo repo ma spację w nazwie) i **kasuje `node-pty/build` przed budową**, inaczej electron-builder używa starego, już skompilowanego modułu. Po budowie `build-tools/check-pty-glibc.sh` kończy się błędem, gdy `pty.node` wymaga glibc > 2.34. Wynik `objdump`: `cfsetospeed`/`cfsetispeed` = 2.2.5, reszta ≤ 2.4.

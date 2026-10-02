@@ -26,6 +26,7 @@ import { NewPaneDialog } from "./NewPaneDialog";
 import { PresetMenu } from "./PresetMenu";
 import { AppearanceDialog } from "./AppearanceDialog";
 import { AccountsDialog } from "./AccountsDialog";
+import { FirstRunDialog } from "./FirstRunDialog";
 import { StatsDialog } from "./StatsDialog";
 import { ContinueDialog } from "./ContinueDialog";
 import { continueTargets, type ContinueTarget } from "./continue";
@@ -81,6 +82,8 @@ export function App() {
   const [agents, setAgents] = useState<AgentDef[]>([]);
   const [accounts, setAccounts] = useState<Accounts>(NO_ACCOUNTS);
   const [accountsDialog, setAccountsDialog] = useState(false);
+  // Brak workspace.json = pierwszy start: okno powitalne (język, agenci, pierwszy projekt).
+  const [firstRun, setFirstRun] = useState(false);
   const [statsDialog, setStatsDialog] = useState(false);
   const statsProjects = useMemo(() => ws.projects.map((p) => ({ name: p.name, path: p.path })), [ws.projects]);
   const [scratchOpen, setScratchOpen] = useState(false);
@@ -164,7 +167,11 @@ export function App() {
           if (acc.errors.length > 0) setErrors((prev) => [...prev, ...acc.errors]);
         });
         const raw = await backend.loadWorkspace();
-        if (!live || raw === null) return; // pierwszy start: zostaje emptyWorkspace
+        if (!live) return;
+        if (raw === null) {
+          setFirstRun(true); // pierwszy start: zostaje emptyWorkspace
+          return;
+        }
         let parsed: ReturnType<typeof parseWorkspace>;
         try {
           parsed = parseWorkspace(JSON.parse(raw) as unknown, r.agents.map((a) => a.id));
@@ -348,6 +355,39 @@ export function App() {
         (prev[paneId]?.termTitle ?? null) === termTitle ? prev : { ...prev, [paneId]: { ...prev[paneId], termTitle } },
       );
     },
+  };
+
+  /** Okno pierwszego uruchomienia: projekt z wybranego folderu od razu z panelami presetu. */
+  const startFirstProject = (picked: string, agentIds: string[]) => {
+    void (async () => {
+      const path = tildify(picked, home.current);
+      if (!(await backend.dirExists(path).catch(() => false))) {
+        setNotice(t("app.dirMissing", { path }));
+        return;
+      }
+      setNotice(null);
+      setFirstRun(false);
+      const panes: Pane[] = [];
+      for (const agentId of agentIds.slice(0, MAX_PANES)) {
+        const agent = agents.find((a) => a.id === agentId);
+        if (!agent) continue;
+        const pane: Pane = { id: crypto.randomUUID(), agentId, run: 1 };
+        if (agent.session) pane.sessionId = crypto.randomUUID();
+        const account = pickAccountId(accounts, accountKind(agent), null);
+        if (account) pane.account = account;
+        panes.push(pane);
+      }
+      const project: Project = {
+        id: crypto.randomUUID(),
+        name: projectName(path),
+        path,
+        panes,
+        focused: panes[0]?.id ?? null,
+        maximized: null,
+      };
+      dispatch({ type: "addProject", project });
+      if (panes.length > 0) setLastAgentId(panes[panes.length - 1].agentId);
+    })();
   };
 
   const projectActions: ProjectActions = {
@@ -1271,6 +1311,15 @@ export function App() {
         <div className="toast" role="status">
           <span>{notice}</span>
         </div>
+      )}
+      {loaded && firstRun && (
+        <FirstRunDialog
+          agents={agents}
+          ui={ws.ui}
+          onSet={(patch) => dispatch({ type: "setUi", patch })}
+          onStart={startFirstProject}
+          onClose={() => setFirstRun(false)}
+        />
       )}
       {appearance && (
         <AppearanceDialog

@@ -236,6 +236,7 @@ export const mockBackend: Backend = {
     return { rows: mockUsageRows(new Date()), at: Date.now() };
   },
   dirExists: async () => true,
+  commandsAvailable: async (commands) => Object.fromEntries(commands.map((c) => [c, c !== "pi"])), // podgląd: pokazuje też stan „brak programu”
 
   // The browser has no folder picker, so the preview asks for a path in a prompt box.
   async pickDir() {

@@ -52,6 +52,21 @@ const pl = {
   "handoff.replies": "Ostatnie odpowiedzi",
   "handoff.files": "Zmienione pliki",
   "handoff.commands": "Polecenia powłoki",
+  "first.title": "Witaj w Roost",
+  "first.desc": "Kilka rzeczy na start. Wszystko da się zmienić później w oknach „Wygląd” i „Nowy panel”.",
+  "first.agents": "Agenci",
+  "first.checking": "Sprawdzam programy w PATH…",
+  "first.found": "znaleziony",
+  "first.missing": "brak w PATH",
+  "first.missingHint": "Panel z brakującym programem zakończy się od razu. Zainstaluj go i upewnij się, że jest w PATH (aplikacja uruchomiona z menu może mieć krótszy PATH niż terminal), albo wpisz pełną ścieżkę w agents.json.",
+  "first.recheck": "Sprawdź ponownie",
+  "first.project": "Pierwszy projekt",
+  "first.pickFolder": "Wybierz folder…",
+  "first.noFolder": "nie wybrano folderu",
+  "first.preset": "Panele na start",
+  "first.noPreset": "Żaden agent nie jest dostępny – projekt zacznie się bez paneli. Panel dodasz przyciskiem „Nowy panel”.",
+  "first.skip": "Pomiń",
+  "first.start": "Zacznij",
 } as const;
 
 const en: Record<keyof typeof pl, string> = {
@@ -107,6 +122,21 @@ const en: Record<keyof typeof pl, string> = {
   "handoff.replies": "Recent replies",
   "handoff.files": "Changed files",
   "handoff.commands": "Shell commands",
+  "first.title": "Welcome to Roost",
+  "first.desc": "A few things to get going. You can change all of it later in the Appearance and New pane windows.",
+  "first.agents": "Agents",
+  "first.checking": "Checking programs in PATH…",
+  "first.found": "found",
+  "first.missing": "not in PATH",
+  "first.missingHint": "A pane whose program is missing exits at once. Install it and make sure it is in PATH (an app started from the menu can have a shorter PATH than your terminal), or set the full path in agents.json.",
+  "first.recheck": "Check again",
+  "first.project": "First project",
+  "first.pickFolder": "Choose folder…",
+  "first.noFolder": "no folder chosen",
+  "first.preset": "Starting panes",
+  "first.noPreset": "No agent is available – the project will start without panes. Add one with New pane.",
+  "first.skip": "Skip",
+  "first.start": "Start",
 };
 
 export default { pl, en };

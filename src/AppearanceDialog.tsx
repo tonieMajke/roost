@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
-import { uiRows, uiPatch, type Ui } from "./ui";
+import { uiRows, type Ui } from "./ui";
+import { UiRowControl } from "./UiRowControl";
 import { Dialog } from "./Dialog";
 import { useT } from "./i18n/useT";
 
@@ -22,56 +22,7 @@ export function AppearanceDialog({ ui, onSet, onClose }: Props) {
         <>
           <h2>{t("ui.title")}</h2>
           {uiRows().map((row) => (
-            <div className="set-row" key={row.key}>
-              <span className="set-label">{row.label}</span>
-              <div className={row.key === "theme" ? "themes" : "seg"} role="group" aria-label={row.label}>
-                {row.choices.map((choice) => {
-                  const on = ui[row.key] === choice.value;
-                  if (choice.theme) {
-                    const [bg, pane, text] = choice.theme.colors;
-                    return (
-                      <button
-                        key={choice.value}
-                        type="button"
-                        className={`theme-tile${on ? " is-on" : ""}`}
-                        aria-pressed={on}
-                        title={choice.label}
-                        onClick={() => onSet(uiPatch(row.key, choice.value))}
-                      >
-                        <span className="theme-chip" style={{ background: bg } as CSSProperties} aria-hidden>
-                          <i style={{ background: pane, color: text } as CSSProperties}>Aa</i>
-                          <b style={{ background: choice.theme.accent } as CSSProperties} />
-                        </span>
-                        <span className="theme-name">{choice.label}</span>
-                      </button>
-                    );
-                  }
-                  return choice.swatch ? (
-                    <button
-                      key={choice.value}
-                      type="button"
-                      className={`swatch${on ? " is-on" : ""}`}
-                      aria-label={choice.label}
-                      aria-pressed={on}
-                      title={choice.label}
-                      onClick={() => onSet(uiPatch(row.key, choice.value))}
-                    >
-                      <i style={{ background: choice.swatch } as CSSProperties} />
-                    </button>
-                  ) : (
-                    <button
-                      key={choice.value}
-                      type="button"
-                      className={on ? "is-on" : undefined}
-                      aria-pressed={on}
-                      onClick={() => onSet(uiPatch(row.key, choice.value))}
-                    >
-                      {choice.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <UiRowControl key={row.key} row={row} ui={ui} onSet={onSet} />
           ))}
           <div className="set-foot">{t("ui.foot")}</div>
         </>

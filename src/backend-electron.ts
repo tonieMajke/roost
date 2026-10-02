@@ -133,6 +133,7 @@ export const electronBackend: Backend = {
   gitCommit: (cwd, message) => call<string>("git_commit", cwd, message),
   gitSync: (cwd, op) => call<string>("git_sync", cwd, op),
   dirExists: (path) => call<boolean>("dir_exists", path),
+  commandsAvailable: (commands) => call<Record<string, boolean>>("commands_available", commands),
   pickDir: () => call<string | null>("pick_dir"),
   pickImage: () => call<string | null>("pick_image"),
   homeDir: () => call<string>("home_dir"),
