@@ -34,7 +34,8 @@ fs.writeFileSync(
         id: "claude", name: "Claude", command: "claude",
         session: { new: ["--session-id", "{session}"], resume: ["--resume", "{session}"], check: "claude" },
       },
-      { id: "codex", name: "Codex", command: "codex" },
+      // CI działa jako administrator: codex odmawia wtedy serwera w tle
+      { id: "codex", name: "Codex", command: "codex", args: ["--no-daemon"] },
     ],
   }),
 );
@@ -104,15 +105,16 @@ try {
     (await page.locator(`section.pane[data-ag="${agent}"] .pane-exit`).count()) > 0
       ? await page.locator(`section.pane[data-ag="${agent}"] .pane-exit`).first().innerText()
       : null;
-  // Zawinięta długa linia: szukamy też w tekście sklejonym bez końców wierszy.
-  const has = (t, s) => t.includes(s) || t.replace(/\n/g, "").includes(s);
+  // Wąski panel zawija linie (spacja na końcu wiersza znika): porównania bez białych znaków.
+  const flat = (t) => t.replace(/\s+/g, "");
+  const has = (t, s) => flat(t).includes(flat(s));
 
   await until("trzy panele", async () => (await page.locator("section.pane .xterm-rows").count()) === 3, 30_000);
   await page.screenshot({ path: path.join(outDir, "1-start.png") });
 
   // 1. Terminal: PowerShell pod ConPTY, polecenie z klawiatury, katalog z polskimi znakami.
   try {
-    await until("prompt PowerShella", async () => /PS .+>/.test(await text("shell")), 60_000);
+    await until("prompt PowerShella", async () => /PS.+>/.test(flat(await text("shell"))), 60_000);
     await rows("shell").click();
     await page.keyboard.type(`Write-Output ("ROOST-" + (6*7)); (Get-Location).Path`);
     await page.keyboard.press("Enter");
