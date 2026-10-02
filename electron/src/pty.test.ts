@@ -12,6 +12,7 @@ const plain = (s: string) => s.replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]|\x1b\][^\x07\
 
 function run(ptys: Ptys, spec: { command: string; args: string[]; cols: number; rows: number; cwd?: string }) {
   let out = "";
+  const dec = new TextDecoder();
   let onOut: (() => void) | null = null;
   let exitInfo: ExitInfo | null = null;
   let resolveExit: (info: ExitInfo) => void = () => {};
@@ -19,7 +20,8 @@ function run(ptys: Ptys, spec: { command: string; args: string[]; cols: number; 
   const id = ptys.spawn(
     spec,
     (chunk) => {
-      out += Buffer.from(chunk).toString("utf8");
+      // Jak strona: `TextDecoder` przyjmuje tylko bajty (tekst z node-pty na Windows rzuca).
+      out += dec.decode(chunk, { stream: true });
       onOut?.();
     },
     (info) => resolveExit((exitInfo = info)),

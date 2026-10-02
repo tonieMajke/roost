@@ -77,7 +77,8 @@ export class Ptys {
     }
     const id = ++this.next;
     this.map.set(id, proc);
-    proc.onData((chunk) => onData(chunk as unknown as Uint8Array));
+    // Na Windows node-pty ignoruje `encoding: null` i zawsze oddaje tekst; strona chce bajtów.
+    proc.onData((chunk: string | Uint8Array) => onData(typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk));
     proc.onExit(({ exitCode, signal }) => {
       // Usunięte przed zgłoszeniem, żeby późniejsze kill nie trafiło w ponownie użyty pid.
       this.map.delete(id);
