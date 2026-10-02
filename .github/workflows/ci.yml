@@ -19,16 +19,16 @@ jobs:
     steps:
       # Windows: bez tego checkout zamienia \n na \r\n i psuje testy porównujące tekst plików
       - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # rg: narzędzie grep botów (tools.test.ts)
       - if: runner.os == 'Linux'
         run: sudo apt-get install -y ripgrep
       - if: runner.os == 'Windows'
         run: choco install ripgrep -y --no-progress
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -49,11 +49,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: pnpm
@@ -72,7 +72,7 @@ jobs:
           foreach ($f in "conpty.node", "pty.node", "winpty-agent.exe", "winpty.dll") {
             if (-not (Test-Path "$r/$f")) { Write-Error "brak $f"; exit 1 }
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: roost-windows
           path: |
@@ -87,15 +87,15 @@ jobs:
     runs-on: windows-latest
     steps:
       - run: git config --global core.autocrlf false
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 26
       - run: choco install ripgrep -y --no-progress
       - run: npm install -g @anthropic-ai/claude-code @openai/codex
       - run: npm install --no-save --no-package-lock playwright-core
         working-directory: electron/smoke
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: roost-windows
           path: dist
@@ -118,7 +118,7 @@ jobs:
           for ($i = 0; $i -lt 30 -and (Test-Path $env:ROOST_EXE); $i++) { Start-Sleep 1 }
           if (Test-Path $env:ROOST_EXE) { Write-Error "Roost.exe został po deinstalacji"; exit 1 }
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-windows
           path: smoke-out
