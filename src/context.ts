@@ -98,6 +98,9 @@ export function sessionTitles(projects: Project[], contexts: Record<string, Sess
 /** Terminal titles programs keep that say nothing about the conversation. */
 const GENERIC_TERM_TITLES = new Set(["claude", "claude code", "pi"]);
 
+/** Windows (ConPTY): default console title = path of the started program, "Administrator: " in front when elevated. */
+const CONSOLE_DEFAULT_TITLE = /^(?:[^:\\]{1,30}: )?[A-Za-z]:\\.*\.(?:exe|com|cmd|bat)$/i;
+
 /**
  * Title a program set with OSC 0/2 (claude: "✳ Naprawa paska xterm", with a spinner in
  * place of ✳ while it works). The leading status marks go: the pane shows the state itself,
@@ -105,6 +108,7 @@ const GENERIC_TERM_TITLES = new Set(["claude", "claude code", "pi"]);
  */
 export function cleanTermTitle(raw: string): string | null {
   const text = raw.replace(/^[^\p{L}\p{N}]+/u, "").replace(/\s+/g, " ").trim().slice(0, 80).trim();
+  if (CONSOLE_DEFAULT_TITLE.test(raw.trim())) return null;
   return text === "" || GENERIC_TERM_TITLES.has(text.toLowerCase()) ? null : text;
 }
 

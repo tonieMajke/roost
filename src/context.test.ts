@@ -128,6 +128,13 @@ describe("cleanTermTitle", () => {
     expect(cleanTermTitle("pi")).toBeNull();
   });
 
+  it("gives none for the Windows console default (program path)", () => {
+    expect(cleanTermTitle("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe")).toBeNull();
+    expect(cleanTermTitle("Administrator: C:\\Windows\\system32\\cmd.exe")).toBeNull();
+    expect(cleanTermTitle("C:\\hostedtoolcache\\windows\\node\\26.0.0\\x64\\node.exe")).toBeNull();
+    expect(cleanTermTitle("C:\\Users\\majke\\projekt")).toBe("C:\\Users\\majke\\projekt");
+  });
+
   it("keeps a shell title and cuts long ones", () => {
     expect(cleanTermTitle("majke@host:~/x")).toBe("majke@host:~/x");
     expect(cleanTermTitle("a".repeat(200))).toHaveLength(80);

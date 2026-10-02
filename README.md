@@ -66,6 +66,27 @@ chmod +x Roost-*.AppImage
 Each release has a `.sha256` file next to it (`sha256sum -c Roost-<version>.AppImage.sha256`). Agents
 are not bundled — see Requirements below. If it doesn't start, see [Troubleshooting](#troubleshooting).
 
+### Windows (beta)
+
+Same place: `Roost-Setup-<version>.exe` (per-user installer, no administrator rights needed) or
+`Roost-<version>-win-x64.zip` (portable). Windows 10/11, x64.
+
+The app is not code-signed, so on first start SmartScreen shows "Windows protected your PC":
+**More info → Run anyway**.
+
+Agents and tools (all optional, on `PATH`):
+
+```powershell
+npm install -g @anthropic-ai/claude-code @openai/codex
+winget install Git.Git BurntSushi.ripgrep.MSVC
+```
+
+Differences from Linux:
+
+- The "Terminal" pane runs PowerShell.
+- Configuration lives in `%APPDATA%\dev.majke.roost\`.
+- The bots' `bash` tool is disabled; the other tools (files, `grep`, web) work.
+
 ## Requirements
 
 Linux, Node.js and pnpm to build from source. The agents themselves are not bundled; install the

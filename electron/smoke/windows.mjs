@@ -147,6 +147,9 @@ try {
     }
   }
   await page.screenshot({ path: path.join(outDir, "2-panele.png") });
+  // ConPTY ustawia tytuł konsoli na ścieżkę programu; panel ma go nie pokazywać.
+  const titles = await page.locator("section.pane .pane-title").allInnerTexts();
+  report("tytuły paneli bez ścieżek programów", !titles.some((t) => /\.exe\b/i.test(t)), JSON.stringify(titles));
 
   // 3. Wywołania procesu głównego tak, jak robi to strona.
   const invoke = (name, ...args) => page.evaluate(([n, a]) => window.agentsElectron.invoke(n, ...a), [name, args]);
