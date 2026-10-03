@@ -5,7 +5,8 @@
 import os from "node:os";
 import * as nodePty from "node-pty";
 import { childEnv, expand } from "./env";
-import { signalTree, signalTreeSync, spawnPlan } from "./platform";
+import { execPlan } from "./fd-guard";
+import { signalTree, signalTreeSync } from "./platform";
 
 export type SpawnSpec = {
   command: string;
@@ -62,14 +63,16 @@ export class Ptys {
     const env = childEnv(extra);
     let proc: nodePty.IPty;
     try {
+      const dir = cwd || expand("~");
       // Windows: `codex.cmd` z npm → node + skrypt, inny `.cmd` → cmd.exe (gotowa linia poleceń).
-      const plan = spawnPlan(expand(spec.command), (spec.args ?? []).map(expand), { env });
+      // Linux: przez strażnika deskryptorów (fd-guard.ts), inaczej agent trzyma montowanie AppImage.
+      const plan = execPlan(expand(spec.command), (spec.args ?? []).map(expand), env, { cwd: dir });
       proc = nodePty.spawn(plan.command, plan.verbatim ? plan.args.join(" ") : plan.args, {
         name: "xterm-256color",
         cols: Math.max(1, spec.cols),
         rows: Math.max(1, spec.rows),
-        cwd: cwd || expand("~"),
-        env,
+        cwd: dir,
+        env: plan.env,
         encoding: null, // surowe bajty: dekoduje xterm.js
       });
     } catch (e) {

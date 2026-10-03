@@ -2,6 +2,16 @@
 
 Najnowszy wpis na górze. Każdy etap z `docs/plan-m1.md` dopisuje tu 3–8 linii.
 
+## Aktualizacja 0.0.3 → 0.0.4 sprawdzona; skrót w menu i wyciek deskryptorów – 2026-10-03 (Claude, gałąź `appimage-desktop-entry`)
+
+- **Sprawdzone u użytkownika (AppImage):** po restarcie PC okno aktualizacji, „Uruchom ponownie” → działa 0.0.4, plik `Roost-0.0.3.AppImage` zastąpiony przez `Roost-0.0.4.AppImage`. Windows nadal niesprawdzony.
+- Znalezione: (1) wpis `~/.local/share/applications/roost-0.0.3.desktop` wskazywał na usunięty plik (updater zmienia nazwę, gdy jest w niej wersja); (2) nowa wersja, jej proces FUSE i każdy panel trzymały deskryptory starego montowania (`app.asar`, `icudtl.dat`, `*.pak` – Chromium otwiera je bez O_CLOEXEC, a ani node-pty `forkpty`, ani libuv ich nie zamykają), więc stare montowanie i jego proces wisiały do zamknięcia; środowisko niosło ścieżki starego `$APPDIR`.
+- `desktop-entry.ts`: przy starcie spakowanego AppImage poprawia `Exec`/`TryExec` (i `X-AppImage-Version`) we wpisach Roosta w `~/.local/share/applications`, jeśli wskazują na nieistniejący AppImage. README EN/PL: trzymać AppImage pod stałą nazwą (`~/.local/bin/Roost.AppImage`) – updater podmienia go wtedy w miejscu.
+- `fd-guard.ts`: na Linuksie dzieci (panele, bot, czat CLI, streszczenia, edytor) startują przez strażnika (`ELECTRON_RUN_AS_NODE` + `-e`), który zamyka deskryptory ≥ 3 bez O_CLOEXEC i robi `process.execve`. Pomijany, gdy plik nie jest ELF ani `#!` z istniejącym interpreterem (nieudany `execve` w Node 24 to abort). Koszt ok. 30–37 ms na start. Bez strażnika: `git.ts`, `notify.ts`, `chat/freetoken.ts`, `voice/tts.ts`.
+- `updater.ts` `installAndRelaunch`: AppImage instaluje się bez `autoRunAppAfterInstall`, nowa wersja startuje przez `app.relaunch` (zamyka deskryptory) z oczyszczonym `childEnv`. `env.ts` usuwa też wpisy z dowolnego `/.mount_*` i `APPIMAGE_SILENT_INSTALL`.
+- Sprawdzone: `pnpm typecheck`, `pnpm test` (976 + 18 pominiętych), electron typecheck i build. `fd-guard.test.ts` dowodzi wycieku bez strażnika i jego braku z nim (panel i `runProc`).
+- **Niesprawdzone:** czysty relaunch zadziała dopiero przy aktualizacji z wersji, która go zawiera (0.0.5 → następna); strażnik w spakowanym `roost-app` (tylko dev Electron 44.5.1, ten sam bezpiecznik `runAsNode`); naprawa wpisu `.desktop` na żywo.
+
 ## Automatyczne aktualizacje – 2026-10-02 (Claude, gałąź `auto-aktualizacje`)
 
 - `electron-updater` (zależność w paczce; vite go nie wkleja do `main.cjs`). `electron/src/updater.ts`: aktualizuje się tylko AppImage (`APPIMAGE`) i instalacja NSIS (deinstalator obok exe), nie zip ani tryb deweloperski; `ROOST_NO_UPDATE=1` wyłącza. Sprawdzenie 10 s po starcie i co 6 h, pobranie w tle, okno „Uruchom ponownie / Później” (później = instalacja przy zamknięciu). `allowPrerelease`, bo 0.x wychodzą jako pre-release.

@@ -7,7 +7,8 @@ import path from "node:path";
 import { absolutePath, openPlan } from "../../src/term-links";
 import { t } from "./i18n";
 import { childEnv, expand } from "./env";
-import { isWindows, opensAsProgram, spawnPlan, systemOpener } from "./platform";
+import { execPlan } from "./fd-guard";
+import { isWindows, opensAsProgram, systemOpener } from "./platform";
 
 const MAX_PATHS = 60;
 
@@ -56,9 +57,10 @@ export function openFile(
     return;
   }
   const vars = childEnv();
-  // `code` na Windows to `code.cmd`: spawnPlan uruchamia go przez cmd.exe.
-  const { command, args, verbatim } = spawnPlan(program, plan.args, { env: vars });
-  const child = spawn(command, args, { stdio: "ignore", detached: true, env: vars, windowsHide: true, windowsVerbatimArguments: verbatim });
+  // `code` na Windows to `code.cmd`: execPlan uruchamia go przez cmd.exe. Linux: strażnik deskryptorów,
+  // bo edytor zwykle przeżywa aplikację (fd-guard.ts).
+  const { command, args, verbatim, env: spawnEnv } = execPlan(program, plan.args, vars);
+  const child = spawn(command, args, { stdio: "ignore", detached: true, env: spawnEnv, windowsHide: true, windowsVerbatimArguments: verbatim });
   child.on("error", () => undefined); // brak edytora w PATH: bez wyjątku w procesie głównym
   child.unref();
 }

@@ -5,7 +5,8 @@ import { t } from "./i18n";
 import { spawn } from "node:child_process";
 import os from "node:os";
 import { childEnv } from "./env";
-import { killChild, releaseAfterExit, spawnPlan } from "./platform";
+import { execPlan } from "./fd-guard";
+import { killChild, releaseAfterExit } from "./platform";
 
 const TIMEOUT_MS = 60_000;
 const PI_TIMEOUT_MS = 120_000; // lokalny model bywa wolniejszy niż Haiku
@@ -31,8 +32,9 @@ export function piSummaryArgs(system: string): string[] {
 export function run(program: string, args: string[], input: string, timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const env = childEnv();
-    const plan = spawnPlan(program, args, { env });
-    const child = spawn(plan.command, plan.args, { cwd: os.tmpdir(), env, stdio: ["pipe", "pipe", "pipe"], windowsHide: true, windowsVerbatimArguments: plan.verbatim });
+    const cwd = os.tmpdir();
+    const plan = execPlan(program, args, env, { cwd });
+    const child = spawn(plan.command, plan.args, { cwd, env: plan.env, stdio: ["pipe", "pipe", "pipe"], windowsHide: true, windowsVerbatimArguments: plan.verbatim });
     let out = "";
     let err = "";
     let timedOut = false;

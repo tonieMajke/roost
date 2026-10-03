@@ -68,6 +68,9 @@ are not bundled — see Requirements below. If it doesn't start, see [Troublesho
 
 From 0.0.3 on, the AppImage and the Windows installer check GitHub for updates, download them in the
 background and ask to restart (the zip doesn't). To turn this off, set `ROOST_NO_UPDATE=1`.
+Keep the AppImage under a stable name (e.g. `~/.local/bin/Roost.AppImage`): updates then replace the
+file in place. With a version in the name the update gets a new file name; Roost then fixes its own
+menu entry (`~/.local/share/applications`) on the next start.
 
 ### Windows (beta)
 

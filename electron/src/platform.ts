@@ -139,6 +139,13 @@ export function spawnPlan(command: string, args: string[], opts: Lookup & { read
   return { command: env.ComSpec || env.COMSPEC || "cmd.exe", args: ["/d", "/s", "/c", `"${line}"`], verbatim: true };
 }
 
+/** Czy dziecko startuje przez strażnika deskryptorów (`fd-guard.ts`). Tylko Linux: tam node-pty
+ *  (forkpty + execvp) i libuv nie zamykają odziedziczonych deskryptorów. macOS: node-pty używa posix_spawn
+ *  z POSIX_SPAWN_CLOEXEC_DEFAULT. Windows: uchwyty dziedziczy się tylko jawnie. */
+export function needsFdGuard(platform: NodeJS.Platform = process.platform): boolean {
+  return platform === "linux";
+}
+
 /**
  * Sygnał do procesu i wszystkiego, co uruchomił. Zwraca, czy proces jeszcze istniał.
  * - Linux/macOS: do grupy (`-pid`; dziecko z `detached: true` albo z node-pty jest jej liderem).

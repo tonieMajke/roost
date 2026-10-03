@@ -6,7 +6,8 @@ import fs from "node:fs";
 import type { ChatEvent } from "../../../src/chat";
 import { childEnv } from "../env";
 import { killGroup } from "../bot/proc";
-import { groupSpawn, releaseAfterExit, spawnPlan } from "../platform";
+import { execPlan } from "../fd-guard";
+import { groupSpawn, releaseAfterExit } from "../platform";
 
 export type LineParser = {
   /** Zdarzenia z jednej linii wyjścia (już sparsowanej z JSON). */
@@ -32,14 +33,14 @@ export function runCli(
   if (signal.aborted) return Promise.resolve(); // przerwane przed startem: procesu nie uruchamiamy
   fs.mkdirSync(cwd, { recursive: true });
   const childVars = childEnv(env);
-  let plan: ReturnType<typeof spawnPlan>;
+  let plan: ReturnType<typeof execPlan>;
   try {
-    plan = spawnPlan(program, args, { env: childVars });
+    plan = execPlan(program, args, childVars, { cwd });
   } catch (e) {
     return Promise.reject(e as Error);
   }
   return new Promise((resolve, reject) => {
-    const child = spawn(plan.command, plan.args, { cwd, env: childVars, stdio: ["pipe", "pipe", "pipe"], detached: groupSpawn(), windowsHide: true, windowsVerbatimArguments: plan.verbatim });
+    const child = spawn(plan.command, plan.args, { cwd, env: plan.env, stdio: ["pipe", "pipe", "pipe"], detached: groupSpawn(), windowsHide: true, windowsVerbatimArguments: plan.verbatim });
     let buf = "";
     let err = "";
     let killTimer: ReturnType<typeof setTimeout> | undefined;
