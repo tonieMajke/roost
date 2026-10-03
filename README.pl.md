@@ -64,6 +64,9 @@ nie są dołączeni — patrz „Wymagania” niżej. Jeśli nie startuje, zajrz
 
 Od wersji 0.0.3 AppImage i instalator Windows same sprawdzają aktualizacje na GitHubie, pobierają je
 w tle i pytają o ponowne uruchomienie (wersja zip – nie). Wyłączenie: zmienna `ROOST_NO_UPDATE=1`.
+Trzymaj AppImage pod stałą nazwą (np. `~/.local/bin/Roost.AppImage`) – aktualizacja podmieni wtedy plik
+w miejscu. Przy wersji w nazwie aktualizacja zapisze plik pod nową nazwą; Roost poprawi wtedy przy
+następnym starcie swój wpis w menu (`~/.local/share/applications`).
 
 ### Windows (beta)
 

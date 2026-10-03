@@ -17,6 +17,7 @@ import { isLinux, isWindows } from "./platform";
 import { getMainLang, resolveMainLang, setMainLang } from "./i18n";
 import * as sandboxNotice from "./sandbox-notice";
 import * as updater from "./updater";
+import { applicationsDir, repairDesktopEntries } from "./desktop-entry";
 import { autoUpdater } from "electron-updater";
 import { openFile, resolveFiles } from "./open-path";
 import { Ptys, type SpawnSpec } from "./pty";
@@ -662,7 +663,10 @@ function startUpdates(): void {
     if (asked || !win) return;
     asked = true;
     void dialog.showMessageBox(win, updater.readyOptions(version)).then(({ response }) => {
-      if (response === 0) autoUpdater.quitAndInstall();
+      if (response !== 0) return;
+      // AppImage: nowa wersja bez deskryptorów i środowiska starej (updater.ts)
+      if (isLinux) updater.installAndRelaunch(autoUpdater, { env: process.env, relaunch: (execPath) => app.relaunch({ execPath, args: [] }), quit: () => app.quit() });
+      else autoUpdater.quitAndInstall();
     });
   });
   const check = () => void autoUpdater.checkForUpdates().catch(() => {});
@@ -670,11 +674,24 @@ function startUpdates(): void {
   setInterval(check, updater.CHECK_EVERY_MS).unref();
 }
 
+/** Wpis w menu wskazujący na AppImage sprzed aktualizacji (desktop-entry.ts); w tle, błąd tylko do logu. */
+function repairMenuEntry(): void {
+  const appimage = process.env.APPIMAGE;
+  if (!app.isPackaged || !isLinux || !appimage) return;
+  void repairDesktopEntries(applicationsDir(), appimage, app.getVersion()).then(
+    (fixed) => {
+      if (fixed.length) console.log("wpis w menu poprawiony:", fixed.join(", "));
+    },
+    (e: Error) => console.error("wpis w menu:", e.message),
+  );
+}
+
 void app.whenReady().then(() => {
   initialLang();
   createWindow();
   if (win) warnIfNoSandbox(win);
   startUpdates();
+  repairMenuEntry();
   scheduler.start();
   // Po wybudzeniu od razu, nie po najbliższym tyknięciu.
   powerMonitor.on("resume", () => scheduler.tick());

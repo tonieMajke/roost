@@ -6,13 +6,17 @@
 import os from "node:os";
 import { defaultShell, isWindows } from "./platform";
 
-/** Ustawiane przez runtime/AppRun bez odwołania do `$APPDIR` w wartości. */
-const APPIMAGE_ONLY = ["APPDIR", "APPIMAGE", "ARGV0", "OWD", "PYTHONDONTWRITEBYTECODE", "GTK_THEME"];
+/** Ustawiane przez runtime/AppRun (i electron-updater) bez odwołania do `$APPDIR` w wartości. */
+const APPIMAGE_ONLY = ["APPDIR", "APPIMAGE", "ARGV0", "OWD", "PYTHONDONTWRITEBYTECODE", "GTK_THEME", "APPIMAGE_SILENT_INSTALL", "APPIMAGE_EXIT_AFTER_INSTALL"];
+
+/** Wpis w montowaniu dowolnego AppImage (`/tmp/.mount_Roost-XXXXXX/...`). Po aktualizacji przez dawny
+ *  updater środowisko ma jeszcze ścieżki montowania poprzedniej wersji (AppRun tylko dopisuje swoje). */
+const MOUNT_ENTRY = /(^|\/)\.mount_[^/]+(\/|$)/;
 
 export type Env = Record<string, string | undefined>;
 
 /** Poprawki środowiska dziecka: zmienne do usunięcia i do nadpisania.
- *  Listy `a:b:c` tracą wpisy z `$APPDIR`; zmienna bez innych wpisów znika.
+ *  Listy `a:b:c` tracą wpisy z `$APPDIR` i z montowań innych AppImage; zmienna bez innych wpisów znika.
  *  Poza AppImage (brak `APPDIR`/`APPIMAGE`) nic nie zmienia. */
 export function childEnvFixes(vars: Env): { remove: string[]; set: [string, string][] } {
   const remove: string[] = [];
@@ -23,8 +27,8 @@ export function childEnvFixes(vars: Env): { remove: string[]; set: [string, stri
   for (const [key, value] of Object.entries(vars)) {
     if (value === undefined) continue;
     if (APPIMAGE_ONLY.includes(key)) remove.push(key);
-    else if (value.includes(appdir)) {
-      const kept = value.split(":").filter((p) => p !== "" && !p.includes(appdir));
+    else if (value.includes(appdir) || MOUNT_ENTRY.test(value)) {
+      const kept = value.split(":").filter((p) => p !== "" && !p.includes(appdir) && !MOUNT_ENTRY.test(p));
       if (kept.length === 0) remove.push(key);
       else set.push([key, kept.join(":")]);
     }

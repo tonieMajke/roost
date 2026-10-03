@@ -33,6 +33,23 @@ describe("childEnvFixes", () => {
       ["XDG_DATA_DIRS", "/usr/share:/usr/local/share"],
     ]);
   });
+  it("usuwa też ścieżki montowania poprzedniej wersji (po aktualizacji) i zmienne electron-updatera", () => {
+    const { remove, set } = childEnvFixes({
+      APPDIR: "/tmp/.mount_Roost-new",
+      APPIMAGE: "/home/u/Roost-0.0.5.AppImage",
+      APPIMAGE_SILENT_INSTALL: "true",
+      PATH: "/tmp/.mount_Roost-new:/tmp/.mount_Roost-old:/tmp/.mount_Roost-old/usr/sbin:/usr/bin",
+      LD_LIBRARY_PATH: "/tmp/.mount_Roost-new/usr/lib:/tmp/.mount_Roost-old/usr/lib",
+      GSETTINGS_SCHEMA_DIR: "/tmp/.mount_Roost-old/usr/share/glib-2.0/schemas",
+      XDG_DATA_DIRS: "/tmp/.mount_Roost-old/usr/share/:/usr/share",
+      NOTES: "/home/u/x.mount_y/z",
+    });
+    expect(remove.sort()).toEqual(["APPDIR", "APPIMAGE", "APPIMAGE_SILENT_INSTALL", "GSETTINGS_SCHEMA_DIR", "LD_LIBRARY_PATH"]);
+    expect(set.sort()).toEqual([
+      ["PATH", "/usr/bin"],
+      ["XDG_DATA_DIRS", "/usr/share"],
+    ]);
+  });
 });
 
 describe("childEnv", () => {
