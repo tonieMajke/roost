@@ -5,7 +5,8 @@
 
 import fs from "node:fs/promises";
 import os from "node:os";
-import path from "node:path";
+// Ścieżki we wpisach .desktop i katalogi XDG są zawsze POSIX-owe (moduł działa tylko na Linuksie).
+import { posix as path } from "node:path";
 
 /** Katalog wpisów użytkownika; systemowych (`/usr/share/applications`) nie ruszamy. */
 export function applicationsDir(env: NodeJS.ProcessEnv = process.env, home = os.homedir()): string {

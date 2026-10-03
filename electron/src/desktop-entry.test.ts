@@ -80,7 +80,8 @@ it("applicationsDir: XDG_DATA_HOME tylko bezwzględny", () => {
   expect(applicationsDir({}, "/h")).toBe("/h/.local/share/applications");
 });
 
-describe("repairDesktopEntries", () => {
+// Prawdziwe pliki w katalogu tymczasowym – na Windows ścieżki nie są POSIX-owe, a moduł działa tylko na Linuksie.
+describe.skipIf(process.platform === "win32")("repairDesktopEntries", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aw-desktop-"));
   afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
   const bin = path.join(dir, "bin");
